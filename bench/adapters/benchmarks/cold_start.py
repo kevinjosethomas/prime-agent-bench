@@ -41,10 +41,11 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
         probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5, timeout=45.0,
                                       start_ts=t_paint,
                                       dialog_steps=ONBOARDING_AUTODISMISS)
-        # the erase budget must cover every probe char sent (the input line
-        # may hold dropped/buffered tokens from every attempt)
+        # the erase budget must cover every probe char sent, and the
+        # verification certifies EVERY attempt token gone (the input line
+        # may hold buffered tokens from every unconfirmed attempt)
         erase_ok, erase_ms = app.erase_all(
-            PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8)
+            probe["probe_tokens"], max_backspaces=probe["chars_sent"] + 8)
         time.sleep(1.0)  # settled idle
         rss = rss_tree(app.pid)
         bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())
@@ -52,7 +53,11 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
             "launch_to_first_paint_ms": round((t_paint - app.t_spawn) * 1000.0, 1),
             "launch_to_ready_ms": probe["echo_ts_offset_ms"],
             "input_ready_gap_ms": probe["gap_ms"],
+            # legacy key, kept for row-schema continuity: None in new rows —
+            # a true drop is unknowable from screen observation (see
+            # probe_input_ready); old-campaign rows keep their raw values
             "dropped_probes": probe["dropped_probes"],
+            "unconfirmed_attempts": probe["unconfirmed_attempts"],
             "erase_ok": erase_ok,
             "erase_ms": erase_ms,
             "pty_bytes": app.bytes_out(),

@@ -80,6 +80,24 @@ class Session(ABC):
         return None
 
     # ---- generic probes ---------------------------------------------------
+    def echo_window_text(self, rows_up: int = 0, rows_down: int = 1) -> str | None:
+        """The rendered text of the EDITOR ROWS: the cursor row plus
+        ``rows_down`` below it (or None for drivers without cursor
+        state — erase_all then falls back to the whole screen).
+
+        Scope rationale (the live nav diagnostic): the caller derives the
+        rows-up cap from the probe metadata (ceil(total chars / cols) +
+        margin) so every wrapped row of the input block is inspected
+        (66 probe attempts wrapped SIX rows on the live Rust screen —
+        the cursor row alone can never certify that block). Rows above
+        the capped block start are the transcript tail: gating on the
+        whole screen would false-negative a clean editor whose
+        transcript shows probe fragments (``editor_line_empty=true``
+        with probe text still rendered in the transcript after an
+        accidental polluted submit). Conservative False is acceptable;
+        false True is forbidden."""
+        return None
+
     def screen_has(self, needle: str) -> bool:
         """Whether the needle appears anywhere on the screen."""
         return needle in self.screen_text()
@@ -122,18 +140,88 @@ class Session(ABC):
                 time.sleep(inter_key_pause)
         return lat, True
 
-    def erase_all(self, needle: str, max_backspaces: int = 40, timeout: float = 6.0):
-        """Backspace until ``needle`` is no longer rendered anywhere.
-        Returns (ok, ms)."""
+    def erase_all(self, needles, max_backspaces: int = 40, timeout: float = 6.0):
+        """Erase the input line: one bounded DEL burst, then ONE
+        editor-scoped verification of EVERY needle. Returns (ok, ms);
+        (False, budget) whenever the erase cannot be certified — never
+        a vacuous success.
+
+        ``needles`` is one token or a list (probe_input_ready returns the
+        full ``probe_tokens`` list): certifying only the last/base token
+        can leave earlier attempt tokens rendered — the live agent-view
+        failure had ``erase_ok=true`` while TS's editor still held
+        ``Zq7x20..25`` (plus a ``/resumeq`` fragment), silently breaking
+        every navigation leg. A token split at a line wrap has no full
+        substring in any single row, so the window text is checked both
+        row-wise and seam-joined; the seam-join is conservative — it
+        can only extend the wait or fail the erase, never certify a
+        line that still holds needle text.
+
+        The verification scope is the EDITOR REGION (``echo_window_text``
+        — the cursor row, the rows below it, and up to
+        ceil(total_chars/cols)+2 rows above it, the probe-derived cap on
+        the wrapped input block), not the whole screen: a clean editor
+        can coexist with probe text elsewhere (the live Rust diagnostic
+        had ``editor_line_empty=true`` while the screen still showed
+        probe fragments in the transcript), and a whole-screen check
+        would false-negative there. The cap keeps every wrapped row of
+        the block in scope (66 sends wrap 4 rows — a cursor-row-only
+        gate would false-certify while earlier rows still hold tokens)
+        while transcript rows above the block stay out. In-benchmark
+        flows are structurally immune to transcript probe text (erase
+        runs before any submit), so the conservative direction here is
+        safe: the verdict can only fail loudly. Drivers without cursor
+        state fall back to the whole screen.
+
+        No erase mechanism is assumed universal: a DEL burst cannot
+        reach every input surface (the pinned Pi proof: the pre-mount
+        probe echoes at ~0.28s, a 14-byte DEL burst fails to clear it,
+        Ctrl-U clears it, post-mount DEL works). This primitive stays
+        conservative — the burst plus the all-token gate returns False
+        on a surface DEL cannot reach; a proven key for a specific
+        product belongs in that product's adapter, not here. The burst
+        is a single queued write (chunked only above 256 bytes);
+        surplus DELs no-op on an already-empty line. One bounded
+        ``wait_for`` at the end replaces the per-key 0.35s waits that
+        burned the harness's own timeout per character on a wrapped
+        line (the live 4c59054 evidence: 22 buffered probe tokens =
+        132 chars = a 45,200ms erase inside a ~50s trial). The total
+        budget stays ``timeout`` (unchanged default 6s). Real-TUI proof
+        for the products in scope runs through scripts/verify_erase_pty.py
+        before a wave relies on this."""
+        if isinstance(needles, str):
+            needles = [needles]
+        needles = [n for n in needles if n]
+
+        # the editor-block cap (from the probe metadata itself): the input
+        # block can wrap ceil(total_chars / cols) rows above the cursor
+        # (the live stress case: 66 probe sends = 4 wrapped rows of
+        # residue), so a cursor-row-only gate would false-certify while
+        # earlier wrapped rows still hold tokens. The cap uses the
+        # needles' own length plus prompt slack and margin; rows above
+        # the cap are the transcript and stay out of scope.
+        total_chars = sum(len(n) for n in needles)
+        cols = int(getattr(self, "cols", 0) or 120)
+        rows_up = min(40, -(-(total_chars + 2) // cols) + 2)
+
+        def _clean() -> bool:
+            window = self.echo_window_text(rows_up=rows_up, rows_down=1)
+            if window is None:
+                window = self.screen_text()
+            joined = "".join(window.splitlines())
+            return all(n not in window and n not in joined for n in needles)
+
         t0 = now()
-        for _ in range(max_backspaces):
-            self.send("\x7f")
-            try:
-                self.wait_for(lambda: needle not in self.screen_text(), timeout=0.35, poll=0.005)
-                return True, round((now() - t0) * 1000.0, 2)
-            except TimeoutError:
-                continue
-        return False, round((now() - t0) * 1000.0, 2)
+        burst = b"\x7f" * max(0, int(max_backspaces))
+        for i in range(0, len(burst), 256):
+            self.send(burst[i:i + 256])
+            if i:
+                time.sleep(0.01)
+        try:
+            self.wait_for(_clean, timeout=timeout, poll=0.005)
+            return True, round((now() - t0) * 1000.0, 2)
+        except TimeoutError:
+            return False, round((now() - t0) * 1000.0, 2)
 
     def probe_input_ready(self, token: str = "Zq7x", retry_every: float = 0.5,
                           timeout: float = 45.0, start_ts: float | None = None,
@@ -160,7 +248,22 @@ class Session(ABC):
         so ``dialog_steps`` markers are answered inline between probe
         attempts (mid-probe dialogs) and the readiness clock restarts after
         each dismissal — dialog time is excluded from gap_ms and reported
-        separately (dialogs, dialog_ms)."""
+        separately (dialogs, dialog_ms).
+
+        Attempt-disposition honesty (the dropped_probes misnomer): an
+        attempt whose token did not echo within its grid step is an
+        UNCONFIRMED attempt — the token may have been discarded, may
+        still sit unread, or may have been accepted and rendered later
+        (buffered). ``unconfirmed_attempts`` counts them without
+        claiming a disposition. The legacy ``dropped_probes`` key stays
+        in the result for row-schema continuity but carries None in
+        new rows: a true drop can never be established from screen
+        observation alone (earlier tokens may be queued, rendered at
+        mount, or scroll-hidden). When ``input_buffered`` is true the
+        echo timestamp is the mount-time render of queued input — the
+        exact input-accept moment is unknown and never claimed;
+        gap_ms/echo_ts_offset_ms keep their observed-render meaning
+        (no change to the readiness metric)."""
         start = start_ts if start_ts is not None else (self.t_first_paint or self.t_spawn)
         sends = []
         dialogs = []
@@ -205,9 +308,15 @@ class Session(ABC):
                     "gap_ms": round((ts - start) * 1000.0, 2),
                     "echo_ts_offset_ms": round((ts - self.t_spawn) * 1000.0, 2),
                     "sends": len(sends),
-                    "dropped_probes": len(sends) - 1,
+                    "unconfirmed_attempts": len(sends) - 1,
+                    # legacy key: disposition is unknowable from the screen
+                    # (queued vs discarded vs scroll-hidden); None = unknown
+                    "dropped_probes": None,
                     "chars_sent": chars_sent,
                     "probe_token": f"{token}{attempt:02d}",
+                    # every attempt token: erase_all(probe_tokens) certifies
+                    # the whole line clean, not just the echoed token
+                    "probe_tokens": [f"{token}{a:02d}" for a in range(1, attempt + 1)],
                     "input_buffered": buffered,
                     "probe_grid_ms": round(grid * 1000.0, 1),
                     "quantized_ms": 0.0 if buffered else round(grid * 1000.0, 1),

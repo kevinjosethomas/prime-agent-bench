@@ -124,6 +124,13 @@ class PTYSession(PtyStreamMixin, Session):
         with self._lock:
             return self.chunks[-1][1] if self.chunks else 0
 
+    def echo_window_text(self, rows_up: int = 0, rows_down: int = 1) -> str | None:
+        """The cursor-anchored editor rows (driver cursor state)."""
+        with self._lock:
+            y = self.screen.cursor.y
+            top = max(0, y - max(0, rows_up))
+            return "\n".join(self.screen.display[top:y + 1 + max(0, rows_down)])
+
     def send(self, data) -> float:
         if isinstance(data, str):
             data = data.encode()
