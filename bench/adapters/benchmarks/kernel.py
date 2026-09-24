@@ -65,7 +65,7 @@ def submit_and_wait(app, prompt: str, sentinel: str, timeout: float = 120.0):
         t_ack = app.wait_output_after(t_enter, timeout=timeout)
     except TimeoutError:
         t_ack = None
-    app.wait_screen_contains(sentinel, timeout=max(1.0, deadline - now()))
+    app.wait_screen_contains(sentinel, timeout=timeout)
     t_sent = now()
     return t_ack, t_sent, t_enter
 
