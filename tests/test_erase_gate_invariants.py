@@ -65,7 +65,8 @@ def _passing_evidence() -> dict:
         "mock_model_requests": 0,
         "stress": {"erase_ok": True},
         "stress_dialog_free": True,
-        "stress_sentinel_witnessed": True,
+        "stress_focus_verified": True,
+        "stress_cohort_rendered_count": 66,
         "stress_early_rendered": True,
         "stress_late_rendered": True,
         "stress_missing_pre_erase": [],
@@ -96,8 +97,9 @@ def test_sheet_covered_stress_input_is_not_certified(gate):
     missing = [t for t in stress_tokens if t not in covered_window]
     assert missing == stress_tokens  # zero rendered
     evidence = _passing_evidence()
-    evidence["stress_sentinel_witnessed"] = False  # sentinel never echoed
+    evidence["stress_focus_verified"] = False  # sentinel never echoed
     evidence["stress_missing_pre_erase"] = missing
+    evidence["stress_cohort_rendered_count"] = 0
     assert gate.gate_pass(evidence) is False
 
 
@@ -113,7 +115,7 @@ def test_gate_pass_requires_every_witness(gate):
         ("fresh_erase_ok", False),
         ("mock_model_requests", 1),
         ("stress_dialog_free", False),
-        ("stress_sentinel_witnessed", False),
+        ("stress_focus_verified", False),
     ]
     for key, bad in flips:
         evidence = _passing_evidence()
@@ -131,8 +133,19 @@ def test_coalesced_cohort_does_not_false_fail(gate):
     is recorded evidence — never a synthetic pass nor a synthetic fail."""
     evidence = _passing_evidence()
     evidence["stress_missing_pre_erase"] = ["Zq7z58", "Zq7z66"]
+    evidence["stress_cohort_rendered_count"] = 64
     evidence["stress_late_rendered"] = False
     assert gate.gate_pass(evidence) is True
+
+
+def test_non_vacuous_probe_witness(gate):
+    """probe_witnessed is the editor-region positive read of the
+    SUCCESSFUL probe token (row-wise + seam-joined) — never a bare
+    probe-return boolean; a product whose editor never rendered it
+    must fail the gate."""
+    evidence = _passing_evidence()
+    evidence["probe_witnessed"] = False
+    assert gate.gate_pass(evidence) is False
 
 
 def test_real_pty_sheet_covered_input_witness(gate):

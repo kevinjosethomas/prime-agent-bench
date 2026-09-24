@@ -158,9 +158,12 @@ def launch_isolated(prod, ctx, driver):
 
 
 def gate_pass(evidence: dict) -> bool:
-    """The gate verdict: every witness positive — the probe echo AND the
-    full stress cohort must be positively witnessed rendered BEFORE the
-    erase, so no vacuous path (sheet-covered input, blank editor) passes."""
+    """The gate verdict: every witness positive. The stress bound proves
+    EDITOR-FOCUS-AT-BURST-END — a dialog-free screen at send time plus a
+    sentinel (appended right after the burst) positively witnessed in
+    the editor region before the erase — NOT full 66-token acceptance:
+    the cohort render state is recorded (rendered count + missing list)
+    and the full-stress contract stays uncertified until real proof."""
     return bool(
         evidence.get("probe_witnessed")
         and evidence.get("erase_ok") and not evidence.get("leftover_tokens")
@@ -170,7 +173,7 @@ def gate_pass(evidence: dict) -> bool:
         and evidence.get("mock_model_requests") == 0
         and evidence.get("stress", {}).get("erase_ok")
         and evidence.get("stress_dialog_free")
-        and evidence.get("stress_sentinel_witnessed")
+        and evidence.get("stress_focus_verified")
         and "reap_leftovers" not in evidence
         and "transcript_dump_error" not in evidence)
 
@@ -258,9 +261,9 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
             app.wait_for(
                 lambda: token_in(*editor_window(app, rows_up_s), STRESS_SENTINEL),
                 timeout=10.0, poll=0.05)
-            evidence["stress_sentinel_witnessed"] = True
+            evidence["stress_focus_verified"] = True
         except TimeoutError:
-            evidence["stress_sentinel_witnessed"] = False
+            evidence["stress_focus_verified"] = False
         sw, swj = editor_window(app, rows_up_s)
         # representative early/late witnesses + the full cohort state:
         # recorded, not gated — viewport/burst coalescing can legitimately
@@ -269,6 +272,8 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         evidence["stress_late_rendered"] = token_in(sw, swj, stress_tokens[-1])
         evidence["stress_missing_pre_erase"] = [t for t in stress_tokens
                                                 if not token_in(sw, swj, t)]
+        evidence["stress_cohort_rendered_count"] = (
+            len(stress_tokens) - len(evidence["stress_missing_pre_erase"]))
         all_tokens = tokens + stress_tokens + [STRESS_SENTINEL]
         stress_budget = sum(len(t) for t in all_tokens) + 8
         stress_ok, stress_ms = app.erase_all(all_tokens,
