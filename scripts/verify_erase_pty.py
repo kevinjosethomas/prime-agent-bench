@@ -32,6 +32,14 @@ before the erase. The sentinel proves editor focus at burst end — NOT
 full-cohort acceptance: the missing-list records the cohort render
 state, and the full 66-token stress contract stays uncertified until
 real proof.
+
+Pre-settle (verification-only): before the measured launch, ONE isolated
+launch on the same trial home walks the product-owned first-run dialogs
+to ready and then drains any sheet that pops after ready (the observed
+share-traces sheet lands seconds in, after the probe echo), answering
+it with the product's own dialog keys. Campaign templates, fixtures and
+scenarios are untouched — the settled home is the gate's ephemeral
+trial home only.
 """
 from __future__ import annotations
 
@@ -50,7 +58,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint  # noqa: E402
+from bench.adapters.benchmarks.support import (  # noqa: E402
+    PROBE_TOKEN, drive_to_ready, first_paint,
+)
+from bench.core.process import sweep_trial  # noqa: E402
 from bench.adapters.terminals.pty import PTYDriver  # noqa: E402
 from bench.core.config import load_config  # noqa: E402
 from bench.core.env import scrubbed_env  # noqa: E402
@@ -178,6 +189,43 @@ def gate_pass(evidence: dict) -> bool:
         and "transcript_dump_error" not in evidence)
 
 
+def pre_settle(prod, ctx, driver, post_ready_s: float = 10.0) -> str:
+    """Verification-only onboarding consumption (the harness prepass
+    pattern): one isolated launch on the trial home walks the
+    product-owned first-run dialogs to ready, then DRAINS any sheet that
+    pops after ready — the observed share-traces sheet lands seconds
+    in, after the probe echo, so a bare to-ready walk would miss it. The
+    measured launch that follows runs against the settled home. Mock-only
+    by construction (the same offline argv + dummy key as the measured
+    launch); the settle session is killed and swept, never measured."""
+    app = launch_isolated(prod, ctx, driver)
+    try:
+        first_paint(app, timeout=60)
+        result = drive_to_ready(app, prod.dialog_steps, timeout=150,
+                                probe="Zq7prep01", pacing={})
+        keys_by_marker = dict(prod.dialog_steps)
+        quiet = 0.0
+        deadline = time.monotonic() + post_ready_s
+        while time.monotonic() < deadline:
+            norm = " ".join(app.screen_text().split())
+            marker = next((m for m in keys_by_marker if m in norm), None)
+            if marker is None:
+                quiet += 0.2
+                if quiet >= 2.0:
+                    break
+                time.sleep(0.2)
+                continue
+            quiet = 0.0
+            for key in keys_by_marker[marker]:
+                app.send(key)
+                time.sleep(0.4)
+            time.sleep(0.5)
+        return result
+    finally:
+        app.kill_tree()
+        sweep_trial(ctx)
+
+
 def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
     prod = reg.product(name)
     trial = root / "trials" / name / "verify-erase"
@@ -189,6 +237,11 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
     ctx = prod.new_trial(trial)
     sanitize_trial_home(ctx, name)
     evidence: dict = {"product": name}
+    # verification-only pre-settle: consume onboarding sheets BEFORE the
+    # measured launch so the async share-traces sheet cannot steal focus
+    # mid-burst; campaigns keep their own fresh-home templates untouched
+    evidence["pre_settle"] = pre_settle(prod, ctx, driver)
+    sanitize_trial_home(ctx, name)
     app = None
     try:
         evidence["version"] = prod.version_info()
