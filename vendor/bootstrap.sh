@@ -30,23 +30,4 @@ claude --version
 codex --version
 node "$PI" --version
 
-echo "[bootstrap] warm kernel venvs (rust, ts)"
-# uv + the shipped cpython-3.11 (matches the benchmark node's kernel venvs)
-export HOME=/root
-UV=/root/.local/bin/uv
-PY=/root/.local/share/uv/python/cpython-3.11.16-linux-x86_64-gnu/bin/python3.11
-test -x "$UV" || { echo "uv missing"; exit 1; }
-test -x "$PY" || { echo "cpython-3.11 missing"; exit 1; }
-REL=$(ls -d /root/.local/share/prime-agent/releases/*-linux-x64-* | head -1)
-EXTRAS="requests httpx pyyaml tomli python-dotenv pandas numpy scipy beautifulsoup4 lxml pydantic tyro dill"
-for prod in rust ts; do
-  VENV=/root/bench-root/global/$prod/kernel-venv
-  "$UV" venv -q --python "$PY" "$VENV"
-  "$UV" pip install -q --python "$VENV/bin/python" "$REL/prime-agent-runtime" $EXTRAS
-  "$VENV/bin/python" -c "import rlm.repl, dill, pandas, numpy, scipy, bs4, lxml, pydantic, tyro, requests, httpx, yaml, tomli, dotenv; print('kernel-venv', '$prod', 'OK')"
-  mkdir -p /root/bench-root/global/$prod/uv-cache /root/bench-root/global/$prod/xdg-cache
-done
-for prod in claude codex pi; do
-  mkdir -p /root/bench-root/global/$prod/kernel-venv /root/bench-root/global/$prod/uv-cache /root/bench-root/global/$prod/xdg-cache
-done
 echo "[bootstrap] DONE"
