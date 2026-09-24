@@ -193,6 +193,10 @@ def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_name
     finally:
         if mock:
             mock.terminate()
+            try:
+                mock.wait(timeout=10)
+            except Exception:
+                pass
         final_sweep(reg)
     return jsonl_paths
 
