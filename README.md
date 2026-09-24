@@ -31,7 +31,11 @@ discovered from the package structure.
 - Per-trial process sweep (kills all daemon/worker/kernel processes between
   trials), load gate before every trial, per-trial loadavg + RSS + PTY bytes
 - Deterministic fixtures with sha256 manifests (the 10MiB corpus is byte-exact
-  and pinned in the test suite)
+  and pinned in the test suite); `session-10mib` is the historical v2 golden
+  (digest rows without `display`, which products render visible), and
+  `session-10mib-v3` is the display-corrected corpus — every harness_digest
+  row persisted `display: false` plus the raw digest in `details`, exactly
+  like real TS/Rust session files (same 7391-row shape, its own golden sha)
 - Startup honesty (audit F13): first paint and interactive-ready are
   distinct metrics (`launch_to_first_paint_ms` vs `launch_to_ready_ms`) —
   never blended. Readiness is probed at a fine grid with the harness's own
