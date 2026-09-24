@@ -201,20 +201,32 @@ class HookProduct(ProductAdapter):
 
 
 class StubFixture(Fixture):
-    name = "session-10mib"
-    def __init__(self): pass
-    def path(self): return Path("/tmp/corpus.jsonl")
-    def generate(self, spec): return self.path()
+    """The v3 switch moved compare.scroll_typing to session-10mib-v3, so
+    the stub registers under the v3 name with a REAL golden file whose
+    manifest sha256 is its own hash — the merged engine stages the
+    per-trial clone (golden verified against the manifest) before any
+    launch, exactly as in a real campaign."""
+    name = "session-10mib-v3"
+    def __init__(self, path: Path):
+        self._path = Path(path)
+        import hashlib as _h
+        self._sha = _h.sha256(self._path.read_bytes()).hexdigest()
+    def path(self): return self._path
+    def generate(self, spec): return self._path
     def validate(self, expected_sha256): return True
     def manifest(self):
-        return {"path": "/tmp/corpus.jsonl", "bytes": 10485760, "rows": 7391,
-                "sha256": "deadbeef", "sentinel": SENTINEL,
-                "generator_seed": 1234, "target_mib": 10.0}
+        data = self._path.read_bytes()
+        return {"path": str(self._path), "bytes": len(data),
+                "rows": data.count(b"\n"), "sha256": self._sha,
+                "sentinel": SENTINEL, "generator_seed": 1234,
+                "target_mib": 10.0}
 
 
 def _engine(tmp_path, monkeypatch, native):
     reg = discover(_cfg(tmp_path))
-    reg.fixtures["session-10mib"] = StubFixture()
+    golden = tmp_path / "corpus.jsonl"
+    golden.write_bytes(b'{"type": "session", "cwd": "/tmp/corpus-cwd"}\n')
+    reg.fixtures["session-10mib-v3"] = StubFixture(golden)
     reg.products["hookfake"] = HookProduct(
         {"layout": reg.layout, "product": {}, "mock": {}}, native)
     scroll = reg.benchmark("compare.scroll_typing")
@@ -229,24 +241,45 @@ def _engine(tmp_path, monkeypatch, native):
     out_dir.mkdir(parents=True)
     jsonl = trials_mod.run_trials(
         reg, FakeDriver({}), "compare.scroll_typing", ["hookfake"], 1, out_dir,
-        {"session-10mib": Path("/tmp/corpus.jsonl")}, aa=False, phase_tag="w1")
+        {"session-10mib-v3": golden}, aa=False, phase_tag="w1")
     return [json.loads(l) for l in jsonl.read_text().splitlines()]
 
 
 def test_default_hook_leaves_gold_fixture_manifest_untouched(tmp_path, monkeypatch):
     rows = _engine(tmp_path, monkeypatch, native=None)
     fixture = rows[0]["fixture"]
-    assert fixture["sha256"] == "deadbeef" and fixture["rows"] == 7391
+    # the manifest claim is passed through verbatim, never recomputed by
+    # the engine; the default hook adds no native block to it
+    golden_sha = hashlib.sha256(
+        (tmp_path / "corpus.jsonl").read_bytes()).hexdigest()
+    assert fixture["sha256"] == golden_sha and fixture["rows"] == 1
     assert "native" not in fixture  # default None: no native rewrite of gold evidence
+    # the merged engine's own addition: the per-trial clone load proof
+    # composes with (never rewrites) the manifest block
+    assert fixture["clone"]["sha256"] == golden_sha
+    assert fixture["clone"]["path"] != str(tmp_path / "corpus.jsonl")
 
 
 def test_engine_records_native_fixture_evidence_on_the_row(tmp_path, monkeypatch):
     seen = {}
     def native(ctx, fixture):
+        # like pi's real staging: the source sha recorded is the actual
+        # golden hash read at staging time
         seen["fixture"] = fixture
         return {"format": "fake-native", "path": "/tmp/staged.jsonl",
                 "sha256": "cafebabe", "bytes": 123, "rows": 9, "turns": 4,
-                "sentinel": SENTINEL, "source": {"path": str(fixture), "sha256": "deadbeef"}}
+                "sentinel": SENTINEL,
+                "source": {"path": str(fixture),
+                           "sha256": hashlib.sha256(
+                               Path(fixture).read_bytes()).hexdigest()}}
     rows = _engine(tmp_path, monkeypatch, native=native)
-    assert rows[0]["fixture"]["native"]["sha256"] == "cafebabe"
-    assert seen["fixture"] == Path("/tmp/corpus.jsonl")
+    fixture = rows[0]["fixture"]
+    golden_sha = hashlib.sha256(
+        (tmp_path / "corpus.jsonl").read_bytes()).hexdigest()
+    # the native block composes with the manifest + clone evidence: the
+    # hook receives the shared golden path; the row keeps BOTH load proofs
+    assert fixture["native"]["sha256"] == "cafebabe"
+    assert seen["fixture"] == tmp_path / "corpus.jsonl"
+    assert fixture["sha256"] == golden_sha
+    assert fixture["native"]["source"]["sha256"] == golden_sha
+    assert fixture["clone"]["sha256"] == golden_sha
