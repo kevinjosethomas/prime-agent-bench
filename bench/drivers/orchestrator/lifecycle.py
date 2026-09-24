@@ -90,7 +90,10 @@ def wave_chain_cmd(handle, backend, spec_cfg: dict) -> str:
     benchmarks = ",".join(handle.spec["benchmarks"])
     products = ",".join(handle.spec["products"])
     aa = "--aa " if spec_cfg.get("aa", True) else "--no-aa "
-    return (f"mkdir -p {root / 'logs'} && cd {hd} && "
+    warm = (f"mkdir -p {root / 'logs'} && cd {hd} && "
+            f"python3 -m bench.cli settle --config configs/sandbox.yaml "
+            f"--products {shlex.quote(products)} && ")
+    return (warm + f"cd {hd} && "
             f"python3 -m bench.drivers.wave_chain --config configs/sandbox.yaml "
             f"--benchmarks {shlex.quote(benchmarks)} --products {shlex.quote(products)} "
             f"--trials {spec_cfg.get('trials', 10)} --phase {spec_cfg.get('phase', 'w1')} "

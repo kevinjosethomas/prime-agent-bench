@@ -86,6 +86,7 @@ def global_caches(name: str, layout: BenchLayout) -> dict:
     return {
         "PRIME_AGENT_KERNEL_VENV": str(g / "kernel-venv"),
         "UV_CACHE_DIR": str(g / "uv-cache"),
+        "UV_PYTHON_INSTALL_DIR": str(Path.home() / ".local" / "share" / "uv" / "python"),
         "XDG_CACHE_HOME": str(g / "xdg-cache"),
     }
 
