@@ -341,3 +341,28 @@ def test_secret_free_vendor_redaction(tmp_path, monkeypatch):
     assert any(n.split("/")[-1] == ".secret-free" and not n.split("/")[-1].startswith("._")
                for n in names)
     assert not any(n.split("/")[-1].endswith("auth.json") for n in names)
+
+
+def test_vendor_tarball_has_no_appledouble_members(tmp_path, monkeypatch):
+    """COPYFILE_DISABLE=1 on the tar invocation: macOS bsdtar archives
+    xattrs as ._ AppleDouble members (sandbox clutter + provenance
+    variance the Linux node never has). No _ member at any depth."""
+    from bench.core.config import load_config
+    from bench.drivers.vendor import build_vendor_tarball
+
+    fake = tmp_path / "payload.txt"
+    fake.write_text("fake payload")
+    monkeypatch.setattr("bench.drivers.vendor.vendor_entries",
+                        lambda cfg, products, reg=None: [
+                            {"src": str(fake), "dst": "root/payload.txt"}])
+    monkeypatch.setattr("bench.drivers.vendor.secret_srcs",
+                        lambda cfg, products, reg=None: set())
+    monkeypatch.setattr("bench.adapters.rust.adapter.PrimeAgentRustProduct.version_info",
+                        lambda self: {"version": "test"})
+    out = tmp_path / "products.tar.gz"
+    build_vendor_tarball(load_config(None), ["ts"], out, no_secrets=True)
+    with tarfile.open(out) as tar:
+        names = tar.getnames()
+    assert not any(part.startswith("._")
+                   for name in names for part in name.split("/"))
+    assert any(name.split("/")[-1] == ".secret-free" for name in names)

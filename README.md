@@ -120,6 +120,9 @@ bench vendor --products rust,ts,claude,codex,pi   # -> vendor/products.tar.gz
 # .secret-free marker rides in the tarball and the build manifest records
 # the redaction — for shipping/sharing, never the default bundle):
 bench vendor --no-secrets --products rust,ts,claude,codex,pi
+# privacy caveat: secret-free drops DECLARED auth only — the payload still
+# ships the whole declared toolchain breadth (the ~/.local/share/uv tree
+# may carry caches); trim the vendor/toolchain lists before shipping it.
 
 # ONE command: provision + deploy + bootstrap + warm kernels + verify every
 # product's interactive state; prints a readiness report:

@@ -144,8 +144,12 @@ def build_vendor_tarball(cfg: dict, products: list, out: Path,
                 "secret-free vendor payload: declared auth_sources entries "
                 "were dropped at build time (bench vendor --no-secrets)\n")
         out.parent.mkdir(parents=True, exist_ok=True)
+        # macOS bsdtar stores xattrs as ._ AppleDouble members: sandbox
+        # clutter and provenance variance the Linux node never has.
+        # COPYFILE_DISABLE is a no-op for GNU tar (the node's tar).
+        env = dict(os.environ, COPYFILE_DISABLE="1")
         subprocess.run(["tar", "-czf", str(out), "-C", str(staging), "."],
-                      check=True, timeout=3600)
+                      check=True, timeout=3600, env=env)
     finally:
         subprocess.run(["rm", "-rf", str(staging)])
     manifest["tarball"] = str(out)
