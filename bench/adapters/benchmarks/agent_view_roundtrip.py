@@ -93,6 +93,67 @@ def _first_user_text(fixture) -> str | None:
     return None
 
 
+def _dismiss_dialogs(app, steps, rounds: int = 4, key_pause: float = 0.4) -> bool:
+    """Answer any on-screen first-run dialog (a bounded walk over the
+    product's dialog_steps config); True when the screen is dialog-free.
+
+    A first-run dialog can surface on a fresh trial home AFTER the
+    readiness probe (the probe's own dialog walk only covers dialogs
+    that appear while it is probing): the observed case is TS's
+    trace-sharing welcome dialog, which swallows the navigation keys
+    for as long as it stays up.
+    """
+    markers = [marker for marker, _keys in steps]
+    for _ in range(max(1, rounds)):
+        text = " ".join(app.screen_text().split())
+        pending = [(marker, keys) for marker, keys in steps if marker in text]
+        if not pending:
+            return True
+        for _marker, keys in pending:
+            for key in keys:
+                app.send(keystroke(key))
+                time.sleep(key_pause)
+    text = " ".join(app.screen_text().split())
+    return not any(marker in text for marker in markers)
+
+
+def _editor_dock_state(screen: str, dock_rows: int = 5):
+    """Classify the chat's bottom dock: 'bare', 'text', or None.
+
+    The editor prompt renders in the last few non-empty rows (the dock:
+    the prompt row, its wrapped continuation rows, status/footer chrome);
+    the transcript renders above the dock, so its '>' blockquote rows
+    never collide with the check.
+
+    The verdict is deliberately strict - a dirty or ambiguous dock never
+    passes vacuously:
+
+    - no prompt row, or more than one, in the dock -> ``None``: an
+      ambiguous surface (a first-run dialog, the roster, a splash) is
+      never treated as an empty editor, and the caller must stop
+      instead of sending keys into an unknown surface
+    - a single prompt row with typed text -> ``'text'``: the probe's
+      buffered fragments sit on the prompt row
+    - a fragment row inside the dock (the wrapped head of a long input,
+      above or below a bare prompt) -> ``'text'``: the cursor can sit at
+      the end of a wrapped line whose head renders off the prompt row
+    - a single bare prompt row and no fragments in the dock ->
+      ``'bare'``
+    """
+    nonempty = [line for line in screen.splitlines() if line.strip()]
+    dock = nonempty[-dock_rows:]
+    prompts = [i for i, line in enumerate(dock)
+               if line.lstrip().startswith(">")]
+    if len(prompts) != 1:
+        return None
+    if dock[prompts[0]].strip() != ">":
+        return "text"
+    for i, line in enumerate(dock):
+        if i != prompts[0] and PROBE_TOKEN in line:
+            return "text"
+    return "bare"
+
+
 class SessionAgentViewRoundtrip(Benchmark):
     """Chat -> agents view -> the SAME session's chat, each leg timed."""
 
@@ -127,26 +188,54 @@ class SessionAgentViewRoundtrip(Benchmark):
         try:
             t_paint = first_paint(app, timeout=120)
             probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5,
-                                          timeout=self.ready_timeout_s, start_ts=t_paint)
+                                          timeout=self.ready_timeout_s, start_ts=t_paint,
+                                          dialog_steps=tuple(product.dialog_steps))
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             # agents-back requires an empty editor; the ready probe left
             # its token behind, so erase before navigating
             erase_ok, _ = app.erase_all(probe["probe_token"])
+            # a first-run dialog that surfaced after the probe swallows
+            # the navigation keys while it is up: answer it from the
+            # product's dialog config before touching the nav keys
+            dialogs_clear = _dismiss_dialogs(app, product.dialog_steps)
+            # the probe's retry loop can buffer EVERY dropped fragment in
+            # the editor (slow mounts) and erase_all only removes the
+            # last one: clear the whole input line (ctrl+u, delete to
+            # line start) and require the bottom dock's prompt row to be
+            # bare. An ambiguous dock (no single prompt row - a dialog,
+            # the roster, a splash) stops the gate immediately: never a
+            # vacuous pass, and never keys sent into an unknown surface
+            dock = _editor_dock_state(app.screen_text())
+            for _ in range(3):
+                if dock in (None, "bare"):
+                    break
+                app.send(keystroke("ctrl+u"))
+                time.sleep(0.2)
+                dock = _editor_dock_state(app.screen_text())
+            line_cleared = dock == "bare"
 
             # ---- leg 1: chat -> agents view --------------------------------
             # fully rendered = chrome AND the resumed session's identity
             # row; both are REQUIRED (an unreadable fixture or a missing
             # row is a partial row, never a chrome-only pass)
-            t_left = app.send(self.agents_view_key)
-            t_chrome = _wait_or_none(
-                app, lambda: AGENTS_CHROME in app.screen_text(),
-                timeout=self.agents_view_timeout_s)
+            # the pre-nav state is a precondition, not a measurement: a
+            # dialog still up or a non-empty editor means the navigation
+            # keys would be consumed by the wrong surface (the observed
+            # failure: LEFT as an editor cursor move), so the legs stay
+            # partial and the row stays unrankable
+            t_left = None
+            t_chrome = None
             t_row = None
-            if t_chrome is not None and row_title:
-                t_row = _wait_or_none(
-                    app, lambda: row_title in app.screen_text(),
+            if dialogs_clear and line_cleared:
+                t_left = app.send(self.agents_view_key)
+                t_chrome = _wait_or_none(
+                    app, lambda: AGENTS_CHROME in app.screen_text(),
                     timeout=self.agents_view_timeout_s)
+                if t_chrome is not None and row_title:
+                    t_row = _wait_or_none(
+                        app, lambda: row_title in app.screen_text(),
+                        timeout=self.agents_view_timeout_s)
             t_agents = max(t_chrome, t_row) if (t_chrome is not None
                                                 and t_row is not None) else None
 
@@ -196,7 +285,16 @@ class SessionAgentViewRoundtrip(Benchmark):
             }
             record["validation"] = {
                 "sentinel_loaded": t_sentinel is not None,
-                "erased_before_nav": erase_ok,
+                # the generic erase is needle-based (it proves the LAST
+                # probe fragment left the screen, not that the editor is
+                # clean): the verified dock gate is the authority - if
+                # ctrl+u produced a bare prompt the residue is genuinely
+                # gone even when the needle bookkeeping failed, and a
+                # retained residue never certifies this key alone
+                # (line_cleared carries the failure)
+                "erased_before_nav": bool(erase_ok or line_cleared),
+                "dialogs_clear": dialogs_clear,
+                "line_cleared": line_cleared,
                 "agents_chrome": t_chrome is not None,
                 "roster_row": t_row is not None,
                 "sentinel_gone": sentinel_gone is not None,
