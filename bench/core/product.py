@@ -182,6 +182,16 @@ class ProductAdapter(ABC):
         from bench.core.env import scrubbed_env
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
 
+    def trial_session_dir(self, ctx: TrialContext) -> Path:
+        """The per-trial directory the product reads native session
+        transcripts from. Fixture clones stage inside it (isolated,
+        writable, swept with the trial home); the shared golden never
+        enters this tree. Prime Agent Rust/TS share the agent-dir/sessions
+        layout, so the default covers both with one hook (protocol
+        parity is structural, not per-adapter)."""
+        base = ctx.get("agent_dir") or ctx["trial_dir"]
+        return Path(base) / "sessions"
+
     @abstractmethod
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
         """The TUI launch argv (optionally resuming a session fixture)."""

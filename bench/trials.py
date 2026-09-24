@@ -21,6 +21,8 @@ from pathlib import Path
 from bench.core.registry import Registry
 from bench.core.harness import HarnessDriver
 from bench.core.identity import default_run_label, harness_identity
+from bench.core.trial_fixture import (FixtureSourceError, clone_post_evidence,
+                                       stage_trial_fixture)
 from bench.gates import gate_idle, node_is_busy
 
 
@@ -145,19 +147,52 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 "comparability": levels[name],
                 "env_gate": {"waited_for": gate_waited, "busy_now": node_is_busy(reg.cfg)},
             }
-            if fixture_manifest is not None:
-                # semantic-equivalence evidence (spec §F): bytes/rows/sha256
-                # + the fixture sentinel, which the scenario verifies per trial
-                record["fixture"] = {"name": benchmark.requires_fixture, **fixture_manifest}
             ctx = prod.new_trial(trial_dir)
+            clone_path = None
             error = None
             try:
-                benchmark.setup(prod, ctx, fixture=fixture)
-                benchmark.measure(prod, ctx, record, driver, fixture=fixture)
+                if fixture is not None and fixture_manifest is not None:
+                    # Per-trial fixture clone (2026-09-24 integrity fix): the
+                    # resumed product appends to the file it resumes IN PLACE,
+                    # so --resume must never point at the shared golden. The
+                    # golden is hash-verified against its manifest on EVERY
+                    # trial (a polluted source fails the row, never gets
+                    # overwritten here), the clone is staged into the
+                    # product's isolated trial session dir BEFORE setup (setup
+                    # may import/modify sessions), and the row carries the
+                    # ACTUAL staged-clone hash — the load proof, not the
+                    # manifest claim. Semantic-equivalence evidence (spec §F):
+                    # golden bytes/rows/sha256 + the fixture sentinel, which
+                    # the scenario verifies per trial.
+                    clone_path = prod.trial_session_dir(ctx) / Path(fixture).name
+                    record["fixture"] = {
+                        "name": benchmark.requires_fixture, **fixture_manifest,
+                        "clone": stage_trial_fixture(fixture, clone_path,
+                                                     str(fixture_manifest.get(
+                                                         "sha256", ""))),
+                    }
+                benchmark.setup(prod, ctx, fixture=clone_path)
+                benchmark.measure(prod, ctx, record, driver, fixture=clone_path)
                 record["validated"] = benchmark.validate(record)
+            except FixtureSourceError as e:
+                # polluted/missing golden: the row fails without any launch
+                # and without touching the source (reset is explicit and
+                # out of trial, owned by the fixture layer)
+                error = f"{type(e).__name__}: {e}"
+                record["error"] = error[:400]
+                record["fixture"] = {"name": benchmark.requires_fixture,
+                                     **(fixture_manifest or {}),
+                                     "source_error": error[:400]}
             except Exception as e:
                 error = f"{type(e).__name__}: {e}"
                 record["error"] = error[:400]
+            if clone_path is not None:
+                # post-trial clone state: a resumed session legitimately
+                # appends to the clone in place, so post drift is EVIDENCE
+                # of the product's write, never a validation failure (the
+                # pre hash on the row is the load proof)
+                clone_ev = (record.get("fixture") or {}).get("clone") or {}
+                clone_ev.update(clone_post_evidence(clone_path))
             record["duration_s"] = round(time.time() - t_start, 2)
             if error or phase_tag.startswith("debug"):
                 pass  # keep trial home as evidence

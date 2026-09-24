@@ -23,6 +23,18 @@ Captured failure classes it excludes (reason codes):
   the session-open tail-sentinel render proof) — e.g. scroll/typing and
   memory rows measured against an empty session while Rust/TS resumed
   the 10MiB fixture.
+- ``fixture_hash_mismatch``: the row's per-trial clone proof contradicts
+  the golden manifest — ``fixture.clone.sha256`` (the hash of the bytes
+  actually staged for the product's --resume) differs from the golden
+  ``fixture.sha256``. Never ranked: the measured number describes loaded
+  bytes that are provably not the golden corpus (the 2026-09-24
+  shared-golden mutation incident class).
+- ``fixture_no_clone_evidence``: a fixture-requiring row with no
+  per-trial clone proof on the row at all. Historical rows measured
+  before the per-trial clone staging landed are exactly this class:
+  unrankable because nothing proves which bytes were loaded, and
+  excluded LOUDLY (visible reason + count) — never silently, never
+  overwritten.
 - ``validation_failed``: the trial completed but its validation evidence
   failed (probe echoed but not erased; ack or settle missing, ...).
 - ``unvalidated``: no validation verdict at all (``validated`` absent on
@@ -156,6 +168,25 @@ def fixture_confirmed(row: dict) -> bool:
     return bool((row.get("validation") or {}).get("sentinel"))
 
 
+def fixture_clone_proven(row: dict) -> str:
+    """The byte-proof verdict for one fixture row: ``proven`` |
+    ``mismatch`` | ``no_evidence``.
+
+    ``proven`` requires BOTH hashes on the row and their equality: the
+    golden manifest sha256 (``fixture.sha256``, the versioned corpus
+    identity) AND the actual staged-clone pre-launch sha256
+    (``fixture.clone.sha256``). A row with no clone block predates the
+    per-trial clone staging and proves nothing about its loaded bytes."""
+    fixture = row.get("fixture") or {}
+    pre_sha = (fixture.get("clone") or {}).get("sha256")
+    if not pre_sha:
+        return "no_evidence"
+    golden_sha = fixture.get("sha256")
+    if not golden_sha or pre_sha != golden_sha:
+        return "mismatch"
+    return "proven"
+
+
 def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
     """The reason code excluding this row from rankings, or None if valid.
 
@@ -176,8 +207,14 @@ def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
         return "settle_auth_error"
     if row.get("msg_routing") == "real-api":
         return "real_api_regime"
-    if meta.get("requires_fixture") and not fixture_confirmed(row):
-        return "fixture_not_confirmed"
+    if meta.get("requires_fixture"):
+        if not fixture_confirmed(row):
+            return "fixture_not_confirmed"
+        proven = fixture_clone_proven(row)
+        if proven == "mismatch":
+            return "fixture_hash_mismatch"
+        if proven == "no_evidence":
+            return "fixture_no_clone_evidence"
     if row.get("validated") is False:
         return "validation_failed"
     if row.get("validated") is not True:
