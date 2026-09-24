@@ -13,7 +13,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "default.yaml"
-PRODUCTS_CONFIG_DIR = REPO_ROOT / "configs" / "products"
+PRODUCTS_DIR = REPO_ROOT / "bench" / "adapters" / "products"
 
 DEFAULTS: dict[str, Any] = {
     # The proven single-node layout: ~/bench/{harness,venv,homes,results,...}
@@ -32,6 +32,12 @@ DEFAULTS: dict[str, Any] = {
         "poll_s": 2.0,
     },
     "mock": {"port": 8788},
+    # the kernel toolchain `bench vendor build` ships for kernel-venv products
+    "vendor": {"toolchain": [
+        {"src": "~/.local/bin/uv", "dst": "root/.local/bin/uv"},
+        {"src": "~/.local/bin/uvx", "dst": "root/.local/bin/uvx"},
+        {"src": "~/.local/share/uv", "dst": "root/.local/share/uv"},
+    ]},
     "settle": {
         "timeout_s": 300.0,
         "first_paint_timeout_s": 240.0,
@@ -62,21 +68,27 @@ def load_config(path: str | Path | None = None) -> dict:
     A missing config file is not an error: the defaults describe the proven
     node setup. Raises ``yaml.YAMLError`` on malformed YAML.
     """
-    cfg = deep_merge(DEFAULTS, {})
+    from copy import deepcopy
+    cfg = deepcopy(DEFAULTS)
     if path is not None:
         text = Path(path).read_text()
         cfg = deep_merge(cfg, yaml.safe_load(text) or {})
+    expand_toolchain(cfg)
     if cfg.get("results_dir") is None:
         cfg["results_dir"] = str(Path(cfg["bench_root"]).expanduser() / "results")
     return cfg
 
 
 def product_config(name: str) -> dict:
-    """The per-product pinning: configs/products/<name>.yaml if present.
+    """The product's COMPLETE config: bench/adapters/products/<name>/product.yaml.
 
-    ~ in path-valued keys (binary, install.installed_paths) expands to the
-    controller home so pinning files stay portable across nodes."""
-    path = PRODUCTS_CONFIG_DIR / f"{name}.yaml"
+    The one file pinning the binary source, the auth/config sources, the
+    install spec, the warm-up/settle behavior, the first-run dialogs, and
+    the vendor payload for sandbox setup. ``~`` in path-valued keys
+    (binary, install.installed_paths, vendor[].src, auth_sources[])
+    expands to the controller home so pinning stays portable across
+    nodes."""
+    path = PRODUCTS_DIR / name / "product.yaml"
     if not path.exists():
         return {}
     cfg = yaml.safe_load(path.read_text()) or {}
@@ -85,4 +97,15 @@ def product_config(name: str) -> dict:
     install = cfg.get("install")
     if isinstance(install, dict) and isinstance(install.get("installed_paths"), list):
         install["installed_paths"] = [str(Path(p).expanduser()) for p in install["installed_paths"]]
+    for key in ("vendor", "auth_sources"):
+        for entry in cfg.get(key) or []:
+            if isinstance(entry, dict) and isinstance(entry.get("src"), str):
+                entry["src"] = str(Path(entry["src"]).expanduser())
+    return cfg
+
+
+def expand_toolchain(cfg: dict) -> dict:
+    """Expand ``~`` in the default config's vendor toolchain sources."""
+    for entry in (cfg.get("vendor") or {}).get("toolchain", []):
+        entry["src"] = str(Path(entry["src"]).expanduser())
     return cfg

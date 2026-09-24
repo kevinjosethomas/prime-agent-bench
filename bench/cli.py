@@ -1,8 +1,12 @@
-"""The bench CLI: run, settle, explore, install-disk, analyze, orchestrator.
+"""The bench CLI.
 
 python -m bench <command> [...]; the console script `bench` wraps the same
 entrypoint. Every command takes --config (a YAML over the defaults) and
 resolves products/benchmarks/drivers through the registry.
+
+Commands: run | settle | explore | install-disk | analyze | list |
+noop-control | fixtures | versions | vendor | sandbox | diagnose |
+compare | orchestrator.
 """
 from __future__ import annotations
 
@@ -26,7 +30,7 @@ def _driver_arg(cfg: dict, driver_name: str | None) -> dict:
 
 
 def cmd_run(args) -> None:
-    """The sequential suite (the gold-standard path)."""
+    """The sequential suite (the gold-standard path), on this node or in a sandbox."""
     from bench.runner import run_suite
     cfg, reg = _reg(args.config)
     _driver_arg(cfg, args.driver)
@@ -34,9 +38,79 @@ def cmd_run(args) -> None:
     products = [p for p in args.products.split(",") if p]
     if args.out:
         cfg["results_dir"] = args.out
+    if args.sandbox:
+        from bench.drivers.sandbox import run_in_sandbox
+        # A/A calibration defaults ON for sandbox runs (never skippable by
+        # default); --no-aa is the explicit debugging escape hatch
+        aa = True if args.aa is None else args.aa
+        state = run_in_sandbox(cfg, args.parallel_config, args.sandbox,
+                               benchmarks, products, trials=args.trials,
+                               aa=aa, phase=args.phase)
+        print(json.dumps(state, indent=1))
+        return
     run_suite(cfg, reg, reg.driver(), benchmarks, products, trials=args.trials,
-              aa=args.aa, phase=args.phase, skip_versions=args.skip_versions,
+              aa=bool(args.aa), phase=args.phase, skip_versions=args.skip_versions,
               settle_only=args.settle_only)
+
+
+def cmd_versions(args) -> None:
+    """The pinned version/revision/sha evidence per product."""
+    cfg, reg = _reg(args.config)
+    products = [p for p in args.products.split(",") if p]
+    versions = {name: reg.product(name).version_info() for name in products}
+    if args.out:
+        Path(args.out).write_text(json.dumps(versions, indent=1))
+        print(f"wrote {args.out}")
+    print(json.dumps(versions, indent=1))
+
+
+def cmd_vendor(args) -> None:
+    """Build the sandbox vendor tarball from the product configs."""
+    from bench.drivers.vendor import DEFAULT_OUT, build_vendor_tarball
+    cfg, _ = _reg(args.config)
+    products = [p for p in args.products.split(",") if p]
+    out = Path(args.out).expanduser() if args.out else DEFAULT_OUT
+    manifest = build_vendor_tarball(cfg, products, out, dry_run=args.dry_run)
+    print(json.dumps(manifest, indent=1))
+
+
+def cmd_sandbox(args) -> None:
+    """One-command sandbox setup / destroy / list (the deploy path)."""
+    from bench.drivers.sandbox import (destroy_sandbox, list_sandboxes,
+                                       print_readiness, setup_sandbox)
+    cfg, _ = _reg(args.config)
+    products = [p for p in args.products.split(",") if p]
+    if args.action == "list":
+        print(json.dumps(list_sandboxes(cfg), indent=1))
+        return
+    if not args.name:
+        raise SystemExit("sandbox setup/destroy needs a name")
+    if args.action == "setup":
+        state = setup_sandbox(cfg, args.parallel_config, args.name, products,
+                              backend_name=args.backend, mock_port=args.mock_port)
+        print_readiness(state)
+    elif args.action == "destroy":
+        print(json.dumps(destroy_sandbox(cfg, args.parallel_config, args.name,
+                                         backend_name=args.backend), indent=1))
+
+
+def cmd_diagnose(args) -> None:
+    """The settle-failure evidence bundle for one product."""
+    from bench.drivers.diagnose import diagnose
+    cfg, reg = _reg(args.config)
+    diagnose(cfg, reg, args.product)
+
+
+def cmd_compare(args) -> None:
+    """Before/after deltas between two result sets."""
+    from bench.drivers.compare import compare_runs, format_markdown
+    cfg, _ = _reg(args.config)
+    result = compare_runs(cfg, Path(args.run_a).expanduser(),
+                          Path(args.run_b).expanduser())
+    table = format_markdown(result)
+    print(table)
+    if args.out:
+        Path(args.out).expanduser().write_text(table + "\n")
 
 
 def cmd_settle(args) -> None:
@@ -143,13 +217,49 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--benchmarks", required=True)
     p.add_argument("--products", default="rust,ts,claude,codex,pi")
     p.add_argument("--trials", type=int, default=10)
-    p.add_argument("--aa", action="store_true")
+    p.add_argument("--aa", dest="aa", action="store_true", default=None,
+                   help="explicit A/A on (sandbox runs default to it)")
+    p.add_argument("--no-aa", dest="aa", action="store_false",
+                   help="debugging only: skip the A/A calibration pass")
     p.add_argument("--phase", default="w1")
     p.add_argument("--out", default=None)
     p.add_argument("--driver", default=None)
     p.add_argument("--skip-versions", action="store_true")
     p.add_argument("--settle-only", action="store_true")
+    p.add_argument("--sandbox", default=None,
+                   help="a live sandbox (name from `bench sandbox setup` or a raw id): run inside it")
+    p.add_argument("--parallel-config", default="configs/parallel.yaml")
     p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("versions", help="pinned version/sha evidence per product")
+    p.add_argument("--products", default="rust,ts,claude,codex,pi")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_versions)
+
+    p = sub.add_parser("vendor", help="build the sandbox vendor tarball")
+    p.add_argument("--products", default="rust,ts,claude,codex,pi")
+    p.add_argument("--out", default=None)
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_vendor)
+
+    p = sub.add_parser("sandbox", help="one-command sandbox setup/destroy/list")
+    p.add_argument("action", choices=["setup", "destroy", "list"])
+    p.add_argument("name", nargs="?", default=None)
+    p.add_argument("--products", default="rust,ts,claude,codex,pi")
+    p.add_argument("--backend", default=None, choices=["prime", "local"])
+    p.add_argument("--parallel-config", default="configs/parallel.yaml")
+    p.add_argument("--mock-port", type=int, default=8890)
+    p.set_defaults(func=cmd_sandbox)
+
+    p = sub.add_parser("diagnose", help="settle-failure evidence bundle")
+    p.add_argument("product")
+    p.set_defaults(func=cmd_diagnose)
+
+    p = sub.add_parser("compare", help="before/after deltas of two runs")
+    p.add_argument("run_a")
+    p.add_argument("run_b")
+    p.add_argument("--out", default=None)
+    p.set_defaults(func=cmd_compare)
 
     p = sub.add_parser("settle", help="build settled home templates only")
     p.add_argument("--products", default="rust,ts,claude,codex,pi")

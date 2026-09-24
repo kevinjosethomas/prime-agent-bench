@@ -16,21 +16,13 @@ import subprocess
 from pathlib import Path
 
 from bench.core.env import scrubbed_env
-from bench.core.product import DialogStep, ProductAdapter, TrialContext
-
-DIALOG_STEPS: list[DialogStep] = [
-    ("3. Provide your own API key", ["3"]),                           # welcome menu (copied ChatGPT tokens do not authenticate a copied home: codex shows the login menu)
-    ("Paste or type your API key", ["sk-bench-dummy-not-real\r"]),   # key box -> settled dummy-key state
-    ("Press enter to continue", ["\r"]),                             # generic continue
-    ("Trust and continue", ["\r"]),                                  # folder trust (option 1 preselected, enter confirms)
-]
+from bench.core.product import ProductAdapter, TrialContext
 
 
 class CodexProduct(ProductAdapter):
     name = "codex"
     display_name = "Codex CLI"
     needs_prepass = True
-    dialog_steps = DIALOG_STEPS
 
     @property
     def binary(self) -> Path:
@@ -40,10 +32,13 @@ class CodexProduct(ProductAdapter):
         return Path("/usr/bin/codex")
 
     def version_info(self) -> dict:
+        from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60)
         return {"version": v.stdout.strip(),
                 "revision": self.product_cfg.get("revision", "npm@latest"),
-                "binary": str(self.binary)}
+                "binary": str(self.binary),
+                "binary_sha256": sha256_file(Path(self.binary).resolve()),
+                "auth_limited": True}
 
     def prepare_template(self, tpl: Path) -> None:
         """The whole authenticated .codex state (tokens + device identity)."""

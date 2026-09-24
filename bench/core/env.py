@@ -34,6 +34,7 @@ class BenchLayout:
     homes: Path
     results: Path
     global_dir: Path
+    sandboxes: Path
 
     @classmethod
     def from_config(cls, cfg: dict) -> BenchLayout:
@@ -46,12 +47,26 @@ class BenchLayout:
             homes=root / "homes",
             results=Path(cfg["results_dir"]).expanduser(),
             global_dir=root / "global",
+            sandboxes=root / "sandboxes",
         )
 
     @property
     def repos(self) -> Path:
         """Pinned product source checkouts (rust, pi-mono)."""
         return self.root / "repos"
+
+
+def sha256_file(path: Path) -> str:
+    """The sha256 of one file (binary attribution evidence; None-safe)."""
+    import hashlib
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return ""
 
 
 def scrubbed_env(extra: dict | None = None) -> dict:

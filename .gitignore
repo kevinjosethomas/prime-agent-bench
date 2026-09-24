@@ -10,3 +10,8 @@ mock-script.json
 mock-script.json.requests.jsonl
 results/
 logs/
+
+# the vendor payload is built from the product configs (bench vendor build);
+# it carries real auth and must never be committed
+vendor/products.tar.gz
+vendor/build-manifest.json

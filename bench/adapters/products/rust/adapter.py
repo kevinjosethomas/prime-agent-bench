@@ -13,25 +13,21 @@ from pathlib import Path
 
 from bench.core.env import (NODE_HOME_AUTH_PRIME, copy_prime_auth,
                             global_caches, scrubbed_env, write_models_json)
-from bench.core.product import DialogStep, ProductAdapter, TrialContext
+from bench.core.product import ProductAdapter, TrialContext
 from bench.core.process import sweep_trial
-
-DIALOG_STEPS: list[DialogStep] = [
-    ("Share agent traces with Prime Intellect?", ["\x1b[B", "\r"]),  # -> Not now
-]
 
 
 class PrimeAgentRustProduct(ProductAdapter):
     name = "rust"
     display_name = "Prime Agent Rust"
     has_daemon = True
-    dialog_steps = DIALOG_STEPS
+    needs_kernel_venv = True
     default_binary_subpath = "repos/prime-agent-rust/target/release/prime-agent"
     default_revision = "2017ac619e8cc83dd652704be072c4d7a22ff0aa"
 
     @property
     def binary(self) -> Path:
-        """The pinned binary (configs/products/rust.yaml overrides)."""
+        """The pinned binary (product.yaml overrides)."""
         if self.product_cfg.get("binary"):
             return Path(self.product_cfg["binary"])
         return self.layout.root / self.default_binary_subpath
@@ -41,11 +37,13 @@ class PrimeAgentRustProduct(ProductAdapter):
         return f"http://127.0.0.1:{self.mock_port}"
 
     def version_info(self) -> dict:
-        """Pinned binary version + revision evidence."""
+        """Pinned binary version + revision + sha256 evidence."""
+        from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60)
         return {"version": v.stdout.strip() or v.stderr.strip(),
                 "revision": self.product_cfg.get("revision", self.default_revision),
-                "binary": str(self.binary)}
+                "binary": str(self.binary),
+                "binary_sha256": sha256_file(self.binary)}
 
     def prepare_template(self, tpl: Path) -> None:
         """Agent dir with mock models.json; preprovisioned Prime auth."""
@@ -86,7 +84,8 @@ class PrimeAgentRustProduct(ProductAdapter):
         return argv
 
     def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
-        return [str(self.binary), "--mode", "daemon", "--daemon-socket", str(ctx["daemon_socket"])]
+        return [str(self.binary), "--mode", "daemon",
+                "--daemon-socket", str(ctx["daemon_socket"])]
 
     def reap(self, ctx: TrialContext) -> None:
         leftovers = sweep_trial(ctx)

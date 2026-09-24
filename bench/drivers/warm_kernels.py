@@ -17,10 +17,19 @@ import time
 from bench.core.config import load_config
 from bench.core.registry import discover
 
-KERNEL_PRODUCTS = ["rust", "ts"]
+
+def kernel_products(reg) -> list:
+    """The products that build a kernel venv (from product.yaml, not code)."""
+    return sorted(name for name, prod in reg.products.items()
+                  if prod.needs_kernel_venv)
 
 
 def venv_ready(venv) -> bool:
+    """Marker present AND rlm.repl importable.
+
+    The marker is the daemon's own bootstrap identity: a venv without it
+    (a harness-pre-built one) gets wiped and rebuilt on first launch, so
+    warm-up always waits for the daemon's own build."""
     python = venv / "bin" / "python"
     marker = venv / ".bootstrap-version"
     if not python.exists() or not marker.exists():
@@ -66,12 +75,30 @@ def warm(cfg, name: str, timeout_s: float = 480.0) -> bool:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def status(cfg: dict) -> dict:
+    """Per-product kernel-venv readiness (no launching)."""
+    reg = discover(cfg)
+    out = {}
+    for name in kernel_products(reg):
+        venv = reg.layout.global_dir / name / "kernel-venv"
+        out[name] = venv_ready(venv)
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", default=None)
+    ap.add_argument("--status", action="store_true",
+                    help="report readiness (JSON markers) without launching")
     args = ap.parse_args()
     cfg = load_config(args.config)
-    ok = all(warm(cfg, name) for name in KERNEL_PRODUCTS)
+    if args.status:
+        import json
+        for name, ready in status(cfg).items():
+            print(f"BENCH-JSON {json.dumps({'product': name, 'ready': ready})}")
+        return
+    reg = discover(cfg)
+    ok = all(warm(cfg, name) for name in kernel_products(reg))
     if not ok:
         print("[warm] FAILED: kernel venvs not ready", flush=True)
         sys.exit(1)

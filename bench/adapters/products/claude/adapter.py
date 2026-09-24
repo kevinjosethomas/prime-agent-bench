@@ -11,21 +11,13 @@ import subprocess
 from pathlib import Path
 
 from bench.core.env import scrubbed_env
-from bench.core.product import DialogStep, ProductAdapter, TrialContext
-
-DIALOG_STEPS: list[DialogStep] = [
-    ("1. Auto (match terminal)", ["\r"]),                     # theme picker
-    ("Do you want to use this API key?", ["\x1b[A", "\r"]),   # -> Yes
-    ("Press Enter to continue", ["\r"]),                       # security note
-    ("Is this a project you created or one you trust?", ["\x1b[B", "\r"]),  # workspace trust
-]
+from bench.core.product import ProductAdapter, TrialContext
 
 
 class ClaudeCodeProduct(ProductAdapter):
     name = "claude"
     display_name = "Claude Code"
     needs_prepass = True
-    dialog_steps = DIALOG_STEPS
 
     @property
     def binary(self) -> Path:
@@ -35,11 +27,13 @@ class ClaudeCodeProduct(ProductAdapter):
         return Path("/usr/bin/claude")
 
     def version_info(self) -> dict:
+        from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60,
-                           env=scrubbed_env({"HOME": str(Path.home())}))
+                            env=scrubbed_env({"HOME": str(Path.home())}))
         return {"version": v.stdout.strip(),
                 "revision": self.product_cfg.get("revision", "npm@latest"),
-                "binary": str(self.binary)}
+                "binary": str(self.binary),
+                "binary_sha256": sha256_file(Path(self.binary).resolve())}
 
     def prepare_template(self, tpl: Path) -> None:
         """Copy the node's authenticated .claude state minus project data."""

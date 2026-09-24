@@ -28,11 +28,13 @@ class PiMonoProduct(ProductAdapter):
         return self.layout.repos / "pi-mono/packages/coding-agent/dist/bundle/cli.js"
 
     def version_info(self) -> dict:
+        from bench.core.env import sha256_file
         v = subprocess.run(["node", str(self.cli_path), "--version"], capture_output=True, text=True, timeout=90)
         pkg = json.loads((self.layout.repos / "pi-mono/packages/coding-agent/package.json").read_text())
         return {"version": v.stdout.strip() or pkg["version"],
                 "revision": self.product_cfg.get("revision", self.default_revision),
-                "binary": f"node {self.cli_path}"}
+                "binary": f"node {self.cli_path}",
+                "binary_sha256": sha256_file(self.cli_path)}
 
     def prepare_template(self, tpl: Path) -> None:
         write_models_json(tpl / "agent", f"http://127.0.0.1:{self.mock_port}/v1")

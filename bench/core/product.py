@@ -32,6 +32,42 @@ class TrialContext(TypedDict, total=False):
 DialogStep = tuple[str, list[str]]
 """(screen marker, keystrokes) answered during onboarding settle walks."""
 
+KEY_TOKENS: dict[str, str] = {
+    "enter": "\r", "return": "\r",
+    "up": "\x1b[A", "down": "\x1b[B", "right": "\x1b[C", "left": "\x1b[D",
+    "esc": "\x1b", "escape": "\x1b", "tab": "\t", "space": " ",
+    "pgup": "\x1b[5~", "pgdn": "\x1b[6~", "home": "\x1b[H", "end": "\x1b[F",
+}
+
+
+def keystroke(spec: str) -> str:
+    """One configured key: a token name (``enter``, ``down``, ...) or the
+    literal text to type (any other string, newlines become ``\r``)."""
+    token = KEY_TOKENS.get(str(spec).strip().lower())
+    if token is not None:
+        return token
+    return str(spec).replace("\n", "\r")
+
+
+def resolve_dialogs(entries: list | None) -> list[DialogStep]:
+    """``first_run_dialogs`` config entries -> (marker, keys) walk steps.
+
+    One config entry = one dialog a product shows on first run: the
+    ``marker`` (whitespace-normalized text match against the rendered
+    screen; TUIs hard-wrap at arbitrary columns) and the ``keys`` to type
+    when it appears. A new dialog in a product version is one config
+    entry, not a debugging session."""
+    steps: list[DialogStep] = []
+    for entry in entries or []:
+        if "marker" not in entry:
+            raise ValueError(f"first_run_dialogs entry without marker: {entry}")
+        marker = str(entry["marker"]).strip()
+        if not marker:
+            raise ValueError(f"first_run_dialogs entry with empty marker: {entry}")
+        keys = [keystroke(k) for k in (entry.get("keys") or [])]
+        steps.append((marker, keys))
+    return steps
+
 
 class ProductAdapter(ABC):
     """A product under comparison (Prime Agent Rust/TS, Claude Code, ...).
@@ -45,7 +81,8 @@ class ProductAdapter(ABC):
     display_name: str = ""
     has_daemon: bool = False
     needs_prepass: bool = False
-    dialog_steps: list[DialogStep] = []
+    needs_kernel_venv: bool = False
+    dialog_steps: list[DialogStep] = []  # fallback; config is the source of truth
 
     def __init__(self, cfg: dict):
         """cfg keys: layout (BenchLayout), product (per-product pinning
@@ -54,6 +91,7 @@ class ProductAdapter(ABC):
         self.product_cfg: dict = dict(cfg.get("product") or {})
         self.mock_port: int = int(cfg.get("mock", {}).get("port", 8788))
         self.layout: BenchLayout = cfg["layout"]
+        self.dialog_steps = resolve_dialogs(self.product_cfg.get("first_run_dialogs"))
 
     # ---- node setup: install + authenticate -----------------------------
     def install(self) -> dict:
