@@ -1,0 +1,7 @@
+# Codex CLI: npm-installed CLI.
+binary: /usr/bin/codex
+revision: npm@latest
+install:
+  installed_paths: [/usr/lib/node_modules/@openai]
+  npm_pkg: "@openai/codex"
+  npm_version: "0.156.1"

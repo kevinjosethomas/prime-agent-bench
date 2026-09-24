@@ -1,0 +1,7 @@
+# Prime Agent (TypeScript): the official compiled beta binary.
+binary: ~/.local/share/prime-agent/bin/prime-agent
+revision: official-beta-0.9.5-beta.2043.1.acc5bc0
+install:
+  installed_paths: [~/.local/share/prime-agent]
+  download_is_installed: true  # single-binary install ~= download
+  note: official 0.9.5-beta.2043.1 compiled binary via install.sh

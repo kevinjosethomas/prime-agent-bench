@@ -1,0 +1,48 @@
+# Multi-sandbox parallel orchestration (iteration mode).
+# One sandbox per benchmark type; all products run sequentially inside
+# each sandbox (cross-product fairness on identical hardware). The
+# single-node sequential runner stays the gold standard for published
+# numbers.
+
+backend: prime            # prime | local
+aa_trials: 10             # per-sandbox A/A calibration pass
+keep_sandboxes: false
+wave_timeout_s: 14400.0    # hard cap per sandbox wave chain
+port_base: 8890           # local-backend mock port base
+
+reference:
+  outlier_pct: 5.0         # flag sandboxes deviating from the median by >5%
+  outlier_policy: replace # replace | normalize
+  max_replacements: 2
+
+retry:
+  max_retries: 2          # failed sandboxes re-provision + re-run
+
+sandbox_defaults:
+  # Image with the full node setup (products installed + authenticated).
+  # A bare python image runs the harness mechanics but no product trials.
+  image: python:3.11-slim
+  cpu_cores: 4
+  memory_gb: 8
+  disk_gb: 60
+  timeout_minutes: 180
+  bootstrap: null          # per-setup recipe (product installs, auth)
+
+# Per-benchmark resource overrides (merged over sandbox_defaults).
+benchmarks:
+  compare.cold_start: {}
+  compare.warm_start: {}
+  compare.msg_send: {}
+  compare.scroll_typing: {}
+  compare.memory_idle_load: {}
+  compare.install_disk: {}
+  session.cold_open_10mib: {memory_gb: 12}
+  daemon.boot: {}
+  kernel.cold_start: {memory_gb: 12}
+  kernel.cell_exec: {memory_gb: 12}
+  kernel.state_snapshot_10MB: {memory_gb: 12}
+  kernel.state_snapshot_50MB: {memory_gb: 16}
+
+# Merge benchmark types into one sandbox (optional; default one per type).
+groupings: {}
+#  rust_only_kernel: [kernel.cold_start, kernel.cell_exec]

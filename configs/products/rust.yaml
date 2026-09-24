@@ -1,0 +1,7 @@
+# Prime Agent (Rust): pinned from-source build.
+binary: ~/bench/repos/prime-agent-rust/target/release/prime-agent
+revision: 2017ac619e8cc83dd652704be072c4d7a22ff0aa
+install:
+  installed_paths: [~/bench/repos/prime-agent-rust/target/release/prime-agent]
+  download_bytes: 7843159  # git archive of origin/rust (source distribution)
+  note: from-source cargo --release build; source archive bytes as download

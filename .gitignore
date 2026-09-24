@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# runtime artifacts (generated under the bench tree, never committed)
+mock-script.json
+mock-script.json.requests.jsonl
+results/
+logs/

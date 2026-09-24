@@ -1,0 +1,8 @@
+# Pi Mono: built from the pinned source checkout.
+binary: ~/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
+revision: b45597504eeaba1f11a9920a1d1048c361ed4b8e
+install:
+  installed_paths: [~/bench/repos/pi-mono/node_modules, ~/bench/repos/pi-mono/packages]
+  npm_pkg: "@mariozechner/pi-coding-agent"
+  npm_version: "0.73.0"
+  note: built from source; pack may 404 if unpublished

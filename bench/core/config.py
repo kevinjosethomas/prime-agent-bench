@@ -1,0 +1,88 @@
+"""YAML configuration loading with built-in defaults.
+
+``configs/default.yaml`` externalizes trial counts, timeout budgets, load
+gates, and thresholds so no orchestration knob is a magic number in code.
+Per-product pinning lives in ``configs/products/<name>.yaml``.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CONFIG = REPO_ROOT / "configs" / "default.yaml"
+PRODUCTS_CONFIG_DIR = REPO_ROOT / "configs" / "products"
+
+DEFAULTS: dict[str, Any] = {
+    # The proven single-node layout: ~/bench/{harness,venv,homes,results,...}
+    "bench_root": "~/bench",
+    "results_dir": None,  # None -> <bench_root>/results
+    "product_order": ["rust", "ts", "claude", "codex", "pi"],
+    "display": {"rust": "Prime Agent Rust", "ts": "Prime Agent TS",
+                "claude": "Claude Code", "codex": "Codex CLI", "pi": "Pi Mono"},
+    "install": {"node_runtime_paths": ["/usr/lib/node_modules/npm", "/usr/bin/node"]},
+    "driver": "pty",
+    "load_gate": {
+        "compile_markers": ["rustc", "cargo", "/tsc", "esbuild", "npm exec",
+                            "node-gyp", "cc1", "clang"],
+        "load_threshold": 0.6,
+        "max_wait_s": 300.0,
+        "poll_s": 2.0,
+    },
+    "mock": {"port": 8788},
+    "settle": {
+        "timeout_s": 300.0,
+        "first_paint_timeout_s": 240.0,
+        "key_pause_s": 0.7,
+        "loop_s": 0.8,
+        "echo_wait_s": 1.2,
+    },
+    "aa": {"spread_threshold_pct": 10.0},
+    "noop_control": {"rounds": 30},
+    "benchmarks": {},  # per-benchmark overrides, e.g. compare.install_disk.trials
+}
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge ``override`` into ``base`` (override wins)."""
+    out = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def load_config(path: str | Path | None = None) -> dict:
+    """Load a YAML config over the built-in defaults.
+
+    A missing config file is not an error: the defaults describe the proven
+    node setup. Raises ``yaml.YAMLError`` on malformed YAML.
+    """
+    cfg = deep_merge(DEFAULTS, {})
+    if path is not None:
+        text = Path(path).read_text()
+        cfg = deep_merge(cfg, yaml.safe_load(text) or {})
+    if cfg.get("results_dir") is None:
+        cfg["results_dir"] = str(Path(cfg["bench_root"]).expanduser() / "results")
+    return cfg
+
+
+def product_config(name: str) -> dict:
+    """The per-product pinning: configs/products/<name>.yaml if present.
+
+    ~ in path-valued keys (binary, install.installed_paths) expands to the
+    controller home so pinning files stay portable across nodes."""
+    path = PRODUCTS_CONFIG_DIR / f"{name}.yaml"
+    if not path.exists():
+        return {}
+    cfg = yaml.safe_load(path.read_text()) or {}
+    if isinstance(cfg.get("binary"), str):
+        cfg["binary"] = str(Path(cfg["binary"]).expanduser())
+    install = cfg.get("install")
+    if isinstance(install, dict) and isinstance(install.get("installed_paths"), list):
+        install["installed_paths"] = [str(Path(p).expanduser()) for p in install["installed_paths"]]
+    return cfg
