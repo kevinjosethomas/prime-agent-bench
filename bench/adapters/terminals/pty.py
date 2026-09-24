@@ -20,7 +20,7 @@ import time
 
 import pyte
 
-from bench.adapters.harnesses.pty_metrics import PtyStreamMixin, noop_control
+from bench.adapters.terminals.pty_metrics import PtyStreamMixin, noop_control
 from bench.core.harness import HarnessDriver, Session, now
 
 

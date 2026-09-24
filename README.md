@@ -52,10 +52,11 @@ bench/
                Fixture, Analyzer + registry, config, env, measurement,
                process accounting
   adapters/
-    products/     One product per FOLDER: <name>/ with product.yaml,
-                  adapter.py, README.md - the complete product config
-    benchmarks/   One scenario per file: cold_start, warm_start, msg_send, ...
-    harnesses/    pty (timing-grade), tmux (capture-poll alternative)
+    <harness>/    One harness per FOLDER, verifiers style: <name>/ with
+                  adapter.py, product.yaml, README.md - the complete
+                  harness config (rust/ ts/ claude/ codex/ pi/)
+    benchmarks/   One generic scenario per file: cold_start, msg_send, ...
+    terminals/    pty (timing-grade), tmux (capture-poll alternative)
     fixtures/     session-10mib corpus, subagent-tree
   drivers/      mock provider, raw kernel probe, explore tool,
                wave_chain (per-sandbox entry point), warm_kernels,
@@ -76,11 +77,14 @@ configs/
 tests/        registry, fixtures (byte-exact goldens), analysis, orchestrator
 ```
 
-Adding a product = one folder under `bench/adapters/products/` carrying its
+Adding a harness = one folder under `bench/adapters/<name>/` carrying its
 `adapter.py`, its complete `product.yaml` (binary, auth sources, install,
-first-run dialogs, vendor payload), and a `README.md`. Benchmarks, harness
-drivers, and fixtures stay one file each: the registry auto-discovers every
-adapter subclass; there is no registration file to maintain.
+first-run dialogs, msg routing, vendor payload), and a `README.md`.
+Benchmark scenarios, fixtures, and terminal drivers stay one file each in
+their kind packages: the registry auto-discovers every adapter subclass;
+there is no registration file to maintain. The kind package names are
+reserved — a harness folder must not be named `benchmarks/`, `fixtures/`,
+or `terminals/`.
 
 ## Setup - one node, or one command per sandbox
 
@@ -169,7 +173,7 @@ loop over prime-agent-rust. One iteration:
 
 1. **Bump the rust binary** on the node (build + copy to
    `~/bench/repos/prime-agent-rust/target/release/prime-agent`), update
-   the `revision:` pin in `bench/adapters/products/rust/product.yaml`, and
+   the `revision:` pin in `bench/adapters/rust/product.yaml`, and
    `bench vendor build --products rust` so sandbox setups carry the new
    binary.
 2. **Set up a fresh sandbox**: `bench sandbox setup rust-<rev> --products

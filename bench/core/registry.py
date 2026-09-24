@@ -1,16 +1,19 @@
 """Plugin registry: auto-discovers adapters from the package structure.
 
-Products live one folder per product (``bench/adapters/products/<name>/
-{adapter.py, product.yaml, README.md}``); benchmarks, harness drivers, and
-fixtures stay one file each. Adapter classes (subclasses of the core ABCs
-defined in that module) register by their ``name``. No registration file
-to maintain: adding a product = adding one folder, adding any other
+Each harness lives in one self-contained folder directly under
+bench/adapters/ (``bench/adapters/<name>/{adapter.py, product.yaml,
+README.md}``); the generic kinds -- benchmark scenarios, fixtures,
+terminal drivers -- stay one adapter per file in their kind package
+(benchmarks/, fixtures/, terminals/). Adapter classes (subclasses of the
+core ABCs) register by their ``name``. No registration file to
+maintain: adding a harness = adding one folder, adding any other
 adapter = adding one file.
 """
 from __future__ import annotations
 
 import importlib
 import pkgutil
+from pathlib import Path
 
 from bench.core.benchmark import Benchmark
 from bench.core.config import product_config
@@ -19,12 +22,17 @@ from bench.core.fixture import Fixture
 from bench.core.harness import HarnessDriver
 from bench.core.product import ProductAdapter
 
+#: the generic adapter kinds: one package under bench/adapters/, one
+#: adapter per module inside it; kind names are reserved for harness
+#: folders
 ADAPTER_KINDS: dict[str, type] = {
-    "products": ProductAdapter,
     "benchmarks": Benchmark,
-    "harnesses": HarnessDriver,
     "fixtures": Fixture,
+    "terminals": HarnessDriver,
 }
+
+#: the file that makes a bench/adapters/<name>/ folder a harness
+HARNESS_ENTRY = "adapter.py"
 
 
 class Registry:
@@ -35,7 +43,7 @@ class Registry:
         self.layout = BenchLayout.from_config(cfg)
         self.products: dict[str, ProductAdapter] = {}
         self.benchmarks: dict[str, Benchmark] = {}
-        self.harnesses: dict[str, HarnessDriver] = {}
+        self.terminals: dict[str, HarnessDriver] = {}
         self.fixtures: dict[str, Fixture] = {}
 
     # typed accessor helpers ------------------------------------------------
@@ -49,7 +57,8 @@ class Registry:
         return self.fixtures[name]
 
     def driver(self, name: str | None = None) -> HarnessDriver:
-        return self.harnesses[name or self.cfg["driver"]]
+        """The terminal driver (default: cfg["driver"])."""
+        return self.terminals[name or self.cfg["driver"]]
 
     # registration -----------------------------------------------------------
     def _register(self, kind: str, instance) -> None:
@@ -82,25 +91,38 @@ def _register_module(reg: Registry, cfg: dict, kind: str, base: type,
             reg._register(kind, instance)
 
 
+def _discover_kind(reg: Registry, cfg: dict, kind: str, base: type) -> None:
+    """One kind package: register every adapter module inside it."""
+    package = importlib.import_module(f"bench.adapters.{kind}")
+    for info in pkgutil.iter_modules(package.__path__):
+        if info.name.startswith("_"):
+            continue
+        module = importlib.import_module(f"bench.adapters.{kind}.{info.name}")
+        _register_module(reg, cfg, kind, base, module)
+
+
 def discover(cfg: dict) -> Registry:
     """Import every adapter and instantiate the adapters it defines.
 
-    Products live one folder per product (``bench/adapters/products/
-    <name>/adapter.py`` + ``product.yaml``); the other kinds stay
-    one file per adapter."""
+    Harnesses live one folder per harness directly under bench/adapters/
+    (``<name>/adapter.py`` + ``<name>/product.yaml``); the generic kinds
+    stay one adapter per file in their kind package. Anything else under
+    bench/adapters/ fails loudly: the tree is self-policing."""
     reg = Registry(cfg)
-    for kind, base in ADAPTER_KINDS.items():
-        package = importlib.import_module(f"bench.adapters.{kind}")
-        for info in pkgutil.iter_modules(package.__path__):
-            if info.name.startswith("_"):
-                continue
-            if kind == "products" and info.ispkg:
-                module = importlib.import_module(
-                    f"bench.adapters.products.{info.name}.adapter")
-                _register_module(reg, cfg, kind, base, module)
-                continue
-            if kind == "products":
-                continue  # flat product files are gone: folders only
-            module = importlib.import_module(f"bench.adapters.{kind}.{info.name}")
-            _register_module(reg, cfg, kind, base, module)
+    adapters = importlib.import_module("bench.adapters")
+    root = Path(next(iter(adapters.__path__)))
+    for info in sorted(pkgutil.iter_modules([str(root)]),
+                       key=lambda entry: entry.name):
+        if info.name.startswith("_"):
+            continue
+        if info.name in ADAPTER_KINDS:
+            _discover_kind(reg, cfg, info.name, ADAPTER_KINDS[info.name])
+        elif info.ispkg and (root / info.name / HARNESS_ENTRY).exists():
+            module = importlib.import_module(f"bench.adapters.{info.name}.adapter")
+            _register_module(reg, cfg, "products", ProductAdapter, module)
+        else:
+            raise ValueError(
+                f"bench/adapters/{info.name}: expected a harness folder with "
+                f"{HARNESS_ENTRY} or one of the kind packages "
+                f"{sorted(ADAPTER_KINDS)}")
     return reg

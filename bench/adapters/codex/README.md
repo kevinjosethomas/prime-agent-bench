@@ -14,6 +14,17 @@
   interactive baseline. Real-API msg_send needs Kevin's call (real key /
   device-code login / node-side run; the $10 budget covers it).
 
+## Message routing (`msg_routing: real-api`)
+- codex 0.156 rejects the mock provider's chat wire_api, so submitted
+  messages hit the live API — and 401 under the settled dummy key.
+- msg_send therefore measures only the submit-ack for codex; no settle
+  is attempted (screen growth certified the 401 error render as a
+  "settle" once — that detector is gone). The row records
+  `msg_routing: real-api` and the result-validity gate keeps
+  cross-regime values out of the rankings.
+- Flip to `msg_routing: mock` when a codex accepts the mock wire or real
+  auth is provisioned; comparable settles resume with no scenario edit.
+
 ## First-run dialogs (config, in product.yaml)
 - "3. Provide your own API key" -> `3` (login menu; the copied OAuth never
   authenticates a copied home)

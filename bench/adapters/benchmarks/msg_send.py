@@ -1,8 +1,13 @@
 """compare.msg_send: keystroke Enter -> first submit-ack frame, then settle.
 
-The ack is the client-side share (first output after Enter); the settle is
-the full scripted turn (mock reply visible + 600ms screen stability). No
-paid inference (mock-routed; codex uses the real API under its budget).
+The ack is the client-side share (first output after Enter); the settle
+is the full scripted turn (mock reply visible + 600ms screen stability).
+The routing regime is the harness's own declaration
+(``ProductAdapter.msg_routing``): mock-routed harnesses settle on the
+scripted reply; real-api harnesses get no settle at all — the reply is
+live and unknowable, and a screen-growth heuristic would certify error
+frames (the captured Codex 401 render). No harness name is special
+here.
 """
 from __future__ import annotations
 
@@ -38,46 +43,47 @@ class MsgSend(Benchmark):
                 t_ack = app.wait_output_after(t_enter, timeout=10)
             except TimeoutError:
                 t_ack = None
-            # settle: reply visible + 600ms screen stability (mock: fixed text;
-            # codex real API: any screen content growth after the ack counts as
-            # the streamed response, detected the same stability way)
-            t_settle = None
-            stable_since = None
-            last_hash = screen_hash(app)  # baseline at ack time: a dead screen cannot settle
-            seen_change = False
-            need = DEFAULT_REPLY[:20] if product.name != "codex" else None
-            need_norm = " ".join(need.split()) if need else None
-            deadline = now() + 90
-            while now() < deadline:
-                h = screen_hash(app)
-                txt_now = app.screen_text()
-                # TUIs hard-wrap text at arbitrary columns, so match against
-                # the whitespace-normalized screen (collapse all wrapping)
-                matched = (need and need_norm in " ".join(txt_now.split())) or \
-                    (need is None and t_ack is not None and seen_change)
-                if matched:
-                    if h == last_hash:
-                        if stable_since is None:
-                            stable_since = now()
-                        elif now() - stable_since >= 0.6:
-                            t_settle = now()
-                            break
-                    else:
-                        stable_since = None
-                if h != last_hash:
-                    seen_change = True
-                last_hash = h
-                time.sleep(0.02)
-            routing = "real-api" if product.name == "codex" else "mock"
-            record["metrics"] = {
+            routing = product.msg_routing  # the harness-declared regime
+            metrics = {
                 "submit_to_ack_ms": round((t_ack - t_enter) * 1000.0, 1) if t_ack else None,
-                "submit_to_settle_ms": round((t_settle - t_enter) * 1000.0, 1) if t_settle else None,
             }
+            validation = {"ack": t_ack is not None}
+            if routing == "mock":
+                # settle: the scripted reply visible + 600ms screen stability.
+                # The reply text is known verbatim from the mock script; TUIs
+                # hard-wrap, so match against the whitespace-normalized screen.
+                need = " ".join(DEFAULT_REPLY[:20].split())
+                t_settle = None
+                stable_since = None
+                last_hash = screen_hash(app)  # baseline at ack time: a dead screen cannot settle
+                deadline = now() + 90
+                while now() < deadline:
+                    h = screen_hash(app)
+                    if need in " ".join(app.screen_text().split()):
+                        if h == last_hash:
+                            if stable_since is None:
+                                stable_since = now()
+                            elif now() - stable_since >= 0.6:
+                                t_settle = now()
+                                break
+                        else:
+                            stable_since = None
+                    last_hash = h
+                    time.sleep(0.02)
+                metrics["submit_to_settle_ms"] = (
+                    round((t_settle - t_enter) * 1000.0, 1) if t_settle else None)
+                validation["settle"] = t_settle is not None
+                if t_settle is None:
+                    record["settle_miss_screen"] = "\n".join(
+                        ln for ln in app.screen_text().splitlines() if ln.strip())[-2000:]
+            # real-api: no settle is attempted. Screen growth is not
+            # evidence of a reply (the captured Codex 401 error render
+            # certified as a "settle" under the old growth detector), so
+            # the row carries the ack + the regime and the result-validity
+            # gate keeps cross-regime values out of the rankings.
+            record["metrics"] = metrics
             record["msg_routing"] = routing
-            record["validation"] = {"ack": t_ack is not None, "settle": t_settle is not None}
-            if t_settle is None:
-                record["settle_miss_screen"] = "\n".join(
-                    ln for ln in app.screen_text().splitlines() if ln.strip())[-2000:]
+            record["validation"] = validation
         finally:
             app.kill_tree()
             product.reap(ctx)

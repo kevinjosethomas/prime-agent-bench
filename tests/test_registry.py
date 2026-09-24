@@ -19,7 +19,7 @@ def _cfg(tmp_path, overrides=None):
 def test_discovery_finds_every_adapter(tmp_path):
     reg = discover(_cfg(tmp_path))
     assert set(reg.products) == {"rust", "ts", "claude", "codex", "pi"}
-    assert set(reg.harnesses) == {"pty", "tmux"}
+    assert set(reg.terminals) == {"pty", "tmux"}
     assert set(reg.fixtures) == {"session-10mib", "subagent-tree"}
     assert "compare.cold_start" in reg.benchmarks
     assert "kernel.multi_kernel_10" in reg.benchmarks

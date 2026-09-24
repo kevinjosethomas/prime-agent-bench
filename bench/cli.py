@@ -193,7 +193,7 @@ def cmd_list(args) -> None:
     cfg, reg = _reg(args.config)
     print(json.dumps({"products": sorted(reg.products),
                       "benchmarks": sorted(reg.benchmarks),
-                      "harnesses": sorted(reg.harnesses),
+                      "terminals": sorted(reg.terminals),
                       "fixtures": sorted(reg.fixtures),
                       "driver": cfg["driver"]}, indent=1))
 

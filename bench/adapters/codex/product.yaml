@@ -1,6 +1,15 @@
 # Codex CLI — the complete product config, one file.
 binary: /usr/bin/codex
 revision: npm@latest
+# msg_routing: real-api — codex 0.156 rejects the mock provider's chat
+# wire_api, so submitted messages hit the live API; with the settled
+# dummy-key state that is a 401. message-settle scenarios therefore do
+# not measure a settle for codex (the reply is unknowable); the ack
+# stays measured and rows record this regime so the result-validity
+# gate keeps them out of cross-regime rankings. Flip to mock when a
+# codex accepts the mock wire (or real auth is provisioned per Kevin's
+# call) to resume comparable settles.
+msg_routing: real-api
 install:
   installed_paths: [/usr/lib/node_modules/@openai]
   npm_pkg: "@openai/codex"

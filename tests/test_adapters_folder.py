@@ -64,12 +64,12 @@ def test_product_dialogs_come_from_config(tmp_path):
 
 
 def test_product_configs_are_complete(tmp_path):
-    """Every product folder: yaml + adapter + README; the yaml carries
+    """Every harness folder: yaml + adapter + README; the yaml carries
     binary, first_run_dialogs, vendor, auth_sources."""
     reg = discover(_cfg(tmp_path))
-    from bench.core.config import PRODUCTS_DIR
+    from bench.core.config import ADAPTERS_DIR
     for name in ("rust", "ts", "claude", "codex", "pi"):
-        folder = PRODUCTS_DIR / name
+        folder = ADAPTERS_DIR / name
         assert (folder / "product.yaml").exists(), name
         assert (folder / "adapter.py").exists(), name
         assert (folder / "README.md").exists(), name

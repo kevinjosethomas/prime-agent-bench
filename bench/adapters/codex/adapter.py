@@ -7,8 +7,15 @@ no mock provider override is installed). The FULL .codex state is copied
 login menu for ANY copied home (trial homes on the node AND sandboxes;
 the ChatGPT tokens do not authenticate a copied .codex), so the prepass
 walks option 3 with a dummy key to the settled interactive state - the
-same state the sequential baseline settled. Real-API msg_send needs
-Kevin's call (real key / device-code login / node-side run)."""
+same state the sequential baseline settled.
+
+Messages route to the real API (``msg_routing: real-api`` in
+product.yaml): the settled dummy-key state 401s there, so
+message-settle scenarios do not measure a settle for codex at all —
+the ack is measured, the row records the regime, and the
+result-validity gate excludes cross-regime values. A settle resumes
+only with real auth (Kevin's call) or a codex that accepts the mock
+wire_api (product.yaml flip to ``mock``)."""
 from __future__ import annotations
 
 import shutil

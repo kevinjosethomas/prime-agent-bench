@@ -1,9 +1,9 @@
-"""The ProductAdapter ABC: one product = one self-contained adapter file.
+"""The ProductAdapter ABC: one harness = one self-contained adapter folder.
 
 Lifecycle: install/authenticate (node setup), prepare_template (the settled
 home template), new_trial (isolated per-trial copy), launch/settle/act/
 observe (driver-facing interaction), reap/cleanup (process-tree teardown).
-Adding a product = one file under bench/adapters/products/.
+Adding a harness = one folder under bench/adapters/<name>/.
 """
 from __future__ import annotations
 
@@ -31,6 +31,14 @@ class TrialContext(TypedDict, total=False):
 
 DialogStep = tuple[str, list[str]]
 """(screen marker, keystrokes) answered during onboarding settle walks."""
+
+MSG_ROUTING_REGIMES = ("mock", "real-api")
+"""How a submitted message routes to a model. ``mock``: the offline mock
+provider, so the scripted reply is known verbatim and settle detectors
+match its text. ``real-api``: live inference — the reply is unknowable,
+so message-settle scenarios do not measure a settle at all; the row
+records the regime and the result-validity gate keeps cross-regime
+values out of the rankings."""
 
 KEY_TOKENS: dict[str, str] = {
     "enter": "\r", "return": "\r",
@@ -72,9 +80,9 @@ def resolve_dialogs(entries: list | None) -> list[DialogStep]:
 class ProductAdapter(ABC):
     """A product under comparison (Prime Agent Rust/TS, Claude Code, ...).
 
-    ``cfg`` carries the resolved BenchLayout under ``cfg["layout"]`` and the
-    per-product pinning from configs/products/<name>.yaml under
-    ``cfg["product"]``.
+    ``cfg`` carries the resolved BenchLayout under ``cfg["layout"]`` and
+    the harness folder's pinning (bench/adapters/<name>/product.yaml)
+    under ``cfg["product"]``.
     """
 
     name: str = ""
@@ -87,6 +95,11 @@ class ProductAdapter(ABC):
     # False: fixture-based scenarios then record them not_comparable
     # (spec §F) instead of measuring a fresh session.
     resume_fixture_capable: bool = False
+    # How a submitted message routes (MSG_ROUTING_REGIMES); product.yaml
+    # ``msg_routing:`` overrides. Message-settle scenarios measure the
+    # settle only in the mock regime — the harness declares the regime,
+    # scenarios never branch on the harness's name.
+    msg_routing: str = "mock"
     dialog_steps: list[DialogStep] = []  # fallback; config is the source of truth
 
     def __init__(self, cfg: dict):
@@ -97,6 +110,11 @@ class ProductAdapter(ABC):
         self.mock_port: int = int(cfg.get("mock", {}).get("port", 8788))
         self.layout: BenchLayout = cfg["layout"]
         self.dialog_steps = resolve_dialogs(self.product_cfg.get("first_run_dialogs"))
+        self.msg_routing = str(self.product_cfg.get("msg_routing", type(self).msg_routing))
+        if self.msg_routing not in MSG_ROUTING_REGIMES:
+            raise ValueError(
+                f"{self.name or type(self).__name__}: msg_routing must be one of "
+                f"{list(MSG_ROUTING_REGIMES)}, not {self.msg_routing!r}")
 
     # ---- node setup: install + authenticate -----------------------------
     def install(self) -> dict:

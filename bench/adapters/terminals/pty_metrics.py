@@ -12,7 +12,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - annotation-only import
-    from bench.adapters.harnesses.pty import PTYSession
+    from bench.adapters.terminals.pty import PTYSession
 
 
 class PtyStreamMixin:
@@ -70,7 +70,7 @@ class PtyStreamMixin:
 
 def noop_control(rounds: int = 50, cols: int = 120, rows: int = 40) -> dict:
     """Calibrated harness floor: `cat` echo round-trip in the PTY driver."""
-    from bench.adapters.harnesses.pty import PTYSession
+    from bench.adapters.terminals.pty import PTYSession
 
     lat = []
     for i in range(rounds):

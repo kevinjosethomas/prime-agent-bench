@@ -16,7 +16,7 @@ from bench.adapters.benchmarks.memory import MemoryIdleLoad
 from bench.adapters.benchmarks.scroll_typing import ScrollTyping
 from bench.adapters.benchmarks.session_open import SessionColdOpen
 from bench.adapters.fixtures.session_size import SENTINEL
-from bench.adapters.products.rust.adapter import PrimeAgentRustProduct
+from bench.adapters.rust.adapter import PrimeAgentRustProduct
 from bench.core.benchmark import COMPARABILITY_LEVELS
 from bench.core.config import load_config
 from bench.core.harness import HarnessDriver, Session, now
@@ -140,6 +140,116 @@ def _ctx(tmp_path):
 
 def _record():
     return {"benchmark": "x", "product": "fake", "phase": "w1"}
+
+
+
+
+# ---- msg_send routing regime (harness-declared, never name-matched) -------
+
+class MsgSendSession(FakeSession):
+    """Renders the ack frame at Enter, then a later output frame — the
+    streamed scripted reply, or (the captured false-positive shape) a
+    live-API 401 error render — on the first screen poll after submit."""
+
+    def __init__(self, late_lines):
+        super().__init__()
+        self.late_lines = list(late_lines)
+        self.submitted = False
+        self.post_submit_polls = 0
+
+    def send(self, data):
+        if data == "\r":
+            self.submitted = True
+            self.screen.append("")  # the ack frame: first output after Enter
+            return now()
+        return super().send(data)
+
+    def wait_output_after(self, t_start, timeout=10.0):
+        if self.submitted:
+            return now()
+        raise TimeoutError("no output after submit")
+
+    def screen_text(self):
+        if self.submitted:
+            # the reply/error frame arrives after the settle baseline is
+            # seeded (poll 1) — mid-stream, exactly the captured shape
+            self.post_submit_polls += 1
+            if self.post_submit_polls == 2:
+                self.screen.extend(self.late_lines)
+        return super().screen_text()
+
+    def rendered_screen(self) -> str:
+        """Poll until the late frame has rendered (the growth is on screen)."""
+        while self.post_submit_polls < 2:
+            self.screen_text()
+        return self.screen_text()
+
+
+class RealApiProduct(FakeProduct):
+    """A harness whose product.yaml declares real-api message routing."""
+
+    name = "codex"
+
+    def __init__(self, cfg, session):
+        super().__init__(dict(cfg, product={"msg_routing": "real-api"}), session)
+
+
+def _msg_measure(tmp_path, product, session):
+    from bench.adapters.benchmarks.msg_send import MsgSend
+    bench = MsgSend(_cfg(tmp_path))
+    record = _record()
+    bench.measure(product, _ctx(tmp_path), record, FakeDriver(session))
+    return bench, record
+
+
+def test_msg_send_mock_regime_settles_on_scripted_reply(tmp_path):
+    from bench.drivers.mock_state import DEFAULT_REPLY
+    session = MsgSendSession(late_lines=[DEFAULT_REPLY])
+    _, record = _msg_measure(
+        tmp_path, FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
+        session)
+    assert record["msg_routing"] == "mock"
+    assert record["validation"] == {"ack": True, "settle": True}
+    assert record["metrics"]["submit_to_ack_ms"] is not None
+    assert record["metrics"]["submit_to_settle_ms"] is not None
+    assert "settle_miss_screen" not in record
+
+
+def test_msg_send_real_api_regime_never_settles_on_screen_growth(tmp_path):
+    """The captured Codex 401 regression: the error render arrives as a
+    post-ack frame (screen growth) under real-api routing. The settle
+    detector must never fire on it — no settle metric, no settle
+    validation key; the row records the regime for the validity gate."""
+    session = MsgSendSession(late_lines=["stream error: 401 unauthorized",
+                                         "invalid api key"])
+    product = RealApiProduct({"layout": None, "product": {}, "mock": {}}, session)
+    bench, record = _msg_measure(tmp_path, product, session)
+    # the post-ack growth (the false-positive ingredient) is available on
+    # the screen — and the scenario never polls in this regime, so nothing
+    # can certify it as a reply
+    assert "401" in session.rendered_screen()
+    assert record["msg_routing"] == "real-api"
+    assert "submit_to_settle_ms" not in record["metrics"]
+    assert "settle" not in record["validation"]
+    assert record["validation"] == {"ack": True}
+    assert "settle_miss_screen" not in record
+    assert bench.validate(record) is True  # the ack-only row is honest evidence
+
+
+def test_msg_routing_is_harness_config_not_scenario_names(tmp_path):
+    """msg_routing comes from each harness folder's product.yaml (codex
+    declares real-api; every other harness defaults to mock), and an
+    unknown regime fails loudly at adapter construction."""
+    reg = discover(_cfg(tmp_path))
+    assert reg.product("codex").msg_routing == "real-api"
+    for name in ("rust", "ts", "claude", "pi"):
+        assert reg.product(name).msg_routing == "mock"
+    try:
+        FakeProduct({"layout": None, "product": {"msg_routing": "paid"},
+                     "mock": {}}, FakeSession())
+        raise AssertionError("unknown msg_routing must fail loudly")
+    except ValueError:
+        pass
 
 
 # ---- scenario ordering + validation ----------------------------------------
@@ -380,7 +490,7 @@ def test_version_info_enforces_pinned_binary_sha256(tmp_path, monkeypatch):
     binary = tmp_path / "prime-agent"
     binary.write_bytes(b"fake-binary")
     import hashlib
-    from bench.adapters.products.rust import adapter as rust_mod
+    from bench.adapters.rust import adapter as rust_mod
     monkeypatch.setattr(rust_mod.subprocess, "run", _FakeRun())
     sha = hashlib.sha256(b"fake-binary").hexdigest()
     product = PrimeAgentRustProduct({"layout": None,
@@ -405,7 +515,7 @@ def test_version_info_enforces_pinned_binary_sha256(tmp_path, monkeypatch):
 def test_version_info_collects_identity_without_a_hash_pin(tmp_path, monkeypatch):
     binary = tmp_path / "prime-agent"
     binary.write_bytes(b"fake-binary")
-    from bench.adapters.products.rust import adapter as rust_mod
+    from bench.adapters.rust import adapter as rust_mod
     monkeypatch.setattr(rust_mod.subprocess, "run", _FakeRun())
     product = PrimeAgentRustProduct({"layout": None,
                                     "product": {"binary": str(binary)},

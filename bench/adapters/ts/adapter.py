@@ -5,7 +5,7 @@ The official compiled beta binary; wire-compatible with the Rust adapter
 """
 from __future__ import annotations
 
-from bench.adapters.products.rust.adapter import PrimeAgentRustProduct
+from bench.adapters.rust.adapter import PrimeAgentRustProduct
 from bench.core.product import TrialContext
 
 

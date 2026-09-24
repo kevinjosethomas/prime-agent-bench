@@ -2,7 +2,8 @@
 
 ``configs/default.yaml`` externalizes trial counts, timeout budgets, load
 gates, and thresholds so no orchestration knob is a magic number in code.
-Per-product pinning lives in ``configs/products/<name>.yaml``.
+Per-harness pinning lives in each harness folder's ``product.yaml``
+(``bench/adapters/<name>/product.yaml``).
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "default.yaml"
-PRODUCTS_DIR = REPO_ROOT / "bench" / "adapters" / "products"
+ADAPTERS_DIR = REPO_ROOT / "bench" / "adapters"
 
 DEFAULTS: dict[str, Any] = {
     # The proven single-node layout: ~/bench/{harness,venv,homes,results,...}
@@ -80,7 +81,7 @@ def load_config(path: str | Path | None = None) -> dict:
 
 
 def product_config(name: str) -> dict:
-    """The product's COMPLETE config: bench/adapters/products/<name>/product.yaml.
+    """The product's COMPLETE config: bench/adapters/<name>/product.yaml.
 
     The one file pinning the binary source, the auth/config sources, the
     install spec, the warm-up/settle behavior, the first-run dialogs, and
@@ -88,7 +89,7 @@ def product_config(name: str) -> dict:
     (binary, install.installed_paths, vendor[].src, auth_sources[])
     expands to the controller home so pinning stays portable across
     nodes."""
-    path = PRODUCTS_DIR / name / "product.yaml"
+    path = ADAPTERS_DIR / name / "product.yaml"
     if not path.exists():
         return {}
     cfg = yaml.safe_load(path.read_text()) or {}
