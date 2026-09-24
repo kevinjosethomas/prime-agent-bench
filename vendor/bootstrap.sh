@@ -22,8 +22,11 @@ apt-get install -qq -y nodejs
 if [ -f "$VDIR/products.tar.gz" ]; then
     echo "[bootstrap] untar products ($PRODUCTS)"
     tar -xzf "$VDIR/products.tar.gz" -C /
+    if [ -f /.secret-free ]; then
+        echo "[bootstrap] WARNING: secret-free vendor payload (built with 'bench vendor --no-secrets'): binaries shipped, credentials dropped — run the products' auth walk (or bench settle) before any benchmark"
+    fi
 else
-    echo "[bootstrap] WARNING: no vendor/products.tar.gz (build it with 'bench vendor build'); assuming the image already carries the products"
+    echo "[bootstrap] WARNING: no vendor/products.tar.gz (build it with 'bench vendor --products ...'); assuming the image already carries the products"
 fi
 
 echo "[bootstrap] version checks ($PRODUCTS)"

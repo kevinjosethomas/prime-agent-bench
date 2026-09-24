@@ -12,8 +12,13 @@ import json
 import shutil
 from pathlib import Path
 
-from bench.adapters.fixtures.corpus import generate_rows
+from bench.adapters.fixtures.corpus import (FIXTURE_SESSION_CWD,
+                                            ensure_fixture_cwd, generate_rows)
 from bench.core.fixture import Fixture
+
+#: manifest identity: generator v2 pins the recorded session cwd (v1
+#: recorded the host's absolute fixtures/work path)
+GENERATOR = "subagent-tree/2"
 
 
 def _row(entry_type: str, fields: dict, entry_id: str, parent: str | None,
@@ -71,8 +76,13 @@ def level_counts(n: int, depth: int) -> list[int]:
     return [base + (1 if i < extra else 0) for i in range(depth)]
 
 
-def write_tree(out_dir: Path, n: int, active: int, depth: int, seed: int, cwd: str) -> dict:
-    """Write the session tree; returns its manifest."""
+def write_tree(out_dir: Path, n: int, active: int, depth: int, seed: int,
+               cwd: str = FIXTURE_SESSION_CWD) -> dict:
+    """Write the session tree; returns its manifest.
+
+    The recorded session cwd defaults to the canonical constant — never a
+    host path — so the tree hash is identical on every bench root."""
+    ensure_fixture_cwd(cwd)
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -108,7 +118,8 @@ def write_tree(out_dir: Path, n: int, active: int, depth: int, seed: int, cwd: s
             this_level.append((node_id, child_dir))
         prev_level = this_level or prev_level
     manifest = {
-        "spec": {"n": n, "active": active, "depth": depth, "seed": seed},
+        "generator": GENERATOR,
+        "spec": {"n": n, "active": active, "depth": depth, "seed": seed, "cwd": cwd},
         "files": {rel: {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
                   for rel, data in sorted(files.items())},
         "total_bytes": sum(len(d) for d in files.values()),
@@ -138,13 +149,13 @@ class SubagentTreeFixture(Fixture):
     def generate(self, spec: dict) -> Path:
         """Build the tree deterministically; returns its path."""
         write_tree(self.path(), n=int(spec.get("n", self.n)), active=int(spec.get("active", self.active)),
-                   depth=int(spec.get("depth", self.depth)), seed=self.seed,
-                   cwd=str(self.layout.fixtures / "work"))
+                   depth=int(spec.get("depth", self.depth)), seed=self.seed)
         return self.path()
 
     def ensure(self) -> dict:
         """Build if missing or stale; returns the manifest record."""
-        current = {"n": self.n, "active": self.active, "depth": self.depth, "seed": self.seed}
+        current = {"n": self.n, "active": self.active, "depth": self.depth,
+                   "seed": self.seed, "cwd": FIXTURE_SESSION_CWD}
         manifest_path = self.path() / "manifest.json"
         if manifest_path.exists():
             manifest = json.loads(manifest_path.read_text())

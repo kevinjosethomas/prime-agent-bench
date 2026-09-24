@@ -6,6 +6,7 @@ command, run one wave, and collect (tar + download + extract) results.
 """
 from __future__ import annotations
 
+import json
 import shlex
 import subprocess
 import time
@@ -13,6 +14,7 @@ import uuid
 from pathlib import Path
 
 from bench.core.config import REPO_ROOT
+from bench.core.identity import IDENTITY_FILE
 
 
 def _scratch_dir() -> Path:
@@ -52,12 +54,20 @@ def _upload_text(backend, handle, content: str, remote: Path) -> None:
     backend.upload(handle, tmp, remote)
 
 
-def deploy_harness(backend, handle, bundle: Path) -> None:
-    """Deploy the harness bundle + sandbox config + python deps (+bootstrap)."""
+def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None) -> None:
+    """Deploy the harness bundle + sandbox config + python deps (+bootstrap).
+
+    identity: the deploy-bundle provenance (revision + bundle sha256),
+    written next to the harness as harness-identity.json. The wave chain
+    stamps it on every trial row, so a results tree can never silently
+    mix deploy versions (audit F7/F8)."""
     backend.deploy(handle, bundle)
     hd = Path(backend.harness_dir(handle))
     _upload_text(backend, handle, _sandbox_config_yaml(handle, backend),
                  hd / "configs" / "sandbox.yaml")
+    if identity:
+        _upload_text(backend, handle, json.dumps(identity, indent=1),
+                     hd / IDENTITY_FILE)
     code, log = backend.exec_cmd(
         handle, f"python3 -m pip --version >/dev/null 2>&1 || "
                 f"(apt-get update -qq && apt-get install -qq -y python3-pip); "
@@ -75,21 +85,27 @@ def deploy_harness(backend, handle, bundle: Path) -> None:
             raise RuntimeError(f"bootstrap failed on {handle.name}: {log[-400:]}")
 
 
-def materialize(backend, spec: dict, bundle: Path):
+def materialize(backend, spec: dict, bundle: Path, identity: dict | None = None):
     """Provision + deploy + bootstrap one sandbox; returns its handle."""
     handle = backend.provision(spec["name"], spec)
-    deploy_harness(backend, handle, bundle)
+    deploy_harness(backend, handle, bundle, identity)
     handle.status = "ready"
     return handle
 
 
 def wave_chain_cmd(handle, backend, spec_cfg: dict) -> str:
-    """The per-sandbox wave chain command (A/A pass, then the real waves)."""
+    """The per-sandbox wave chain command (A/A pass, then the real waves).
+
+    --run-label stamps the campaign run_id on every trial row and on
+    versions.json, joining the sandbox's rows to the orchestrator run
+    manifest (audit F9: referenced runs with no attributable data)."""
     hd = Path(backend.harness_dir(handle))
     root = Path(backend.bench_root(handle))
     benchmarks = ",".join(handle.spec["benchmarks"])
     products = ",".join(handle.spec["products"])
     aa = "--aa " if spec_cfg.get("aa", True) else "--no-aa "
+    label = (f"--run-label {shlex.quote(str(spec_cfg.get('run_label')))} "
+             if spec_cfg.get("run_label") else "")
     warm = (f"mkdir -p {root / 'logs'} && cd {hd} && "
             f"python3 -m bench.cli --config configs/sandbox.yaml settle "
             f"--products {shlex.quote(products)} && "
@@ -99,7 +115,7 @@ def wave_chain_cmd(handle, backend, spec_cfg: dict) -> str:
             f"python3 -m bench.drivers.wave_chain --config configs/sandbox.yaml "
             f"--benchmarks {shlex.quote(benchmarks)} --products {shlex.quote(products)} "
             f"--trials {spec_cfg.get('trials', 10)} --phase {spec_cfg.get('phase', 'w1')} "
-            f"--aa-trials {spec_cfg.get('aa_trials', 10)} {aa}"
+            f"--aa-trials {spec_cfg.get('aa_trials', 10)} {aa}{label}"
             f"> {root / 'logs' / 'wave-chain.log'} 2>&1")
 
 

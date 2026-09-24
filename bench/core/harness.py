@@ -136,25 +136,71 @@ class Session(ABC):
         return False, round((now() - t0) * 1000.0, 2)
 
     def probe_input_ready(self, token: str = "Zq7x", retry_every: float = 0.5,
-                          timeout: float = 45.0, start_ts: float | None = None) -> dict:
+                          timeout: float = 45.0, start_ts: float | None = None,
+                          dialog_steps: tuple = (), fine_grid_s: float = 0.05,
+                          fine_window_s: float = 1.0,
+                          dialog_key_pause_s: float = 0.4) -> dict:
         """From start_ts (default first paint), send unique probe tokens
         until one is echoed on the input line (rendered = accepted).
         Each retry uses a fresh token so stale input can never satisfy the
-        check. Returns gap_ms, echo offset from spawn, dropped-probe count."""
+        check. Returns gap_ms, echo offset from spawn, dropped-probe count.
+
+        Harness-floor honesty (audit F13): readiness is detected on a probe
+        grid, so the measured value can overstate the true input-accept
+        moment by up to one grid step. The first ``fine_window_s`` after
+        start probes on the fine grid (``fine_grid_s``); after that the
+        grid backs off to ``retry_every``. Two evidence fields quantify the
+        floor per row: ``input_buffered`` (an earlier probe token rendered
+        alongside the echoed one — the product queued pre-ready input and
+        rendered it at mount time, so the echo timestamp IS the readiness
+        render and quantization is zero) and ``quantized_ms`` (the
+        worst-case harness overshoot when input was dropped instead:
+        the successful attempt's grid step). Probes sent into a rendered
+        onboarding dialog would inflate "readiness" with dialog walk time,
+        so ``dialog_steps`` markers are answered inline between probe
+        attempts (mid-probe dialogs) and the readiness clock restarts after
+        each dismissal — dialog time is excluded from gap_ms and reported
+        separately (dialogs, dialog_ms)."""
         start = start_ts if start_ts is not None else (self.t_first_paint or self.t_spawn)
         sends = []
+        dialogs = []
+        dialog_time = 0.0
+        answered: dict = {}
         deadline = now() + timeout
         attempt = 0
         while now() < deadline:
+            if dialog_steps:
+                txt_norm = " ".join(self.screen_text().split())
+                handled = False
+                for marker, keys in dialog_steps:
+                    # TUIs wrap dialog text at arbitrary columns: match the
+                    # whitespace-normalized screen, not the raw rows
+                    if marker in txt_norm and answered.get(marker, 0) < 3:
+                        answered[marker] = answered.get(marker, 0) + 1
+                        t_dialog = now()
+                        for k in keys:
+                            self.send(k)
+                            time.sleep(dialog_key_pause_s)
+                        dialog_time += now() - t_dialog
+                        dialogs.append(marker)
+                        start = now()  # dialog time is excluded from the gap
+                        handled = True
+                        break
+                if handled:
+                    continue
+            grid = fine_grid_s if (now() - start) < fine_window_s else retry_every
             attempt += 1
             probe = f"{token}{attempt:02d}"
             self.start_echo_watch(probe)
             t_send = self.send(probe)
             sends.append(t_send)
-            wait_for = min(retry_every, max(0.05, deadline - now()))
+            wait_for = min(grid, max(0.005, deadline - now()))
             try:
                 ts = self.wait_echo(wait_for)
                 chars_sent = sum(len(f"{token}{a:02d}") for a in range(1, attempt + 1))
+                earlier = [f"{token}{a:02d}" for a in range(1, attempt)]
+                buffered = bool(earlier) and any(t in self.screen_text()
+                                                for t in earlier)
                 return {
                     "gap_ms": round((ts - start) * 1000.0, 2),
                     "echo_ts_offset_ms": round((ts - self.t_spawn) * 1000.0, 2),
@@ -162,6 +208,11 @@ class Session(ABC):
                     "dropped_probes": len(sends) - 1,
                     "chars_sent": chars_sent,
                     "probe_token": f"{token}{attempt:02d}",
+                    "input_buffered": buffered,
+                    "probe_grid_ms": round(grid * 1000.0, 1),
+                    "quantized_ms": 0.0 if buffered else round(grid * 1000.0, 1),
+                    "dialogs": dialogs,
+                    "dialog_ms": round(dialog_time * 1000.0, 1),
                 }
             except TimeoutError:
                 continue

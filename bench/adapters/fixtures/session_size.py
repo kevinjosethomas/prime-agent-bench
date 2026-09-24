@@ -11,11 +11,17 @@ import json
 import random
 from pathlib import Path
 
-from bench.adapters.fixtures.corpus import (append_tail_sentinel, generate_rows)
+from bench.adapters.fixtures.corpus import (FIXTURE_SESSION_CWD,
+                                            append_tail_sentinel,
+                                            ensure_fixture_cwd, generate_rows)
 from bench.adapters.fixtures.corpus_text import _WORDS
 from bench.core.fixture import Fixture
 
 SENTINEL = "CORPUS-TAIL-9f3a1c70"
+#: manifest identity: generator v2 pins the recorded session cwd to the
+#: canonical constant (v1 recorded the host's absolute fixtures/work path,
+#: so the bytes changed with every sandbox root)
+GENERATOR = "session-size/2"
 
 
 def serialize(rows: list) -> bytes:
@@ -23,8 +29,16 @@ def serialize(rows: list) -> bytes:
     return ("\n".join(json.dumps(r) for r in rows) + "\n").encode()
 
 
-def build_session(size_mib: float, out_path: Path, cwd: str, seed: int = 1234) -> dict:
-    """Write the deterministic session fixture of exactly `size_mib` MiB."""
+def build_session(size_mib: float, out_path: Path, cwd: str = FIXTURE_SESSION_CWD,
+                  seed: int = 1234) -> dict:
+    """Write the deterministic session fixture of exactly `size_mib` MiB.
+
+    The recorded session cwd defaults to the canonical constant — never a
+    host path — so the bytes (and the golden sha256) are identical on
+    every bench root and sandbox. The directory is created so a resumed
+    transcript's recorded cwd exists."""
+    ensure_fixture_cwd(cwd)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     target = int(round(size_mib * (1 << 20)))
     sentinel = SENTINEL
     rng = random.Random(seed)
@@ -81,10 +95,12 @@ def build_session(size_mib: float, out_path: Path, cwd: str, seed: int = 1234) -
             n += 1
     return {
         "path": str(out_path),
+        "generator": GENERATOR,
         "bytes": out_path.stat().st_size,
         "sha256": hashlib.sha256(data).hexdigest(),
         "rows": n,
         "sentinel": sentinel,
+        "cwd": cwd,
         "generator_seed": seed,
         "target_mib": size_mib,
     }
@@ -109,18 +125,18 @@ class SessionSizeFixture(Fixture):
     def generate(self, spec: dict) -> Path:
         """Build the fixture deterministically; returns its path."""
         info = build_session(float(spec.get("size_mib", self.size_mib)), self.path(),
-                             cwd=str(self.layout.fixtures / "work"), seed=self.seed)
+                             seed=self.seed)
         (self.layout.fixtures / self.manifest_name).write_text(json.dumps(info, indent=1))
         return self.path()
 
     def ensure(self) -> dict:
         """Build if missing; returns the manifest record."""
         if not self.path().exists():
-            info = build_session(self.size_mib, self.path(),
-                                 cwd=str(self.layout.fixtures / "work"), seed=self.seed)
+            info = build_session(self.size_mib, self.path(), seed=self.seed)
             (self.layout.fixtures / self.manifest_name).write_text(json.dumps(info, indent=1))
             print("fixture built:", info["bytes"], "bytes", info["rows"], "rows")
             return info
+        ensure_fixture_cwd()  # the recorded session cwd must exist at trial time too
         return self.manifest()
 
     def manifest(self) -> dict:

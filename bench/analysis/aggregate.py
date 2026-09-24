@@ -23,6 +23,9 @@ from bench.analysis.validity import (ERROR_REASONS, aa_primary_p50s, gate_rows,
                                      settle_auth_products, status_report)
 from bench.core.measurement import primary_metric
 
+#: the provenance label recorded for rows that predate run stamping
+UNSTAMPED = "(unstamped)"
+
 
 def load_all(results_dir) -> list:
     """Every trial row from every <results>/<benchmark>/trials-*.jsonl."""
@@ -64,7 +67,8 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
               trials: dict | None = None, aa_p50s: dict | None = None,
               drift_threshold_pct: float | None = None,
               aa_failing: dict | None = None, status: dict | None = None,
-              comparability: dict | None = None) -> dict:
+              comparability: dict | None = None, phase_p50s: dict | None = None,
+              identity: dict | None = None, disclosures: dict | None = None) -> dict:
     """The summary model: per-benchmark stats, primary ranks, ts deltas,
     plus the validity-gate report (excluded counts + reasons, per-phase
     trial denominators, engine status rows, comparability modes) when
@@ -113,8 +117,106 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
             entry["status"] = status[bench]
         if comparability and comparability.get(bench):
             entry["comparability"] = comparability[bench]
+        if phase_p50s and phase_p50s.get(bench):
+            entry["phase_p50s"] = phase_p50s[bench]
+        if identity and identity.get(bench):
+            entry["identity"] = identity[bench]
+        if disclosures and disclosures.get(bench):
+            entry["disclosures"] = disclosures[bench]
         out[bench] = entry
     return out
+
+
+def _row_label(row: dict) -> str:
+    """The campaign label on a row (unstamped rows name themselves)."""
+    return str((row.get("run") or {}).get("label") or UNSTAMPED)
+
+
+def _row_rev(row: dict) -> str:
+    """The harness revision on a row (unstamped rows name themselves)."""
+    return str((row.get("run") or {}).get("harness", {}).get("git_rev") or UNSTAMPED)
+
+
+def _identity_report(published: list) -> dict:
+    """Per benchmark: the run labels + harness revisions among the
+    published rows, flagged when a tree mixes them (audit F7/F8: one
+    canonical file mixed two deployed bundle versions)."""
+    labels: dict = defaultdict(set)
+    revs: dict = defaultdict(set)
+    for r in published:
+        labels[r["benchmark"]].add(_row_label(r))
+        revs[r["benchmark"]].add(_row_rev(r))
+    out = {}
+    for bench in labels:
+        entry = {"run_labels": sorted(labels[bench]),
+                 "harness_revs": sorted(revs[bench])}
+        if len(labels[bench]) > 1 or len(revs[bench]) > 1:
+            entry["mixed"] = True
+        out[bench] = entry
+    return out
+
+
+def _disclosure_report(published: list) -> dict:
+    """Per (benchmark, product): row-level disclosures that qualify the
+    measured numbers — onboarding dialogs auto-dismissed inside the
+    measurement (audit F13) and readiness values carrying probe-grid
+    quantization (audit F13's ~2s floor: now bounded and disclosed per
+    row by record["probe"]["quantized_ms"])."""
+    counts: dict = defaultdict(int)
+    for r in published:
+        if r.get("dialog_autodismissed"):
+            counts[(r["benchmark"], r["product"], "dialog_autodismissed")] += 1
+        if (r.get("probe") or {}).get("quantized_ms"):
+            counts[(r["benchmark"], r["product"], "probe_quantized")] += 1
+    out: dict = defaultdict(dict)
+    for (bench, prod, kind), n in counts.items():
+        out[bench].setdefault(prod, {})[kind] = n
+    return {b: dict(p) for b, p in out.items()}
+
+
+def _phase_p50s(published: list) -> dict:
+    """Per benchmark: {product: {phase: primary p50}} — every denominator's
+    own median, so pooled rows can never masquerade as one phase's value
+    (audit F1)."""
+    vals: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for r in published:
+        primary, _ = primary_metric(r.get("benchmark")) or (None, None)
+        if not primary:
+            continue
+        v = (r.get("metrics") or {}).get(primary)
+        if v is not None:
+            vals[r["benchmark"]][r["product"]][str(r.get("phase") or "")].append(v)
+    return {bench: {prod: {phase: stats(vs)["p50"]
+                           for phase, vs in phases.items()}
+                    for prod, phases in prods.items()}
+            for bench, prods in vals.items()}
+
+
+def _aa_coverage(rows: list) -> dict:
+    """Per benchmark: the A/A calibration coverage — how many calibration
+    rows exist (audit F11: the report must not claim A/A OK for benchmarks
+    that never calibrated)."""
+    counts: dict = defaultdict(int)
+    trial_rows = [r for r in rows if not is_status_row(r)]
+    for r in trial_rows:
+        if is_aa_phase(r):
+            counts[r.get("benchmark")] += 1
+    return {bench: {"aa_rows": counts.get(bench, 0)} for bench in
+            {r.get("benchmark") for r in trial_rows}}
+
+
+def methodology_block(cfg: dict, phases: list | None) -> dict:
+    """The self-describing aggregation rule stamped on every summary
+    artifact (audit F1/F12): which phases were published, the gate that
+    filtered them, where the numbers came from."""
+    import time
+    analyze = cfg.get("analyze") or {}
+    return {"analyzed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "source_dir": str(analyze.get("results_dir") or ""),
+            "published_phases": phases or ["all non-aa phases"],
+            "aa_rows": "calibration only, never in published stats",
+            "gate": "strict result-validity (bench.analysis.validity)",
+            "denominators": "entry.trials per product per phase"}
 
 
 def _stability_marks(bench: str, p50s: dict, entry_products: dict,
@@ -145,21 +247,31 @@ def _stability_marks(bench: str, p50s: dict, entry_products: dict,
     return dict(marks)
 
 
-def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> dict:
-    """The shared stats model: {"summary": ..., "aa": ..., "settle": ...}.
+def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None,
+                   phases: list | None = None) -> dict:
+    """The shared stats model: {"summary": ..., "aa": ..., "settle": ...,
+    "aa_coverage": ..., "methodology": ...}.
 
     Engine status rows (products that ran no trials) are split out first
     and reported as entry["status"] — not exclusions, not failures. The
     strict validity gate then runs (analysis.validity.gate_rows): invalid
     rows never reach stats, ranks, or deltas. Published stats aggregate
     the gated published-phase rows only (``aa`` rows calibrate in the A/A
-    section); excluded rows are reported with counts + reasons."""
+    section); excluded rows are reported with counts + reasons.
+
+    phases: the explicit published denominator (audit F1) — e.g.
+    ["w1"]; None publishes every non-aa phase present. Per-phase trial
+    counts and per-phase primary p50s label every pool, the run-identity
+    report flags mixed trees (audit F7/F8), and row-level disclosures
+    (dialogs, probe quantization) qualify the measured numbers."""
     gate = cfg.get("gate_benchmarks") or {}
     settle_auth = settle_auth_products(settle_rows or [])
     status = status_report(rows)
     trial_rows = [r for r in rows if not is_status_row(r)]
     valid, excluded = gate_rows(trial_rows, settle_auth=settle_auth, gate=gate)
     published = [r for r in valid if not is_aa_phase(r)]
+    if phases is not None:
+        published = [r for r in published if str(r.get("phase") or "") in phases]
     threshold = float(cfg.get("aa", {}).get("spread_threshold_pct", 10.0))
     drift_threshold = float(cfg.get("aa", {}).get("drift_threshold_pct", 10.0))
     aa_metrics = {name: meta.get("aa_metrics") for name, meta in gate.items()}
@@ -185,5 +297,10 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> di
                                  aa_p50s=aa_primary_p50s(valid),
                                  drift_threshold_pct=drift_threshold,
                                  aa_failing=aa_failing(aa), status=status,
-                                 comparability=dict(comparability)),
-            "aa": aa, "settle": settle}
+                                 comparability=dict(comparability),
+                                 phase_p50s=_phase_p50s(published),
+                                 identity=_identity_report(published),
+                                 disclosures=_disclosure_report(published)),
+            "aa": aa, "settle": settle,
+            "aa_coverage": _aa_coverage(trial_rows),
+            "methodology": methodology_block(cfg, phases)}

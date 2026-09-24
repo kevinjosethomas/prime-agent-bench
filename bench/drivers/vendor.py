@@ -1,11 +1,19 @@
 """The sandbox vendor tarball builder.
 
-`bench vendor build` assembles vendor/products.tar.gz from the adapters'
+`bench vendor` assembles vendor/products.tar.gz from the adapters'
 product configs (``vendor:`` blocks + the kernel toolchain when a selected
 product needs it): binaries, auth/config state, and the uv toolchain laid
 out for the sandbox's HOME=/root. No manual recipe: one product config
 change = one tarball rebuild. bootstrap.sh untars it to ``/`` so every
 sandbox starts from the proven, authenticated node setup.
+
+`--no-secrets` builds the explicit secret-free payload: every entry whose
+source is a declared ``auth_sources`` path is dropped, a ``.secret-free``
+marker rides in the tarball (bootstrap.sh warns), and the build manifest
+records what was redacted. A secret-free sandbox carries the binaries but
+no credentials — products need their auth walk (or `bench settle`)
+before any benchmark runs. Never ship the default tarball: it carries
+real auth and must never leave the node.
 """
 from __future__ import annotations
 
@@ -51,12 +59,43 @@ def vendor_entries(cfg: dict, products: list, reg=None) -> list[dict]:
     return list(by_dst.values())
 
 
+def secret_srcs(cfg: dict, products: list, reg=None) -> set:
+    """The declared secret-bearing source paths (``auth_sources``) of the
+    selected products — the explicit source of truth for what a
+    secret-free payload must drop."""
+    if reg is None:
+        reg = discover(cfg)
+    srcs = set()
+    for name in products:
+        if name not in reg.products:
+            continue
+        for entry in reg.product(name).product_cfg.get("auth_sources") or []:
+            srcs.add(str(Path(entry["src"]).expanduser()))
+    return srcs
+
+
+def _redact_secrets(entries: list, cfg: dict, products: list, reg) -> tuple:
+    """Split (kept, redacted) entries on the declared auth sources."""
+    secrets = secret_srcs(cfg, products, reg=reg)
+    kept, redacted = [], []
+    for e in entries:
+        (redacted if str(Path(e["src"]).expanduser()) in secrets
+         else kept).append(e)
+    return kept, redacted
+
+
 def build_vendor_tarball(cfg: dict, products: list, out: Path,
-                         dry_run: bool = False, reg=None) -> dict:
-    """Stage every entry and tar it; returns the build manifest."""
+                         dry_run: bool = False, reg=None,
+                         no_secrets: bool = False) -> dict:
+    """Stage every entry and tar it; returns the build manifest.
+
+    no_secrets: drop every declared-auth entry (see module docstring)."""
     if reg is None:
         reg = discover(cfg)
     entries = vendor_entries(cfg, products, reg=reg)
+    redacted: list = []
+    if no_secrets:
+        entries, redacted = _redact_secrets(entries, cfg, products, reg)
     missing = [e for e in entries
                if not Path(e["src"]).exists() and not Path(e["src"]).is_symlink()]
     if missing and not dry_run:
@@ -69,6 +108,9 @@ def build_vendor_tarball(cfg: dict, products: list, out: Path,
         "products": {},
         "entries": [{k: v for k, v in e.items()} for e in entries],
         "dry_run": dry_run,
+        "no_secrets": no_secrets,
+        "redacted_entries": [{"src": str(e.get("src")), "dst": str(e.get("dst"))}
+                             for e in redacted],
     }
     for name in products:
         try:
@@ -97,9 +139,17 @@ def build_vendor_tarball(cfg: dict, products: list, out: Path,
                 subprocess.run(argv + [str(src) + "/", str(dst) + "/"], check=True)
             else:
                 shutil.copy2(src, dst)
+        if no_secrets:
+            (staging / ".secret-free").write_text(
+                "secret-free vendor payload: declared auth_sources entries "
+                "were dropped at build time (bench vendor --no-secrets)\n")
         out.parent.mkdir(parents=True, exist_ok=True)
+        # macOS bsdtar stores xattrs as ._ AppleDouble members: sandbox
+        # clutter and provenance variance the Linux node never has.
+        # COPYFILE_DISABLE is a no-op for GNU tar (the node's tar).
+        env = dict(os.environ, COPYFILE_DISABLE="1")
         subprocess.run(["tar", "-czf", str(out), "-C", str(staging), "."],
-                      check=True, timeout=3600)
+                      check=True, timeout=3600, env=env)
     finally:
         subprocess.run(["rm", "-rf", str(staging)])
     manifest["tarball"] = str(out)
@@ -119,11 +169,15 @@ def main() -> None:
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--dry-run", action="store_true",
                     help="list the entries and manifest without tarring")
+    ap.add_argument("--no-secrets", action="store_true",
+                    help="drop every declared auth_sources entry; the payload "
+                         "carries binaries but no credentials (marker + "
+                         "manifest record the redaction)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     products = [p for p in args.products.split(",") if p]
     manifest = build_vendor_tarball(cfg, products, Path(args.out).expanduser(),
-                                    dry_run=args.dry_run)
+                                    dry_run=args.dry_run, no_secrets=args.no_secrets)
     print(json.dumps(manifest, indent=1))
 
 

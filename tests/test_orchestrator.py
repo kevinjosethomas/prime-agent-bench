@@ -136,6 +136,9 @@ def test_run_parallel_end_to_end(tmp_path, monkeypatch):
                         fake_make_backend)
     monkeypatch.setattr("bench.drivers.orchestrator.run.harness_bundle",
                         lambda repo_root=None: Path("/tmp/bundle.tar.gz"))
+    monkeypatch.setattr("bench.drivers.orchestrator.run.bundle_identity",
+                        lambda repo_root, bundle: {"git_rev": "deadbee", "dirty": False,
+                                                   "bundle_sha256": "cafe" * 16})
     manifest = run_parallel(cfg, str(pdir),
                             ["compare.cold_start", "compare.msg_send"],
                             ["rust", "ts"], trials=3, aa=True,
@@ -158,3 +161,22 @@ def test_run_parallel_end_to_end(tmp_path, monkeypatch):
     assert (out_dir / "manifest.json").exists()
     collected = json.loads((out_dir / "manifest.json").read_text())
     assert collected["run_id"] == manifest["run_id"]
+    # provenance gates (audit F7/F8/F9): the manifest names the deploy
+    # bundle identity, the wave parameters carry the run label, reference
+    # calibration is a timestamped record set, and every sandbox upload
+    # wrote the harness-identity.json the wave chain stamps rows with
+    assert manifest["harness"] == {"git_rev": "deadbee", "dirty": False,
+                                  "bundle_sha256": "cafe" * 16}
+    assert manifest["wave"]["run_label"] == manifest["run_id"]
+    assert all("--run-label" in c[2] and manifest["run_id"] in c[2]
+               for c in waves)
+    uploads = [c for c in backend.calls if c[0] == "upload"]
+    identity_uploads = [c for c in uploads if c[2].endswith("harness-identity.json")]
+    assert len(identity_uploads) == 2
+    records = manifest["reference"]["records"]
+    assert len(records) == 2
+    assert all(r["sandbox"] and r["collected_at"] and r["ms"] == 100.0
+               for r in records)
+    assert manifest["reference"]["per_sandbox_ms"] == {"compare_cold_start": 100.0,
+                                                       "compare_msg_send": 100.0}
+    assert manifest["created_at"] and manifest["updated_at"]

@@ -48,7 +48,8 @@ class SessionColdOpen(Benchmark):
             # fixture transcript actually loaded. Missing -> the row is
             # invalid (never a fast success on an empty session).
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
-            erase_ok, _ = app.erase_all(PROBE_TOKEN)
+            erase_ok, _ = app.erase_all(PROBE_TOKEN,
+                                        max_backspaces=probe["chars_sent"] + 8)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             time.sleep(1.0)
             rss = rss_tree(app.pid)
@@ -61,6 +62,12 @@ class SessionColdOpen(Benchmark):
                 "pty_bytes": app.bytes_out(),
                 "frame_bursts": bursts["bursts"] if bursts else None,
             }
+            # harness-floor evidence (audit F13): probe-grid quantization of
+            # the ready value, and whether input was buffered or dropped
+            record["probe"] = {"grid_ms": probe["probe_grid_ms"],
+                               "input_buffered": probe["input_buffered"],
+                               "quantized_ms": probe["quantized_ms"],
+                               "sends": probe["sends"]}
             record["validation"] = {"sentinel": t_sentinel is not None, "echoed": True, "erased": erase_ok}
             record["resource"] = {"rss_10mib": rss, "loadavg_before": t_load}
         finally:

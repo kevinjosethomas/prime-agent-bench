@@ -22,29 +22,29 @@ ONBOARDING_AUTODISMISS = [
 
 def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
                        driver: HarnessDriver) -> None:
-    """The cold-start measurement (shared with compare.warm_start)."""
+    """The cold-start measurement (shared with compare.warm_start).
+
+    First paint is the first non-blank frame (kept as its own metric; the
+    onboarding dialogs, when they appear, do not restart it). Interactive
+    readiness is probed from that paint with the onboarding markers
+    answered inline by the probe loop: dialog time is excluded from the
+    gap and disclosed per row (audit F13's ~2s probe floor was two 1.0s
+    blocking waits for absent markers burned between paint and the first
+    probe on every trial; the probe now starts immediately).
+    """
     if product.needs_prepass:
         prepass(product, ctx, driver)
     t_load = loadavg()
     app = product.launch(ctx, driver)
     try:
         t_paint = first_paint(app)
-        # onboarding-artifact safety net (should never fire with settled
-        # templates; if it does, exclude its time)
-        for marker, keys in ONBOARDING_AUTODISMISS:
-            try:
-                app.wait_screen_contains(marker, timeout=1.0)
-                for k in keys:
-                    app.send(k)
-                    time.sleep(0.4)
-                app.wait_screen_missing(marker, timeout=3.0)
-                record["dialog_autodismissed"] = marker[:40]
-                t_paint = first_paint(app)  # restart the clock after dismissal
-            except TimeoutError:
-                pass
         probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5, timeout=45.0,
-                                      start_ts=t_paint)
-        erase_ok, erase_ms = app.erase_all(PROBE_TOKEN)
+                                      start_ts=t_paint,
+                                      dialog_steps=ONBOARDING_AUTODISMISS)
+        # the erase budget must cover every probe char sent (the input line
+        # may hold dropped/buffered tokens from every attempt)
+        erase_ok, erase_ms = app.erase_all(
+            PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8)
         time.sleep(1.0)  # settled idle
         rss = rss_tree(app.pid)
         bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())
@@ -59,6 +59,15 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
             "frame_bursts": bursts["bursts"] if bursts else None,
             "burst_bytes": bursts["per_burst_bytes"][:8] if bursts else None,
         }
+        # harness-floor evidence (audit F13): how much of the ready value is
+        # probe-grid quantization, and whether the product buffers input
+        record["probe"] = {"grid_ms": probe["probe_grid_ms"],
+                           "input_buffered": probe["input_buffered"],
+                           "quantized_ms": probe["quantized_ms"],
+                           "sends": probe["sends"],
+                           "dialog_ms": probe["dialog_ms"]}
+        if probe["dialogs"]:
+            record["dialog_autodismissed"] = probe["dialogs"][0][:40]
         record["validation"] = {"echoed": True, "erased": erase_ok}
         record["resource"] = {"rss_settled": rss, "loadavg_before": t_load, "loadavg_after": loadavg()}
     finally:
