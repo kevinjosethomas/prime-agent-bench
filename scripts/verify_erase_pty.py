@@ -67,11 +67,18 @@ def evidence_dir() -> Path:
 
 def dump_transcripts(name: str, app) -> None:
     """Raw PTY stream + rendered screen (kept for every product, pass or
-    failure; the trial env carries only the dummy key, so no secrets ride)."""
+    failure). PTYSession keeps a capped raw bytearray (raw_cap 4MiB,
+    trimmed prefix); captured under its lock, trim + totals recorded."""
     out = evidence_dir() / name
     out.mkdir(parents=True, exist_ok=True)
-    (out / "raw.pty").write_bytes(app.bytes_out())
+    with app._lock:
+        raw = bytes(app.raw)
+        trimmed = app.trimmed
+    (out / "raw.pty").write_bytes(raw)
     (out / "screen.txt").write_text(app.screen_text())
+    (out / "bytes.json").write_text(json.dumps(
+        {"captured": len(raw), "trimmed": trimmed,
+         "total": app.bytes_out()}))
 
 
 def free_port() -> int:
@@ -202,7 +209,8 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         and evidence.get("fresh_echo_ok") and evidence.get("fresh_erase_ok")
         and evidence.get("mock_model_requests") == 0
         and evidence.get("stress", {}).get("erase_ok")
-        and "reap_leftovers" not in evidence)
+        and "reap_leftovers" not in evidence
+        and "transcript_dump_error" not in evidence)
     out = evidence_dir() / name
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(json.dumps(evidence, indent=1, default=str))
