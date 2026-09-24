@@ -61,7 +61,9 @@ def deploy_harness(backend, handle, bundle: Path) -> None:
     code, log = backend.exec_cmd(
         handle, f"python3 -m pip --version >/dev/null 2>&1 || "
                 f"(apt-get update -qq && apt-get install -qq -y python3-pip); "
-                f"cd {hd} && python3 -m pip install -q --break-system-packages "
+                f"PIPOPTS=$(python3 -m pip install --help 2>&1 | "
+                f"grep -q break-system-packages && echo --break-system-packages || true); "
+                f"cd {hd} && python3 -m pip install -q $PIPOPTS "
                 f"-r requirements.txt && echo PIP-DONE", timeout=1800.0)
     if code != 0:
         raise RuntimeError(f"pip install failed on {handle.name}: {log[-300:]}")
