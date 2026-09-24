@@ -26,8 +26,17 @@ STATE_CODE = {
 
 
 def kernel_script() -> dict:
-    """The mock-provider script for the kernel benchmarks (queues by prompt)."""
+    """The mock-provider script for the kernel benchmarks (queues by prompt).
+
+    The aux/title requests (the products' qwen3-30b session-title calls)
+    quote the user prompt, so they match the benchmark queues and corrupt
+    the per-queue response parity: a main submit then gets the queue's
+    TEXT response instead of its toolCall and the cell never runs. The
+    aux queue matches by model FIRST, so aux requests never touch the
+    benchmark queues."""
     queues = [
+        {"name": "aux", "matchModels": ["qwen/qwen3-30b-a3b-instruct-2507"],
+         "responses": [{"text": "ok"}]},
         {"name": "kcell", "match": ["run the kernel marker cell"], "responses": [
             {"toolCall": {"name": "ipython", "arguments": {"code": "print('KREADY-bench marker'); %who"}}},
             {"text": "kernel marker cell done."}]},
