@@ -72,7 +72,8 @@ class FakeSession(Session):
                           start_ts=None, **kwargs):
         self.calls.append("probe")
         return {"gap_ms": 1.0, "echo_ts_offset_ms": 10.0, "sends": 1,
-                "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01",
+                "unconfirmed_attempts": 0, "dropped_probes": None, "chars_sent": 5,
+                "probe_token": f"{token}01", "probe_tokens": [f"{token}01"],
                 "input_buffered": False, "probe_grid_ms": 50.0,
                 "quantized_ms": 50.0, "dialogs": [], "dialog_ms": 0.0}
 
@@ -597,7 +598,8 @@ class KernelFakeSession(Session):
     def probe_input_ready(self, token="Zq7x", retry_every=0.5,
                           timeout=45.0, start_ts=None):
         return {"gap_ms": 1.0, "echo_ts_offset_ms": 10.0, "sends": 1,
-                "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01"}
+                "unconfirmed_attempts": 0, "dropped_probes": None, "chars_sent": 5,
+                "probe_token": f"{token}01", "probe_tokens": [f"{token}01"]}
 
     def wait_output_after(self, t_start, timeout=10.0):
         for ts, _ in self.replies:

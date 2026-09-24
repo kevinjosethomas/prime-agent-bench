@@ -1,0 +1,229 @@
+"""Real-PTY erase verification (not a unit test; manual/evidence run).
+
+Runs the exact cold_start probe+erase flow against the REAL product TUIs
+on a raw PTY: launch -> first paint -> probe_input_ready (fine grid,
+onboarding dialogs auto-dismissed) -> erase_all burst -> every-token
+certification -> editor acceptance (fresh echo) -> teardown.
+
+Offline-only by construction: products launch with --offline and their
+models.json routes prime-inference to 127.0.0.1 (the bench mock
+provider); the trial env carries a dummy PRIME_API_KEY and the trial
+home's config.json is sanitized before launch, so no real credential is
+used even if a submit somehow happened — and the mock's request log
+asserts ZERO model requests (no submit side effects at all).
+
+Gate: run only when PRIME_BENCH_REAL_PTY=1 and the binaries exist
+(skips cleanly otherwise — never in CI):
+
+    PRIME_BENCH_REAL_PTY=1 python scripts/verify_erase_pty.py \
+        --products rust,ts            # local: TS release + a Rust build
+    PRIME_BENCH_REAL_PTY=1 python scripts/verify_erase_pty.py \
+        --products pi                 # on the bench node (built bundle)
+
+Rust binary resolution: product.yaml pins the node build; locally the
+script overrides the pin with --rust-binary (default: the local
+release build) and drops the sha pin (the override is recorded in the
+evidence, never silently passed off as the pinned build).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint  # noqa: E402
+from bench.adapters.terminals.pty import PTYDriver  # noqa: E402
+from bench.core.config import load_config  # noqa: E402
+from bench.core.env import scrubbed_env  # noqa: E402
+from bench.core.registry import discover  # noqa: E402
+from bench.drivers.mock_state import default_script  # noqa: E402
+
+ONBOARDING_AUTODISMISS = [
+    ("Share agent traces with Prime Intellect?", ["\x1b[B", "\r"]),
+    ("Do you want to use this API key?", ["\x1b[A", "\r"]),
+]
+DUMMY_KEY = "sk-bench-mock-offline"
+
+
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def start_mock(port: int, workdir: Path):
+    script_path = workdir / "mock-script.json"
+    script_path.write_text(json.dumps(default_script()))
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "bench.drivers.mock_provider",
+         str(script_path), str(port)],
+        cwd=REPO, stdout=subprocess.PIPE, text=True)
+    port_line = proc.stdout.readline().strip()
+    return proc, int(port_line), str(script_path) + ".requests.jsonl"
+
+
+def sanitize_trial_home(ctx, product_name: str) -> None:
+    """No real credentials ride in the trial env/home for this run."""
+    cfgjson = Path(ctx["home"]) / ".prime" / "config.json"
+    if cfgjson.exists():
+        try:
+            cfg = json.loads(cfgjson.read_text())
+            cfg["api_key"] = DUMMY_KEY
+            cfgjson.write_text(json.dumps(cfg))
+        except Exception:
+            pass
+
+
+def launch_isolated(prod, ctx, driver):
+    """launch() with the PRIME_API_KEY override (offline, mock only)."""
+    env = prod.env(ctx)
+    env["PRIME_API_KEY"] = DUMMY_KEY
+    return driver.start_session(prod.argv(ctx), env=env, cwd=str(ctx["work"]))
+
+
+def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
+    prod = reg.product(name)
+    trial = root / "trials" / name / "verify-erase"
+    if trial.exists():
+        shutil.rmtree(trial)
+    trial.parent.mkdir(parents=True, exist_ok=True)
+    if not prod.template_dir().exists():
+        prod.prepare_template(prod.template_dir())
+    ctx = prod.new_trial(trial)
+    sanitize_trial_home(ctx, name)
+    evidence: dict = {"product": name}
+    app = None
+    try:
+        evidence["version"] = prod.version_info()
+        app = launch_isolated(prod, ctx, driver)
+        t_paint = first_paint(app, timeout=90)
+        probe = app.probe_input_ready(
+            PROBE_TOKEN, retry_every=0.5, timeout=45.0, start_ts=t_paint,
+            dialog_steps=ONBOARDING_AUTODISMISS)
+        evidence["probe"] = {
+            "sends": probe["sends"],
+            "unconfirmed_attempts": probe["unconfirmed_attempts"],
+            "dropped_probes": probe["dropped_probes"],
+            "input_buffered": probe["input_buffered"],
+            "chars_sent": probe["chars_sent"],
+            "ready_ms": probe["echo_ts_offset_ms"],
+            "dialogs": probe["dialogs"],
+        }
+        tokens = probe["probe_tokens"]
+        erase_ok, erase_ms = app.erase_all(
+            tokens, max_backspaces=probe["chars_sent"] + 8)
+        evidence["erase_ok"] = erase_ok
+        evidence["erase_ms"] = erase_ms
+        # EVERY attempt token must be gone from the editor rows: row-wise
+        # and seam-joined (a token split at a wrap seam has no full
+        # substring in any single row)
+        window = app.echo_window_text(rows_up=6, rows_down=1) or app.screen_text()
+        joined = "".join(window.splitlines())
+        evidence["leftover_tokens"] = [t for t in tokens
+                                       if t in window or t in joined]
+        # 66-send stress: 396 chars pre-queued raw (pre-mount), plus the
+        # probe flow's own attempts — the live Rust shape was SIX wrapped
+        # rows of residue; the burst + dynamic-cap gate must clear it all
+        stress_tokens = [f"Zq7z{i:02d}" for i in range(1, 67)]
+        for tok in stress_tokens:
+            app.send(tok)
+        time.sleep(2.0)  # let the product mount/render the queued block
+        all_tokens = tokens + stress_tokens
+        stress_budget = sum(len(t) for t in all_tokens) + 8
+        stress_ok, stress_ms = app.erase_all(all_tokens,
+                                             max_backspaces=stress_budget)
+        evidence["stress"] = {
+            "tokens": len(all_tokens), "chars": stress_budget - 8,
+            "erase_ok": stress_ok, "erase_ms": stress_ms,
+        }
+        # editor state + acceptance: alive, and fresh input still echoes
+        evidence["alive_after_erase"] = app.alive()
+        app.start_echo_watch("Zq9k")
+        app.send("Zq9k")
+        t_echo = None
+        try:
+            app.wait_echo(3.0)
+            t_echo = True
+        except TimeoutError:
+            t_echo = False
+        evidence["fresh_echo_ok"] = t_echo
+        # clean the fresh token too (same burst mechanics, small budget)
+        evidence["fresh_erase_ok"] = app.erase_all(
+            ["Zq9k"], max_backspaces=16)[0]
+        # submit side effects: zero model requests proves nothing was
+        # submitted anywhere (offline + mock routing + empty request log)
+        evidence["mock_model_requests"] = 0
+        if os.path.exists(mock_log):
+            evidence["mock_model_requests"] = sum(
+                1 for _ in open(mock_log))
+    finally:
+        if app is not None:
+            app.kill_tree()
+        try:
+            prod.reap(ctx)
+        except Exception as e:
+            evidence["reap_leftovers"] = str(e)[:200]
+    evidence["pass"] = bool(
+        evidence.get("erase_ok") and not evidence.get("leftover_tokens")
+        and evidence.get("alive_after_erase")
+        and evidence.get("fresh_echo_ok") and evidence.get("fresh_erase_ok")
+        and evidence.get("mock_model_requests") == 0
+        and evidence.get("stress", {}).get("erase_ok")
+        and "reap_leftovers" not in evidence)
+    return evidence
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--products", default="rust,ts")
+    parser.add_argument("--rust-binary", default=str(
+        Path.home() / "pi/prime-agent/target/release/prime-agent"))
+    args = parser.parse_args()
+    if os.environ.get("PRIME_BENCH_REAL_PTY") != "1":
+        print("SKIP: set PRIME_BENCH_REAL_PTY=1 to run the real-PTY "
+              "erase verification (never in CI)")
+        return 0
+    names = [n.strip() for n in args.products.split(",") if n.strip()]
+
+    port = free_port()
+    root = Path(tempfile.mkdtemp(prefix="prime-bench-erase-verify-"))
+    cfg = load_config()
+    cfg["bench_root"] = str(root / "bench")
+    cfg["mock"] = {"port": port}
+    reg = discover(cfg)
+
+    # local rust: override the node pin (recorded, sha pin dropped)
+    rust = reg.products.get("rust")
+    if rust and "rust" in names:
+        rust.product_cfg["binary"] = args.rust_binary
+        rust.product_cfg.pop("binary_sha256", None)
+
+    mock_proc, mock_port, mock_log = start_mock(port, root)
+    driver = PTYDriver({})
+    results = []
+    try:
+        for name in names:
+            try:
+                results.append(verify_product(name, reg, driver, mock_log, root))
+            except Exception as e:
+                results.append({"product": name, "error": f"{type(e).__name__}: {e}"[:400]})
+    finally:
+        mock_proc.terminate()
+    print(json.dumps({"results": results}, indent=1))
+    shutil.rmtree(root, ignore_errors=True)
+    ok = all(r.get("pass") for r in results if r.get("product") in names)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

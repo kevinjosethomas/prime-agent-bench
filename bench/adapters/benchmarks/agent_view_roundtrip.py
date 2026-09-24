@@ -131,8 +131,9 @@ class SessionAgentViewRoundtrip(Benchmark):
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             # agents-back requires an empty editor; the ready probe left
-            # its token behind, so erase before navigating
-            erase_ok, _ = app.erase_all(probe["probe_token"])
+            # its tokens behind, so erase them ALL before navigating
+            erase_ok, _ = app.erase_all(probe["probe_tokens"],
+                                        max_backspaces=probe["chars_sent"] + 8)
 
             # ---- leg 1: chat -> agents view --------------------------------
             # fully rendered = chrome AND the resumed session's identity

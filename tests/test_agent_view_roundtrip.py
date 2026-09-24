@@ -91,7 +91,8 @@ class NavSession(Session):
     def probe_input_ready(self, token="Zq7x", retry_every=0.5,
                           timeout=45.0, start_ts=None):
         return {"gap_ms": 3.0, "echo_ts_offset_ms": 30.0, "sends": 1,
-                "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01"}
+                "unconfirmed_attempts": 0, "dropped_probes": None, "chars_sent": 5,
+                "probe_token": f"{token}01", "probe_tokens": [f"{token}01"]}
 
 
 class FakeDriver(HarnessDriver):
@@ -309,7 +310,8 @@ def test_echo_timeout_after_return_is_not_validated(tmp_path, monkeypatch):
         probes["n"] += 1
         if probes["n"] == 1:
             return {"gap_ms": 3.0, "echo_ts_offset_ms": 30.0, "sends": 1,
-                    "dropped_probes": 0, "chars_sent": 5, "probe_token": "Zq7x01"}
+                    "unconfirmed_attempts": 0, "dropped_probes": None, "chars_sent": 5,
+                    "probe_token": "Zq7x01", "probe_tokens": ["Zq7x01"]}
         raise TimeoutError("never ready")
 
     session.probe_input_ready = flaky_probe

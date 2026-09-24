@@ -33,8 +33,11 @@ class MsgSend(Benchmark):
         app = product.launch(ctx, driver)
         try:
             first_paint(app)
-            app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint)
-            app.erase_all(PROBE_TOKEN)
+            probe = app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint)
+            # erase EVERY attempt token with a budget that covers all of
+            # them: leftover probe text would pollute the typed message
+            app.erase_all(probe["probe_tokens"],
+                          max_backspaces=probe["chars_sent"] + 8)
             app.type_token("bench hello", per_key_timeout=2.0, inter_key_pause=0.02)
             t_enter = app.send("\r")
             # ack = first output after Enter (driver primitive: exact chunk
