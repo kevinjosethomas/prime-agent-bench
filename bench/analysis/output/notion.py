@@ -52,6 +52,19 @@ def _blocks(stats: dict, cfg: dict) -> list:
                 cell += f", {delta['pct']:+.1f}% vs ts"
             out.append({"object": "block", "type": "bulleted_list_item",
                         "bulleted_list_item": {"rich_text": [_text(cell)]}})
+        status = entry.get("status") or {}
+        for prod in status:
+            info = status[prod]
+            cell = f"{display.get(prod, prod)}: {info.get('status')}"
+            if info.get("reason"):
+                cell += f" \u2014 {info['reason']}"
+            out.append({"object": "block", "type": "bulleted_list_item",
+                        "bulleted_list_item": {"rich_text": [_text(cell)]}})
+        comparability = entry.get("comparability") or {}
+        if comparability:
+            comp = ", ".join(f"{display.get(p, p)}={mode}" for p, mode in comparability.items())
+            out.append({"object": "block", "type": "bulleted_list_item",
+                        "bulleted_list_item": {"rich_text": [_text(f"Comparability: {comp}")]}})
         unstable = entry.get("unstable") or {}
         for p in unstable:
             for reason, info in unstable[p].items():

@@ -17,7 +17,10 @@ CFG = {"product_order": ["rust", "ts"], "display": {"rust": "Prime Agent Rust",
 
 def _row(bench, product, trial, ready_ms, phase="w1", error=None):
     row = {"benchmark": bench, "product": product, "trial": trial, "phase": phase,
-           "metrics": {"launch_to_ready_ms": ready_ms}}
+           "metrics": {"launch_to_ready_ms": ready_ms},
+           # the validity gate requires a certified trial: a validation
+           # block plus an explicit validated verdict
+           "validation": {"echoed": True, "erased": True}, "validated": True}
     if error:
         row["error"] = error
     return row

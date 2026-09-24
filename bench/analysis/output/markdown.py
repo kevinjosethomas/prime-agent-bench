@@ -58,6 +58,24 @@ def markdown(stats: dict, cfg: dict) -> str:
         if not prods:
             lines.append("_No valid published trials._")
             lines.append("")
+        status = entry.get("status") or {}
+        if status:
+            lines.append("Status (no trials ran):")
+            lines.append("")
+            for prod in [p for p in order if p in status] \
+                    + [p for p in status if p not in order]:
+                info = status[prod]
+                line = f"- {display.get(prod, prod)}: {info.get('status')}"
+                if info.get("reason"):
+                    line += f" \u2014 {info['reason']}"
+                lines.append(line)
+            lines.append("")
+        comparability = entry.get("comparability") or {}
+        if comparability:
+            comp = ", ".join(f"{display.get(p, p)}={mode}"
+                             for p, mode in comparability.items())
+            lines.append(f"_Comparability: {comp}_")
+            lines.append("")
         unstable = entry.get("unstable") or {}
         if unstable:
             lines.append("Unstable (never ranked):")
