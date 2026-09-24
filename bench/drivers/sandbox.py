@@ -256,6 +256,27 @@ def adopt_handle(cfg: dict, sandbox_ref: str, parallel_config_path,
     return backend, handle, state
 
 
+_TRANSIENT_RPC = ("retry shortly", "unavailable", "Connect RPC failed",
+                  "connection refused", "being placed")
+
+
+def _wave_with_retry(backend, handle, spec_cfg: dict, attempts: int = 3,
+                     wait_s: float = 20.0) -> dict:
+    """One wave chain; bounded retries on transient sandbox RPC errors
+    (the platform's placement/handshake races), never on real failures."""
+    result = wave_once(backend, handle, spec_cfg)
+    for attempt in range(1, attempts):
+        if result.get("exit") == 0:
+            return result
+        detail = str(result.get("tail", "")) + str(result.get("error", ""))
+        if not any(marker in detail for marker in _TRANSIENT_RPC):
+            return result
+        handle.note(f"transient sandbox RPC error; retry {attempt}/{attempts - 1}")
+        time.sleep(wait_s)
+        result = wave_once(backend, handle, spec_cfg)
+    return result
+
+
 def run_in_sandbox(cfg: dict, parallel_config_path, sandbox_ref: str,
                    benchmarks: list, products: list, trials: int,
                    aa: bool, phase: str, aa_trials: int = 10,
@@ -269,10 +290,11 @@ def run_in_sandbox(cfg: dict, parallel_config_path, sandbox_ref: str,
     spec = dict(state["spec"])
     spec["benchmarks"] = benchmarks
     spec["products"] = products or spec.get("products") or []
+    handle.spec = spec  # the wave command builds from the handle's spec
     spec_cfg = {"trials": trials, "phase": phase, "aa": aa,
                 "aa_trials": aa_trials, "retry": {}, "wave_timeout_s": 14400.0}
     handle.note(f"run in sandbox: {benchmarks} x {spec['products']}")
-    result = wave_once(backend, handle, spec_cfg)
+    result = _wave_with_retry(backend, handle, spec_cfg)
     out_dir = Path(cfg["results_dir"]) / "sandbox-runs" / f"{handle.name}-{time.strftime('%Y%m%d-%H%M%S')}"
     collected = None
     if result.get("exit") == 0:
