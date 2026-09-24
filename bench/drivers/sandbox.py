@@ -114,23 +114,10 @@ def verify_products(backend, handle, products: list) -> dict:
     report: dict = {}
     for name, info in versions.items():
         report[name] = {"version": info}
-    # 2. the warm-kernel pass: launch each kernel product once and WAIT for
-    # the daemon's own venv build (never pre-built - the daemon wipes
-    # those); idempotent: an already-ready venv returns immediately
-    warm = "python3 -m bench.drivers.warm_kernels --config configs/sandbox.yaml"
-    code, log = backend.exec_cmd(handle, f"cd {hd} && {warm}", timeout=7200.0)
-    if code != 0:
-        raise RuntimeError(f"warm_kernels failed inside the sandbox: {log[-400:]}")
-    code, log = backend.exec_cmd(handle, f"cd {hd} && {warm} --status",
-                                 timeout=300.0)
-    for line in log.splitlines():
-        line = line.strip()
-        if line.startswith("BENCH-JSON "):
-            row = json.loads(line[len("BENCH-JSON "):])
-            if row["product"] in report:
-                report[row["product"]]["kernel_venv_ready"] = row["ready"]
-    # 3. the settle walk (dialogs from product.yaml) IS the interactive
-    # state check; its JSONL record downloads as the evidence
+    # 2. the settle walk (dialogs from product.yaml) IS the interactive
+    # state check; it also builds the home templates, and its first launch
+    # starts the daemon's kernel-venv bootstrap. settle FIRST, then warm:
+    # warm_kernels launches from the template (the proven wave order).
     settle = ("python3 -m bench.cli --config configs/sandbox.yaml settle "
               f"--products {','.join(products)}")
     code, log = backend.exec_cmd(handle, f"cd {hd} && {settle}", timeout=7200.0)
@@ -148,6 +135,21 @@ def verify_products(backend, handle, products: list) -> dict:
                                       "error": row.get("error")}
             if row.get("screen_tail"):
                 report[name]["settle"]["screen_tail"] = row["screen_tail"][-600:]
+    # 3. the warm-kernel pass: WAIT for the daemon's own venv build (never
+    # pre-built - the daemon wipes those); idempotent: an already-ready
+    # venv returns immediately. The --status flags land in the report.
+    warm = "python3 -m bench.drivers.warm_kernels --config configs/sandbox.yaml"
+    code, log = backend.exec_cmd(handle, f"cd {hd} && {warm}", timeout=7200.0)
+    if code != 0:
+        raise RuntimeError(f"warm_kernels failed inside the sandbox: {log[-400:]}")
+    code, log = backend.exec_cmd(handle, f"cd {hd} && {warm} --status",
+                                 timeout=300.0)
+    for line in log.splitlines():
+        line = line.strip()
+        if line.startswith("BENCH-JSON "):
+            row = json.loads(line[len("BENCH-JSON "):])
+            if row["product"] in report:
+                report[row["product"]]["kernel_venv_ready"] = row["ready"]
     return report
 
 
