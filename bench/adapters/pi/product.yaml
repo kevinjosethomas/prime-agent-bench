@@ -8,7 +8,14 @@ install:
   note: built from source; pack may 404 if unpublished
 auth_sources:
   - {src: ~/.prime/agent/auth.json, note: the copied auth.json keeps pi authenticated (provider/model flags route traffic to the mock)}
-first_run_dialogs: []  # no first-run dialogs at the pinned revision: flags settle it
+first_run_dialogs:
+  # Loaded-session resume only: pi asks this when a resumed session's
+  # recorded cwd does not exist. prepare_native_fixture creates the recorded
+  # cwd, so the prompt normally never appears; the entry is the fallback
+  # (settle/prepass walks answer it if cwd creation ever fails).
+  - marker: "cwd from session file does not exist"
+    keys: [enter]
+    intent: "continue loaded session in the launch cwd"
 vendor:
   - {src: ~/bench/repos/pi-mono, dst: root/bench/repos/pi-mono}
   - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}

@@ -160,6 +160,22 @@ class ProductAdapter(ABC):
     def customize_trial(self, ctx: TrialContext) -> None:
         """Per-trial state overrides (agent dirs, daemon sockets)."""
 
+    def prepare_native_fixture(self, ctx: TrialContext, fixture: str) -> dict | None:
+        """Stage the session fixture as this product's NATIVE persisted
+        transcript for the trial (spec §F vendor-native fixture import).
+
+        Runs once per trial before any launch (unmeasured). Returns the
+        JSON-safe per-row evidence block (format/path/sha256/rows/turns/
+        sentinel, plus the source-fixture identity the staging preserves),
+        or None
+        when the product has nothing to stage: the default keeps the gold
+        fixture manifest untouched (rust/ts resume the fixture themselves;
+        products with no native import stay not_comparable status rows).
+
+        Adapters must fail loudly on a fixture their format cannot carry —
+        a partial or synthetic-looking import must never reach a launch."""
+        return None
+
     def env(self, ctx: TrialContext) -> dict:
         """The launch env for this trial."""
         from bench.core.env import scrubbed_env

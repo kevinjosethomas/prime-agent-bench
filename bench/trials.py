@@ -134,6 +134,14 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             ctx = prod.new_trial(trial_dir)
             error = None
             try:
+                if fixture is not None:
+                    # spec §F vendor-native fixture import: the adapter stages
+                    # its native transcript equivalent before any launch
+                    # (unmeasured); its evidence block lands on the row. None
+                    # keeps the gold fixture manifest untouched (rust/ts).
+                    native = prod.prepare_native_fixture(ctx, fixture)
+                    if native:
+                        record.setdefault("fixture", {})["native"] = native
                 benchmark.setup(prod, ctx, fixture=fixture)
                 benchmark.measure(prod, ctx, record, driver, fixture=fixture)
                 record["validated"] = benchmark.validate(record)

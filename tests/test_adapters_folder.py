@@ -60,7 +60,10 @@ def test_product_dialogs_come_from_config(tmp_path):
     claude = reg.product("claude")
     assert ("Is this a project you created or one you trust?",
             ["\x1b[B", "\r"]) in claude.dialog_steps
-    assert reg.product("pi").dialog_steps == []
+    # pi's one dialog is the loaded-session fallback (spec §F): the recorded
+    # session cwd is created at staging, so the prompt normally never appears
+    assert reg.product("pi").dialog_steps == [
+        ("cwd from session file does not exist", ["\r"])]
 
 
 def test_product_configs_are_complete(tmp_path):
