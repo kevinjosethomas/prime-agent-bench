@@ -43,14 +43,15 @@ def test_adapter_wiring(tmp_path):
     assert driver.name == "pty"
     assert reg.benchmark("daemon.boot").applicable("rust")
     assert not reg.benchmark("daemon.boot").applicable("claude")
-    assert reg.benchmark("compare.scroll_typing").requires_fixture == "session-10mib-v3"
-    # the v3 scenario switch: the three fixture scenarios resume the
-    # display-corrected corpus; session.agent_view_roundtrip keeps the
-    # v2 corpus and both fixtures stay registered
-    assert reg.benchmark("session.cold_open_10mib").requires_fixture == "session-10mib-v3"
-    assert reg.benchmark("compare.memory_idle_load").requires_fixture == "session-10mib-v3"
+    assert reg.benchmark("compare.scroll_typing").requires_fixture == "session-10mib-v4"
+    # the v4 scenario switch: the three fixture scenarios resume the
+    # representative marathon corpus; session.agent_view_roundtrip keeps
+    # the v2 corpus and every fixture stays registered (v3 = stress)
+    assert reg.benchmark("session.cold_open_10mib").requires_fixture == "session-10mib-v4"
+    assert reg.benchmark("compare.memory_idle_load").requires_fixture == "session-10mib-v4"
     assert reg.benchmark("session.agent_view_roundtrip").requires_fixture == "session-10mib"
     assert "session-10mib" in reg.fixtures and "session-10mib-v3" in reg.fixtures
+    assert "session-10mib-v4" in reg.fixtures
 
 
 def test_deep_merge_override_wins():

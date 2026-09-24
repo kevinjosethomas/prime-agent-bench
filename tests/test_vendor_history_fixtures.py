@@ -201,12 +201,12 @@ class HookProduct(ProductAdapter):
 
 
 class StubFixture(Fixture):
-    """The v3 switch moved compare.scroll_typing to session-10mib-v3, so
+    """The v4 switch moved compare.scroll_typing to session-10mib-v4, so
     the stub registers under the v3 name with a REAL golden file whose
     manifest sha256 is its own hash — the merged engine stages the
     per-trial clone (golden verified against the manifest) before any
     launch, exactly as in a real campaign."""
-    name = "session-10mib-v3"
+    name = "session-10mib-v4"
     def __init__(self, path: Path):
         self._path = Path(path)
         import hashlib as _h
@@ -227,6 +227,7 @@ def _engine(tmp_path, monkeypatch, native):
     golden = tmp_path / "corpus.jsonl"
     golden.write_bytes(b'{"type": "session", "cwd": "/tmp/corpus-cwd"}\n')
     reg.fixtures["session-10mib-v3"] = StubFixture(golden)
+    reg.fixtures["session-10mib-v4"] = StubFixture(golden)
     reg.products["hookfake"] = HookProduct(
         {"layout": reg.layout, "product": {}, "mock": {}}, native)
     scroll = reg.benchmark("compare.scroll_typing")
@@ -241,7 +242,7 @@ def _engine(tmp_path, monkeypatch, native):
     out_dir.mkdir(parents=True)
     jsonl = trials_mod.run_trials(
         reg, FakeDriver({}), "compare.scroll_typing", ["hookfake"], 1, out_dir,
-        {"session-10mib-v3": golden}, aa=False, phase_tag="w1")
+        {"session-10mib-v3": golden, "session-10mib-v4": golden}, aa=False, phase_tag="w1")
     return [json.loads(l) for l in jsonl.read_text().splitlines()]
 
 

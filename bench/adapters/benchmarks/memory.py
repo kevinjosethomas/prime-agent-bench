@@ -26,7 +26,7 @@ class MemoryIdleLoad(Benchmark):
 
     name = "compare.memory_idle_load"
     # the display-corrected corpus (v3): hidden digest rows, product parity
-    requires_fixture = "session-10mib-v3"
+    requires_fixture = "session-10mib-v4"
 
     def __init__(self, cfg: dict):
         super().__init__(cfg)

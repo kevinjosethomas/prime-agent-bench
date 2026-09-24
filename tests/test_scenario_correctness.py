@@ -499,11 +499,13 @@ def _engine_reg(tmp_path, monkeypatch):
                                                          "content": [{"type": "text",
                                                                       "text": f"row {i}"}]}})
                                     for i in range(3)) + "\n")
-    # both corpus versions map to the same stub golden: the three switched
-    # scenarios resolve session-10mib-v3, agent_view_roundtrip keeps v2
+    # every corpus version maps to the same stub golden: the three switched
+    # scenarios resolve session-10mib-v4, agent_view_roundtrip keeps v2
     reg.fixtures["session-10mib"] = StubFixture(golden)
     reg.fixtures["session-10mib-v3"] = StubFixture(golden)
-    reg.fixture_paths = {"session-10mib": golden, "session-10mib-v3": golden}
+    reg.fixtures["session-10mib-v4"] = StubFixture(golden)
+    reg.fixture_paths = {"session-10mib": golden, "session-10mib-v3": golden,
+                         "session-10mib-v4": golden}
     # no real product launches; no load gating in unit tests
     for name, cls in (("capfake", FakeProduct), ("freshfake", FreshSessionProduct)):
         product = cls({"layout": reg.layout, "product": {}, "mock": {}}, FakeSession())
@@ -581,7 +583,7 @@ def test_run_trials_requires_the_fixture_to_be_ensured(tmp_path, monkeypatch):
     out_dir = tmp_path / "results"
     out_dir.mkdir(parents=True)
     from bench.trials import run_trials
-    with pytest.raises(ValueError, match="session-10mib-v3"):
+    with pytest.raises(ValueError, match="session-10mib-v4"):
         run_trials(reg, FakeDriver(FakeSession()), "compare.memory_idle_load",
                    ["capfake"], 1, out_dir, {}, aa=False, phase_tag="w1")
 
