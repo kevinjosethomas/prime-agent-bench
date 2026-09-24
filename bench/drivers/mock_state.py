@@ -19,7 +19,7 @@ def default_script(reply: str = DEFAULT_REPLY) -> dict:
 
 def sse_chunk(obj) -> bytes:
     """One SSE data chunk."""
-    return (json.dumps(obj) + "\n\n").encode()
+    return ("data: " + json.dumps(obj) + "\n\n").encode()
 
 
 def user_message_text(body: dict) -> str:
