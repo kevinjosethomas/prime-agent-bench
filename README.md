@@ -36,8 +36,9 @@ discovered from the package structure.
   real-API-regime rows, unsupported product/benchmark combinations, unconfirmed
   fixtures, failed validation, incomplete measurements, debug rows are excluded
   with reported counts + reasons); A/A calibration rows never mix into published
-  stats, per-phase trial counts label every denominator, and a product whose
-  primary p50 drifts between the A/A pass and the waves (aa.drift_threshold_pct)
+  stats, per-phase trial counts label every denominator, and a product with a
+  failing A/A noise floor (primary + declared aa_metrics, e.g. msg_send's
+  settle, whenever published) or an A/A-to-wave drift (aa.drift_threshold_pct)
   is marked unstable and never ranked
 
 ## Architecture

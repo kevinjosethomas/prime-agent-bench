@@ -15,6 +15,16 @@ def _reasons_cell(info: dict) -> str:
     return ", ".join(f"{reason}={n}" for reason, n in sorted(info["reasons"].items()))
 
 
+def _stability_detail(reason: str, info: dict) -> str:
+    """One stable/unstable mark rendered as evidence text."""
+    if reason == "aa_drift":
+        return (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
+                f"(+{info['drift_pct']}% drift)")
+    metrics = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} ({e['spread_pct']}%)"
+                        for m, e in sorted(info["metrics"].items()))
+    return f"A/A spread over threshold \u2014 {metrics}"
+
+
 def markdown(stats: dict, cfg: dict) -> str:
     """The benchmark summary tables + the excluded-trials and A/A tables."""
     display = cfg.get("display", {})
@@ -50,14 +60,15 @@ def markdown(stats: dict, cfg: dict) -> str:
             lines.append("")
         unstable = entry.get("unstable") or {}
         if unstable:
-            lines.append("Unstable (A/A-to-wave drift over threshold):")
+            lines.append("Unstable (never ranked):")
             lines.append("")
-            lines.append("| product | A/A p50 | W1 p50 | drift |")
-            lines.append("|---|---|---|---|")
-            for p in unstable:
-                info = unstable[p]
-                lines.append(f"| {display.get(p, p)} | {info['aa_p50']} | "
-                             f"{info['w1_p50']} | +{info['drift_pct']}% |")
+            lines.append("| product | reason | detail |")
+            lines.append("|---|---|---|")
+            for p in [p for p in order if p in unstable] \
+                    + [p for p in unstable if p not in order]:
+                for reason, info in unstable[p].items():
+                    lines.append(f"| {display.get(p, p)} | {reason} | "
+                                 f"{_stability_detail(reason, info)} |")
             lines.append("")
         excluded = entry.get("excluded") or {}
         if excluded:

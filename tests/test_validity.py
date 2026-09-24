@@ -36,7 +36,8 @@ def gate_map() -> dict:
     reg = discover(load_config(None))
     return {name: {"requires_fixture": b.requires_fixture,
                    "applicable_products": b.applicable_products,
-                   "completeness_keys": tuple(b.completeness_keys)}
+                   "completeness_keys": tuple(b.completeness_keys),
+                   "aa_metrics": tuple(b.aa_metrics)}
             for name, b in reg.benchmarks.items()}
 
 
@@ -71,6 +72,7 @@ def test_gate_map_reflects_registry():
     assert gate["compare.scroll_typing"]["completeness_keys"] == ("typing_ok",)
     assert gate["compare.memory_idle_load"]["requires_fixture"] == "session-10mib"
     assert gate["compare.cold_start"]["applicable_products"] is None
+    assert gate["compare.msg_send"]["aa_metrics"] == ("submit_to_settle_ms",)
 
 
 # ---- probe-deadline rows ------------------------------------------------------
@@ -150,12 +152,17 @@ def test_aa_rows_never_pool_into_published_stats(model):
     assert entry["trials"]["ts"] == {"w1": 5}
 
 
-def test_aa_calibrates_the_primary_metric(model):
-    """msg_send A/A calibrates submit_to_ack_ms (the old hardcoded
-    launch_to_ready_ms left msg_send/daemon A/A absent)."""
+def test_aa_calibrates_primary_and_declared_metrics(model):
+    """msg_send A/A calibrates submit_to_ack_ms AND the declared settle
+    metric (the old hardcoded launch_to_ready_ms left msg_send/daemon A/A
+    absent, and settle was never calibrated)."""
     aa = model["aa"]
     assert "compare.msg_send/rust" in aa
-    assert aa["compare.msg_send/rust"]["valid"] is True
+    assert "compare.msg_send/rust/submit_to_settle_ms" in aa
+    assert aa["compare.msg_send/rust"]["spread_pct"] == 10.7
+    assert aa["compare.msg_send/rust"]["valid"] is False          # captured shape
+    assert aa["compare.msg_send/rust/submit_to_settle_ms"]["valid"] is False
+    assert aa["compare.msg_send/claude"]["valid"] is True
     assert "session.cold_open_10mib/rust" in aa
 
 
@@ -246,19 +253,60 @@ def test_drift_gate_marks_unstable_never_ranks(model):
     entry = model["summary"]["daemon.boot"]
     unstable = entry["unstable"]
     assert "rust" in unstable and "ts" not in unstable
-    assert unstable["rust"]["drift_pct"] > 300.0
+    assert unstable["rust"]["aa_drift"]["drift_pct"] > 300.0
     assert entry["ranks"].get("rust") is None
     assert "rust" not in entry["primary_p50s"]
     assert "rust" not in entry["delta_vs_ts"]
     assert entry["ranks"]["ts"] == 1
     # the unstable product's raw stats stay visible for inspection
-    assert entry["products"]["rust"]["spawn_to_accept_ms"]["p50"] == unstable["rust"]["w1_p50"]
+    assert entry["products"]["rust"]["spawn_to_accept_ms"]["p50"] \
+        == unstable["rust"]["aa_drift"]["w1_p50"]
 
 
 def test_daemon_aa_calibrates_spawn_to_accept(model):
     """daemon.boot A/A exists on its primary metric (the audit found no
     tool-produced daemon A/A entries)."""
     assert "daemon.boot/rust" in model["aa"]
+
+
+# ---- A/A noise floor enforcement ----------------------------------------------
+
+def test_failing_aa_never_ranks(model):
+    """The captured campaign: rust msg_send A/A ack spread 10.7% (fail) and
+    settle spread far over; pi ack spread 12.5% (fail) — both must be out
+    of the rankings; claude (0.7%) and ts (no A/A evidence) still rank."""
+    entry = model["summary"]["compare.msg_send"]
+    unstable = entry["unstable"]
+    assert unstable["rust"]["aa_spread"]["metrics"]["submit_to_ack_ms"]["spread_pct"] == 10.7
+    assert "submit_to_settle_ms" in unstable["rust"]["aa_spread"]["metrics"]
+    assert unstable["pi"]["aa_spread"]["metrics"]["submit_to_ack_ms"]["spread_pct"] == 12.5
+    assert "rust" not in entry["ranks"] and "pi" not in entry["ranks"]
+    assert "rust" not in entry["primary_p50s"] and "pi" not in entry["primary_p50s"]
+    assert "rust" not in entry["delta_vs_ts"]
+    assert entry["ranks"] == {"claude": 1, "ts": 2}
+    # the failing products' raw stats stay visible for inspection
+    assert entry["products"]["rust"]["submit_to_ack_ms"]["p50"] == 84.0
+
+
+def test_settle_aa_required_only_when_published():
+    """A failing A/A on a declared metric that is NOT published must not
+    suppress the product (the requirement is 'if settling published, AA
+    settle must pass')."""
+    cfg = dict(CFG, gate_benchmarks=gate_map())
+    rows = []
+    for i in range(6):          # waves: ack published, settle never measured
+        rows.append({"benchmark": "compare.msg_send", "product": "rust", "phase": "w1",
+                     "trial": i, "metrics": {"submit_to_ack_ms": 80.0 + i},
+                     "validation": {"ack": True, "settle": True}, "validated": True})
+    for i in range(10):         # A/A: ack halves agree, settle halves diverge
+        rows.append({"benchmark": "compare.msg_send", "product": "rust", "phase": "aa",
+                     "trial": i,
+                     "metrics": {"submit_to_ack_ms": 80.0 if i % 2 == 0 else 82.0,
+                                 "submit_to_settle_ms": 900.0 if i % 2 == 0 else 300.0},
+                     "validation": {"ack": True, "settle": True}, "validated": True})
+    entry = summarize_rows(rows, cfg)["summary"]["compare.msg_send"]
+    assert "unstable" not in entry          # settle A/A failed but settle is not published
+    assert entry["ranks"] == {"rust": 1}
 
 
 # ---- real-api regime -----------------------------------------------------------
@@ -291,8 +339,10 @@ def test_outputs_render_exclusions_and_denominators(model, model_clean_settle):
     assert "real_api_regime=5" in md_clean
     assert "w1=5" in md and "aa=10" in md      # labeled denominators
     assert "(n5)" in md                        # per-metric sample size
-    assert "Unstable (A/A-to-wave drift over threshold)" in md
-    assert "+373.7%" in md                    # the daemon.boot rust drift
+    assert "Unstable (never ranked)" in md
+    assert "aa_drift" in md and "aa_spread" in md
+    assert "+373.7% drift" in md              # the daemon.boot rust drift
+    assert "(10.7%)" in md                    # the msg_send rust A/A ack spread
     payload = json.loads(NotionAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model))
     bullets = [b for b in payload["children"]
                if b["type"] == "bulleted_list_item"]

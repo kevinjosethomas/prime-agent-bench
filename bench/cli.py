@@ -169,7 +169,8 @@ def cmd_analyze(args) -> None:
     # applicability, completeness keys) for the validity gate
     cfg["gate_benchmarks"] = {name: {"requires_fixture": b.requires_fixture,
                                      "applicable_products": b.applicable_products,
-                                     "completeness_keys": tuple(b.completeness_keys)}
+                                     "completeness_keys": tuple(b.completeness_keys),
+                                     "aa_metrics": tuple(b.aa_metrics)}
                               for name, b in reg.benchmarks.items()}
     analyzers = {"summary.json": JsonAnalyzer(cfg), "summary.md": MarkdownAnalyzer(cfg),
                  "summary.notion.json": NotionAnalyzer(cfg)}

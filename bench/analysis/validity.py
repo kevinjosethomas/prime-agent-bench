@@ -40,11 +40,15 @@ Phase rule: ``aa`` rows feed the A/A calibration section only; published
 stats aggregate the remaining non-debug phases, with per-product
 per-phase trial counts (``trials``) labeling every denominator.
 
-Stability rule: a product whose primary-metric p50 drifts between the
-A/A pass and the published waves beyond ``aa.drift_threshold_pct`` is
-marked unstable (``summary.unstable``) and never ranked or delta'd —
-the captured daemon.boot case: AA p50 46.1 vs W1 p50 219.6, a ~4.8x
-pass-to-pass shift that pooled medians hid.
+Stability rule: a product with a failing A/A calibration (noise-floor
+spread over ``aa.spread_threshold_pct`` on the primary metric or on a
+benchmark-declared ``aa_metrics`` metric whenever it is published) or a
+primary-p50 drift between the A/A pass and the published waves over
+``aa.drift_threshold_pct`` is marked unstable (``summary.unstable``:
+``aa_spread`` / ``aa_drift``) and never ranked or delta'd — the captured
+cases: msg_send rust ack A/A 10.7% and pi 12.5% still ranked before;
+daemon.boot rust AA 46.1 vs W1 219.6, a ~4.8x pass-to-pass shift that
+pooled medians hid.
 
 Per-benchmark gate metadata (fixture requirement, applicability,
 completeness keys) comes from the registry via ``cfg["gate_benchmarks"]``

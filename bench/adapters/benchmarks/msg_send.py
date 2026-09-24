@@ -18,6 +18,9 @@ class MsgSend(Benchmark):
     """Keystroke Enter -> first submit-ack frame -> mock turn settle."""
 
     name = "compare.msg_send"
+    # the settle metric is published alongside the ranked ack; a noisy
+    # A/A on either must keep the product out of the rankings
+    aa_metrics = ("submit_to_settle_ms",)
 
     def measure(self, product, ctx, record, driver, fixture=None) -> None:
         if product.needs_prepass:

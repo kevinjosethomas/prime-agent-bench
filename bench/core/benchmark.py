@@ -33,6 +33,10 @@ class Benchmark(ABC):
     # (the analysis validity gate excludes rows whose completeness keys
     # are falsy, e.g. scroll_typing's typing_ok after a dropped key).
     completeness_keys: tuple[str, ...] = ()
+    # Additional metrics (beyond the primary) that must pass the A/A
+    # noise floor whenever they are published (the analysis stability
+    # gate refuses to rank a product whose A/A spread fails).
+    aa_metrics: tuple[str, ...] = ()
 
     def __init__(self, cfg: dict):
         self.cfg = cfg
