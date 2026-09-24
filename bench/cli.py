@@ -45,7 +45,8 @@ def cmd_run(args) -> None:
         aa = True if args.aa is None else args.aa
         state = run_in_sandbox(cfg, args.parallel_config, args.sandbox,
                                benchmarks, products, trials=args.trials,
-                               aa=aa, phase=args.phase)
+                               aa=aa, phase=args.phase,
+                               aa_trials=args.aa_trials or 10)
         print(json.dumps(state, indent=1))
         return
     run_suite(cfg, reg, reg.driver(), benchmarks, products, trials=args.trials,
@@ -221,6 +222,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="explicit A/A on (sandbox runs default to it)")
     p.add_argument("--no-aa", dest="aa", action="store_false",
                    help="debugging only: skip the A/A calibration pass")
+    p.add_argument("--aa-trials", type=int, default=None,
+                   help="A/A pass trial count for sandbox runs (default 10)")
     p.add_argument("--phase", default="w1")
     p.add_argument("--out", default=None)
     p.add_argument("--driver", default=None)
