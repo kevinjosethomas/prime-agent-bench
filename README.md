@@ -34,8 +34,11 @@ discovered from the package structure.
 - Strict result-validity gate: only completed valid trials enter stats/rankings/
   deltas (probe-deadline artifacts, auth-error settle — Codex 401 — and
   real-API-regime rows, unsupported product/benchmark combinations, unconfirmed
-  fixtures, failed validation, incomplete measurements, debug rows are excluded
-  with reported counts + reasons); A/A calibration rows never mix into published
+  fixtures, failed / missing / vacuous validation (validated=true without a
+  validation block — kernel.* and daemon.boot stay unrankable until their
+  benchmarks record completion evidence), incomplete measurements, debug rows
+  are excluded with reported counts + reasons; engine status rows (products
+  that ran no trials) are reported as status, not exclusions; A/A calibration rows never mix into published
   stats, per-phase trial counts label every denominator, and a product with a
   failing A/A noise floor (primary + declared aa_metrics, e.g. msg_send's
   settle, whenever published) or an A/A-to-wave drift (aa.drift_threshold_pct)

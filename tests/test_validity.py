@@ -223,10 +223,15 @@ def test_row_exclusion_precedence():
     incomplete = {"benchmark": "compare.scroll_typing", "product": "ts",
                   "phase": "w1", "fixture": {"loaded": True},
                   "metrics": {"typing_ms": [1.0], "typing_ok": False},
-                  "validated": True}
+                  "validated": True,
+                  "validation": {"sentinel": True, "echoed": True, "erased": True}}
     assert row_exclusion(incomplete, {}, gate) == "incomplete_measurement"
+    vacuous = {"benchmark": "kernel.cold_start", "product": "rust", "phase": "w1",
+               "metrics": {"submit_to_result_ms": 100.2}, "validated": True}
+    assert row_exclusion(vacuous, {}, gate) == "no_validation_evidence"
     ok = {"benchmark": "compare.cold_start", "product": "rust", "phase": "w1",
-          "metrics": {"launch_to_ready_ms": 100.0}, "validated": True}
+          "metrics": {"launch_to_ready_ms": 100.0}, "validated": True,
+          "validation": {"echoed": True, "erased": True}}
     assert row_exclusion(ok, {}, gate) is None
 
 
@@ -234,7 +239,8 @@ def test_gate_rows_counts_and_reasons():
     gate = gate_map()
     rows = [
         {"benchmark": "compare.cold_start", "product": "rust", "phase": "w1",
-         "metrics": {"launch_to_ready_ms": 100.0}},
+         "metrics": {"launch_to_ready_ms": 100.0}, "validated": True,
+         "validation": {"echoed": True, "erased": True}},
         {"benchmark": "compare.cold_start", "product": "rust", "phase": "w1",
          "metrics": {}, "error": "TimeoutError: input never became ready in 45s (90 probes)"},
     ]
@@ -297,13 +303,15 @@ def test_settle_aa_required_only_when_published():
     for i in range(6):          # waves: ack published, settle never measured
         rows.append({"benchmark": "compare.msg_send", "product": "rust", "phase": "w1",
                      "trial": i, "metrics": {"submit_to_ack_ms": 80.0 + i},
-                     "validation": {"ack": True, "settle": True}, "validated": True})
+                     "validation": {"ack": True, "settle": True}, "validated": True,
+                     "comparability": "equivalent"})
     for i in range(10):         # A/A: ack halves agree, settle halves diverge
         rows.append({"benchmark": "compare.msg_send", "product": "rust", "phase": "aa",
                      "trial": i,
                      "metrics": {"submit_to_ack_ms": 80.0 if i % 2 == 0 else 82.0,
                                  "submit_to_settle_ms": 900.0 if i % 2 == 0 else 300.0},
-                     "validation": {"ack": True, "settle": True}, "validated": True})
+                     "validation": {"ack": True, "settle": True}, "validated": True,
+                     "comparability": "equivalent"})
     entry = summarize_rows(rows, cfg)["summary"]["compare.msg_send"]
     assert "unstable" not in entry          # settle A/A failed but settle is not published
     assert entry["ranks"] == {"rust": 1}
@@ -327,11 +335,61 @@ def test_real_api_regime_rows_never_ranked(model, model_clean_settle):
     assert _reasons(model, "compare.msg_send", "codex")["reasons"]["settle_auth_error"] == 5
 
 
+# ---- universal validation evidence -------------------------------------------
+
+def test_kernel_vacuous_validation_unrankable(model):
+    """kernel.* rows carry validated=true with NO validation block (the
+    benchmark never records completion evidence, so validate() passes
+    vacuously): unrankable until in-scope completion validation lands.
+    Rows that DO record evidence publish stats (kernel has no PRIMARY
+    metric, so no ranks exist for it regardless)."""
+    entry = model["summary"]["kernel.cold_start"]
+    assert _reasons(model, "kernel.cold_start", "rust")["reasons"] \
+        ["no_validation_evidence"] == 5
+    assert "ranks" not in entry                       # no PRIMARY metric
+    assert entry["products"]["rust"]["submit_to_result_ms"]["n"] == 3
+
+
+def test_unvalidated_rows_excluded():
+    """A non-error row without a validated verdict cannot certify a
+    completed valid trial."""
+    gate = gate_map()
+    r = {"benchmark": "compare.cold_start", "product": "rust", "phase": "w1",
+         "metrics": {"launch_to_ready_ms": 100.0}, "validation": {"echoed": True}}
+    assert row_exclusion(r, {}, gate) == "unvalidated"
+
+
+def test_status_rows_reported_not_excluded(model):
+    """Engine status rows (products that ran no trials) are reported as
+    entry["status"], never counted as exclusions, failures or trials."""
+    session = model["summary"]["session.cold_open_10mib"]
+    assert session["status"]["pi"]["status"] == "not_applicable"
+    assert "pi" not in (session.get("excluded") or {})
+    assert "pi" not in session.get("trials", {})
+    assert "pi" not in session["products"]
+    mem = model["summary"]["compare.memory_idle_load"]
+    assert mem["status"]["pi"]["status"] == "not_comparable"
+    assert mem["status"]["pi"]["comparability"] == "not_comparable"
+    assert "pi" not in (mem.get("excluded") or {})
+
+
+def test_comparability_modes_surfaced(model):
+    """Measured rows carry comparability modes (equivalent/qualified); the
+    summary surfaces them per product for the report."""
+    session = model["summary"]["session.cold_open_10mib"]
+    assert session["comparability"]["rust"] == "equivalent"
+    assert session["comparability"]["ts"] == "equivalent"
+    assert model["summary"]["compare.msg_send"]["comparability"]["claude"] == "qualified"
+
+
 # ---- artifacts report the gate ----------------------------------------------
 
 def test_outputs_render_exclusions_and_denominators(model, model_clean_settle):
     md = MarkdownAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model)
     assert "Excluded from rankings" in md
+    assert "Status (no trials ran)" in md
+    assert "not_comparable" in md
+    assert "_Comparability: " in md
     assert "not_applicable=5" in md
     assert "settle_auth_error=5" in md
     assert "fixture_not_confirmed=4" in md

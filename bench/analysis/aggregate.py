@@ -19,7 +19,8 @@ from bench.analysis.aa_validation import aa_failing, aa_validity
 from bench.analysis.rankings import delta_vs_baseline, rank_products
 from bench.analysis.stats import boot_ci_median, stats
 from bench.analysis.validity import (ERROR_REASONS, aa_primary_p50s, gate_rows,
-                                     is_aa_phase, settle_auth_products)
+                                     is_aa_phase, is_status_row,
+                                     settle_auth_products, status_report)
 from bench.core.measurement import primary_metric
 
 
@@ -62,10 +63,12 @@ def aggregate(rows: list):
 def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
               trials: dict | None = None, aa_p50s: dict | None = None,
               drift_threshold_pct: float | None = None,
-              aa_failing: dict | None = None) -> dict:
+              aa_failing: dict | None = None, status: dict | None = None,
+              comparability: dict | None = None) -> dict:
     """The summary model: per-benchmark stats, primary ranks, ts deltas,
     plus the validity-gate report (excluded counts + reasons, per-phase
-    trial denominators) when provided.
+    trial denominators, engine status rows, comparability modes) when
+    provided.
 
     Products with stability marks (A/A-to-wave drift over threshold, or a
     failing A/A noise floor on the primary or a published declared
@@ -106,6 +109,10 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
             entry["excluded"] = excluded[bench]
         if trials and trials.get(bench):
             entry["trials"] = trials[bench]
+        if status and status.get(bench):
+            entry["status"] = status[bench]
+        if comparability and comparability.get(bench):
+            entry["comparability"] = comparability[bench]
         out[bench] = entry
     return out
 
@@ -141,13 +148,17 @@ def _stability_marks(bench: str, p50s: dict, entry_products: dict,
 def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> dict:
     """The shared stats model: {"summary": ..., "aa": ..., "settle": ...}.
 
-    The strict validity gate runs first (analysis.validity.gate_rows):
-    invalid rows never reach stats, ranks, or deltas. Published stats
-    aggregate the gated published-phase rows only (``aa`` rows calibrate
-    in the A/A section); excluded rows are reported with counts + reasons."""
+    Engine status rows (products that ran no trials) are split out first
+    and reported as entry["status"] — not exclusions, not failures. The
+    strict validity gate then runs (analysis.validity.gate_rows): invalid
+    rows never reach stats, ranks, or deltas. Published stats aggregate
+    the gated published-phase rows only (``aa`` rows calibrate in the A/A
+    section); excluded rows are reported with counts + reasons."""
     gate = cfg.get("gate_benchmarks") or {}
     settle_auth = settle_auth_products(settle_rows or [])
-    valid, excluded = gate_rows(rows, settle_auth=settle_auth, gate=gate)
+    status = status_report(rows)
+    trial_rows = [r for r in rows if not is_status_row(r)]
+    valid, excluded = gate_rows(trial_rows, settle_auth=settle_auth, gate=gate)
     published = [r for r in valid if not is_aa_phase(r)]
     threshold = float(cfg.get("aa", {}).get("spread_threshold_pct", 10.0))
     drift_threshold = float(cfg.get("aa", {}).get("drift_threshold_pct", 10.0))
@@ -163,11 +174,16 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> di
                 failures[bench][prod] = n
     # per-product per-phase trial denominators over the valid rows
     trials: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    comparability: dict = defaultdict(dict)
     for r in valid:
         trials[r["benchmark"]][r["product"]][str(r.get("phase") or "")] += 1
+        mode = r.get("comparability")
+        if mode:
+            comparability[r["benchmark"]].setdefault(r["product"], mode)
     settle = {prod: dict(info, auth_error=True) for prod, info in settle_auth.items()}
     return {"summary": summarize(by, failures, cfg, excluded=excluded, trials=trials,
                                  aa_p50s=aa_primary_p50s(valid),
                                  drift_threshold_pct=drift_threshold,
-                                 aa_failing=aa_failing(aa)),
+                                 aa_failing=aa_failing(aa), status=status,
+                                 comparability=dict(comparability)),
             "aa": aa, "settle": settle}

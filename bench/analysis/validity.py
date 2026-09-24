@@ -25,6 +25,13 @@ Captured failure classes it excludes (reason codes):
   the 10MiB fixture.
 - ``validation_failed``: the trial completed but its validation evidence
   failed (probe echoed but not erased; ack or settle missing, ...).
+- ``unvalidated``: no validation verdict at all (``validated`` absent on
+  a non-error row) — a completed valid trial must be certified.
+- ``no_validation_evidence``: ``validated=true`` without a validation
+  block — the vacuous certification (kernel.* and daemon.boot rows have
+  no ``record["validation"]``, so their ``validate()`` passes vacuously).
+  Such benchmarks stay unrankable until they record real completion
+  evidence in their own scope.
 - ``real_api_regime``: msg_send rows routed through the real API
   (``msg_routing == "real-api"``) while the benchmark's peers measure the
   scripted mock; the settle detector fires on any screen growth, so the
@@ -49,6 +56,13 @@ primary-p50 drift between the A/A pass and the published waves over
 cases: msg_send rust ack A/A 10.7% and pi 12.5% still ranked before;
 daemon.boot rust AA 46.1 vs W1 219.6, a ~4.8x pass-to-pass shift that
 pooled medians hid.
+
+Status rows (engine declarations for products that ran no trials:
+``{"status": "not_applicable"|"not_comparable", "reason": ...,
+"trial": null}``) are NOT exclusions and NOT failures; they are reported
+as ``entry["status"]`` per product. Measured rows may carry a
+``comparability`` mode (equivalent/qualified) surfaced in
+``entry["comparability"]`` — evidence for the report, never gated on.
 
 Per-benchmark gate metadata (fixture requirement, applicability,
 completeness keys) comes from the registry via ``cfg["gate_benchmarks"]``
@@ -166,6 +180,10 @@ def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
         return "fixture_not_confirmed"
     if row.get("validated") is False:
         return "validation_failed"
+    if row.get("validated") is not True:
+        return "unvalidated"
+    if not (row.get("validation") or {}):
+        return "no_validation_evidence"
     for key in meta.get("completeness_keys") or ():
         if not (row.get("metrics") or {}).get(key):
             return "incomplete_measurement"
@@ -202,6 +220,25 @@ def gate_rows(rows: list, settle_auth: dict | None = None,
 def is_aa_phase(row: dict) -> bool:
     """Whether the row belongs to the A/A calibration pass."""
     return str(row.get("phase") or "") == "aa"
+
+
+def is_status_row(row: dict) -> bool:
+    """Whether the row is an engine status declaration (a product that ran
+    no trials), not a trial: {"status": ..., "reason": ..., trial: null}."""
+    return bool(row.get("status")) and not (row.get("metrics") or {})
+
+
+def status_report(rows: list) -> dict:
+    """{benchmark: {product: {status, reason, comparability}}} from the
+    engine status rows (one per product that ran no trials)."""
+    out: dict = defaultdict(dict)
+    for row in rows:
+        if is_status_row(row):
+            out[row.get("benchmark")][row.get("product")] = {
+                "status": row.get("status"),
+                "reason": row.get("reason"),
+                "comparability": row.get("comparability")}
+    return dict(out)
 
 
 def aa_primary_p50s(rows: list) -> dict:
