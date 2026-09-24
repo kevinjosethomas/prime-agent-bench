@@ -64,6 +64,9 @@ class MsgSend(Benchmark):
             }
             record["msg_routing"] = routing
             record["validation"] = {"ack": t_ack is not None, "settle": t_settle is not None}
+            if t_settle is None:
+                record["settle_miss_screen"] = "\n".join(
+                    ln for ln in app.screen_text().splitlines() if ln.strip())[-2000:]
         finally:
             app.kill_tree()
             product.reap(ctx)

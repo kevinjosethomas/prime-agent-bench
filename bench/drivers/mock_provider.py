@@ -34,7 +34,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("access-control-allow-origin", "*")
 
     def do_GET(self):
-        if self.path.endswith("/models"):
+        if self.path.split("?")[0].endswith("/models"):
             body = json.dumps({
                 "object": "list",
                 "data": [{"id": "mock-1", "object": "model", "created": 1789584000, "owned_by": "bench"}],
@@ -71,9 +71,10 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
             return
-        if self.path.endswith("/chat/completions"):
+        path = self.path.split("?")[0]
+        if path.endswith("/chat/completions"):
             self._chat_completions(body, resp)
-        elif self.path.endswith("/messages"):
+        elif path.endswith("/messages"):
             self._anthropic_messages(body, resp)
         else:
             self.send_response(404)

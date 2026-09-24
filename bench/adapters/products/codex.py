@@ -1,10 +1,12 @@
 """Codex CLI product adapter.
 
-npm-installed CLI with real ChatGPT auth copied verbatim (Kevin: codex
-msg_send may use the real API under the $10 budget; codex 0.156 rejects
-chat wire_api, so no mock provider override is installed). Onboarding
-prepass required.
-"""
+npm-installed CLI with real ChatGPT auth (Kevin: codex msg_send may use
+the real API under the $10 budget; codex 0.156 rejects chat wire_api, so
+no mock provider override is installed). The FULL .codex state is copied:
+codex 0.156 boots to the login menu when it finds auth.json without the
+accompanying device state (installation_id/version/sqlites), and a login
+walk would silently replace the real OAuth with a typed key. Onboarding
+prepass required (the per-workdir trust dialog)."""
 from __future__ import annotations
 
 import shutil
@@ -15,11 +17,7 @@ from bench.core.env import scrubbed_env
 from bench.core.product import DialogStep, ProductAdapter, TrialContext
 
 DIALOG_STEPS: list[DialogStep] = [
-    ("3. Provide your own API key", ["3"]),                           # welcome menu
-    ("Paste or type your API key", ["sk-bench-dummy-not-real\r"]),   # key box
-    ("Press enter to continue", ["\r"]),                             # generic continue
-    ("Trust this folder?", ["\r"]),                                   # folder trust (cursor prepositioned)
-    ("auth.openai.com", ["\x1b", "3"]),                              # accidental OAuth page -> esc, pick 3
+    ("Trust and continue", ["\r"]),   # folder trust (option 1 preselected, enter confirms)
 ]
 
 
@@ -43,14 +41,11 @@ class CodexProduct(ProductAdapter):
                 "binary": str(self.binary)}
 
     def prepare_template(self, tpl: Path) -> None:
-        codex = tpl / "home" / ".codex"
-        codex.mkdir(parents=True, exist_ok=True)
-        src_auth = Path.home() / ".codex" / "auth.json"
-        if src_auth.exists():
-            shutil.copy(src_auth, codex / "auth.json")
-        cfg = Path.home() / ".codex" / "config.toml"
-        if cfg.exists():
-            shutil.copy(cfg, codex / "config.toml")
+        """The whole authenticated .codex state (tokens + device identity)."""
+        src = Path.home() / ".codex"
+        if src.exists():
+            shutil.copytree(src, tpl / "home" / ".codex", dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns("tmp", ".tmp"))
 
     def env(self, ctx: TrialContext) -> dict:
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
