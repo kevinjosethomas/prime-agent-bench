@@ -68,11 +68,15 @@ def _blocks(stats: dict, cfg: dict) -> list:
         unstable = entry.get("unstable") or {}
         for p in unstable:
             for reason, info in unstable[p].items():
-                detail = (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
-                          f"(+{info['drift_pct']}% drift)" if reason == "aa_drift"
-                          else "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} "
-                                         f"({e['spread_pct']}%)"
-                                         for m, e in sorted(info["metrics"].items())))
+                if reason == "aa_drift":
+                    detail = (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
+                              f"(+{info['drift_pct']}% drift)")
+                elif reason == "aa_missing_boundary":
+                    detail = info["reason"]
+                else:
+                    detail = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} "
+                                       f"({e['spread_pct']}%)"
+                                       for m, e in sorted(info["metrics"].items()))
                 out.append({"object": "block", "type": "bulleted_list_item",
                             "bulleted_list_item": {"rich_text": [_text(
                                 f"{display.get(p, p)}: unstable ({reason}) \u2014 {detail}")]}})

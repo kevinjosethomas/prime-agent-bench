@@ -21,6 +21,37 @@ PRIMARY: dict[str, tuple[str, str]] = {
     "compare.memory_idle_load": ("rss_settled_mb", "minimize"),
 }
 
+#: Benchmarks whose ranked metric is DERIVED at flattening for rows that
+#: predate the recorded metric (legacy historical rows): benchmark ->
+#: (derived metric, the raw source metrics it is derived from). Two
+#: consumers: metrics_for back-fills the derived metric for such rows;
+#: the analysis stability gate requires an A/A calibration on it before
+#: those legacy-derived values may rank.
+DERIVED_PRIMARY_SOURCES = {
+    "session.cold_open_10mib": ("launch_to_complete_ms",
+                                ("launch_to_ready_ms", "launch_to_sentinel_ms")),
+}
+
+
+def derived_primary(row: dict) -> str | None:
+    """The ranked metric this row can only provide via flattening-time
+    derivation (a legacy row that predates the recorded metric), or None.
+
+    A row carries the derived metric itself (new-wave shape) -> None: the
+    recorded value stands and no derivation is involved. A legacy row with
+    its raw source metrics present -> the derived metric name (the boundary
+    metrics_for will back-fill). Legacy rows missing a source (e.g. no
+    sentinel) derive nothing -> None — such rows stay invalid."""
+    spec = DERIVED_PRIMARY_SOURCES.get(row.get("benchmark"))
+    if not spec:
+        return None
+    metric, sources = spec
+    m = row.get("metrics") or {}
+    if m.get(metric) is not None:
+        return None
+    return metric if all(m.get(s) is not None for s in sources) else None
+
+
 _TYPING_LIST_KEYS = ("typing_ms", "typing_scrolled_ms")
 _SUBMIT_MS_KEYS = ("submit_to_ack_ms", "submit_to_result_ms", "state_build_ms",
                    "compact_to_ack_ms", "post_compact_cell_ms", "kill_to_restored_cell_ms")
@@ -77,14 +108,14 @@ def metrics_for(row: dict) -> dict:
         out["multi_kernel_n"] = m.get("n")
     if "rss_after_first_cell" in m and isinstance(m["rss_after_first_cell"], dict):
         out["kernel_rss_mb"] = m["rss_after_first_cell"].get("rss_mb")
-    if row.get("benchmark") == "session.cold_open_10mib":
+    derived = derived_primary(row)
+    if derived:
         # completion boundary back-compat: rows measured before the boundary
         # metric was recorded carry both raw timestamps; the ranked value is
         # the later of the two (a missing sentinel yields no boundary — the
         # row stays invalid, never a fast success). Recorded values stand.
-        ready, sentinel = out.get("launch_to_ready_ms"), out.get("launch_to_sentinel_ms")
-        if ready is not None and sentinel is not None:
-            out.setdefault("launch_to_complete_ms", max(ready, sentinel))
+        sources = DERIVED_PRIMARY_SOURCES[row["benchmark"]][1]
+        out.setdefault(derived, max(out[s] for s in sources))
     res = row.get("resource", {})
     if "rss_settled" in res:
         out["rss_settled_mb"] = res["rss_settled"].get("rss_mb")

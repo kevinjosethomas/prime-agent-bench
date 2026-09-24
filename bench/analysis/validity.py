@@ -243,7 +243,9 @@ def status_report(rows: list) -> dict:
 
 def aa_primary_p50s(rows: list) -> dict:
     """{(benchmark, product): p50} over the rows' A/A pass, on each
-    benchmark's PRIMARY metric (the same metric the waves are ranked on)."""
+    benchmark's PRIMARY metric (the same metric the waves are ranked on),
+    read through metrics_for so legacy rows whose primary is derived at
+    flattening (session.cold_open's completion boundary) calibrate too."""
     vals: dict = defaultdict(list)
     for row in rows:
         if not is_aa_phase(row):
@@ -251,7 +253,7 @@ def aa_primary_p50s(rows: list) -> dict:
         primary, _ = primary_metric(row.get("benchmark")) or (None, None)
         if not primary:
             continue
-        value = (row.get("metrics") or {}).get(primary)
+        value = metrics_for(row).get(primary)
         if value is not None:
             vals[(row["benchmark"], row["product"])].append(value)
     return {key: stats(v)["p50"] for key, v in vals.items() if v}

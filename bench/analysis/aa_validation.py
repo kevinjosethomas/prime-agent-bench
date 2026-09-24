@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from bench.analysis.stats import stats
-from bench.core.measurement import primary_metric
+from bench.core.measurement import metrics_for, primary_metric
 
 
 def aa_validity(rows: list, threshold_pct: float = 10.0,
@@ -32,11 +32,15 @@ def aa_validity(rows: list, threshold_pct: float = 10.0,
             continue
         bench = r.get("benchmark")
         primary, _ = primary_metric(bench) or (None, None)
+        # the calibrated metrics are read through the same flattening as the
+        # published stats (core.measurement.metrics_for): a primary that is
+        # derived for legacy rows (session.cold_open's completion boundary)
+        # calibrates from the A/A rows' own raw timestamps, no row rewrite
+        flat = metrics_for(r)
         metrics = [m for m in (primary,) + tuple(aa_metrics.get(bench) or ())
-                   if m and (r.get("metrics") or {}).get(m) is not None]
+                   if m and flat.get(m) is not None]
         for metric in metrics:
-            by[(bench, r["product"], metric, r["trial"] % 2)].append(
-                r.get("metrics", {}).get(metric))
+            by[(bench, r["product"], metric, r["trial"] % 2)].append(flat.get(metric))
     grouped = defaultdict(dict)
     for (bench, prod, metric, half), vals in by.items():
         grouped[(bench, prod, metric)][half] = vals

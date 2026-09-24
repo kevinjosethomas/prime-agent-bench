@@ -20,6 +20,8 @@ def _stability_detail(reason: str, info: dict) -> str:
     if reason == "aa_drift":
         return (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
                 f"(+{info['drift_pct']}% drift)")
+    if reason == "aa_missing_boundary":
+        return info["reason"]
     metrics = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} ({e['spread_pct']}%)"
                         for m, e in sorted(info["metrics"].items()))
     return f"A/A spread over threshold \u2014 {metrics}"

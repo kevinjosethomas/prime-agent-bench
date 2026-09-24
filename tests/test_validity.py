@@ -115,13 +115,53 @@ def test_session_open_ranks_on_the_completion_boundary(model):
     """session.cold_open_10mib ranks on launch_to_complete_ms — the later of
     typed echo and tail sentinel (spec §A). The historical captured rows
     predate the recorded boundary metric, so the analyzer derives it from
-    each row's own two timestamps (max) at flattening; the sentinel-missing
-    rows derive no boundary and never reach the p50s."""
+    each row's own two timestamps (max) at flattening. Ranking a derived
+    value additionally requires an A/A calibration on the boundary: rust
+    (8 valid AA rows deriving it) ranks; ts (its only AA row is a
+    sentinel-missing invalid row) is marked unstable and never ranks or
+    delta'd on this tree."""
     entry = model["summary"]["session.cold_open_10mib"]
     assert entry["primary"] == "launch_to_complete_ms"
-    assert entry["primary_p50s"] == {"rust": 9600.0, "ts": 10300.0}
-    assert entry["ranks"] == {"rust": 1, "ts": 2}
-    assert entry["delta_vs_ts"]["rust"]["abs"] == -700.0
+    assert entry["primary_p50s"] == {"rust": 9600.0}
+    assert entry["ranks"] == {"rust": 1}
+    assert entry["delta_vs_ts"] == {}
+    assert entry["unstable"]["ts"]["aa_missing_boundary"]
+    assert entry["unstable"]["ts"]["aa_missing_boundary"]["reason"].startswith(
+        "ranked value derived from legacy rows")
+
+
+def test_legacy_boundary_rows_require_aa_calibration_to_rank():
+    """The derived boundary may not rank uncalibrated: legacy rows (no
+    recorded launch_to_complete_ms) rank only once an A/A pass calibrates
+    the boundary; rows that record the metric (new waves) rank under the
+    normal policy exactly as before."""
+    cfg = dict(CFG, gate_benchmarks=gate_map())
+
+    def sess_row(product, trial, ready, sentinel, phase="w1", recorded=False):
+        m = {"launch_to_ready_ms": ready, "launch_to_sentinel_ms": sentinel}
+        if recorded:
+            m["launch_to_complete_ms"] = max(ready, sentinel)
+        return {"benchmark": "session.cold_open_10mib", "product": product,
+                "phase": phase, "trial": trial, "metrics": m, "validated": True,
+                "validation": {"sentinel": True, "echoed": True, "erased": True},
+                "fixture": {"loaded": True}, "comparability": "equivalent"}
+
+    legacy = [sess_row("rust", i, 9000.0 + i, 8000.0) for i in range(4)]
+    entry = summarize_rows(legacy, cfg)["summary"]["session.cold_open_10mib"]
+    # legacy-derived boundary, no A/A anywhere: unrankable, marked
+    assert entry["ranks"] == {} and entry["primary_p50s"] == {}
+    assert entry["unstable"]["rust"]["aa_missing_boundary"]
+    # the same pool with an A/A pass on the derived boundary ranks
+    calibrated = legacy + [sess_row("rust", i, 9000.0, 8000.0, phase="aa")
+                           for i in range(6)]
+    entry = summarize_rows(calibrated, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["ranks"] == {"rust": 1}
+    assert "unstable" not in entry
+    # rows that record the boundary rank without the legacy requirement
+    recorded = [sess_row("ts", i, 100.0, 90.0, recorded=True) for i in range(4)]
+    entry = summarize_rows(recorded, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["ranks"] == {"ts": 1}
+    assert "unstable" not in entry
 
 
 # ---- auth-error settle (Codex 401) -------------------------------------------
@@ -177,11 +217,10 @@ def test_aa_calibrates_primary_and_declared_metrics(model):
     assert aa["compare.msg_send/rust/submit_to_settle_ms"]["valid"] is False
     assert aa["compare.msg_send/claude"]["valid"] is True
     # the captured session.cold_open rows predate the recorded boundary
-    # metric (launch_to_complete_ms), so their raw rows cannot calibrate the
-    # new primary — the boundary is derived for them at flattening instead
-    # (test_session_open_ranks_on_the_completion_boundary); new-wave rows
-    # record the metric and calibrate like every other benchmark.
-    assert "session.cold_open_10mib/rust" not in aa
+    # metric, but the A/A machinery reads through metrics_for: the AA rows'
+    # own two timestamps calibrate the derived boundary, so the primary is
+    # still A/A-covered on the historical tree (no row rewrite).
+    assert "session.cold_open_10mib/rust" in aa
 
 
 # ---- fixture comparability ---------------------------------------------------
