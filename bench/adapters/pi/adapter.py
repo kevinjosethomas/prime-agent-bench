@@ -9,7 +9,8 @@ session-JSONL schema (pi v3 session header + id/parentId entries; Prime
 Agent forked pi), so the native fixture import is a validated byte copy of
 the corpus staged into the trial's agent sessions dir and resumed with
 the native `--session <path>` flag (SessionManager.open — a direct file
-path is a first-class resume input in the pinned 0.73.0 source). The
+path is a first-class resume input in the pinned source,
+v0.87.1-16-gb455975). The
 staged copy is the only thing the TUI ever appends to; the gold fixture
 file is never touched.
 """

@@ -4,7 +4,13 @@
 - The pinned source checkout: `~/bench/repos/pi-mono` (node 22 runs the
   bundled `packages/coding-agent/dist/bundle/cli.js`; revision pinned in
   `product.yaml`)
-- npm package `@mariozechner/pi-coding-agent` at the pinned version
+- The pinned source's package version at that revision: `0.87.1` (git
+  describe `v0.87.1-16-gb455975`; verified live on the benchmark node:
+  `node cli.js --version` -> 0.87.1). The npm package
+  `@mariozechner/pi-coding-agent` publishes 0.59-0.73.1 under a different
+  version scheme and does NOT correspond to the pinned source;
+  `product.yaml install.npm_version` records the SOURCE version — the
+  binary is built from the pinned source, never packed from npm
 
 ## Where auth comes from
 - `~/.prime/agent/auth.json` (preprovisioned Prime auth copied into the
@@ -45,7 +51,7 @@ forked pi), so the vendor-native fixture needs no format translation:
   the prompt is also covered as a fallback `first_run_dialogs` entry).
 - `argv` resumes it with the native `--session <path>` flag
   (`SessionManager.open` — a direct file path is a first-class resume input
-  in the pinned 0.73.0 source).
+  in the pinned source, v0.87.1-16-gb455975).
 - The trial row carries the import evidence under `fixture.native`:
   format/mechanism/path/sha256/bytes/rows/turns/sentinel plus the source
   identity — the semantic workload (rows/turns/bytes/sentinel) is identical
@@ -59,7 +65,7 @@ prime-inference --model mock-1 ...` with the mock base URL pointed at a
 dead port renders the loaded transcript tail (suite sentinel visible on
 the reopened UI) and accepts + echoes a typed probe token. The proving
 binary was the local `@earendil-works/pi-coding-agent` 0.80.6 fork (the
-pinned 0.73.0 checkout is not built on this machine); the same proof must
+pinned v0.87.1-16 checkout was not built on this machine); the same proof must
 be rerun against the pinned build on the benchmark node/sandbox before
 any loaded-session rank is trusted — per-trial sentinel+echo validation
 gates that regardless (rows without the live sentinel render are invalid,
