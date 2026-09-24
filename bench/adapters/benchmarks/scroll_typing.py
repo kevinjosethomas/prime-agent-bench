@@ -26,7 +26,8 @@ class ScrollTyping(Benchmark):
     """Typing + scroll latency on the loaded session fixture."""
 
     name = "compare.scroll_typing"
-    requires_fixture = "session-10mib"
+    # the display-corrected corpus (v3): hidden digest rows, product parity
+    requires_fixture = "session-10mib-v3"
     completeness_keys = ("typing_ok",)  # dropped keys = incomplete measurement
 
     def __init__(self, cfg: dict):

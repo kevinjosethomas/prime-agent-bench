@@ -160,6 +160,7 @@ def _cfg(tmp_path):
 def _engine_reg(tmp_path, monkeypatch, golden, stub_sha=None):
     reg = discover(_cfg(tmp_path))
     reg.fixtures["session-10mib"] = StubFixture(golden, sha=stub_sha)
+    reg.fixtures["session-10mib-v3"] = StubFixture(golden, sha=stub_sha)
     product = FakeProduct({"layout": reg.layout, "product": {}, "mock": {}})
     reg.products["fake"] = product
     import bench.trials as trials_mod
@@ -290,7 +291,7 @@ def test_run_trials_stages_clones_and_carries_actual_hash(tmp_path, monkeypatch)
     out_dir.mkdir()
     from bench.trials import run_trials
     jsonl = run_trials(reg, FakeDriver(), "compare.scroll_typing", ["fake"], 2,
-                       out_dir, {"session-10mib": golden}, aa=False, phase_tag="w1")
+                       out_dir, {"session-10mib-v3": golden}, aa=False, phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     assert len(rows) == 2
     for row in rows:
@@ -332,7 +333,7 @@ def test_run_trials_polluted_golden_fails_rows_without_launch(tmp_path, monkeypa
     out_dir.mkdir()
     from bench.trials import run_trials
     jsonl = run_trials(reg, FakeDriver(), "compare.scroll_typing", ["fake"], 1,
-                       out_dir, {"session-10mib": golden}, aa=False, phase_tag="w1")
+                       out_dir, {"session-10mib-v3": golden}, aa=False, phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     assert len(rows) == 1
     row = rows[0]

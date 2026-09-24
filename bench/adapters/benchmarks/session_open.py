@@ -25,7 +25,11 @@ class SessionColdOpen(Benchmark):
     boundary is completion = max(typed echo, tail sentinel)."""
 
     name = "session.cold_open_10mib"
-    requires_fixture = "session-10mib"
+    # the display-corrected corpus (v3): every harness_digest row persists
+    # display:false + the raw digest in details, exactly like real TS/Rust
+    # session files; the v2 rows replay as visible custom panels a real
+    # session never shows
+    requires_fixture = "session-10mib-v3"
     applicable_products = ["rust", "ts"]  # spec §A: session.* is RT-only
     applicability_note = ("session.* benchmarks resume the Prime session fixture; "
                           "BENCHMARK_SUITE_SPEC §A scopes them to Prime Agent Rust/TS")

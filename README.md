@@ -41,7 +41,10 @@ discovered from the package structure.
   (digest rows without `display`, which products render visible), and
   `session-10mib-v3` is the display-corrected corpus — every harness_digest
   row persisted `display: false` plus the raw digest in `details`, exactly
-  like real TS/Rust session files (same 7391-row shape, its own golden sha)
+  like real TS/Rust session files (same 7391-row shape, its own golden sha);
+  `session.cold_open_10mib`, `compare.memory_idle_load` and
+  `compare.scroll_typing` run on `session-10mib-v3`, while
+  `session.agent_view_roundtrip` keeps the v2 corpus
 - Startup honesty (audit F13): first paint and interactive-ready are
   distinct metrics (`launch_to_first_paint_ms` vs `launch_to_ready_ms`) —
   never blended. Readiness is probed at a fine grid with the harness's own

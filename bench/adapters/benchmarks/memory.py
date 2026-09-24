@@ -25,7 +25,8 @@ class MemoryIdleLoad(Benchmark):
     """Idle process-tree memory after a loaded cold start."""
 
     name = "compare.memory_idle_load"
-    requires_fixture = "session-10mib"
+    # the display-corrected corpus (v3): hidden digest rows, product parity
+    requires_fixture = "session-10mib-v3"
 
     def __init__(self, cfg: dict):
         super().__init__(cfg)

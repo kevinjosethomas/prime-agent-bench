@@ -108,9 +108,11 @@ def test_gate_map_reflects_registry():
     gate = gate_map()
     session = gate["session.cold_open_10mib"]
     assert session["applicable_products"] == ["rust", "ts"]          # RT-only
-    assert session["requires_fixture"] == "session-10mib"
+    assert session["requires_fixture"] == "session-10mib-v3"
     assert gate["compare.scroll_typing"]["completeness_keys"] == ("typing_ok",)
-    assert gate["compare.memory_idle_load"]["requires_fixture"] == "session-10mib"
+    assert gate["compare.memory_idle_load"]["requires_fixture"] == "session-10mib-v3"
+    assert gate["compare.scroll_typing"]["requires_fixture"] == "session-10mib-v3"
+    assert gate["session.agent_view_roundtrip"]["requires_fixture"] == "session-10mib"
     assert gate["compare.cold_start"]["applicable_products"] is None
     assert gate["compare.msg_send"]["aa_metrics"] == ("submit_to_settle_ms",)
 
