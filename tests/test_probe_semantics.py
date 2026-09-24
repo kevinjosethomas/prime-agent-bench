@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from bench.adapters.harnesses.pty import PTYDriver
+from bench.adapters.terminals.pty import PTYDriver
 
 TUI = str(Path(__file__).parent / "mini_tui.py")
 
