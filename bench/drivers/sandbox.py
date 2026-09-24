@@ -138,7 +138,8 @@ def verify_products(backend, handle, products: list) -> dict:
     # 3. the warm-kernel pass: WAIT for the daemon's own venv build (never
     # pre-built - the daemon wipes those); idempotent: an already-ready
     # venv returns immediately. The --status flags land in the report.
-    warm = "python3 -m bench.drivers.warm_kernels --config configs/sandbox.yaml"
+    warm = ("python3 -m bench.drivers.warm_kernels "
+            f"--config configs/sandbox.yaml --products {','.join(products)}")
     code, log = backend.exec_cmd(handle, f"cd {hd} && {warm}", timeout=7200.0)
     if code != 0:
         raise RuntimeError(f"warm_kernels failed inside the sandbox: {log[-400:]}")

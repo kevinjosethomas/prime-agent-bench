@@ -88,17 +88,27 @@ def status(cfg: dict) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--config", default=None)
+    ap.add_argument("--products", default=None,
+                    help="csv: warm only these products' kernel venvs "
+                         "(default: every product that builds one)")
     ap.add_argument("--status", action="store_true",
                     help="report readiness (JSON markers) without launching")
     args = ap.parse_args()
     cfg = load_config(args.config)
+    selection = ([p for p in args.products.split(",") if p]
+                 if args.products else None)
     if args.status:
         import json
         for name, ready in status(cfg).items():
+            if selection and name not in selection:
+                continue
             print(f"BENCH-JSON {json.dumps({'product': name, 'ready': ready})}")
         return
     reg = discover(cfg)
-    ok = all(warm(cfg, name) for name in kernel_products(reg))
+    names = kernel_products(reg)
+    if selection:
+        names = [n for n in names if n in selection]
+    ok = all(warm(cfg, name) for name in names)
     if not ok:
         print("[warm] FAILED: kernel venvs not ready", flush=True)
         sys.exit(1)
