@@ -4,11 +4,23 @@ revision: b45597504eeaba1f11a9920a1d1048c361ed4b8e
 install:
   installed_paths: [~/bench/repos/pi-mono/node_modules, ~/bench/repos/pi-mono/packages]
   npm_pkg: "@mariozechner/pi-coding-agent"
-  npm_version: "0.73.0"
-  note: built from source; pack may 404 if unpublished
+  npm_version: "0.87.1"
+  # The pinned source's own package version (git describe v0.87.1-16-gb455975);
+  # the npm registry publishes @mariozechner/pi-coding-agent 0.59-0.73.1 under
+  # a different version scheme, so pack 404s at this version - built from source.
+  note: the source package version at the pinned revision; built from source, pack 404s (npm registry scheme is 0.59-0.73.1)
 auth_sources:
   - {src: ~/.prime/agent/auth.json, note: the copied auth.json keeps pi authenticated (provider/model flags route traffic to the mock)}
-first_run_dialogs: []  # no first-run dialogs at the pinned revision: flags settle it
+  - {src: ~/.prime/config.json, note: PRIME_API_KEY for the trial env}
+  - {src: ~/.prime/agent/settings.json, note: product settings}
+first_run_dialogs:
+  # Loaded-session resume only: pi asks this when a resumed session's
+  # recorded cwd does not exist. prepare_native_fixture creates the recorded
+  # cwd, so the prompt normally never appears; the entry is the fallback
+  # (settle/prepass walks answer it if cwd creation ever fails).
+  - marker: "cwd from session file does not exist"
+    keys: [enter]
+    intent: "continue loaded session in the launch cwd"
 vendor:
   - {src: ~/bench/repos/pi-mono, dst: root/bench/repos/pi-mono}
   - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}

@@ -151,6 +151,15 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             clone_path = None
             error = None
             try:
+                if fixture is not None:
+                    # spec §F vendor-native fixture import: the adapter stages
+                    # its native transcript equivalent once per trial before
+                    # any launch (unmeasured); its evidence block lands on the
+                    # row. None keeps the gold fixture manifest untouched
+                    # (rust/ts resume the fixture themselves).
+                    native = prod.prepare_native_fixture(ctx, fixture)
+                    if native:
+                        record.setdefault("fixture", {})["native"] = native
                 if fixture is not None and fixture_manifest is not None:
                     # Per-trial fixture clone (2026-09-24 integrity fix): the
                     # resumed product appends to the file it resumes IN PLACE,
@@ -163,14 +172,17 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                     # ACTUAL staged-clone hash — the load proof, not the
                     # manifest claim. Semantic-equivalence evidence (spec §F):
                     # golden bytes/rows/sha256 + the fixture sentinel, which
-                    # the scenario verifies per trial.
+                    # the scenario verifies per trial. Native-import products
+                    # stage their own per-trial copy of the same golden bytes;
+                    # the clone stays uniform for every fixture trial, so the
+                    # scenarios' setup/measure never receive the shared golden.
                     clone_path = prod.trial_session_dir(ctx) / Path(fixture).name
-                    record["fixture"] = {
+                    record.setdefault("fixture", {}).update({
                         "name": benchmark.requires_fixture, **fixture_manifest,
                         "clone": stage_trial_fixture(fixture, clone_path,
                                                      str(fixture_manifest.get(
                                                          "sha256", ""))),
-                    }
+                    })
                 benchmark.setup(prod, ctx, fixture=clone_path)
                 benchmark.measure(prod, ctx, record, driver, fixture=clone_path)
                 record["validated"] = benchmark.validate(record)
@@ -180,9 +192,14 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 # out of trial, owned by the fixture layer)
                 error = f"{type(e).__name__}: {e}"
                 record["error"] = error[:400]
-                record["fixture"] = {"name": benchmark.requires_fixture,
-                                     **(fixture_manifest or {}),
-                                     "source_error": error[:400]}
+                # setdefault-update, never replace: a native evidence block
+                # staged before the failed clone copy survives on the row
+                # (its recorded source sha is the pollution diagnostic)
+                record.setdefault("fixture", {}).update({
+                    "name": benchmark.requires_fixture,
+                    **(fixture_manifest or {}),
+                    "source_error": error[:400],
+                })
             except Exception as e:
                 error = f"{type(e).__name__}: {e}"
                 record["error"] = error[:400]

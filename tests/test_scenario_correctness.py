@@ -465,8 +465,11 @@ def test_resume_fixture_capability_flags(tmp_path):
     reg = discover(_cfg(tmp_path))
     assert reg.product("rust").resume_fixture_capable is True
     assert reg.product("ts").resume_fixture_capable is True
+    assert reg.product("pi").resume_fixture_capable is True  # native --session resume
+    # claude/codex stay False until their native imports are independently
+    # proven (spec §F): unsupported stays a status row, never a fake load
     assert all(reg.product(p).resume_fixture_capable is False
-               for p in ("claude", "codex", "pi"))
+               for p in ("claude", "codex"))
 
 
 # ---- trial engine: status rows + stamped comparability ----------------------

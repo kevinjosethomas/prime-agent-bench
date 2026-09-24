@@ -8,7 +8,8 @@ change = one tarball rebuild. bootstrap.sh untars it to ``/`` so every
 sandbox starts from the proven, authenticated node setup.
 
 `--no-secrets` builds the explicit secret-free payload: every entry whose
-source is a declared ``auth_sources`` path is dropped, a ``.secret-free``
+source is a declared ``auth_sources`` path OR under the prime home tree
+is dropped, a ``.secret-free``
 marker rides in the tarball (bootstrap.sh warns), and the build manifest
 records what was redacted. A secret-free sandbox carries the binaries but
 no credentials — products need their auth walk (or `bench settle`)
@@ -74,13 +75,31 @@ def secret_srcs(cfg: dict, products: list, reg=None) -> set:
     return srcs
 
 
+#: The prime home tree. ``--no-secrets`` drops EVERY entry under it,
+#: declared or not: config.json carries the api_key and agent settings
+#: are prime-home state - a secret-free payload ships binaries, never
+#: prime-home credentials (live finding: pi shipped ~/.prime/config.json
+#: undeclared).
+PRIME_HOME = Path("~/.prime").expanduser()
+
+
 def _redact_secrets(entries: list, cfg: dict, products: list, reg) -> tuple:
-    """Split (kept, redacted) entries on the declared auth sources."""
+    """Split (kept, redacted) on declared auth sources plus the prime home.
+
+    The per-product auth_sources declaration stays the source of truth;
+    the prime-home rule is the builder's structural guarantee that no key
+    material rides in a secret-free payload even when a product.yaml
+    under-declares."""
     secrets = secret_srcs(cfg, products, reg=reg)
+
+    def is_secret(entry: dict) -> bool:
+        src = Path(entry["src"]).expanduser()
+        return (str(src) in secrets or src == PRIME_HOME
+                or PRIME_HOME in src.parents)
+
     kept, redacted = [], []
     for e in entries:
-        (redacted if str(Path(e["src"]).expanduser()) in secrets
-         else kept).append(e)
+        (redacted if is_secret(e) else kept).append(e)
     return kept, redacted
 
 
@@ -142,7 +161,8 @@ def build_vendor_tarball(cfg: dict, products: list, out: Path,
         if no_secrets:
             (staging / ".secret-free").write_text(
                 "secret-free vendor payload: declared auth_sources entries "
-                "were dropped at build time (bench vendor --no-secrets)\n")
+                "and all prime-home (~/.prime) state were dropped at build "
+                "time (bench vendor --no-secrets)\n")
         out.parent.mkdir(parents=True, exist_ok=True)
         # macOS bsdtar stores xattrs as ._ AppleDouble members: sandbox
         # clutter and provenance variance the Linux node never has.

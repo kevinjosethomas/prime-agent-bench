@@ -1,6 +1,8 @@
 """Registry discovery, config precedence, and trial-count resolution."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from bench.core.config import deep_merge, load_config, product_config
 from bench.core.measurement import primary_metric
 from bench.core.registry import discover
@@ -63,6 +65,19 @@ def test_product_config_loads_pinning():
     assert cfg["revision"] == "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
     assert cfg["binary_sha256"] == "eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1"
     assert "install" in cfg
+    pi = product_config("pi")
+    # the pinned source version (provenance fix: v0.87.1-16-gb455975, verified
+    # live on the benchmark node via git describe + node cli.js --version; the
+    # old 0.73.0 label was stale npm-registry-scheme metadata, not the pin)
+    assert pi["revision"] == "b45597504eeaba1f11a9920a1d1048c361ed4b8e"
+    assert pi["install"]["npm_version"] == "0.87.1"
+    # pi's auth_sources fully declare the prime-home credential set (the
+    # live payload gap: config.json carries the api_key and was undeclared,
+    # so --no-secrets did not redact it)
+    declared = {str(Path(e["src"]).expanduser()) for e in pi["auth_sources"]}
+    assert str(Path("~/.prime/agent/auth.json").expanduser()) in declared
+    assert str(Path("~/.prime/config.json").expanduser()) in declared
+    assert str(Path("~/.prime/agent/settings.json").expanduser()) in declared
 
 
 def test_benchmark_config_overrides_reach_registry_adapters(tmp_path):
