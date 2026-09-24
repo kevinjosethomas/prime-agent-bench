@@ -43,11 +43,14 @@ class MsgSend(Benchmark):
             last_hash = screen_hash(app)  # baseline at ack time: a dead screen cannot settle
             seen_change = False
             need = DEFAULT_REPLY[:20] if product.name != "codex" else None
+            need_norm = " ".join(need.split()) if need else None
             deadline = now() + 90
             while now() < deadline:
                 h = screen_hash(app)
                 txt_now = app.screen_text()
-                matched = (need and need in txt_now) or \
+                # TUIs hard-wrap text at arbitrary columns, so match against
+                # the whitespace-normalized screen (collapse all wrapping)
+                matched = (need and need_norm in " ".join(txt_now.split())) or \
                     (need is None and t_ack is not None and seen_change)
                 if matched:
                     if h == last_hash:
