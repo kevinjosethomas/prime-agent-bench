@@ -66,7 +66,14 @@ discovered from the package structure.
   `validated` fails and the strict validity gate excludes it — report,
   never auto-dismissed-and-measured. Products without a seedable
   baseline keep the walk semantics (dialog time excluded, disclosed per
-  row).
+  row). Templates are stamped with the harness identity that baked them
+  (`.bench-template-ok`): a template from an older harness generation
+  rebuilds on the next settle instead of surviving the deploy (the live
+  gap: a pre-seed ts template kept its marker, the seeded harness
+  skipped it, and every ts trial booted a fresh empty home), and the
+  settle pass re-asserts the baseline after folding the settled state
+  back in — a product that persists nothing offline (ts) or clobbers
+  the keys cannot leave the template consent-empty.
 - Provenance (audit F7/F8/F9): every row carries `run` — the campaign
   label plus the harness revision that measured it (deploy-bundle
   sha256 in sandbox runs); `bench analyze --phase w1` fixes the

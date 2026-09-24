@@ -218,3 +218,119 @@ def test_cold_start_non_baseline_product_keeps_walk_semantics():
     assert record["dialog_autodismissed"] == MARKER[:40]
     from bench.adapters.benchmarks.cold_start import ColdStart
     assert ColdStart(None).validate(record) is True
+
+
+# ---- the real template lifecycle: marker generations + settle re-assertion --
+# The live-VM gap these pin: a ts template baked by a pre-seed harness kept
+# its marker, so prepare_templates skipped the rebuild; the ts settle launch
+# persists nothing (offline: no onboarding flow, no settings write), so the
+# template stayed consent-empty and every ts trial booted a fresh empty home
+# while rust's own settle walk had re-seeded its template.
+
+def _reg(tmp_path, identity):
+    from bench.core.registry import discover
+    cfg = _cfg(tmp_path)
+    cfg["harness_identity"] = identity
+    return discover(cfg)
+
+
+def _baseline_copies(tpl):
+    agent = json.loads((tpl / "agent" / "settings.json").read_text())
+    home = json.loads((tpl / "home" / ".prime" / "agent"
+                       / "settings.json").read_text())
+    return agent, home
+
+
+def test_prepare_templates_rebuilds_a_prior_generation_template(tmp_path):
+    """A template stamped by a different harness generation (the VM gap)
+    is rebuilt with the seed — for BOTH products, ts included."""
+    from bench.runner import prepare_templates, template_marker
+    old = _reg(tmp_path, {"git_rev": "bbf4923-old", "dirty": False})
+    prepare_templates(old, ["rust", "ts"])
+    for name in ("rust", "ts"):
+        tpl = old.product(name).template_dir()
+        # simulate the pre-seed generation: strip the seed, keep the marker
+        for p in (tpl / "agent" / "settings.json",
+                  tpl / "home" / ".prime" / "agent" / "settings.json"):
+            p.unlink(missing_ok=True)
+    new = _reg(tmp_path, {"git_rev": "e7f9dcd-new", "dirty": False})
+    prepare_templates(new, ["rust", "ts"])
+    for name in ("rust", "ts"):
+        tpl = new.product(name).template_dir()
+        marker = json.loads((tpl / ".bench-template-ok").read_text())
+        assert marker == {"git_rev": "e7f9dcd-new", "dirty": False}
+        agent, home = _baseline_copies(tpl)
+        assert agent == CONSENT_BASELINE_SETTINGS
+        assert home == CONSENT_BASELINE_SETTINGS
+
+
+def test_prepare_templates_skips_same_generation(tmp_path):
+    """An identical harness generation keeps the baked template (no
+    needless rebuild churn across idempotent settle re-runs)."""
+    from bench.runner import prepare_templates, template_marker
+    reg = _reg(tmp_path, {"git_rev": "same", "dirty": False})
+    prepare_templates(reg, ["ts"])
+    tpl = reg.product("ts").template_dir()
+    (tpl / "witness.txt").write_text("baked")
+    prepare_templates(reg, ["ts"])
+    assert (tpl / "witness.txt").exists()          # not rmtree'd: skipped
+    agent, home = _baseline_copies(tpl)
+    assert agent == CONSENT_BASELINE_SETTINGS
+
+
+def test_merge_settled_template_reasserts_baseline_after_ts_shape_settle(tmp_path):
+    """The ts offline settle writes session state but NO settings.json:
+    the template merge must still leave the return-user baseline at both
+    product-visible locations — and heal a consent-empty (pre-fix VM)
+    template, not just preserve a seeded one."""
+    from bench.runner import merge_settled_template, prepare_templates
+    reg = _reg(tmp_path, {"git_rev": "e7f9dcd", "dirty": False})
+    prepare_templates(reg, ["ts"])
+    prod = reg.product("ts")
+    tpl = prod.template_dir()
+    # the pre-fix VM shape: consent-empty template, old marker
+    for p in (tpl / "agent" / "settings.json",
+              tpl / "home" / ".prime" / "agent" / "settings.json"):
+        p.unlink(missing_ok=True)
+    (tpl / ".bench-template-ok").write_text("ok")
+    ctx = prod.new_trial(tmp_path / "ts-trial")
+    # the ts offline settle's own writes: a session lands, settings never do
+    sessions = Path(ctx["agent_dir"]) / "sessions"
+    sessions.mkdir(parents=True, exist_ok=True)
+    (sessions / "01a0.jsonl").write_text('{"type": "session"}\n')
+    merge_settled_template(prod, ctx)
+    agent, home = _baseline_copies(tpl)
+    assert agent == CONSENT_BASELINE_SETTINGS
+    assert home == CONSENT_BASELINE_SETTINGS
+    # the product's own settled state merged in, not clobbered
+    assert (tpl / "agent" / "sessions" / "01a0.jsonl").exists()
+    assert json.loads((tpl / "agent" / "models.json").read_text())[
+        "providers"]["prime-inference"]["models"][0]["id"] == "mock-1"
+
+
+def test_merge_settled_template_keeps_product_persisted_keys(tmp_path):
+    """A product that persists its OWN settings during settle (the rust
+    shape: onboarding walk + daemon defaults) keeps those keys; only the
+    three pinned consent keys are re-pinned."""
+    from bench.runner import merge_settled_template, prepare_templates
+    reg = _reg(tmp_path, {"git_rev": "e7f9dcd", "dirty": False})
+    prepare_templates(reg, ["rust"])
+    prod = reg.product("rust")
+    ctx = prod.new_trial(tmp_path / "rust-trial")
+    settings = Path(ctx["agent_dir"]) / "settings.json"
+    settings.write_text(json.dumps({
+        "onboardingShown": True,
+        "agentTraces": {"enabled": False},
+        "telemetry": {"noticeShown": True},
+        "defaultProvider": "prime-inference",
+        "defaultModel": "mock-1",
+        "recentModels": ["prime-inference/mock-1"],
+    }))
+    merge_settled_template(prod, ctx)
+    merged = json.loads((prod.template_dir() / "agent"
+                         / "settings.json").read_text())
+    assert merged["defaultProvider"] == "prime-inference"
+    assert merged["recentModels"] == ["prime-inference/mock-1"]
+    assert merged["onboardingShown"] is True
+    assert merged["agentTraces"] == {"enabled": False}
+    assert merged["telemetry"] == {"noticeShown": True}

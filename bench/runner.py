@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint
-from bench.core.env import BenchLayout
+from bench.core.env import (BenchLayout, write_consent_baseline)
 from bench.core.identity import default_run_label, harness_identity
 from bench.core.process import pids_referencing
 from bench.core.registry import Registry, discover
@@ -77,19 +77,58 @@ def capture_versions(reg: Registry, names: list) -> dict:
     return out
 
 
+def template_marker(reg: Registry) -> str:
+    """The template freshness stamp: the harness identity that baked it.
+
+    A template must not survive a harness change: a marker from an older
+    generation (the live VM gap — a pre-consent-baseline ts template kept
+    its "ok" marker, so the seeded harness skipped the rebuild and every
+    ts trial booted a fresh empty home while rust's own settle walk had
+    re-seeded its template) rebuilds loudly."""
+    return json.dumps(reg.cfg.get("harness_identity") or harness_identity(),
+                      sort_keys=True)
+
+
 def prepare_templates(reg: Registry, names: list) -> None:
-    """Build each product's settled home template once (.bench-template-ok)."""
+    """Build each product's settled home template, stamped with the
+    harness identity (.bench-template-ok); a marker from a different
+    harness generation forces a rebuild — a stale template never
+    outlives the code that defines it."""
+    marker = template_marker(reg)
     for name in names:
         prod = reg.product(name)
         tpl = prod.template_dir()
         if (tpl / ".bench-template-ok").exists():
-            continue
+            try:
+                if (tpl / ".bench-template-ok").read_text().strip() == marker:
+                    continue
+                print(f"template stale (harness changed): rebuilding {name}")
+            except OSError:
+                print(f"template marker unreadable: rebuilding {name}")
         if tpl.exists():
             shutil.rmtree(tpl)
         tpl.mkdir(parents=True)
         prod.prepare_template(tpl)
-        (tpl / ".bench-template-ok").write_text("ok")
+        (tpl / ".bench-template-ok").write_text(marker)
         print(f"template ready: {name}")
+
+
+def merge_settled_template(prod, ctx) -> None:
+    """Fold one settled trial back into its product's template (the
+    rsync settle_product runs after every settle launch), then RE-ASSERT
+    the return-user consent baseline for products that seed one: a
+    product that persists nothing (ts offline: no onboarding flow, so no
+    settings write) or clobbers the keys must not leave the template
+    consent-empty — every measured trial then boots the return-user home
+    the campaign defines. Merge-preserving: product-written keys stay;
+    the three pinned keys are re-pinned."""
+    tpl = prod.template_dir()
+    rsync_dir(ctx["home"], tpl / "home")
+    if ctx["agent_dir"] and (tpl / "agent").exists():
+        rsync_dir(ctx["agent_dir"], tpl / "agent")
+    if getattr(prod, "seeds_consent_baseline", False):
+        write_consent_baseline(tpl / "agent")
+        write_consent_baseline(tpl / "home" / ".prime" / "agent")
 
 
 def settle_product(reg: Registry, name: str, driver, out_dir: Path) -> None:
@@ -121,10 +160,7 @@ def settle_product(reg: Registry, name: str, driver, out_dir: Path) -> None:
         if app is not None:
             app.kill_tree()
         prod.reap(ctx)
-        tpl = prod.template_dir()
-        rsync_dir(ctx["home"], tpl / "home")
-        if ctx["agent_dir"] and (tpl / "agent").exists():
-            rsync_dir(ctx["agent_dir"], tpl / "agent")
+        merge_settled_template(prod, ctx)
         shutil.rmtree(tmp, ignore_errors=True)
     rec["error"] = err
     (out_dir / "settle.jsonl").open("a").write(json.dumps(rec) + "\n")
