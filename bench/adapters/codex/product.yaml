@@ -33,3 +33,14 @@ vendor:
   - {src: /usr/lib/node_modules/@openai, dst: usr/lib/node_modules/@openai}
   - {src: /usr/bin/codex, dst: usr/bin/codex}
   - {src: ~/.codex, dst: root/.codex, exclude: [tmp, .tmp]}
+
+# Copied auth state does NOT authenticate a copied home (the settle walks
+# a dummy key; real-API use needs Kevin's explicit call). Product-owned
+# flag — version evidence reports it as the auth limitation it is.
+auth_limited: true
+
+# Recorded qualification evidence (product-owned): NONE recorded yet.
+# The live function proof (node-side scripts/verify_erase_pty.py: probe +
+# erase only, no message submits; any accidental submit 401s under the
+# settled dummy key) is pending — see records/editor-cohort-acceptance.md.
+proofs: []

@@ -23,6 +23,16 @@ first paint, then one of the readiness behaviors:
   the Pi counterexample shape: DEL is ignored but Ctrl-U kills the
   line, so the Ctrl-U-first order is what clears it. "editor-stuck"
   ignores both: erase must report failure there, never a false success.
+- dialog-script: a product's OWN onboarding walk, offline. argv:
+  [mode, spec.json] where spec is {"steps": [{"marker": str,
+  "keys": [str, ...]}]} — the resolved dialog_steps of an adapter
+  (markers + keystroke-resolved bytes). The TUI shows each marker row,
+  consumes exactly the expected key sequence in order (a wrong byte
+  resets the sequence — the dialog never advances on wrong keys), then
+  clears the row and shows the next; after the last it echoes (ready).
+  Editor-qualification tests drive this with claude/codex/pi dialog
+  configs: the harness dialog walk must reach ready against the
+  product's own markers and keys, with zero product involvement.
 """
 import os
 import sys
@@ -31,8 +41,20 @@ import time
 import tty
 
 mode = sys.argv[1]
-delay = float(sys.argv[2]) if len(sys.argv) > 2 else 0.3
-width = int(sys.argv[3]) if len(sys.argv) > 3 else 120
+
+
+def _arg(idx, default, cast):
+    # dialog-script takes a spec path in argv[2]: numeric-only slots fall
+    # back to their default instead of raising (existing modes always
+    # pass numerics, so their behavior is unchanged)
+    try:
+        return cast(sys.argv[idx])
+    except (ValueError, IndexError):
+        return default
+
+
+delay = _arg(2, 0.3, float)
+width = _arg(3, 120, int)
 MARKER = "Share agent traces with Prime Intellect?"
 
 fd = sys.stdin.fileno()
@@ -43,6 +65,37 @@ if mode == "dialog":
     time.sleep(delay)
     # remove the marker's own line (the cursor sits one row below it)
     sys.stdout.write("\x1b[1A\r\x1b[K"); sys.stdout.flush()
+elif mode == "dialog-script":
+    import json
+    spec = json.loads(open(sys.argv[2]).read())
+    steps = [(s["marker"],
+              b"".join(k.encode("latin-1") for k in s["keys"]))
+             for s in spec.get("steps", [])]
+    if steps:
+        sys.stdout.write("\r\n  " + steps[0][0] + "\r\n"); sys.stdout.flush()
+    expected, pos, cur = (steps[0][1] if steps else b""), 0, 0
+    while cur < len(steps):
+        data = os.read(fd, 4096)
+        if not data:
+            break
+        for b in data:
+            if pos < len(expected) and b == expected[pos]:
+                pos += 1
+            else:
+                pos = 0  # wrong key resets the sequence; the dialog waits
+            if expected and pos >= len(expected):
+                # answered: remove the marker's own line, show the next
+                sys.stdout.write("\x1b[1A\r\x1b[K"); sys.stdout.flush()
+                cur += 1
+                pos = 0
+                if cur < len(steps):
+                    sys.stdout.write("\r\n  " + steps[cur][0] + "\r\n")
+                    sys.stdout.flush()
+                    expected = steps[cur][1]
+                else:
+                    expected = b""
+                break
+    sys.stdout.write(banner); sys.stdout.flush()
 else:
     sys.stdout.write(banner); sys.stdout.flush()
     time.sleep(delay)

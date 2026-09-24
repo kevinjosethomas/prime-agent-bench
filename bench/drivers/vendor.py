@@ -74,6 +74,39 @@ def secret_srcs(cfg: dict, products: list, reg=None) -> set:
     return srcs
 
 
+def undeclared_secret_srcs(cfg: dict, products: list, reg=None) -> dict[str, list[str]]:
+    """Per selected product: vendor entries sourced under the prime home
+    that are NOT declared in ``auth_sources`` (offline declaration hygiene).
+
+    The live 2026-09-24 finding: pi's vendor block shipped
+    ``~/.prime/config.json`` and ``~/.prime/agent/settings.json``
+    undeclared, so a ``--no-secrets`` payload (declared-auth redaction
+    only) still carried the api_key. A vendor entry sourced from the
+    prime-home tree is credential-bearing by default and must be
+    declared so the redaction and the build manifest both account for
+    it. Returns {product: [src, ...]} — empty lists are the healthy
+    state, and the finding class is a report, not a redaction: the
+    ``--no-secrets`` behavior itself is the vendor lane's.
+    """
+    if reg is None:
+        reg = discover(cfg)
+    from bench.core.env import NODE_HOME_AUTH_PRIME
+    declared = secret_srcs(cfg, products, reg=reg)
+    gaps: dict[str, list[str]] = {}
+    for name in products:
+        if name not in reg.products:
+            continue
+        for entry in reg.product(name).product_cfg.get("vendor") or []:
+            src = str(Path(entry["src"]).expanduser())
+            try:
+                src_under_prime = Path(src).is_relative_to(NODE_HOME_AUTH_PRIME)
+            except (ValueError, OSError):
+                src_under_prime = False
+            if src_under_prime and src not in declared:
+                gaps.setdefault(name, []).append(src)
+    return gaps
+
+
 def _redact_secrets(entries: list, cfg: dict, products: list, reg) -> tuple:
     """Split (kept, redacted) entries on the declared auth sources."""
     secrets = secret_srcs(cfg, products, reg=reg)

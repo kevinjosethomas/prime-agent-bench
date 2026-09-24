@@ -133,6 +133,53 @@ class ProductAdapter(ABC):
                 f"{self.name or type(self).__name__}: msg_routing must be one of "
                 f"{list(MSG_ROUTING_REGIMES)}, not {self.msg_routing!r}")
 
+    # ---- recorded qualification evidence ---------------------------------
+    def proof_records(self) -> list[dict]:
+        """The product-owned proof records (product.yaml ``proofs:``).
+
+        One entry per recorded qualification proof: ``name``, ``kind``,
+        ``date``, ``scope`` (what the run proved — nothing more), plus
+        optional ``findings``/``pending`` and ``artifacts``
+        ``[{path, sha256}]``. Artifacts stay external (the producing
+        session's archive): a present artifact must match its recorded
+        sha256 — a mismatch raises, so corrupted evidence never passes
+        silently — while an absent one is reported as ``absent-external``,
+        never claimed as present. An empty ``proofs:`` is the explicit
+        "no recorded proof" declaration (never silent). A record is
+        evidence of exactly its scope: it is never a campaign trial, a
+        ranking, or a capability claim beyond what ``scope`` states.
+        """
+        import re
+
+        records: list[dict] = []
+        for entry in self.product_cfg.get("proofs") or []:
+            rec = dict(entry)
+            label = self.name or type(self).__name__
+            for key in ("name", "kind", "date", "scope"):
+                if not str(rec.get(key) or "").strip():
+                    raise ValueError(f"{label}: proofs entry missing {key!r}")
+            arts = []
+            for art in rec.get("artifacts") or []:
+                path, want = str(art.get("path") or ""), str(art.get("sha256") or "")
+                if not path or not re.fullmatch(r"[0-9a-f]{64}", want):
+                    raise ValueError(f"{label}: proof {rec['name']!r} artifact "
+                                     f"needs a path and a 64-hex sha256, got "
+                                     f"{path!r}, {want!r}")
+                status = "absent-external"
+                p = Path(path).expanduser()
+                if p.exists():
+                    from bench.core.env import sha256_file
+                    got = sha256_file(p)
+                    if got != want:
+                        raise ValueError(
+                            f"{label}: proof {rec['name']!r} artifact sha256 "
+                            f"mismatch: {path} is {got}, recorded {want}")
+                    status = "verified"
+                arts.append({"path": path, "sha256": want, "status": status})
+            rec["artifacts"] = arts
+            records.append(rec)
+        return records
+
     # ---- node setup: install + authenticate -----------------------------
     def install(self) -> dict:
         """Verify the pinned install (the node setup itself is documented

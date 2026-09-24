@@ -48,7 +48,9 @@ class CodexProduct(ProductAdapter):
                 "revision": self.product_cfg.get("revision", "npm@latest"),
                 "binary": str(self.binary),
                 "binary_sha256": sha256_file(Path(self.binary).resolve()),
-                "auth_limited": True}
+                # product-owned flag (product.yaml auth_limited): copied
+                # ChatGPT tokens do not authenticate a copied home
+                "auth_limited": bool(self.product_cfg.get("auth_limited", False))}
 
     def prepare_template(self, tpl: Path) -> None:
         """The whole authenticated .codex state (tokens + device identity)."""

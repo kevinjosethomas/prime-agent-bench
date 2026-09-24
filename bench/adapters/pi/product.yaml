@@ -14,3 +14,35 @@ vendor:
   - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}
   - {src: ~/.prime/agent/settings.json, dst: root/.prime/agent/settings.json}
   - {src: ~/.prime/config.json, dst: root/.prime/config.json}
+
+# Recorded qualification evidence (product-owned). Artifacts stay external
+# (the producing session's archive, /tmp/bench-pi-live/); sha256s pin content
+# identity — a present artifact that mismatches raises, an absent one is
+# reported absent, never claimed. A record proves exactly its scope.
+proofs:
+  - name: native-session-resume
+    kind: live-function-only
+    date: 2026-09-24
+    harness_rev: 9d5071b
+    product_version: 0.87.1
+    scope: >-
+      One sandbox, function-only feasibility: native --session resume of the
+      10MiB v2 fixture by the pinned build — transcript loads, tail sentinel
+      renders, editor interactive pre- and post-mount (typed echo), line
+      clearable (Ctrl-U pre-mount, DEL post-mount), zero model submits
+      (mock route dead-ended and verified, provider/model argv pinned).
+      NOT a campaign trial, NOT a ranking, NOT v3-corpus validation, NOT an
+      adapter capability at this revision (resume_fixture_capable stays
+      False until the native-fixture lane merges).
+    fixture: {name: session-10mib, generator: session-size/2, corpus: v2, sha256: dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda}
+    findings:
+      - pre-mount DEL-burst erase fails on pi (14x 0x7f, one write); Ctrl-U (0x15) clears the line; a token typed after mount erases with DELs (r1 vs r2)
+      - version_info package.json lookup via the bench-root layout breaks in the sandbox layout (captured from files instead) — fix on pi-pin-provenance 405ae13, pending integration
+    artifacts:
+      - {path: /tmp/bench-pi-live/PROVENANCE.json, sha256: 829c4c1aa676bbd27c9c3224f7e2f3cca355d8769ca2af4652992f3289e8b130}
+      - {path: /tmp/bench-pi-live/pi-native-proof-r2.json, sha256: c96d0943c65636667e45938921694638d44378b3db096eef8edd168a4cbc20fe}
+      - {path: /tmp/bench-pi-live/pi-native-proof.json, sha256: fe20da559e6f7a8d69c771f145deeffe2af310a71923e86a345b0ece43d7937e}
+      - {path: /tmp/bench-pi-live/proof-versions.json, sha256: 78fa339ee03e06f25b3a0d015f8ffc61526a1cd923707ac7f0e2ed62352cf4a6}
+    pending:
+      - same function proof on the v3 corpus once the fixture-v3 campaign paths settle (the corrected campaign's loaded-session benchmarks run v3)
+      - re-proof after pi-pin-provenance (d0fa0e6) merges, then after the native-fixture/erase lanes land

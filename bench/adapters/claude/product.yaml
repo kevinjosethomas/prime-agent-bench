@@ -26,3 +26,9 @@ vendor:
   - {src: /usr/bin/claude, dst: usr/bin/claude}
   - {src: ~/.claude, dst: root/.claude, exclude: [projects, todos, statsig, shell-snapshots]}
   - {src: ~/.claude.json, dst: root/.claude.json}
+
+# Recorded qualification evidence (product-owned): NONE recorded yet.
+# The live function proof (node-side scripts/verify_erase_pty.py:
+# mock provider, dummy key, zero submits) is pending — see
+# records/editor-cohort-acceptance.md for the pending ledger.
+proofs: []
