@@ -40,9 +40,12 @@ def drive_to_ready(session: Session, steps: list[DialogStep], timeout: float,
     deadline = now() + timeout
     while now() < deadline:
         txt = session.screen_text()
+        txt_norm = " ".join(txt.split())
         answered = False
         for marker, keys in steps:
-            if marker in txt and answers.get(marker, 0) < 3:
+            # TUIs wrap dialog text at arbitrary columns: match the
+            # whitespace-normalized screen, not the raw rows
+            if marker in txt_norm and answers.get(marker, 0) < 3:
                 answers[marker] = answers.get(marker, 0) + 1
                 for k in keys:
                     session.send(k)

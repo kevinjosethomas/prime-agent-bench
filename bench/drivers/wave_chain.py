@@ -39,11 +39,11 @@ def run_wave_chain(config_path: str | None, benchmarks: list, products: list,
         print("=== A/A calibration pass ===", flush=True)
         jsonl_paths += run_suite(cfg, reg, driver, benchmarks, products,
                                  trials=aa_trials, aa=True, phase="aa",
-                                 skip_versions=True)
+                                 skip_versions=False)
     print(f"=== waves {benchmarks} phase {phase} ===", flush=True)
     jsonl_paths += run_suite(cfg, reg, driver, benchmarks, products,
                              trials=trials, aa=False, phase=phase,
-                             skip_versions=True)
+                             skip_versions=False)
     return jsonl_paths
 
 
@@ -55,8 +55,10 @@ def main() -> None:
     ap.add_argument("--products", default="rust,ts,claude,codex,pi")
     ap.add_argument("--trials", type=int, default=10)
     ap.add_argument("--phase", default="w1")
-    ap.add_argument("--aa/--no-aa", default=False,
-                    help="run the per-sandbox A/A calibration pass first")
+    ap.add_argument("--aa", dest="aa", action="store_true", default=True,
+                    help="run the per-sandbox A/A calibration pass first (default)")
+    ap.add_argument("--no-aa", dest="aa", action="store_false",
+                    help="debugging only: skip the A/A calibration pass")
     ap.add_argument("--aa-trials", type=int, default=10)
     args = ap.parse_args()
     benchmarks = [b for b in args.benchmarks.split(",") if b]

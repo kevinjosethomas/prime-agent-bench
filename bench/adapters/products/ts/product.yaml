@@ -1,0 +1,21 @@
+# Prime Agent (TypeScript) — the complete product config, one file.
+binary: ~/.local/share/prime-agent/bin/prime-agent
+revision: official-beta-0.9.5-beta.2043.1.acc5bc0
+needs_kernel_venv: true
+install:
+  installed_paths: [~/.local/share/prime-agent]
+  download_is_installed: true  # single-binary install ~= download
+  note: official 0.9.5-beta.2043.1 compiled binary via install.sh
+auth_sources:
+  - {src: ~/.prime/config.json, note: PRIME_API_KEY for the trial env}
+  - {src: ~/.prime/agent/auth.json, note: preprovisioned Prime auth}
+  - {src: ~/.prime/agent/settings.json, note: product settings}
+first_run_dialogs:
+  - marker: "Share agent traces with Prime Intellect?"
+    keys: [down, enter]
+    intent: "Not now"
+vendor:
+  - {src: ~/.local/share/prime-agent, dst: root/.local/share/prime-agent}
+  - {src: ~/.prime/config.json, dst: root/.prime/config.json}
+  - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}
+  - {src: ~/.prime/agent/settings.json, dst: root/.prime/agent/settings.json}

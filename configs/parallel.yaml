@@ -18,15 +18,22 @@ reference:
 retry:
   max_retries: 2          # failed sandboxes re-provision + re-run
 
+# Per-name sandbox spec overrides for `bench sandbox setup <name>`: merge over
+# sandbox_defaults (image/cpu/memory/disk/timeout/bootstrap all overridable).
+sandboxes: {}
+#  smoke: {cpu_cores: 2, memory_gb: 4}
+
 sandbox_defaults:
   # Image with the full node setup (products installed + authenticated).
-  # A bare python image runs the harness mechanics but no product trials.
-  image: python:3.11-slim
+  # ubuntu:22.04: the proven VM platform image (VM infra only builds some
+  # platform images; python:3.11-slim has no completed VM artifact) and it
+  # matches the benchmark node exactly (Ubuntu 22.04, python3.10, glibc 2.35).
+  image: ubuntu:22.04
   cpu_cores: 4
   memory_gb: 8
   disk_gb: 60
   timeout_minutes: 180
-  bootstrap: null          # per-setup recipe (product installs, auth)
+  bootstrap: bash /root/bench-harness/vendor/bootstrap.sh
 
 # Per-benchmark resource overrides (merged over sandbox_defaults).
 benchmarks:

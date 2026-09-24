@@ -6,6 +6,7 @@ every scenario that needs the mock turn text.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 
@@ -19,7 +20,7 @@ def default_script(reply: str = DEFAULT_REPLY) -> dict:
 
 def sse_chunk(obj) -> bytes:
     """One SSE data chunk."""
-    return (json.dumps(obj) + "\n\n").encode()
+    return ("data: " + json.dumps(obj) + "\n\n").encode()
 
 
 def user_message_text(body: dict) -> str:
@@ -54,9 +55,24 @@ class MockState:
         self.responses = script.get("responses", [{"text": "ok"}])
         self.queues = script.get("queues", [])
         self.log_path = self.script_path + ".requests.jsonl"
+        self._mtime = self._mtime_of()
+
+    def _mtime_of(self):
+        try:
+            return os.path.getmtime(self.script_path)
+        except OSError:
+            return None
 
     def pick(self, body: dict) -> tuple[str, list, int]:
-        """(queue_name, responses, cursor_index) for this request."""
+        """(queue_name, responses, cursor_index) for this request.
+
+        The script file is live: run_suite rewrites it per phase (the
+        kernel benchmarks install their toolCall queues after launch),
+        so a changed mtime reloads before serving."""
+        mtime = self._mtime_of()
+        if mtime is not None and mtime != self._mtime:
+            self.reload()
+            self._mtime = mtime
         model = body.get("model", "")
         user_text = user_message_text(body)
         for q in self.queues:

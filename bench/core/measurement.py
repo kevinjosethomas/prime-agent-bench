@@ -49,6 +49,15 @@ def metrics_for(row: dict) -> dict:
                 out["scroll_pgup_ms_p50"] = _pct(clean, 50)
                 out["scroll_pgup_ms_p95"] = _pct(clean, 95)
                 out["scroll_pgup_ms_all"] = clean
+    res = row.get("resource") or {}
+    settled = res.get("rss_settled") or {}
+    if isinstance(settled, dict):
+        for src, dst in (("rss_mb", "rss_settled_mb"), ("pss_mb", "pss_settled_mb")):
+            v = settled.get(src)
+            if isinstance(v, (int, float)):
+                out[dst] = v
+        if isinstance(settled.get("nproc"), (int, float)):
+            out["tree_nproc"] = settled["nproc"]
     if "per_type" in m and isinstance(m["per_type"], dict):
         # kernel.cell_exec: {type: {submit_to_ack_ms, submit_to_result_ms}}
         for kind, vals in m["per_type"].items():

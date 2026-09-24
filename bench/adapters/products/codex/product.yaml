@@ -1,0 +1,26 @@
+# Codex CLI — the complete product config, one file.
+binary: /usr/bin/codex
+revision: npm@latest
+install:
+  installed_paths: [/usr/lib/node_modules/@openai]
+  npm_pkg: "@openai/codex"
+  npm_version: "0.156.1"
+auth_sources:
+  - {src: ~/.codex, excl: [tmp, .tmp], note: full device state; copied ChatGPT tokens do NOT authenticate a copied home}
+first_run_dialogs:
+  - marker: "3. Provide your own API key"
+    keys: ["3"]
+    intent: "welcome/login menu (copied ChatGPT tokens never authenticate a copied home)"
+  - marker: "Paste or type your API key"
+    keys: ["sk-bench-dummy-not-real", enter]
+    intent: "key box -> settled dummy-key baseline state"
+  - marker: "Press enter to continue"
+    keys: [enter]
+    intent: "generic continue"
+  - marker: "Trust and continue"
+    keys: [enter]
+    intent: "folder trust (option 1 preselected, enter confirms)"
+vendor:
+  - {src: /usr/lib/node_modules/@openai, dst: usr/lib/node_modules/@openai}
+  - {src: /usr/bin/codex, dst: usr/bin/codex}
+  - {src: ~/.codex, dst: root/.codex, exclude: [tmp, .tmp]}

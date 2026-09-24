@@ -96,5 +96,4 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             print(f"[{benchmark_name}] {name} trial {trial_counter[name] - 1} "
                   f"ready={m.get('launch_to_ready_ms')} err={error is not None} "
                   f"({record['duration_s']}s)", flush=True)
-            shutil.rmtree(trial_dir, ignore_errors=True)
     return jsonl

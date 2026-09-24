@@ -24,11 +24,16 @@ def _scratch_dir() -> Path:
 
 
 def harness_bundle(repo_root: Path = REPO_ROOT) -> Path:
-    """Tar the harness (bench/, configs/, requirements, pyproject) for deploy."""
+    """Tar the harness (bench/, configs/, requirements, pyproject) for deploy.
+
+    vendor/ (products tarball + bootstrap recipe) rides along when present,
+    so one upload gives the sandbox the full node setup."""
+    members = ["bench", "configs", "requirements.txt", "pyproject.toml"]
+    if (repo_root / "vendor").is_dir():
+        members.append("vendor")
     bundle = _scratch_dir() / f"bench-harness-{uuid.uuid4().hex[:8]}.tar.gz"
-    subprocess.run(["tar", "-czf", str(bundle), "-C", str(repo_root),
-                    "bench", "configs", "requirements.txt", "pyproject.toml"],
-                   check=True, timeout=120)
+    subprocess.run(["tar", "-czf", str(bundle), "-C", str(repo_root), *members],
+                   check=True, timeout=1800)
     return bundle
 
 
@@ -54,7 +59,11 @@ def deploy_harness(backend, handle, bundle: Path) -> None:
     _upload_text(backend, handle, _sandbox_config_yaml(handle, backend),
                  hd / "configs" / "sandbox.yaml")
     code, log = backend.exec_cmd(
-        handle, f"cd {hd} && python3 -m pip install -q --break-system-packages "
+        handle, f"python3 -m pip --version >/dev/null 2>&1 || "
+                f"(apt-get update -qq && apt-get install -qq -y python3-pip); "
+                f"PIPOPTS=$(python3 -m pip install --help 2>&1 | "
+                f"grep -q break-system-packages && echo --break-system-packages || true); "
+                f"cd {hd} && python3 -m pip install -q $PIPOPTS "
                 f"-r requirements.txt && echo PIP-DONE", timeout=1800.0)
     if code != 0:
         raise RuntimeError(f"pip install failed on {handle.name}: {log[-300:]}")
@@ -80,8 +89,14 @@ def wave_chain_cmd(handle, backend, spec_cfg: dict) -> str:
     root = Path(backend.bench_root(handle))
     benchmarks = ",".join(handle.spec["benchmarks"])
     products = ",".join(handle.spec["products"])
-    aa = "" if spec_cfg.get("aa", True) else "--no-aa "
-    return (f"cd {hd} && python3 -m bench.drivers.wave_chain --config configs/sandbox.yaml "
+    aa = "--aa " if spec_cfg.get("aa", True) else "--no-aa "
+    warm = (f"mkdir -p {root / 'logs'} && cd {hd} && "
+            f"python3 -m bench.cli --config configs/sandbox.yaml settle "
+            f"--products {shlex.quote(products)} && "
+            f"python3 -m bench.drivers.warm_kernels --config configs/sandbox.yaml "
+            f"--products {shlex.quote(products)} && ")
+    return (warm + f"cd {hd} && "
+            f"python3 -m bench.drivers.wave_chain --config configs/sandbox.yaml "
             f"--benchmarks {shlex.quote(benchmarks)} --products {shlex.quote(products)} "
             f"--trials {spec_cfg.get('trials', 10)} --phase {spec_cfg.get('phase', 'w1')} "
             f"--aa-trials {spec_cfg.get('aa_trials', 10)} {aa}"

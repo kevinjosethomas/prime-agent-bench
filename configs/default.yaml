@@ -20,6 +20,14 @@ driver: pty
 mock:
   port: 8788
 
+# The kernel toolchain `bench vendor build` ships whenever a selected
+# product builds a kernel venv (rust, ts): uv + its pinned pythons.
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv}
+
 settle:
   timeout_s: 300.0
   first_paint_timeout_s: 240.0

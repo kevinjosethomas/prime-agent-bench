@@ -45,42 +45,69 @@ bench/
                Fixture, Analyzer + registry, config, env, measurement,
                process accounting
   adapters/
-    products/     One product per file: rust, ts, claude, codex, pi
+    products/     One product per FOLDER: <name>/ with product.yaml,
+                  adapter.py, README.md - the complete product config
     benchmarks/   One scenario per file: cold_start, warm_start, msg_send, ...
     harnesses/    pty (timing-grade), tmux (capture-poll alternative)
     fixtures/     session-10mib corpus, subagent-tree
   drivers/      mock provider, raw kernel probe, explore tool,
-               wave_chain (per-sandbox entry point), orchestrator/
+               wave_chain (per-sandbox entry point), warm_kernels,
+               vendor (tarball builder), sandbox (setup/run/destroy),
+               diagnose (evidence bundles), compare, orchestrator/
   analysis/    stats, rankings, aggregate, A/A validation, output (json,
                markdown, notion payload)
   trials.py    The ABBA trial engine (JSONL per trial)
   gates.py     Load gates (block trials until the node is idle)
   runner.py    The sequential suite runner (gold standard)
-  cli.py       bench run | settle | explore | install-disk | analyze | list |
+  cli.py       bench run | settle | versions | vendor | sandbox | diagnose |
+               compare | explore | install-disk | analyze | list |
                noop-control | fixtures | orchestrator
 configs/
-  default.yaml         Trial counts, timeouts, load gates, thresholds
-  products/*.yaml      Per-product install/auth/version pinning
+  default.yaml         Trial counts, timeouts, load gates, thresholds,
+                       the kernel toolchain (vendor toolchain)
   parallel.yaml        Sandbox specs, reference thresholds, retry policies
 tests/        registry, fixtures (byte-exact goldens), analysis, orchestrator
 ```
 
-Adding a product = one file under `bench/adapters/products/`. Same for
-benchmarks, harness drivers, and fixtures: the registry auto-discovers every
+Adding a product = one folder under `bench/adapters/products/` carrying its
+`adapter.py`, its complete `product.yaml` (binary, auth sources, install,
+first-run dialogs, vendor payload), and a `README.md`. Benchmarks, harness
+drivers, and fixtures stay one file each: the registry auto-discovers every
 adapter subclass; there is no registration file to maintain.
 
-## Setup
+## Setup - one node, or one command per sandbox
+
+The harness controller needs a node with the authenticated products (the
+proven benchmark node setup). Every NEW sandbox is then one command:
 
 ```bash
-# On a fresh Ubuntu 22.04 node:
+# controller deps (fresh Ubuntu 22.04):
 sudo apt install -y git curl python3 python3-venv tmux jq rsync
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+# + the prime CLI/SDK when provisioning Prime VM sandboxes
 
-# Install products (see configs/products/*.yaml for the exact pinning)
-# Authenticate each product (claude login, codex auth, prime-agent login)
+# build the vendor payload from the product configs (binaries + auth +
+# toolchain, laid out for the sandbox's HOME=/root):
+bench vendor build --products rust,ts,claude,codex,pi   # -> vendor/products.tar.gz
+
+# ONE command: provision + deploy + bootstrap + warm kernels + verify every
+# product's interactive state; prints a readiness report:
+bench sandbox setup mybox --products rust,ts,claude,codex,pi
+
+# run trials inside it (setup and run share the product configs; safe to
+# invoke blind: load-gated, sequential, process-swept):
+bench run --benchmarks compare.cold_start --products rust --trials 10 --sandbox mybox
+
+# teardown:
+bench sandbox destroy mybox
 ```
+
+`bench sandbox setup` also takes `--backend local` (isolated bench roots on
+one machine, no cloud spend) and per-name spec overrides under `sandboxes:`
+in `configs/parallel.yaml`. The readiness report carries each product's
+version + binary sha256, the kernel-venv state (rust/ts), and the settle
+result (the configured first-run dialog walk).
 
 ## Usage
 
@@ -123,8 +150,44 @@ bench orchestrator --benchmarks compare.cold_start --backend local --dry-run  # 
 
 Sandbox images need the full node setup (products installed and
 authenticated); the recipe lives in `parallel.yaml` (`sandbox_defaults.image`
-+ `bootstrap`). Use `--keep-sandboxes` to keep them for debugging. Prefer
++ `bootstrap`), the payload in `vendor/products.tar.gz` (`bench vendor
+build`). Use `--keep-sandboxes` to keep them for debugging. Prefer
 parallel mode for iteration and CI gates; re-run anything surprising
 sequentially before publishing it.
+
+## The improvement loop
+
+The harness is the substrate for a continuous improve-benchmark-compare
+loop over prime-agent-rust. One iteration:
+
+1. **Bump the rust binary** on the node (build + copy to
+   `~/bench/repos/prime-agent-rust/target/release/prime-agent`), update
+   the `revision:` pin in `bench/adapters/products/rust/product.yaml`, and
+   `bench vendor build --products rust` so sandbox setups carry the new
+   binary.
+2. **Set up a fresh sandbox**: `bench sandbox setup rust-<rev> --products
+   rust` - the readiness report already proves the new binary (version +
+   sha256 + settle OK).
+3. **Run**: `bench run --benchmarks compare.cold_start,compare.warm_start
+   --products rust --trials 10 --sandbox rust-<rev>`. A/A calibration runs
+   first (never skippable by default), trials are load-gated,
+   sequential-within-sandbox, process-swept; `versions.json` lands with the
+   results.
+4. **Compare**: `bench compare <previous-run> <new-run>` - per-benchmark
+   p50 deltas with bootstrap-CI separation plus both runs' version
+   evidence, so a delta is attributable, never blind.
+5. **Auto-research**: analyze the per-trial JSONL (`bench analyze`); the
+   strongest signal for the next change wins. Repeat.
+
+Why runs stay comparable across the loop: every result set carries
+`versions.json` (binary SHAs + product versions) and the A/A noise floor;
+parallel runs add the per-sandbox reference normalization (the canonical
+CPU loop, >5% outliers replaced). A regression that escapes the A/A
+validation is not a regression.
+
+When a settle fails anywhere in the loop, `bench diagnose <product>`
+reproduces it and writes the evidence bundle (screen-at-end, raw output
+tail, answered dialogs, mock request log, settle records) that used to
+take an hour of manual probing.
 
 Not part of any product. Benchmark harness only.

@@ -103,34 +103,49 @@ class PrimeSandboxBackend(SandboxBackend):
     def _prime(self, *args: str, timeout: float | None = None) -> subprocess.CompletedProcess:
         return _run(["prime", "--plain", "sandbox", *args], timeout=timeout)
 
+    def _sdk(self):
+        """The prime_sandboxes SDK client (VM sandboxes: create/get).
+
+        The CLI (0.6.16) cannot create VM sandboxes (it passes start_command
+        as a string; the API requires a structured StartCommand for VMs) and
+        `prime sandbox get` crashes on the Sandbox model; the SDK is the
+        proven path."""
+        from prime_sandboxes import APIClient, SandboxClient
+        return SandboxClient(APIClient())
+
     def provision(self, name: str, spec: dict) -> SandboxHandle:
+        from prime_sandboxes import CreateSandboxRequest
         handle = SandboxHandle(name=name, spec=spec)
-        out = self._prime("create", spec.get("image", "python:3.11-slim"),
-                          "--name", f"bench-{name}",
-                          "--cpu-cores", str(spec.get("cpu_cores", 4)),
-                          "--memory-gb", str(spec.get("memory_gb", 8)),
-                          "--disk-size-gb", str(spec.get("disk_gb", 60)),
-                          "--timeout-minutes", str(spec.get("timeout_minutes", 180)),
-                          "-y", timeout=300)
-        line = next((l for l in out.stdout.splitlines()
-                     if "Successfully created sandbox" in l), "")
-        if not line or " " not in line:
-            raise RuntimeError(f"provision failed for {name}: {out.stdout[-300:]} {out.stderr[-300:]}")
-        handle.sandbox_id = line.split()[-1]
+        request = CreateSandboxRequest(
+            name=f"bench-{name}",
+            docker_image=spec.get("image", "ubuntu:22.04"),
+            cpu_cores=float(spec.get("cpu_cores", 4)),
+            memory_gb=float(spec.get("memory_gb", 8)),
+            disk_size_gb=float(spec.get("disk_gb", 60)),
+            timeout_minutes=int(spec.get("timeout_minutes", 180)),
+            vm=True,
+            network_access=True,
+        )
+        sb = self._sdk().create(request)
+        if not sb or not getattr(sb, "id", None):
+            raise RuntimeError(f"provision failed for {name}: no sandbox id")
+        handle.sandbox_id = sb.id
         self._wait_running(handle)
-        handle.note(f"provisioned as {handle.sandbox_id}")
+        handle.note(f"provisioned as {handle.sandbox_id} (vm)")
         return handle
 
     def _wait_running(self, handle: SandboxHandle, timeout: float = 600.0) -> None:
+        sdk = self._sdk()
         deadline = time.time() + timeout
         while time.time() < deadline:
-            out = self._prime("get", handle.sandbox_id)
-            if "RUNNING" in out.stdout:
+            sb = sdk.get(handle.sandbox_id)
+            if sb.status == "RUNNING":
                 return
-            if "not found" in (out.stdout + out.stderr).lower():
-                raise RuntimeError(f"sandbox {handle.sandbox_id} disappeared")
+            if sb.status in ("TERMINATED", "FAILED", "ERROR"):
+                raise RuntimeError(f"sandbox {handle.sandbox_id} is {sb.status}")
             time.sleep(5)
         raise TimeoutError(f"sandbox {handle.sandbox_id} not RUNNING in {timeout:.0f}s")
+
 
     def deploy(self, handle: SandboxHandle, harness_tar: Path) -> None:
         hd = self.harness_dir(handle)
@@ -146,8 +161,13 @@ class PrimeSandboxBackend(SandboxBackend):
     def exec_cmd(self, handle: SandboxHandle, cmd: str,
                  timeout: float | None = None) -> tuple[int, str]:
         wrapped = f"{cmd}; echo {EXIT_SENTINEL}$?"
-        out = self._prime("run", handle.sandbox_id, "--", "bash", "-lc", wrapped,
-                          timeout=timeout)
+        argv = ["prime", "--plain", "sandbox", "run", handle.sandbox_id]
+        if timeout:
+            # the gateway's default exec timeout is 300s; ask for the caller's
+            # whole budget (less a margin) whenever one is given
+            argv += ["--timeout", str(max(1, int(timeout) - 10))]
+        argv += ["--", "bash", "-lc", wrapped]
+        out = _run(argv, timeout=timeout)
         text = out.stdout + out.stderr
         code = 1
         for line in text.splitlines():

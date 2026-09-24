@@ -34,7 +34,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("access-control-allow-origin", "*")
 
     def do_GET(self):
-        if self.path.endswith("/models"):
+        if self.path.split("?")[0].endswith("/models"):
             body = json.dumps({
                 "object": "list",
                 "data": [{"id": "mock-1", "object": "model", "created": 1789584000, "owned_by": "bench"}],
@@ -71,9 +71,10 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
             return
-        if self.path.endswith("/chat/completions"):
+        path = self.path.split("?")[0]
+        if path.endswith("/chat/completions"):
             self._chat_completions(body, resp)
-        elif self.path.endswith("/messages"):
+        elif path.endswith("/messages"):
             self._anthropic_messages(body, resp)
         else:
             self.send_response(404)
@@ -83,9 +84,27 @@ class Handler(BaseHTTPRequestHandler):
     # -- OpenAI chat completions ------------------------------------------
     def _chat_completions(self, body, resp):
         model = body.get("model", "mock-1")
+        if body.get("stream") is False:
+            payload = json.dumps({"id": "chatcmpl-bench", "object": "chat.completion",
+                                  "created": 1789584000, "model": model,
+                                  "choices": [{"index": 0, "message": {"role": "assistant",
+                                                                      "content": resp.get("text", "")},
+                                               "finish_reason": "stop"}],
+                                  "usage": {"prompt_tokens": 10, "completion_tokens": 10,
+                                            "total_tokens": 20}}).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(payload)))
+            self.send_header("connection", "close")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(payload)
+            self.close_connection = True
+            return
         self.send_response(200)
         self.send_header("content-type", "text/event-stream")
         self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
         self._cors()
         self.end_headers()
         cid = "chatcmpl-bench"
@@ -112,13 +131,30 @@ class Handler(BaseHTTPRequestHandler):
             pass
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
+        self.close_connection = True
 
     # -- Anthropic messages ------------------------------------------------
     def _anthropic_messages(self, body, resp):
         model = body.get("model", "mock-1")
+        if body.get("stream") is False:
+            payload = json.dumps({"id": "msg_bench", "type": "message", "role": "assistant",
+                                  "model": model,
+                                  "content": [{"type": "text", "text": resp.get("text", "")}],
+                                  "stop_reason": "end_turn", "stop_sequence": None,
+                                  "usage": {"input_tokens": 10, "output_tokens": 10}}).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(payload)))
+            self.send_header("connection", "close")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(payload)
+            self.close_connection = True
+            return
         self.send_response(200)
         self.send_header("content-type", "text/event-stream")
         self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
         self._cors()
         self.end_headers()
 
@@ -150,6 +186,7 @@ class Handler(BaseHTTPRequestHandler):
             "delta": {"stop_reason": "tool_use" if tc else "end_turn", "stop_sequence": None},
             "usage": {"output_tokens": max(1, len(text) // 4)}})
         ev("message_stop", {"type": "message_stop"})
+        self.close_connection = True
 
 
 def main():

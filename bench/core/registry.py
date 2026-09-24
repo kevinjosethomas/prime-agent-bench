@@ -1,9 +1,11 @@
 """Plugin registry: auto-discovers adapters from the package structure.
 
-Every module under bench/adapters/{products,benchmarks,harnesses,fixtures}
-is imported and its adapter classes (subclasses of the core ABCs defined
-in that module) are registered by their ``name``. No registration file to
-maintain: adding an adapter = adding one file.
+Products live one folder per product (``bench/adapters/products/<name>/
+{adapter.py, product.yaml, README.md}``); benchmarks, harness drivers, and
+fixtures stay one file each. Adapter classes (subclasses of the core ABCs
+defined in that module) register by their ``name``. No registration file
+to maintain: adding a product = adding one folder, adding any other
+adapter = adding one file.
 """
 from __future__ import annotations
 
@@ -69,19 +71,36 @@ def adapter_cfg(cfg: dict, kind: str, name: str) -> dict:
     return slice_
 
 
+def _register_module(reg: Registry, cfg: dict, kind: str, base: type,
+                      module) -> None:
+    """Instantiate every adapter class a module defines."""
+    for obj in vars(module).values():
+        if (isinstance(obj, type) and obj is not base
+                and obj.__module__ == module.__name__
+                and issubclass(obj, base)):
+            instance = obj(adapter_cfg(cfg, kind, obj.name))
+            reg._register(kind, instance)
+
+
 def discover(cfg: dict) -> Registry:
-    """Import every adapter module and instantiate the adapters it defines."""
+    """Import every adapter and instantiate the adapters it defines.
+
+    Products live one folder per product (``bench/adapters/products/
+    <name>/adapter.py`` + ``product.yaml``); the other kinds stay
+    one file per adapter."""
     reg = Registry(cfg)
     for kind, base in ADAPTER_KINDS.items():
         package = importlib.import_module(f"bench.adapters.{kind}")
         for info in pkgutil.iter_modules(package.__path__):
             if info.name.startswith("_"):
                 continue
+            if kind == "products" and info.ispkg:
+                module = importlib.import_module(
+                    f"bench.adapters.products.{info.name}.adapter")
+                _register_module(reg, cfg, kind, base, module)
+                continue
+            if kind == "products":
+                continue  # flat product files are gone: folders only
             module = importlib.import_module(f"bench.adapters.{kind}.{info.name}")
-            for obj in vars(module).values():
-                if (isinstance(obj, type) and obj is not base
-                        and obj.__module__ == module.__name__
-                        and issubclass(obj, base)):
-                    instance = obj(adapter_cfg(cfg, kind, obj.name))
-                    reg._register(kind, instance)
+            _register_module(reg, cfg, kind, base, module)
     return reg
