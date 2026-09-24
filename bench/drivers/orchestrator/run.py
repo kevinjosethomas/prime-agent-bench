@@ -170,6 +170,7 @@ def _run_waves(backend, handles: dict, spec_cfg: dict, bundle) -> dict:
             except Exception as e:
                 handle.note(f"re-materialize failed: {str(e)[:200]}")
                 continue
+            handle = fresh
             wave_state[name] = wave_once(backend, fresh, spec_cfg)
             if wave_state[name].get("exit") == 0:
                 break

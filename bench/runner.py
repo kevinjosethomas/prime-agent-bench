@@ -161,6 +161,10 @@ def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_name
     from bench.adapters.benchmarks.kernel import kernel_script
     out_dir = Path(cfg["results_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
+    layout = BenchLayout.from_config(cfg)
+    for d in (layout.logs, layout.harness_dir, layout.fixtures,
+              layout.homes, layout.global_dir):
+        d.mkdir(parents=True, exist_ok=True)
     jsonl_paths = []
     mock = start_mock(cfg)
     try:
