@@ -308,7 +308,8 @@ def run_in_sandbox(cfg: dict, parallel_config_path, sandbox_ref: str,
     spec["products"] = products or spec.get("products") or []
     handle.spec = spec  # the wave command builds from the handle's spec
     spec_cfg = {"trials": trials, "phase": phase, "aa": aa,
-                "aa_trials": aa_trials, "retry": {}, "wave_timeout_s": 14400.0}
+                "aa_trials": aa_trials, "retry": {}, "wave_timeout_s": 14400.0,
+                "run_label": f"{handle.name}-{time.strftime('%Y%m%d-%H%M%S')}"}
     handle.note(f"run in sandbox: {benchmarks} x {spec['products']}")
     result = _wave_with_retry(backend, handle, spec_cfg)
     out_dir = Path(cfg["results_dir"]) / "sandbox-runs" / f"{handle.name}-{time.strftime('%Y%m%d-%H%M%S')}"

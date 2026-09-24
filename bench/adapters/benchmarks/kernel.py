@@ -80,11 +80,15 @@ def submit_and_wait(app, prompt: str, sentinel: str, timeout: float = 120.0):
 
 
 def launch_ready(product, ctx, driver, timeout: float = 120):
-    """Launch to interactive-ready (first paint + typed echo accepted)."""
+    """Launch to interactive-ready (first paint + typed echo accepted).
+
+    The erase budget covers every probe char sent (buffered/dropped tokens
+    from each attempt can all sit on the input line)."""
     app = product.launch(ctx, driver)
     first_paint(app, timeout=timeout)
-    app.probe_input_ready("Zq7k", retry_every=0.5, timeout=timeout, start_ts=app.t_first_paint)
-    app.erase_all("Zq7k")
+    probe = app.probe_input_ready("Zq7k", retry_every=0.5, timeout=timeout,
+                                  start_ts=app.t_first_paint)
+    app.erase_all("Zq7k", max_backspaces=probe["chars_sent"] + 8)
     return app
 
 
@@ -167,8 +171,9 @@ class KernelMultiKernel(Benchmark):
                 t0 = time.perf_counter()
                 app = product.launch(ctx, driver)
                 first_paint(app, timeout=120)
-                app.probe_input_ready(f"Zq7m{i}", retry_every=0.5, timeout=120, start_ts=app.t_first_paint)
-                app.erase_all("Zq7m")
+                probe = app.probe_input_ready(f"Zq7m{i}", retry_every=0.5, timeout=120,
+                                              start_ts=app.t_first_paint)
+                app.erase_all("Zq7m", max_backspaces=probe["chars_sent"] + 8)
                 apps.append(app)
                 t_ready = time.perf_counter()
                 _, t_sent, _ = submit_and_wait(app, "run the kernel marker cell", "KREADY-bench marker", timeout=240)

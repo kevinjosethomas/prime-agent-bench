@@ -62,8 +62,12 @@ def compare_runs(cfg: dict, run_a: Path, run_b: Path) -> dict:
             delta = entry["b_p50"] - entry["a_p50"]
             entry["delta_abs"] = round(delta, 3)
             entry["delta_pct"] = round(delta / entry["a_p50"] * 100.0, 2)
-            entry["ci_disjoint"] = (entry["b_ci"][1] < entry["a_ci"][0]
-                                    or entry["a_ci"][1] < entry["b_ci"][0])
+            # the CI check needs >=3 samples per side (boot_ci_median is
+            # None below that); with no CI the separation claim is undefined
+            entry["ci_disjoint"] = bool(
+                entry.get("a_ci") and entry.get("b_ci")
+                and (entry["b_ci"][1] < entry["a_ci"][0]
+                     or entry["a_ci"][1] < entry["b_ci"][0]))
         out["groups"][f"{bench}/{product}"] = entry
     return out
 
@@ -100,7 +104,12 @@ def format_markdown(result: dict) -> str:
             lines.append(f"| {g['benchmark']} | {g['product']} | - | {g['b_p50']:.1f} | - | - |")
     for side in ("a", "b"):
         v = result.get(f"versions_{side}") or {}
-        for name, info in sorted(v.items()):
+        meta = v.get("_meta") if isinstance(v, dict) else None
+        products = v.get("products", v) if isinstance(v, dict) else {}
+        if meta:
+            lines.append(f"\n* {side.upper()} run `{(meta.get('run') or {}).get('label')}` "
+                         f"harness `{str((meta.get('harness') or {}).get('git_rev', ''))[:12]}`")
+        for name, info in sorted(products.items()):
             lines.append(f"\n* {side.upper()} {name}: `{info.get('version')}` "
                          f"rev `{info.get('revision')}` sha `{str(info.get('binary_sha256', ''))[:12]}`")
     return "\n".join(lines)
