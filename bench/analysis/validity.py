@@ -55,7 +55,20 @@ primary-p50 drift between the A/A pass and the published waves over
 ``aa_spread`` / ``aa_drift``) and never ranked or delta'd — the captured
 cases: msg_send rust ack A/A 10.7% and pi 12.5% still ranked before;
 daemon.boot rust AA 46.1 vs W1 219.6, a ~4.8x pass-to-pass shift that
-pooled medians hid.
+pooled medians hid. A missing or partial A/A pass is a different defect
+(no evidence, not failed evidence): products whose published primary
+carries fewer than ``aa.trials`` valid A/A rows are UNCALIBRATED
+(``summary.uncalibrated``) and never ranked either.
+
+Rank policy (aggregate): ``aa.required=false`` (the default) is
+validation-only — stats, marks and denominators are reported but ranks
+are never emitted. ``aa.required=true`` ranks a benchmark only over its
+explicitly declared ``aa.expected_products`` cohort (global list or
+per-benchmark map, never inferred from rows) when every expected
+product publishes a valid primary p50, is A/A-calibrated and
+spread/drift-stable; any gap withholds the whole benchmark
+(``summary.ranks_withheld``) — no partial leaderboards, no lone
+survivors.
 
 Status rows (engine declarations for products that ran no trials:
 ``{"status": "not_applicable"|"not_comparable", "reason": ...,

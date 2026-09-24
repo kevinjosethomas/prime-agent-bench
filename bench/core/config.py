@@ -46,7 +46,15 @@ DEFAULTS: dict[str, Any] = {
         "loop_s": 0.8,
         "echo_wait_s": 1.2,
     },
-    "aa": {"spread_threshold_pct": 10.0, "drift_threshold_pct": 10.0},
+    "aa": {"spread_threshold_pct": 10.0, "drift_threshold_pct": 10.0,
+           # rank policy (audit: rankings must never emerge uncalibrated):
+           # required=false (the default) is the validation-only smoke
+           # mode — stats, marks and denominators, but ranks are never
+           # emitted. A publishable campaign declares required=true +
+           # expected_products (the eligible cohort per benchmark, global
+           # list or map — never inferred from rows) + trials (the
+           # expected valid A/A rows per product; mirrors --aa-trials).
+           "required": False, "trials": 10, "expected_products": None},
     "noop_control": {"rounds": 30},
     "benchmarks": {},  # per-benchmark overrides, e.g. compare.install_disk.trials
 }

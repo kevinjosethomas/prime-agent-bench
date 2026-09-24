@@ -71,8 +71,6 @@ def _blocks(stats: dict, cfg: dict) -> list:
                 if reason == "aa_drift":
                     detail = (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
                               f"(+{info['drift_pct']}% drift)")
-                elif reason == "aa_missing_boundary":
-                    detail = info["reason"]
                 else:
                     detail = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} "
                                        f"({e['spread_pct']}%)"
@@ -80,6 +78,24 @@ def _blocks(stats: dict, cfg: dict) -> list:
                 out.append({"object": "block", "type": "bulleted_list_item",
                             "bulleted_list_item": {"rich_text": [_text(
                                 f"{display.get(p, p)}: unstable ({reason}) \u2014 {detail}")]}})
+        uncalibrated = entry.get("uncalibrated") or {}
+        for p in uncalibrated:
+            info = uncalibrated[p]
+            out.append({"object": "block", "type": "bulleted_list_item",
+                        "bulleted_list_item": {"rich_text": [_text(
+                            f"{display.get(p, p)}: uncalibrated \u2014 {info['reason']} "
+                            f"({info['aa_valid']}/{info['aa_expected']} valid A/A rows)")]}})
+        withheld = entry.get("ranks_withheld") or {}
+        if withheld:
+            detail = withheld.get("detail") or "; ".join(
+                f"{k}: {', '.join(v)}" for k, v in withheld.items()
+                if k in ("unsupported", "absent", "uncalibrated", "unstable") and v)
+            label = f"ranks withheld ({withheld['reason']})"
+            if withheld.get("expected"):
+                label += f" \u2014 expected cohort {withheld['expected']}"
+            out.append({"object": "block", "type": "bulleted_list_item",
+                        "bulleted_list_item": {"rich_text": [_text(
+                            f"{label}: {detail}" if detail else label)]}})
         excluded = entry.get("excluded") or {}
         for p in excluded:
             info = excluded[p]
