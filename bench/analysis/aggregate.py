@@ -69,18 +69,30 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
               aa_failing: dict | None = None, status: dict | None = None,
               comparability: dict | None = None, phase_p50s: dict | None = None,
               identity: dict | None = None, disclosures: dict | None = None,
-              derived_aa_required: dict | None = None) -> dict:
+              derived_aa_required: dict | None = None,
+              aa_coverage: dict | None = None) -> dict:
     """The summary model: per-benchmark stats, primary ranks, ts deltas,
     plus the validity-gate report (excluded counts + reasons, per-phase
     trial denominators, engine status rows, comparability modes) when
     provided.
 
-    Products with stability marks (A/A-to-wave drift over threshold, a
-    failing A/A noise floor on the primary or a published declared
-    metric, or ranked values that exist only through legacy-row
-    derivation without an A/A calibration on the derived metric) are
-    never ranked or delta'd; their stats stay visible and the marks land
-    in ``entry["unstable"]``."""
+    Rank policy (aa_coverage supplied — the published path; direct
+    callers without it keep the raw primitive): products with stability
+    marks (A/A-to-wave drift over threshold, a failing A/A noise floor
+    on the primary or a published declared metric) are never ranked or
+    delta'd — marks land in ``entry["unstable"]``. Products whose
+    published primary lacks the declared A/A calibration (``aa.trials``
+    valid rows on the primary) are UNCALIBRATED, not unstable — no
+    evidence vs failed evidence — and land in ``entry["uncalibrated"]``.
+    Ranks themselves are a campaign decision: ``aa.required=false`` (the
+    default) is validation-only — stats, marks and denominators, but
+    ranks are never emitted; a publishable campaign declares
+    ``aa.required=true`` + explicit ``aa.expected_products`` (the
+    eligible cohort, global list or per-benchmark map — never inferred
+    from rows) and ranks appear only when every expected product is
+    present in the pool, A/A-calibrated and spread/drift-stable; any
+    gap withholds the whole benchmark (``entry["ranks_withheld"]`` — no
+    partial leaderboards)."""
     out = {}
     # union: benchmarks with valid rows AND fully-excluded benchmarks (their
     # exclusion report must still reach the summary artifacts)
@@ -104,15 +116,40 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
         if primary:
             p50s = {p: s.get(primary, {}).get("p50") for p, s in entry["products"].items()}
             unstable = _stability_marks(bench, p50s, entry["products"], aa_p50s,
-                                        drift_threshold_pct, aa_failing,
-                                        derived_aa_required)
+                                        drift_threshold_pct, aa_failing)
             if unstable:
                 entry["unstable"] = unstable
-                p50s = {p: v for p, v in p50s.items() if p not in unstable}
-            entry["ranks"] = rank_products(p50s)
-            entry["primary_p50s"] = {p: v for v, p in
-                                     sorted([(v, p) for p, v in p50s.items() if v is not None])}
-            entry["delta_vs_ts"] = delta_vs_baseline(p50s)
+            entry["ranks"] = {}
+            entry["primary_p50s"] = {}
+            entry["delta_vs_ts"] = {}
+            if aa_coverage is None:
+                # raw primitive (no coverage supplied): unfiltered behavior
+                pool = {p: v for p, v in p50s.items()
+                        if v is not None and p not in unstable}
+                entry["ranks"] = rank_products(pool)
+                entry["primary_p50s"] = _ordered_p50s(pool)
+                entry["delta_vs_ts"] = delta_vs_baseline(pool)
+            else:
+                policy = _aa_policy(bench, cfg)
+                uncalibrated = _uncalibrated_marks(
+                    bench, p50s, aa_coverage, policy["expected_trials"],
+                    (derived_aa_required or {}).get(bench) or ())
+                if uncalibrated:
+                    entry["uncalibrated"] = uncalibrated
+                published = {p: v for p, v in p50s.items() if v is not None}
+                pool = {p: v for p, v in published.items()
+                        if p not in unstable and p not in uncalibrated}
+                if policy["required"]:
+                    expected = policy["expected_products"] or []
+                    pool = {p: v for p, v in pool.items() if p in expected}
+                entry["primary_p50s"] = _ordered_p50s(pool)
+                withheld = _rank_withholding(bench, policy, published,
+                                             uncalibrated, unstable, cfg)
+                if withheld is not None:
+                    entry["ranks_withheld"] = withheld
+                else:
+                    entry["ranks"] = rank_products(pool)
+                    entry["delta_vs_ts"] = delta_vs_baseline(pool)
         if excluded and excluded.get(bench):
             entry["excluded"] = excluded[bench]
         if trials and trials.get(bench):
@@ -217,7 +254,15 @@ def methodology_block(cfg: dict, phases: list | None) -> dict:
     filtered them, where the numbers came from."""
     import time
     analyze = cfg.get("analyze") or {}
+    aa = cfg.get("aa") or {}
+    rank_policy = ("validation-only (aa.required=false): ranks are never emitted"
+                   if not aa.get("required") else
+                   "strict (aa.required=true): ranks require the explicit "
+                   "aa.expected_products cohort — every expected product "
+                   "A/A-calibrated (aa.trials valid rows on the primary) "
+                   "and spread/drift-stable, else the benchmark is withheld")
     return {"analyzed_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            "rank_policy": rank_policy,
             "source_dir": str(analyze.get("results_dir") or ""),
             "published_phases": phases or ["all non-aa phases"],
             "aa_rows": "calibration only, never in published stats",
@@ -234,45 +279,149 @@ def methodology_block(cfg: dict, phases: list | None) -> dict:
                               "fixture_hash_mismatch — loudly, never silently")}
 
 
+def _ordered_p50s(pool: dict) -> dict:
+    """{product: p50} ordered by ascending p50 (the rank pool's shape)."""
+    return {p: v for v, p in sorted([(v, p) for p, v in pool.items()])}
+
+
 def _stability_marks(bench: str, p50s: dict, entry_products: dict,
                      aa_p50s: dict | None, drift_threshold_pct: float | None,
-                     aa_failing: dict | None,
-                     derived_aa_required: dict | None = None) -> dict:
-    """{product: {"aa_drift"?: {...}, "aa_spread"?: {...},
-    "aa_missing_boundary"?: {...}}} — the stability marks that keep a
-    product out of the rankings:
+                     aa_failing: dict | None) -> dict:
+    """{product: {"aa_drift"?: {...}, "aa_spread"?: {...}}} — the STABILITY
+    marks: measured calibration that FAILED quality, keeping a product
+    out of the rankings:
 
     - aa_drift: the primary p50 shifted between the A/A pass and the
       published waves beyond the drift threshold;
     - aa_spread: a calibrated A/A metric failed the noise floor (the
-      primary, plus benchmark-declared aa_metrics when published);
-    - aa_missing_boundary: the product's ranked values exist only through
-      legacy-row derivation (rows predating the recorded metric) and the
-      tree carries no A/A calibration on the derived boundary — derived
-      numbers must never rank uncalibrated (the A/A rows' own raw
-      timestamps calibrate it when present; no row rewrite is involved).
-    """
+      primary, plus benchmark-declared aa_metrics when published).
+
+    A missing or partial A/A pass is a different defect — no evidence,
+    not failed evidence — and is marked uncalibrated (``uncalibrated``),
+    never here."""
     marks: dict = defaultdict(dict)
-    if aa_p50s is not None:
-        for product in (derived_aa_required or {}).get(bench, ()):
-            if product in p50s and (bench, product) not in aa_p50s:
-                marks[product]["aa_missing_boundary"] = {
-                    "reason": "ranked value derived from legacy rows; "
-                              "no A/A calibration on the derived primary"}
-        if drift_threshold_pct is not None:
-            for product, w1 in p50s.items():
-                aa = aa_p50s.get((bench, product))
-                if w1 and aa:
-                    drift = abs(w1 - aa) / min(w1, aa) * 100.0
-                    if drift > drift_threshold_pct:
-                        marks[product]["aa_drift"] = {"aa_p50": aa, "w1_p50": w1,
-                                                     "drift_pct": round(drift, 1)}
+    if aa_p50s is not None and drift_threshold_pct is not None:
+        for product, w1 in p50s.items():
+            aa = aa_p50s.get((bench, product))
+            if w1 and aa:
+                drift = abs(w1 - aa) / min(w1, aa) * 100.0
+                if drift > drift_threshold_pct:
+                    marks[product]["aa_drift"] = {"aa_p50": aa, "w1_p50": w1,
+                                                 "drift_pct": round(drift, 1)}
     for product, failing in (aa_failing or {}).get(bench, {}).items():
         published = {m: e for m, e in failing.items()
                     if m in (entry_products.get(product) or {})}
         if published:
             marks[product]["aa_spread"] = {"metrics": published}
     return dict(marks)
+
+
+def _aa_policy(bench: str, cfg: dict) -> dict:
+    """The rank policy for one benchmark, resolved from the declared aa
+    config: required (strict campaign vs validation-only smoke), the
+    expected valid A/A row count per product (``aa.trials``), and the
+    explicit eligible cohort (``aa.expected_products`` — global list or
+    per-benchmark map). The cohort is NEVER inferred from rows: a
+    selected product that produced zero rows must stay detectable as
+    incomplete, and rows cannot reveal what the campaign selected."""
+    aa = cfg.get("aa") or {}
+    declared = aa.get("expected_products")
+    expected = declared.get(bench) if isinstance(declared, dict) else declared
+    return {"required": bool(aa.get("required")),
+            "expected_trials": int(aa.get("trials") or 10),
+            "expected_products": list(expected) if expected else None}
+
+
+def _aa_primary_coverage(valid: list) -> dict:
+    """{(benchmark, product): n} — the gate-valid A/A rows carrying the
+    benchmark's PRIMARY metric, read through metrics_for (the same
+    flattening the published stats use, so legacy rows derive the same
+    boundary they rank on; fresh rows carry the recorded metric). Only
+    ``aa``-phase rows calibrate — phase identity is the pass's boundary,
+    published rows never masquerade as a calibration."""
+    counts: dict = defaultdict(int)
+    for r in valid:
+        if not is_aa_phase(r):
+            continue
+        primary, _ = primary_metric(r.get("benchmark")) or (None, None)
+        if primary and metrics_for(r).get(primary) is not None:
+            counts[(r["benchmark"], r["product"])] += 1
+    return dict(counts)
+
+
+def _uncalibrated_marks(bench: str, p50s: dict, coverage: dict,
+                        expected_trials: int, derived_products) -> dict:
+    """{product: {"reason", "aa_valid", "aa_expected"}} for every product
+    whose published primary p50 carries no complete A/A calibration —
+    UNCALIBRATED, distinct from unstable (no evidence vs failed
+    evidence). Missing (0 valid rows) and partial (below the declared
+    ``aa.trials``) both keep the product out of the ranks; stats stay
+    visible. Products ranked only through legacy-row derivation say so
+    in the reason (the derived boundary calibrates from the A/A rows'
+    own timestamps when present)."""
+    out = {}
+    for product, p50 in p50s.items():
+        if p50 is None:
+            continue
+        n = coverage.get((bench, product), 0)
+        if n >= expected_trials:
+            continue
+        reason = ("no A/A calibration rows on the primary metric" if n == 0
+                  else f"partial A/A calibration ({n}/{expected_trials} valid rows)")
+        if product in derived_products:
+            reason += "; ranked values derive from legacy rows"
+        out[product] = {"reason": reason, "aa_valid": n,
+                        "aa_expected": expected_trials}
+    return out
+
+
+def _rank_withholding(bench: str, policy: dict, published: dict,
+                     uncalibrated: dict, unstable: dict, cfg: dict) -> dict | None:
+    """Why this benchmark's ranks are withheld, or None when the strict
+    campaign's cohort is complete and ranks may be emitted.
+
+    - validation_only: aa.required=false — the smoke default; analysis is
+      validation-only and ranks are NEVER emitted (no partial
+      leaderboards from uncalibrated trees).
+    - missing_expected_products: strict campaign without an explicit
+      aa.expected_products declaration for this benchmark — the eligible
+      cohort is never inferred from rows.
+    - incomplete_cohort: an expected product is unsupported by the
+      benchmark's applicability, absent from the published pool (zero
+      valid primary rows), uncalibrated (missing/partial A/A), or
+      unstable (failed spread/drift) — any gap withholds the WHOLE
+      benchmark's ranks and deltas; a complete comparison needs an
+      equivalent stable cohort, never a lone survivor."""
+    if not policy["required"]:
+        return {"reason": "validation_only",
+                "detail": "aa.required=false: validation-only analysis — "
+                          "ranks are never emitted"}
+    expected = policy["expected_products"]
+    if not expected:
+        return {"reason": "missing_expected_products",
+                "detail": "strict campaign (aa.required=true) requires explicit "
+                          "aa.expected_products for every ranked benchmark; "
+                          "none declared for this one"}
+    blockers: dict = {}
+    applicable = (cfg.get("gate_benchmarks") or {}).get(bench, {}) \
+        .get("applicable_products")
+    if applicable:
+        unsupported = sorted(p for p in expected if p not in applicable)
+        if unsupported:
+            blockers["unsupported"] = unsupported
+    absent = sorted(p for p in expected if p not in published)
+    if absent:
+        blockers["absent"] = absent
+    cohort_uncalibrated = sorted(p for p in expected if p in uncalibrated)
+    if cohort_uncalibrated:
+        blockers["uncalibrated"] = cohort_uncalibrated
+    cohort_unstable = sorted(p for p in expected if p in unstable)
+    if cohort_unstable:
+        blockers["unstable"] = cohort_unstable
+    if blockers:
+        blockers["reason"] = "incomplete_cohort"
+        blockers["expected"] = list(expected)
+    return blockers or None
 
 
 def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None,
@@ -311,6 +460,10 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None,
     for r in published:
         if derived_primary(r):
             derived_aa_required[r["benchmark"]].add(r["product"])
+    # the A/A primary coverage behind every rank decision: gate-valid
+    # aa-phase rows carrying the primary (analysis gate only — the raw
+    # rows are historical evidence and are never rewritten)
+    aa_coverage = _aa_primary_coverage(valid)
     by, _ = aggregate(published)
     # trial-error counts derived from the gate's exclusion reasons
     failures = defaultdict(lambda: defaultdict(int))
@@ -333,6 +486,7 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None,
                                  drift_threshold_pct=drift_threshold,
                                  aa_failing=aa_failing(aa),
                                  derived_aa_required=dict(derived_aa_required),
+                                 aa_coverage=aa_coverage,
                                  status=status,
                                  comparability=dict(comparability),
                                  phase_p50s=_phase_p50s(published),

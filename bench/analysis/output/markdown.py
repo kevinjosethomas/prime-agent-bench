@@ -20,11 +20,25 @@ def _stability_detail(reason: str, info: dict) -> str:
     if reason == "aa_drift":
         return (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
                 f"(+{info['drift_pct']}% drift)")
-    if reason == "aa_missing_boundary":
-        return info["reason"]
     metrics = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} ({e['spread_pct']}%)"
                         for m, e in sorted(info["metrics"].items()))
     return f"A/A spread over threshold \u2014 {metrics}"
+
+
+def _withheld_detail(info: dict) -> str:
+    """One ranks-withheld mark rendered as evidence text."""
+    if info.get("detail"):
+        return info["detail"]
+    parts = []
+    if info.get("unsupported"):
+        parts.append(f"unsupported for this benchmark: {', '.join(info['unsupported'])}")
+    if info.get("absent"):
+        parts.append(f"no valid primary rows: {', '.join(info['absent'])}")
+    if info.get("uncalibrated"):
+        parts.append(f"uncalibrated: {', '.join(info['uncalibrated'])}")
+    if info.get("unstable"):
+        parts.append(f"unstable: {', '.join(info['unstable'])}")
+    return f"expected cohort {info.get('expected')} — " + "; ".join(parts)
 
 
 def markdown(stats: dict, cfg: dict) -> str:
@@ -109,6 +123,23 @@ def markdown(stats: dict, cfg: dict) -> str:
                 for reason, info in unstable[p].items():
                     lines.append(f"| {display.get(p, p)} | {reason} | "
                                  f"{_stability_detail(reason, info)} |")
+            lines.append("")
+        uncalibrated = entry.get("uncalibrated") or {}
+        if uncalibrated:
+            lines.append("Uncalibrated (never ranked):")
+            lines.append("")
+            lines.append("| product | reason | A/A valid/expected |")
+            lines.append("|---|---|---|")
+            for p in [p for p in order if p in uncalibrated] \
+                    + [p for p in uncalibrated if p not in order]:
+                info = uncalibrated[p]
+                lines.append(f"| {display.get(p, p)} | {info['reason']} | "
+                             f"{info['aa_valid']}/{info['aa_expected']} |")
+            lines.append("")
+        withheld = entry.get("ranks_withheld") or {}
+        if withheld:
+            lines.append(f"**Ranks withheld — {withheld['reason']}**: "
+                         f"{_withheld_detail(withheld)}")
             lines.append("")
         excluded = entry.get("excluded") or {}
         if excluded:

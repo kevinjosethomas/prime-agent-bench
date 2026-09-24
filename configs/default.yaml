@@ -37,6 +37,19 @@ settle:
 
 aa:
   spread_threshold_pct: 10.0
+  # Rank policy. The default is the validation-only smoke mode: analysis
+  # reports stats, marks and denominators but NEVER emits ranks. A
+  # publishable campaign declares its cohort explicitly:
+  #   required: true
+  #   trials: 4                        # the campaign's --aa-trials count
+  #   expected_products: [rust, ts]    # or per benchmark:
+  #     # expected_products: {session.cold_open_10mib: [rust, ts], ...}
+  # Every expected product must publish a valid primary p50, carry >= trials
+  # valid A/A rows on the primary, and pass the spread/drift stability gate —
+  # any gap withholds the whole benchmark's ranks (no partial leaderboards).
+  required: false
+  trials: 10
+  expected_products: null
   drift_threshold_pct: 10.0   # max p50 drift between the A/A pass and the waves
 
 noop_control:

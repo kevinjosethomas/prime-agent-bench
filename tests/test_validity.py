@@ -7,6 +7,11 @@ fixture), the Codex 401 auth-error settle, A/A rows pooled into W1 stats,
 scroll/typing rows without fixture confirmation, typing_ok=false rows,
 validation-failed and debug/missing-metrics rows. The gate must keep
 every one of them out of stats/rankings/deltas and report counts+reasons.
+
+Rank policy: the default campaign config is validation-only (ranks are
+never emitted); a strict publish campaign (aa.required + explicit
+aa.expected_products + aa.trials) ranks a benchmark only when every
+expected product is present, A/A-calibrated and spread/drift-stable.
 """
 from __future__ import annotations
 
@@ -39,6 +44,41 @@ def gate_map() -> dict:
                    "completeness_keys": tuple(b.completeness_keys),
                    "aa_metrics": tuple(b.aa_metrics)}
             for name, b in reg.benchmarks.items()}
+
+
+def strict_cfg(trials=4, expected=None, **aa_over):
+    """A publishable campaign's config: aa.required + the campaign's
+    --aa-trials count + the explicit eligible cohort (global list or
+    per-benchmark map)."""
+    aa = {"spread_threshold_pct": 10.0, "drift_threshold_pct": 10.0,
+          "required": True, "trials": trials, **aa_over}
+    if expected is not None:
+        aa["expected_products"] = expected
+    return dict(CFG, gate_benchmarks=gate_map(), aa=aa)
+
+
+def _fresh_session_rows(product, aa_valid=4):
+    """Fresh session.cold_open rows (new-wave shape): the completion
+    boundary is RECORDED beside the raw timestamps, the w1 wave is valid,
+    and an A/A pass contributes aa_valid valid rows (spread-stable)."""
+    base = 100.0 if product == "rust" else 200.0
+    gold = "d" * 64          # new-wave rows stage a clone and prove it
+
+    def row(trial, phase, complete):
+        return {"benchmark": "session.cold_open_10mib", "product": product,
+                "phase": phase, "trial": trial,
+                "metrics": {"launch_to_ready_ms": complete - 10.0,
+                            "launch_to_sentinel_ms": complete - 20.0,
+                            "launch_to_complete_ms": complete},
+                "validated": True,
+                "validation": {"sentinel": True, "echoed": True, "erased": True},
+                "fixture": {"loaded": True, "sha256": gold,
+                            "clone": {"sha256": gold}},
+                "comparability": "equivalent"}
+
+    rows = [row(i, "w1", base + i) for i in range(4)]
+    rows += [row(i, "aa", base) for i in range(aa_valid)]
+    return rows
 
 
 @pytest.fixture(scope="module")
@@ -112,39 +152,50 @@ def test_session_open_120s_artifacts_never_ranked(model):
 
 
 def test_session_open_historical_rows_need_clone_proof_to_rank(model):
-    """The 2026-09-24 shared-golden mutation incident: rows carry the
-    golden manifest hash but no proof of the bytes actually loaded, so
-    pre-clone-era rows are unrankable — excluded LOUDLY with a visible
-    reason (fixture_no_clone_evidence), never silently rewritten. Only
-    rows with per-trial clone evidence rank on the completion boundary
-    (spec §A primary launch_to_complete_ms); the boundary derivation
-    itself stays covered by metrics_for (test_scenario_correctness) and
-    the clone-proven synthetic rank test (test_fixture_integrity). The
-    derived boundary's A/A-calibration requirement now gates only
-    clone-proven rows — composed with this gate it is tested below
+    """The 2026-09-24 shared-golden mutation incident, composed with the
+    strict AA rank policy: rows carry the golden manifest hash but no
+    proof of the bytes actually loaded, so pre-clone-era rows are
+    unrankable — excluded LOUDLY with a visible reason
+    (fixture_no_clone_evidence), never silently rewritten. With the
+    whole captured tree excluded at the byte-proof gate, no session row
+    reaches stats or the A/A machinery (no derived p50s, no denominators,
+    no uncalibrated marks at all); the default campaign is
+    validation-only anyway, so the entry withholds ranks explicitly. The
+    derived boundary's A/A-calibration requirement, composed behind the
+    clone gate, is tested below
     (test_legacy_boundary_rows_require_aa_calibration_to_rank)."""
     entry = model["summary"]["session.cold_open_10mib"]
     assert entry["primary"] == "launch_to_complete_ms"
-    assert entry["primary_p50s"] == {}
-    assert entry.get("ranks") in (None, {})
     # the sentinel-passing historical rows are the loud exclusion class
     # (5 w1 + 8 aa for rust, 2 w1 for ts)
     assert _reasons(model, "session.cold_open_10mib", "rust")["reasons"] \
         ["fixture_no_clone_evidence"] == 13
     assert _reasons(model, "session.cold_open_10mib", "ts")["reasons"] \
         ["fixture_no_clone_evidence"] == 2
+    # nothing reaches stats: no denominators, no p50s, no marks
+    assert entry["primary_p50s"] == {}
+    assert "trials" not in entry
+    assert "uncalibrated" not in entry and "unstable" not in entry
+    # the default campaign is validation-only: ranks are never emitted
+    assert entry["ranks"] == {} and entry["delta_vs_ts"] == {}
+    assert entry["ranks_withheld"]["reason"] == "validation_only"
+
 
 
 def test_legacy_boundary_rows_require_aa_calibration_to_rank():
     """The derived boundary may not rank uncalibrated: legacy rows (no
-    recorded launch_to_complete_ms) rank only once an A/A pass calibrates
-    the boundary; rows that record the metric (new waves) rank under the
-    normal policy exactly as before. Every synthetic row carries per-trial
-    clone proof (staged sha == golden sha), so the fixture byte-proof gate
-    passes and the A/A calibration requirement is exactly what's under
-    test."""
-    cfg = dict(CFG, gate_benchmarks=gate_map())
+    recorded launch_to_complete_ms) rank only under a strict campaign once
+    an A/A pass calibrates the boundary (the AA rows' own raw timestamps
+    derive it); rows that record the metric (new waves) rank the same way.
+    No A/A rows at all -> uncalibrated and withheld, even though the
+    published rows themselves carry the metric — phase identity: only
+    aa-phase rows ever count as calibration. Every synthetic row carries
+    per-trial clone proof (staged sha == golden sha), so the fixture
+    byte-proof gate passes and the A/A rank policy is exactly what is
+    under test."""
+    cfg = strict_cfg(trials=4, expected=["rust"])
     GOLD = "d" * 64
+
 
     def sess_row(product, trial, ready, sentinel, phase="w1", recorded=False):
         m = {"launch_to_ready_ms": ready, "launch_to_sentinel_ms": sentinel}
@@ -159,20 +210,133 @@ def test_legacy_boundary_rows_require_aa_calibration_to_rank():
 
     legacy = [sess_row("rust", i, 9000.0 + i, 8000.0) for i in range(4)]
     entry = summarize_rows(legacy, cfg)["summary"]["session.cold_open_10mib"]
-    # legacy-derived boundary, no A/A anywhere: unrankable, marked
-    assert entry["ranks"] == {} and entry["primary_p50s"] == {}
-    assert entry["unstable"]["rust"]["aa_missing_boundary"]
+    # legacy-derived boundary, no A/A rows: uncalibrated, ranks withheld
+    assert entry["uncalibrated"]["rust"]["aa_valid"] == 0
+    assert "derive from legacy rows" in entry["uncalibrated"]["rust"]["reason"]
+    assert entry["ranks_withheld"]["reason"] == "incomplete_cohort"
+    assert entry["ranks"] == {} and entry["delta_vs_ts"] == {}
     # the same pool with an A/A pass on the derived boundary ranks
     calibrated = legacy + [sess_row("rust", i, 9000.0, 8000.0, phase="aa")
-                           for i in range(6)]
+                           for i in range(4)]
     entry = summarize_rows(calibrated, cfg)["summary"]["session.cold_open_10mib"]
     assert entry["ranks"] == {"rust": 1}
-    assert "unstable" not in entry
-    # rows that record the boundary rank without the legacy requirement
+    assert "uncalibrated" not in entry and "ranks_withheld" not in entry
+    # fresh rows that record the boundary: w1 rows alone never calibrate
     recorded = [sess_row("ts", i, 100.0, 90.0, recorded=True) for i in range(4)]
-    entry = summarize_rows(recorded, cfg)["summary"]["session.cold_open_10mib"]
+    entry = summarize_rows(recorded, strict_cfg(trials=4, expected=["ts"])) \
+        ["summary"]["session.cold_open_10mib"]
+    assert entry["uncalibrated"]["ts"]["aa_valid"] == 0
+    assert entry["ranks"] == {}
+    # ...an A/A pass on the recorded primary ranks
+    recorded += [sess_row("ts", i, 100.0, 90.0, phase="aa", recorded=True)
+                 for i in range(4)]
+    entry = summarize_rows(recorded, strict_cfg(trials=4, expected=["ts"])) \
+        ["summary"]["session.cold_open_10mib"]
     assert entry["ranks"] == {"ts": 1}
-    assert "unstable" not in entry
+
+
+# ---- strict publish gate (rank policy) ----------------------------------------
+
+def test_strict_captured_tree_withholds_incomplete_cohort():
+    """The publish gate on the historical captured tree (strict campaign:
+    aa.trials=4, the campaign's --aa-trials count, expected [rust, ts]):
+    every captured session.cold_open row predates the per-trial clone
+    proof, so the byte-proof gate excludes them first — both expected
+    products are ABSENT and the WHOLE benchmark withholds; daemon.boot
+    (no fixture) keeps its rows, so its rust is drift-unstable and the
+    benchmark withholds on the unstable side (no lone ts rank). The
+    exclusion stats stay loud and untouched."""
+    cfg = strict_cfg(trials=4, expected=["rust", "ts"])
+    strict = summarize_rows(load_all(FIXTURES), cfg,
+                            settle_rows=load_settle(FIXTURES))
+    session = strict["summary"]["session.cold_open_10mib"]
+    # the captured session rows all fail the per-trial clone-proof gate,
+    # so BOTH expected products are absent (zero valid primary rows): the
+    # whole benchmark withholds; the exclusions stay loud
+    assert session["ranks_withheld"]["reason"] == "incomplete_cohort"
+    assert session["ranks_withheld"]["absent"] == ["rust", "ts"]
+    assert session["ranks"] == {} and session["delta_vs_ts"] == {}
+    assert session["excluded"]["rust"]["reasons"]["fixture_no_clone_evidence"] == 13
+    assert session["excluded"]["ts"]["reasons"]["fixture_not_confirmed"] == 4
+    daemon = strict["summary"]["daemon.boot"]
+    assert daemon["ranks_withheld"]["reason"] == "incomplete_cohort"
+    assert daemon["ranks_withheld"]["unstable"] == ["rust"]
+    assert daemon["ranks"] == {}          # no lone ts survivor
+    assert daemon["products"]["rust"]["spawn_to_accept_ms"]["p50"] \
+        == daemon["unstable"]["rust"]["aa_drift"]["w1_p50"]
+
+
+def test_complete_fresh_rows_with_aa_rank_in_strict_campaign():
+    """The rerun path: fresh rows record the completion boundary, every
+    expected product carries a complete A/A pass and passes the stability
+    gate -> the strict campaign emits ranks and deltas."""
+    cfg = strict_cfg(trials=4, expected=["rust", "ts"])
+    rows = _fresh_session_rows("rust") + _fresh_session_rows("ts")
+    entry = summarize_rows(rows, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["ranks"] == {"rust": 1, "ts": 2}
+    assert entry["primary_p50s"] == {"rust": 102.0, "ts": 202.0}
+    assert entry["delta_vs_ts"]["rust"]["abs"] == -100.0
+    assert "uncalibrated" not in entry and "unstable" not in entry
+    assert "ranks_withheld" not in entry
+
+
+def test_partial_aa_withholds_the_cohort():
+    """The A/A 3/4 shape: one expected product's pass is partial (3 valid
+    rows of the declared 4) -> uncalibrated -> the whole benchmark
+    withholds; a complete pass on both products ranks."""
+    cfg = strict_cfg(trials=4, expected=["rust", "ts"])
+    rows = _fresh_session_rows("rust") + _fresh_session_rows("ts", aa_valid=3)
+    entry = summarize_rows(rows, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["uncalibrated"]["ts"]["aa_valid"] == 3
+    assert entry["uncalibrated"]["ts"]["aa_expected"] == 4
+    assert "partial A/A calibration" in entry["uncalibrated"]["ts"]["reason"]
+    assert entry["ranks_withheld"]["uncalibrated"] == ["ts"]
+    assert entry["ranks"] == {}            # no lone rust survivor
+    rows = _fresh_session_rows("rust") + _fresh_session_rows("ts")
+    entry = summarize_rows(rows, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["ranks"] == {"rust": 1, "ts": 2}
+
+
+def test_absent_expected_product_withholds_the_cohort():
+    """An expected product with zero valid primary rows anywhere (never
+    ran, or every trial failed the gate) is ABSENT — the whole benchmark
+    withholds; no lone survivor may rank."""
+    cfg = strict_cfg(trials=4, expected=["rust", "ts"])
+    rows = _fresh_session_rows("rust")          # ts never ran
+    entry = summarize_rows(rows, cfg)["summary"]["session.cold_open_10mib"]
+    assert entry["ranks_withheld"]["reason"] == "incomplete_cohort"
+    assert entry["ranks_withheld"]["absent"] == ["ts"]
+    assert entry["ranks"] == {}                 # no lone rust survivor
+    assert "ts" not in entry["products"]
+
+
+def test_strict_campaign_requires_expected_products_declaration():
+    """Strict without an explicit aa.expected_products declaration never
+    ranks (the cohort is never inferred from rows) and says so; the
+    per-benchmark map form scopes the declaration per benchmark."""
+    cfg = strict_cfg(trials=4)
+    strict = summarize_rows(load_all(FIXTURES), cfg)
+    session = strict["summary"]["session.cold_open_10mib"]
+    assert session["ranks_withheld"]["reason"] == "missing_expected_products"
+    assert session["ranks"] == {}
+    cfg_map = strict_cfg(trials=4,
+                         expected={"session.cold_open_10mib": ["rust", "ts"]})
+    strict = summarize_rows(load_all(FIXTURES), cfg_map)
+    assert strict["summary"]["compare.cold_start"]["ranks_withheld"] \
+        ["reason"] == "missing_expected_products"   # undeclared benchmark
+    assert strict["summary"]["session.cold_open_10mib"]["ranks_withheld"] \
+        ["reason"] == "incomplete_cohort"             # declared one is gated
+
+
+def test_strict_unsupported_expected_product_is_surfaced():
+    """The declared cohort is validated against the benchmark's
+    applicability: expecting a product the benchmark cannot measure
+    withholds the benchmark (surfaced, never silently dropped)."""
+    cfg = strict_cfg(trials=4, expected=["rust", "claude"])
+    entry = summarize_rows(load_all(FIXTURES), cfg) \
+        ["summary"]["session.cold_open_10mib"]
+    assert entry["ranks_withheld"]["unsupported"] == ["claude"]
+    assert entry["ranks"] == {}
 
 
 # ---- auth-error settle (Codex 401) -------------------------------------------
@@ -356,16 +520,17 @@ def test_gate_rows_counts_and_reasons():
 
 def test_drift_gate_marks_unstable_never_ranks(model):
     """daemon.boot rust: A/A p50 ~46 vs W1 p50 ~220 (~4.8x pass-to-pass
-    shift) -> marked unstable, excluded from ranks and deltas; ts (4%
-    drift) still ranks."""
+    shift) -> marked unstable. The default campaign is validation-only
+    (no ranks at all); under a strict campaign the unstable expected
+    product withholds the WHOLE benchmark (no lone ts survivor — see
+    test_strict_captured_tree_withholds_incomplete_cohort)."""
     entry = model["summary"]["daemon.boot"]
     unstable = entry["unstable"]
     assert "rust" in unstable and "ts" not in unstable
     assert unstable["rust"]["aa_drift"]["drift_pct"] > 300.0
-    assert entry["ranks"].get("rust") is None
+    assert entry["ranks"] == {} and entry["delta_vs_ts"] == {}
+    assert entry["ranks_withheld"]["reason"] == "validation_only"
     assert "rust" not in entry["primary_p50s"]
-    assert "rust" not in entry["delta_vs_ts"]
-    assert entry["ranks"]["ts"] == 1
     # the unstable product's raw stats stay visible for inspection
     assert entry["products"]["rust"]["spawn_to_accept_ms"]["p50"] \
         == unstable["rust"]["aa_drift"]["w1_p50"]
@@ -381,18 +546,20 @@ def test_daemon_aa_calibrates_spawn_to_accept(model):
 
 def test_failing_aa_never_ranks(model):
     """The captured campaign: rust msg_send A/A ack spread 10.7% (fail) and
-    settle spread far over; pi ack spread 12.5% (fail) — both must be out
-    of the rankings; claude (0.7%) and ts (no A/A evidence) still rank."""
+    settle spread far over; pi ack spread 12.5% (fail) — both are marked
+    unstable; ts has no A/A evidence at all and is marked uncalibrated
+    (no evidence vs failed evidence). The default campaign is
+    validation-only: no ranks are emitted for anyone."""
     entry = model["summary"]["compare.msg_send"]
     unstable = entry["unstable"]
     assert unstable["rust"]["aa_spread"]["metrics"]["submit_to_ack_ms"]["spread_pct"] == 10.7
     assert "submit_to_settle_ms" in unstable["rust"]["aa_spread"]["metrics"]
     assert unstable["pi"]["aa_spread"]["metrics"]["submit_to_ack_ms"]["spread_pct"] == 12.5
-    assert "rust" not in entry["ranks"] and "pi" not in entry["ranks"]
+    assert entry["uncalibrated"]["ts"]["aa_valid"] == 0
+    assert entry["ranks"] == {} and entry["delta_vs_ts"] == {}
+    assert entry["ranks_withheld"]["reason"] == "validation_only"
     assert "rust" not in entry["primary_p50s"] and "pi" not in entry["primary_p50s"]
-    assert "rust" not in entry["delta_vs_ts"]
-    assert entry["ranks"] == {"claude": 1, "ts": 2}
-    # the failing products' raw stats stay visible for inspection
+    # the failing/unmeasured products' raw stats stay visible for inspection
     assert entry["products"]["rust"]["submit_to_ack_ms"]["p50"] == 84.0
 
 
@@ -416,7 +583,15 @@ def test_settle_aa_required_only_when_published():
                      "comparability": "equivalent"})
     entry = summarize_rows(rows, cfg)["summary"]["compare.msg_send"]
     assert "unstable" not in entry          # settle A/A failed but settle is not published
+    assert entry["ranks"] == {}             # smoke (default): validation-only
+    assert entry["ranks_withheld"]["reason"] == "validation_only"
+    # the same tree under a strict campaign ranks (settle is not published,
+    # the ack pass is complete and stable)
+    strict = summarize_rows(rows, strict_cfg(trials=10, expected=["rust"]))
+    entry = strict["summary"]["compare.msg_send"]
+    assert "unstable" not in entry
     assert entry["ranks"] == {"rust": 1}
+    assert "ranks_withheld" not in entry
 
 
 # ---- real-api regime -----------------------------------------------------------
@@ -506,6 +681,15 @@ def test_outputs_render_exclusions_and_denominators(model, model_clean_settle):
     assert "aa_drift" in md and "aa_spread" in md
     assert "+373.7% drift" in md              # the daemon.boot rust drift
     assert "(10.7%)" in md                    # the msg_send rust A/A ack spread
+    # uncalibrated marks and withheld ranks render explicitly. The
+    # captured session rows never reach the uncalibrated stage (the
+    # byte-proof gate excludes them first), so the uncalibrated table
+    # here is cold_start/ts; the session's loud clone exclusion renders
+    # in the excluded table instead
+    assert "Uncalibrated (never ranked)" in md
+    assert "no A/A calibration rows on the primary metric" in md
+    assert "fixture_no_clone_evidence=13" in md
+    assert "Ranks withheld \u2014 validation_only" in md
     payload = json.loads(NotionAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model))
     bullets = [b for b in payload["children"]
                if b["type"] == "bulleted_list_item"]
@@ -513,6 +697,10 @@ def test_outputs_render_exclusions_and_denominators(model, model_clean_settle):
                b["bulleted_list_item"]["rich_text"][0]["text"]["content"] for b in bullets)
     assert any("(n=5)" in b["bulleted_list_item"]["rich_text"][0]["text"]["content"]
                for b in bullets)
+    assert any(": uncalibrated" in b["bulleted_list_item"]["rich_text"][0]["text"]["content"]
+               for b in bullets)
+    assert any("ranks withheld (validation_only)" in
+               b["bulleted_list_item"]["rich_text"][0]["text"]["content"] for b in bullets)
 
 
 def test_end_to_end_analyze_on_captured_tree(tmp_path, capsys, monkeypatch):
@@ -534,6 +722,16 @@ def test_end_to_end_analyze_on_captured_tree(tmp_path, capsys, monkeypatch):
     method = summary["methodology"]
     assert method["published_phases"] == ["all non-aa phases"]
     assert method["gate"].startswith("strict")
+    assert method["rank_policy"].startswith("validation-only")
+    # the smoke default never ranks: explicit validation-only labels
+    assert session["ranks"] == {}
+    assert session["ranks_withheld"]["reason"] == "validation_only"
+    # the captured session rows predate the clone proof: excluded loudly,
+    # never reaching stats or the uncalibrated stage end to end
+    assert session["excluded"]["rust"]["reasons"]["fixture_no_clone_evidence"] == 13
+    assert "uncalibrated" not in session
+    # a non-fixture benchmark surfaces the uncalibrated stage instead
+    assert summary["summary"]["compare.cold_start"]["uncalibrated"]["ts"]["aa_valid"] == 0
     assert "aa_coverage" in summary
     # captured rows carry no run stamp: a single unstamped identity, never mixed
     ident = summary["summary"]["compare.cold_start"]["identity"]
@@ -542,5 +740,7 @@ def test_end_to_end_analyze_on_captured_tree(tmp_path, capsys, monkeypatch):
     md = (results / "summary.md").read_text()
     assert "Excluded from rankings" in md
     assert "Published phases:" in md
+    assert "Ranks withheld" in md
+    assert "Uncalibrated (never ranked)" in md
     notion_payload = json.loads((results / "summary.notion.json").read_text())
     assert any("excluded" in json.dumps(b) for b in notion_payload["children"])

@@ -399,8 +399,10 @@ def _clone_row(bench, product, clone_sha, golden_sha, typing_ok=True,
 
 def test_clone_proven_rows_rank():
     """A clone-proven row on a fixture benchmark ranks on the completion
-    boundary: the derived max(ready, sentinel) value from its own
-    timestamps (the historical rows' back-fill path) plus the byte proof."""
+    boundary under a complete strict campaign: the derived
+    max(ready, sentinel) value from its own timestamps (the historical
+    rows' back-fill path) plus the byte proof plus an A/A pass that
+    calibrates the same derived boundary (spread-stable halves)."""
     from bench.analysis.aggregate import summarize_rows
     GOLD = "d" * 64
     rows = []
@@ -415,11 +417,25 @@ def test_clone_proven_rows_rank():
                      "validation": {"sentinel": True, "echoed": True,
                                     "erased": True},
                      "comparability": "equivalent"})
+    for i in range(4):            # A/A on the derived boundary, spread-stable
+        rows.append({"benchmark": "session.cold_open_10mib", "product": "ts",
+                     "phase": "aa", "trial": i,
+                     "fixture": {"loaded": True, "sha256": GOLD,
+                                 "clone": {"sha256": GOLD}},
+                     "metrics": {"launch_to_ready_ms": 751.0,
+                                 "launch_to_sentinel_ms": 2507.0},
+                     "validated": True,
+                     "validation": {"sentinel": True, "echoed": True,
+                                    "erased": True},
+                     "comparability": "equivalent"})
     gate = {"session.cold_open_10mib": {"requires_fixture": "session-10mib",
                                         "applicable_products": None,
                                         "completeness_keys": ()}}
     cfg = {"product_order": ["ts"], "display": {"ts": "Prime Agent TS"},
-           "aa": {"spread_threshold_pct": 10.0}, "gate_benchmarks": gate}
+           "aa": {"spread_threshold_pct": 10.0, "drift_threshold_pct": 10.0,
+                  "required": True, "trials": 4,
+                  "expected_products": ["ts"]},
+           "gate_benchmarks": gate}
     model = summarize_rows(rows, cfg)
     entry = model["summary"]["session.cold_open_10mib"]
     assert entry["primary_p50s"] == {"ts": 2507.0}    # boundary derived + ranked

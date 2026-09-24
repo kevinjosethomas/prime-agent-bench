@@ -27,6 +27,12 @@ discovered from the package structure.
 - Sequential isolation — one product benchmarking at a time, never concurrent
 - ABBA ordering across products (alternating trial order to cancel drift)
 - A/A calibration (same product measured twice -> noise floor must be <10%)
+- Rank policy: `aa.required=false` (default) is validation-only — the analysis
+  reports stats, marks and denominators but NEVER emits ranks; a publishable
+  campaign declares `aa.required=true` + explicit `aa.expected_products` (the
+  eligible cohort; `aa.trials` mirrors `--aa-trials`) and a benchmark ranks
+  only when every expected product is present, A/A-calibrated and
+  spread/drift-stable — any gap withholds the whole benchmark
 - N=10 trials per product per benchmark, p50/p95/p99 with bootstrap CIs
 - Per-trial process sweep (kills all daemon/worker/kernel processes between
   trials), load gate before every trial, per-trial loadavg + RSS + PTY bytes
