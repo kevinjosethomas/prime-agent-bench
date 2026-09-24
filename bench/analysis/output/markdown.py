@@ -31,6 +31,12 @@ def markdown(stats: dict, cfg: dict) -> str:
     order = cfg.get("product_order", [])
     summary, aa = stats["summary"], stats["aa"]
     lines = ["# Benchmark summary", ""]
+    methodology = stats.get("methodology") or {}
+    if methodology:
+        phases = methodology.get("published_phases") or []
+        lines.append(f"_Published phases: {', '.join(phases)}; "
+                     f"A/A rows calibrate only, never publish; gate: {methodology.get('gate')}._")
+        lines.append("")
     for bench, entry in summary.items():
         lines.append(f"## {bench}")
         lines.append("")
@@ -76,6 +82,20 @@ def markdown(stats: dict, cfg: dict) -> str:
                              for p, mode in comparability.items())
             lines.append(f"_Comparability: {comp}_")
             lines.append("")
+        identity = entry.get("identity") or {}
+        if identity.get("mixed"):
+            lines.append(f"**Mixed identity \u2014 never aggregate across these rows**: "
+                         f"runs {identity.get('run_labels')}, "
+                         f"harness {identity.get('harness_revs')}")
+            lines.append("")
+        disclosures = entry.get("disclosures") or {}
+        if disclosures:
+            cells = "; ".join(
+                f"{display.get(p, p)}: " + ", ".join(f"{kind}={n}"
+                                                    for kind, n in sorted(kinds.items()))
+                for p, kinds in disclosures.items())
+            lines.append(f"_Disclosures: {cells}_")
+            lines.append("")
         unstable = entry.get("unstable") or {}
         if unstable:
             lines.append("Unstable (never ranked):")
@@ -106,6 +126,15 @@ def markdown(stats: dict, cfg: dict) -> str:
         lines.append("|---|---|---|---|---|")
         for k, v in aa.items():
             lines.append(f"| {k} | {v['a_p50']} | {v['b_p50']} | {v['spread_pct']}% | {'YES' if v['valid'] else 'NO'} |")
+        lines.append("")
+    coverage = stats.get("aa_coverage") or {}
+    uncalibrated = sorted(b for b, c in coverage.items() if not c.get("aa_rows"))
+    if coverage:
+        lines.append(f"_A/A coverage: {len(coverage) - len(uncalibrated)}/{len(coverage)} "
+                     f"benchmarks calibrated"
+                     + (f"; none for {', '.join(uncalibrated)}" if uncalibrated else "")
+                     + " \u2014 an A/A table entry is the only noise evidence, "
+                       "its absence is never an OK._")
         lines.append("")
     return "\n".join(lines)
 

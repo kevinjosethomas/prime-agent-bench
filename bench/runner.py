@@ -19,6 +19,7 @@ from pathlib import Path
 
 from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint
 from bench.core.env import BenchLayout
+from bench.core.identity import default_run_label, harness_identity
 from bench.core.process import pids_referencing
 from bench.core.registry import Registry, discover
 from bench.drivers.mock_state import DEFAULT_REPLY
@@ -153,12 +154,17 @@ def kernel_benchmarks_selected(benchmark_names: list) -> bool:
 
 def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_names: list,
               trials: int | None = None, aa: bool = False, phase: str = "w1",
-              skip_versions: bool = False, settle_only: bool = False) -> list:
+              skip_versions: bool = False, settle_only: bool = False,
+              run_label: str | None = None) -> list:
     """The sequential suite flow; returns the written JSONL paths.
 
     trials: CLI override; per-benchmark counts resolve CLI > config
-    (benchmarks.<name>.trials) > the benchmark's default."""
+    (benchmarks.<name>.trials) > the benchmark's default. run_label: the
+    campaign provenance label stamped on every row and on versions.json
+    (default: wall-clock; the orchestrator passes its manifest run_id)."""
     from bench.adapters.benchmarks.kernel import kernel_script
+    cfg["run"] = {"label": run_label or default_run_label()}
+    cfg["harness_identity"] = harness_identity()
     out_dir = Path(cfg["results_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
     layout = BenchLayout.from_config(cfg)
@@ -170,7 +176,13 @@ def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_name
     try:
         if not skip_versions:
             versions = capture_versions(reg, prod_names)
-            (out_dir / "versions.json").write_text(json.dumps(versions, indent=1))
+            # machine-collected evidence with its provenance stamp (audit
+            # F10): the collecting run + harness revision ride with the
+            # version records so hand-corrected files are detectable
+            meta = {"run": cfg["run"], "harness": cfg["harness_identity"],
+                    "collected_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+            (out_dir / "versions.json").write_text(
+                json.dumps({"_meta": meta, "products": versions}, indent=1))
             print(json.dumps(versions, indent=1))
         prepare_templates(reg, prod_names)
         if settle_only:
