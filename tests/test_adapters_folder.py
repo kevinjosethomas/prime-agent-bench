@@ -166,6 +166,58 @@ def test_vendor_build_dry_run_and_tarball(tmp_path):
     assert len(m["entries"]) == 3
 
 
+def test_vendor_no_secrets_guarantees_no_key_material(tmp_path, monkeypatch):
+    """--no-secrets drops declared auth_sources AND every prime-home entry,
+    declared or not (live finding: pi shipped ~/.prime/config.json, which
+    carries the api_key, undeclared) — the tarball must carry no key
+    material even when a product.yaml under-declares."""
+    import tarfile
+    from bench.drivers import vendor as vendor_mod
+    from bench.drivers.vendor import build_vendor_tarball
+
+    fake_key = "sk-bench-nosecrets-fake-key-000"
+    prime = tmp_path / "primehome"              # stands in for ~/.prime
+    (prime / "agent").mkdir(parents=True)
+    (prime / "config.json").write_text(f'{{"api_key": "{fake_key}"}}')
+    (prime / "agent" / "settings.json").write_text('{"theme": "x"}')
+    (prime / "agent" / "auth.json").write_text('{"tokens": "fake"}')
+    declared_auth = tmp_path / "other-product-auth"  # declared, not prime-home
+    declared_auth.mkdir()
+    (declared_auth / "auth.json").write_text('{"k": "v"}')
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "app").write_bytes(b"binary-bytes")
+
+    prod = _StubProduct(False, [
+        {"src": str(tmp_path / "bin" / "app"), "dst": "root/opt/app"},
+        {"src": str(prime / "agent" / "auth.json"), "dst": "root/.prime/agent/auth.json"},
+        {"src": str(prime / "config.json"), "dst": "root/.prime/config.json"},
+        {"src": str(prime / "agent" / "settings.json"), "dst": "root/.prime/agent/settings.json"},
+        {"src": str(declared_auth), "dst": "root/.other/auth"},
+    ])
+    prod.product_cfg["auth_sources"] = [{"src": str(declared_auth)}]
+    monkeypatch.setattr(vendor_mod, "PRIME_HOME", prime)
+
+    out = tmp_path / "vendor" / "products.tar.gz"
+    manifest = build_vendor_tarball(_cfg(tmp_path), ["demo"], out,
+                                    reg=_StubRegistry({"demo": prod}),
+                                    no_secrets=True)
+    redacted_srcs = {e["src"] for e in manifest["redacted_entries"]}
+    assert str(declared_auth) in redacted_srcs            # declared source
+    assert str(prime / "config.json") in redacted_srcs     # prime-home rule
+    assert str(prime / "agent" / "settings.json") in redacted_srcs
+    assert str(prime / "agent" / "auth.json") in redacted_srcs
+    assert [e["dst"] for e in manifest["entries"]] == ["root/opt/app"]
+
+    with tarfile.open(out) as tin:
+        names = tin.getnames()
+        assert not any(".prime" in n for n in names)
+        assert any(n.endswith(".secret-free") for n in names)
+        payload = b"".join(tin.extractfile(m).read()
+                           for m in tin.getmembers() if m.isfile())
+    assert fake_key.encode() not in payload                # no key material
+    assert b"binary-bytes" in payload                      # binaries intact
+
+
 # ---- sandbox setup state ----------------------------------------------------
 
 def test_sandbox_spec_and_state(tmp_path):

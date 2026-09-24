@@ -1,6 +1,8 @@
 """Registry discovery, config precedence, and trial-count resolution."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from bench.core.config import deep_merge, load_config, product_config
 from bench.core.measurement import primary_metric
 from bench.core.registry import discover
@@ -60,6 +62,13 @@ def test_product_config_loads_pinning():
     # old 0.73.0 label was stale npm-registry-scheme metadata, not the pin)
     assert pi["revision"] == "b45597504eeaba1f11a9920a1d1048c361ed4b8e"
     assert pi["install"]["npm_version"] == "0.87.1"
+    # pi's auth_sources fully declare the prime-home credential set (the
+    # live payload gap: config.json carries the api_key and was undeclared,
+    # so --no-secrets did not redact it)
+    declared = {str(Path(e["src"]).expanduser()) for e in pi["auth_sources"]}
+    assert str(Path("~/.prime/agent/auth.json").expanduser()) in declared
+    assert str(Path("~/.prime/config.json").expanduser()) in declared
+    assert str(Path("~/.prime/agent/settings.json").expanduser()) in declared
 
 
 def test_benchmark_config_overrides_reach_registry_adapters(tmp_path):

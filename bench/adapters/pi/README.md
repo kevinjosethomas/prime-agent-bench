@@ -23,6 +23,12 @@
   subscription auth from the copied auth.json = PAID traffic — the flag set
   is load-bearing. Loaded-session scenarios never submit, so no auth is
   exercised there at all.
+- `product.yaml` declares the full prime-home credential set as
+  `auth_sources` (auth.json + config.json + agent/settings.json), so
+  `bench vendor --no-secrets` drops all of it from the payload; the vendor
+  builder additionally redacts any undeclared prime-home entry
+  (config.json carries the api_key) — a secret-free payload ships binaries,
+  never prime-home state.
 
 ## First-run dialogs (config, in product.yaml)
 - None at the pinned revision — the provider/model flags settle it

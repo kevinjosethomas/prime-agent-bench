@@ -127,6 +127,35 @@ def test_pi_is_comparable_for_loaded_session_benchmarks(tmp_path):
     assert level == "equivalent"
 
 
+def test_pi_version_info_reads_package_json_from_cli_ancestry(tmp_path, monkeypatch):
+    """Sandbox layout: the vendor payload untars to the node layout
+    (/root/bench/repos/pi-mono) while the sandbox bench root is
+    /root/bench-root, so layout.repos has no pi-mono tree there —
+    version_info must resolve package.json from the cli bundle's own
+    ancestry (live finding from the 2026-09-24 proof run: bench versions
+    errored inside the sandbox)."""
+    pkg_dir = tmp_path / "node-layout" / "repos" / "pi-mono" / "packages" / "coding-agent"
+    bundle = pkg_dir / "dist" / "bundle"
+    bundle.mkdir(parents=True)
+    (bundle / "cli.js").write_text("#!/usr/bin/env node\n")
+    (pkg_dir / "package.json").write_text('{"version": "0.87.1"}')
+    product = _pi_product(tmp_path)  # layout.repos = <tmp>/bench/repos: no pi-mono
+    product.product_cfg["binary"] = str(bundle / "cli.js")
+
+    class _NoNode:  # version falls back to package.json; no node needed here
+        def __init__(self, *args, **kwargs):
+            self.stdout = ""
+            self.stderr = ""
+            self.returncode = 0
+
+    monkeypatch.setattr("bench.adapters.pi.adapter.subprocess.run", _NoNode)
+    info = product.version_info()
+    assert info["version"] == "0.87.1"
+    assert info["revision"] == PiMonoProduct.default_revision
+    assert info["binary"] == f"node {bundle / 'cli.js'}"
+    assert info["binary_sha256"] == hashlib.sha256((bundle / "cli.js").read_bytes()).hexdigest()
+
+
 # ---- the generic hook: default None keeps the gold manifest ------------------
 
 class FakeSession(Session):

@@ -74,10 +74,24 @@ class PiMonoProduct(ProductAdapter):
             return Path(self.product_cfg["binary"])
         return self.layout.repos / "pi-mono/packages/coding-agent/dist/bundle/cli.js"
 
+    def _package_json(self) -> Path:
+        """The package.json of the package owning the bundled cli.
+
+        Resolved from the cli_path ancestry, not the bench-root layout:
+        sandbox vendor payloads untar to the node layout
+        (/root/bench/repos/pi-mono) while the sandbox bench root is
+        /root/bench-root, so layout.repos points at a tree that does not
+        exist there (live finding, 2026-09-24 proof run)."""
+        for parent in self.cli_path.parents:
+            cand = parent / "package.json"
+            if cand.exists():
+                return cand
+        raise FileNotFoundError(f"no package.json in the ancestry of {self.cli_path}")
+
     def version_info(self) -> dict:
         from bench.core.env import sha256_file
         v = subprocess.run(["node", str(self.cli_path), "--version"], capture_output=True, text=True, timeout=90)
-        pkg = json.loads((self.layout.repos / "pi-mono/packages/coding-agent/package.json").read_text())
+        pkg = json.loads(self._package_json().read_text())
         return {"version": v.stdout.strip() or pkg["version"],
                 "revision": self.product_cfg.get("revision", self.default_revision),
                 "binary": f"node {self.cli_path}",

@@ -11,6 +11,8 @@ install:
   note: the source package version at the pinned revision; built from source, pack 404s (npm registry scheme is 0.59-0.73.1)
 auth_sources:
   - {src: ~/.prime/agent/auth.json, note: the copied auth.json keeps pi authenticated (provider/model flags route traffic to the mock)}
+  - {src: ~/.prime/config.json, note: PRIME_API_KEY for the trial env}
+  - {src: ~/.prime/agent/settings.json, note: product settings}
 first_run_dialogs:
   # Loaded-session resume only: pi asks this when a resumed session's
   # recorded cwd does not exist. prepare_native_fixture creates the recorded
