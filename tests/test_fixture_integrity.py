@@ -161,6 +161,7 @@ def _engine_reg(tmp_path, monkeypatch, golden, stub_sha=None):
     reg = discover(_cfg(tmp_path))
     reg.fixtures["session-10mib"] = StubFixture(golden, sha=stub_sha)
     reg.fixtures["session-10mib-v3"] = StubFixture(golden, sha=stub_sha)
+    reg.fixtures["session-10mib-v4"] = StubFixture(golden, sha=stub_sha)
     product = FakeProduct({"layout": reg.layout, "product": {}, "mock": {}})
     reg.products["fake"] = product
     import bench.trials as trials_mod
