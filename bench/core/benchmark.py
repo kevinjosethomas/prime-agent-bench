@@ -29,6 +29,10 @@ class Benchmark(ABC):
     default_trials: int = 10
     applicable_products: list[str] | None = None  # None = every product
     requires_fixture: str | None = None            # registry fixture name
+    # Metrics that must be truthy for the trial to count as completed
+    # (the analysis validity gate excludes rows whose completeness keys
+    # are falsy, e.g. scroll_typing's typing_ok after a dropped key).
+    completeness_keys: tuple[str, ...] = ()
 
     def __init__(self, cfg: dict):
         self.cfg = cfg

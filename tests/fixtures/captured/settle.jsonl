@@ -1,0 +1,2 @@
+{"benchmark": "settle", "product": "rust", "error": null}
+{"benchmark": "settle", "product": "codex", "error": "TimeoutError: settle walk never reached ready; dialogs answered: {'3. Provide your own API key': 3, 'Paste or type your API key': 1}", "screen_tail": " Codex CLI   stream error: Unexpected status 401 Unauthorized from ChatGPT auth - retrying login..."}

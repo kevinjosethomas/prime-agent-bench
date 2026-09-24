@@ -31,6 +31,11 @@ discovered from the package structure.
   trials), load gate before every trial, per-trial loadavg + RSS + PTY bytes
 - Deterministic fixtures with sha256 manifests (the 10MiB corpus is byte-exact
   and pinned in the test suite)
+- Strict result-validity gate: only completed valid trials enter stats/rankings/
+  deltas (probe-deadline artifacts, auth-error settle, unconfirmed fixtures,
+  failed validation, incomplete measurements, debug rows are excluded with
+  reported counts + reasons); A/A calibration rows never mix into published
+  stats and per-phase trial counts label every denominator
 
 ## Architecture
 

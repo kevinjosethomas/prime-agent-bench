@@ -71,23 +71,39 @@ def cmd_install_disk(args) -> None:
 
 
 def cmd_analyze(args) -> None:
-    """Aggregate trial JSONLs into summary.json / summary.md / summary.notion.json."""
+    """Aggregate trial JSONLs into summary.json / summary.md / summary.notion.json.
+
+    The strict result-validity gate applies: only completed valid trials
+    enter stats/rankings/deltas; excluded counts + reasons are reported.
+    """
     from bench.analysis.aggregate import load_all
     from bench.analysis.output.json import JsonAnalyzer
     from bench.analysis.output.markdown import MarkdownAnalyzer
     from bench.analysis.output.notion import NotionAnalyzer
-    cfg, _ = _reg(args.config)
+    from bench.analysis.validity import load_settle
+    cfg, reg = _reg(args.config)
     results_dir = Path(args.results_dir or cfg["results_dir"])
     rows = load_all(results_dir)
+    settle_rows = load_settle(results_dir)
+    # per-benchmark gate metadata from the registry (fixture requirement,
+    # applicability, completeness keys) for the validity gate
+    cfg["gate_benchmarks"] = {name: {"requires_fixture": b.requires_fixture,
+                                     "applicable_products": b.applicable_products,
+                                     "completeness_keys": tuple(b.completeness_keys)}
+                              for name, b in reg.benchmarks.items()}
     analyzers = {"summary.json": JsonAnalyzer(cfg), "summary.md": MarkdownAnalyzer(cfg),
                  "summary.notion.json": NotionAnalyzer(cfg)}
     stats = None
     for name, analyzer in analyzers.items():
-        stats = analyzer.compute_stats(rows)
+        stats = analyzer.compute_stats(rows, settle_rows=settle_rows)
         (results_dir / name).write_text(analyzer.format_output(stats))
         print(f"wrote {results_dir / name}")
     if stats:
-        print(stats and json.dumps(stats["aa"], indent=1))
+        excluded = {bench: {p: info["count"] for p, info in (entry.get("excluded") or {}).items()}
+                       for bench, entry in stats["summary"].items()}
+        if any(excluded.values()):
+            print("excluded from rankings: " + json.dumps(excluded))
+        print(json.dumps(stats["aa"], indent=1))
 
 
 def cmd_list(args) -> None:

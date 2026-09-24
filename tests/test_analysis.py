@@ -61,10 +61,11 @@ def test_aa_validity():
     out = aa_validity(rows, threshold_pct=10.0)
     assert out["compare.cold_start/rust"]["valid"] is False
     assert out["compare.cold_start/rust"]["spread_pct"] == 150.0
-    rows2 = [_row("b", "ts", i, 100.0 if i % 2 == 0 else 105.0, phase="aa")
+    rows2 = [_row("compare.warm_start", "ts", i,
+                  100.0 if i % 2 == 0 else 105.0, phase="aa")
              for i in range(12)]
     out2 = aa_validity(rows2)
-    assert out2["b/ts"]["valid"] is True
+    assert out2["compare.warm_start/ts"]["valid"] is True
 
 
 def test_load_all_and_outputs(tmp_path):

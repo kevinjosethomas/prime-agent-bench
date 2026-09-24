@@ -18,10 +18,14 @@ class Analyzer(ABC):
         """cfg keys: product_order, display, aa (threshold), results_dir."""
         self.cfg = cfg
 
-    def compute_stats(self, rows: list) -> dict:
-        """The shared stats model: {"summary": ..., "aa": ...}."""
+    def compute_stats(self, rows: list, settle_rows: list | None = None) -> dict:
+        """The shared stats model: {"summary": ..., "aa": ..., "settle": ...}.
+
+        settle_rows: the results tree's settle evidence (load_settle), used
+        by the validity gate to exclude products whose settle failed with
+        an auth error."""
         from bench.analysis.aggregate import summarize_rows
-        return summarize_rows(rows, self.cfg)
+        return summarize_rows(rows, self.cfg, settle_rows=settle_rows)
 
     @abstractmethod
     def format_output(self, stats: dict) -> str:

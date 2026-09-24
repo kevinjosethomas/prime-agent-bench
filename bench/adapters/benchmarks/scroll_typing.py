@@ -21,6 +21,9 @@ class ScrollTyping(Benchmark):
 
     name = "compare.scroll_typing"
     requires_fixture = "session-10mib"
+    # A dropped key (typing_ok falsy) truncates the typing sequence: the
+    # measurement is incomplete, not slow.
+    completeness_keys = ("typing_ok",)
 
     def measure(self, product, ctx, record, driver, fixture=None) -> None:
         if product.needs_prepass:

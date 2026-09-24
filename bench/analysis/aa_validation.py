@@ -2,24 +2,31 @@
 
 The same product measured as two interleaved halves must agree within the
 configured spread or the environment is too noisy for cross-product
-comparisons.
+comparisons. The halves are the even/odd trial indices; the calibrated
+metric is the benchmark's PRIMARY metric (core.measurement), so
+msg_send / daemon / kernel A/A passes calibrate their own ranked metric.
 """
 from __future__ import annotations
 
 from collections import defaultdict
 
 from bench.analysis.stats import stats
+from bench.core.measurement import primary_metric
 
 
 def aa_validity(rows: list, threshold_pct: float = 10.0) -> dict:
     """Per (benchmark, product): the two halves' p50s, spread, validity."""
     out = {}
-    aa_rows = [r for r in rows if r.get("phase") == "aa"]
+    aa_rows = [r for r in rows if str(r.get("phase") or "") == "aa"]
     by = defaultdict(list)
     for r in aa_rows:
-        if not r.get("error"):
-            by[(r["benchmark"], r["product"], r["trial"] % 2)].append(
-                r.get("metrics", {}).get("launch_to_ready_ms"))
+        if r.get("error"):
+            continue
+        primary, _ = primary_metric(r.get("benchmark")) or (None, None)
+        if primary is None:
+            continue
+        by[(r["benchmark"], r["product"], r["trial"] % 2)].append(
+            r.get("metrics", {}).get(primary))
     grouped = defaultdict(dict)
     for (bench, prod, half), vals in by.items():
         grouped[(bench, prod)][half] = [v for v in vals if v is not None]

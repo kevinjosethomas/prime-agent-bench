@@ -20,6 +20,10 @@ class SessionColdOpen(Benchmark):
 
     name = "session.cold_open_10mib"
     requires_fixture = "session-10mib"
+    # RT-only per the suite spec: only the Prime Agent products resume the
+    # fixture (claude/codex/pi argv ignore it, so their sentinel wait burns
+    # the fixed 120s and produces fake deadline-artifact rows).
+    applicable_products = ["rust", "ts"]
 
     def measure(self, product, ctx, record, driver, fixture=None) -> None:
         t_load = loadavg()
@@ -51,6 +55,7 @@ class SessionColdOpen(Benchmark):
                 "frame_bursts": bursts["bursts"] if bursts else None,
             }
             record["validation"] = {"sentinel": t_sentinel is not None, "echoed": True, "erased": erase_ok}
+            record["fixture"] = {"loaded": t_sentinel is not None}
             record["resource"] = {"rss_10mib": rss, "loadavg_before": t_load}
         finally:
             app.kill_tree()
