@@ -81,6 +81,25 @@ def dump_transcripts(name: str, app) -> None:
          "total": app.bytes_out()}))
 
 
+def dismiss_dialogs(app, rounds: int = 4, pause: float = 0.4) -> int:
+    """Dismiss any onboarding sheet that appears mid-trial. The probe's
+    dialog_steps only cover the probe phase, but TS pops the share-traces
+    sheet AFTER readiness; later phases must measure the real editor."""
+    keys_by_marker = dict(ONBOARDING_AUTODISMISS)
+    dismissed = 0
+    for _ in range(rounds):
+        text = app.screen_text()
+        marker = next((m for m in keys_by_marker if m in text), None)
+        if marker is None:
+            return dismissed
+        for key in keys_by_marker[marker]:
+            app.send(key)
+            time.sleep(pause)
+        dismissed += 1
+        time.sleep(0.5)
+    return dismissed
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -146,6 +165,10 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
             "dialogs": probe["dialogs"],
         }
         tokens = probe["probe_tokens"]
+        evidence["dialog_dismissals"] = []
+        n = dismiss_dialogs(app)
+        if n:
+            evidence["dialog_dismissals"].append(("post_probe", n))
         erase_ok, erase_ms = app.erase_all(
             tokens, max_backspaces=probe["chars_sent"] + 8)
         evidence["erase_ok"] = erase_ok
@@ -165,6 +188,9 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         for tok in stress_tokens:
             app.send(tok)
         time.sleep(2.0)  # let the product mount/render the queued block
+        n = dismiss_dialogs(app)
+        if n:
+            evidence["dialog_dismissals"].append(("post_stress", n))
         all_tokens = tokens + stress_tokens
         stress_budget = sum(len(t) for t in all_tokens) + 8
         stress_ok, stress_ms = app.erase_all(all_tokens,
@@ -175,6 +201,9 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         }
         # editor state + acceptance: alive, and fresh input still echoes
         evidence["alive_after_erase"] = app.alive()
+        n = dismiss_dialogs(app)
+        if n:
+            evidence["dialog_dismissals"].append(("pre_fresh_echo", n))
         app.start_echo_watch("Zq9k")
         app.send("Zq9k")
         t_echo = None
@@ -182,7 +211,19 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
             app.wait_echo(3.0)
             t_echo = True
         except TimeoutError:
-            t_echo = False
+            # one bounded retry after dismissing a sheet that stole focus
+            n = dismiss_dialogs(app)
+            if n:
+                evidence["dialog_dismissals"].append(("fresh_retry", n))
+                app.start_echo_watch("Zq9k")
+                app.send("Zq9k")
+                try:
+                    app.wait_echo(3.0)
+                    t_echo = True
+                except TimeoutError:
+                    t_echo = False
+            else:
+                t_echo = False
         evidence["fresh_echo_ok"] = t_echo
         # clean the fresh token too (same burst mechanics, small budget)
         evidence["fresh_erase_ok"] = app.erase_all(
