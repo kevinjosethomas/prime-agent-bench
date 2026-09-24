@@ -20,7 +20,7 @@ def test_discovery_finds_every_adapter(tmp_path):
     reg = discover(_cfg(tmp_path))
     assert set(reg.products) == {"rust", "ts", "claude", "codex", "pi"}
     assert set(reg.harnesses) == {"pty", "tmux"}
-    assert set(reg.fixtures) == {"session-10mib", "subagent-tree"}
+    assert set(reg.fixtures) == {"session-10mib", "session-10mib-v3", "subagent-tree"}
     assert "compare.cold_start" in reg.benchmarks
     assert "kernel.multi_kernel_10" in reg.benchmarks
     assert len(reg.benchmarks) == 17
@@ -39,7 +39,8 @@ def test_adapter_wiring(tmp_path):
     assert driver.name == "pty"
     assert reg.benchmark("daemon.boot").applicable("rust")
     assert not reg.benchmark("daemon.boot").applicable("claude")
-    assert reg.benchmark("compare.scroll_typing").requires_fixture == "session-10mib"
+    assert reg.benchmark("compare.scroll_typing").requires_fixture == "session-10mib-v3"
+    assert reg.benchmark("session.cold_open_10mib").requires_fixture == "session-10mib-v3"
 
 
 def test_deep_merge_override_wins():

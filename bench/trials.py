@@ -18,6 +18,7 @@ import time
 import uuid
 from pathlib import Path
 
+from bench.core.env import sha256_file
 from bench.core.registry import Registry
 from bench.core.harness import HarnessDriver
 from bench.gates import gate_idle, node_is_busy
@@ -31,6 +32,26 @@ def effective_trials(reg: Registry, benchmark_name: str, cli_trials: int | None)
     if cfg_trials is not None:
         return int(cfg_trials)
     return reg.benchmark(benchmark_name).default_trials
+
+
+def _stage_fixture(trial_dir: Path, fixture_path: Path) -> tuple[Path, str | None]:
+    """One per-trial copy of the shared fixture artifact.
+
+    Resumed sessions APPEND rows to the resumed file in place, so every
+    trial must open its own copy (audit: the shared 10MiB fixture grew
+    +27 rows across 9 resumes, silently invalidating every trial after
+    the first). The trial teardown removes the copy. File fixtures are
+    re-hashed on staging (sha256_trial on the row proves what actually
+    opened); directory fixtures keep the manifest tree hash (None).
+    """
+    stage = trial_dir / "fixture"
+    stage.mkdir(parents=True, exist_ok=True)
+    dst = stage / Path(fixture_path).name
+    if Path(fixture_path).is_dir():
+        shutil.copytree(fixture_path, dst)
+        return dst, None
+    shutil.copy2(fixture_path, dst)
+    return dst, sha256_file(dst)
 
 
 def _status_record(run_id: str, benchmark_name: str, product: str, phase_tag: str,
@@ -127,15 +148,26 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 "comparability": levels[name],
                 "env_gate": {"waited_for": gate_waited, "busy_now": node_is_busy(reg.cfg)},
             }
-            if fixture_manifest is not None:
-                # semantic-equivalence evidence (spec §F): bytes/rows/sha256
-                # + the fixture sentinel, which the scenario verifies per trial
-                record["fixture"] = {"name": benchmark.requires_fixture, **fixture_manifest}
             ctx = prod.new_trial(trial_dir)
             error = None
             try:
-                benchmark.setup(prod, ctx, fixture=fixture)
-                benchmark.measure(prod, ctx, record, driver, fixture=fixture)
+                trial_fixture = fixture
+                if fixture is not None:
+                    # per-trial copy + per-trial sha: the row must prove what
+                    # actually opened, not just the build-time manifest (the
+                    # §F bytes/rows/sentinel evidence stays alongside)
+                    trial_fixture, trial_sha = _stage_fixture(trial_dir, fixture)
+                    expected = (fixture_manifest or {}).get("sha256")
+                    if expected and trial_sha != expected:
+                        raise ValueError(
+                            f"staged fixture sha256 {trial_sha} != manifest {expected}; "
+                            "the shared artifact is mutated (in-place resume appends) — regenerate")
+                    record["fixture"] = {"name": benchmark.requires_fixture,
+                                         **(fixture_manifest or {}),
+                                         "trial_path": str(trial_fixture),
+                                         "sha256_trial": trial_sha}
+                benchmark.setup(prod, ctx, fixture=trial_fixture)
+                benchmark.measure(prod, ctx, record, driver, fixture=trial_fixture)
                 record["validated"] = benchmark.validate(record)
             except Exception as e:
                 error = f"{type(e).__name__}: {e}"

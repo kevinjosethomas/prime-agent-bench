@@ -264,17 +264,29 @@ def test_resume_fixture_capability_flags(tmp_path):
 # ---- trial engine: status rows + stamped comparability ----------------------
 
 class StubFixture:
-    """Manifest-only fixture stand-in (no artifact build in tests)."""
+    """Manifest stand-in over a real on-disk corpus (staging copies it)."""
+
+    def __init__(self, sha256: str):
+        self._sha256 = sha256
 
     def manifest(self):
-        return {"path": "/tmp/corpus.jsonl", "bytes": 10485760, "rows": 7391,
-                "sha256": "deadbeef", "sentinel": SENTINEL,
-                "generator_seed": 1234, "target_mib": 10.0}
+        return {"bytes": 10485760, "rows": 7391, "sha256": self._sha256,
+                "sentinel": SENTINEL, "generator_seed": 1234, "target_mib": 10.0,
+                "fixture_version": 3}
+
+
+def _corpus(tmp_path) -> tuple[Path, str]:
+    """A real stub corpus + its sha (the engine stages + re-hashes it)."""
+    import hashlib
+    corpus = tmp_path / "corpus.jsonl"
+    corpus.write_bytes(b'{"type": "session", "stub": true}\n')
+    return corpus, hashlib.sha256(corpus.read_bytes()).hexdigest()
 
 
 def _engine_reg(tmp_path, monkeypatch):
     reg = discover(_cfg(tmp_path))
-    reg.fixtures["session-10mib"] = StubFixture()
+    corpus, sha = _corpus(tmp_path)
+    reg.fixtures["session-10mib-v3"] = StubFixture(sha)
     # no real product launches; no load gating in unit tests
     for name, cls in (("capfake", FakeProduct), ("freshfake", FreshSessionProduct)):
         product = cls({"layout": reg.layout, "product": {}, "mock": {}}, FakeSession())
@@ -289,19 +301,25 @@ def _engine_reg(tmp_path, monkeypatch):
 def test_run_trials_skips_fresh_session_products_as_status_rows(tmp_path, monkeypatch):
     reg = _engine_reg(tmp_path, monkeypatch)
     scroll = reg.benchmark("compare.scroll_typing")
-    measured = []
     def fake_measure(product, ctx, record, driver, fixture=None):
         measured.append(product.name)
         record["metrics"] = {"typing_ms": [1.0], "typing_ok": True}
         record["validation"] = {"sentinel": True, "echoed": True,
                                 "typing_ok": True, "typing_scrolled_ok": True}
+    staged_paths = []
+    def fake_measure(product, ctx, record, driver, fixture=None):
+        staged_paths.append(str(fixture))
+        record["metrics"] = {"typing_ms": [1.0], "typing_ok": True}
+        record["validation"] = {"sentinel": True, "echoed": True,
+                                "typing_ok": True, "typing_scrolled_ok": True}
     scroll.measure = fake_measure
-    out_dir = Path(cfg_results := tmp_path / "results")
+    corpus, corpus_sha = _corpus(tmp_path)
+    out_dir = tmp_path / "results"
     out_dir.mkdir(parents=True)
     jsonl = __import__("bench.trials", fromlist=["run_trials"]).run_trials(
         reg, FakeDriver(FakeSession()), "compare.scroll_typing",
         ["freshfake", "capfake"], 2, out_dir,
-        {"session-10mib": Path("/tmp/corpus.jsonl")}, aa=False, phase_tag="w1")
+        {"session-10mib-v3": corpus}, aa=False, phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     status_rows = [r for r in rows if r.get("status")]
     measured_rows = [r for r in rows if not r.get("status")]
@@ -311,11 +329,18 @@ def test_run_trials_skips_fresh_session_products_as_status_rows(tmp_path, monkey
     assert status["status"] == "not_comparable"
     assert status["comparability"] == "not_comparable"
     assert "metrics" not in status  # status, not numeric zero
-    assert measured == ["capfake", "capfake"]
     assert len(measured_rows) == 2
     assert all(r["comparability"] == "equivalent" for r in measured_rows)
+    # §F sentinel + message-count equivalence evidence, and the per-trial
+    # identity: every trial opened its OWN staged copy, re-hashed on the row
     assert all(r["fixture"]["rows"] == 7391 and r["fixture"]["sentinel"] == SENTINEL
-               for r in measured_rows)  # §F sentinel + message-count equivalence evidence
+               for r in measured_rows)
+    assert all(r["fixture"]["sha256_trial"] == corpus_sha for r in measured_rows)
+    assert all(r["fixture"]["trial_path"].endswith("fixture/corpus.jsonl")
+               and r["fixture"]["trial_path"] != str(corpus)
+               for r in measured_rows)
+    assert len(set(staged_paths)) == 2  # each trial opened a distinct copy
+    assert all(p != str(corpus) for p in staged_paths)
     assert all(r["validated"] is True for r in measured_rows)
 
 
@@ -333,7 +358,7 @@ def test_run_trials_preserves_not_applicable_products_as_status_rows(tmp_path, m
     from bench.trials import run_trials
     jsonl = run_trials(reg, FakeDriver(FakeSession()), "session.cold_open_10mib",
                        ["rust", "freshfake", "claude"], 1, out_dir,
-                       {"session-10mib": Path("/tmp/corpus.jsonl")}, aa=False,
+                       {"session-10mib-v3": _corpus(tmp_path)[0]}, aa=False,
                        phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     by_product = {r["product"]: r for r in rows}
@@ -355,6 +380,28 @@ def test_run_trials_requires_the_fixture_to_be_ensured(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="session-10mib"):
         run_trials(reg, FakeDriver(FakeSession()), "compare.memory_idle_load",
                    ["capfake"], 1, out_dir, {}, aa=False, phase_tag="w1")
+
+
+def test_run_trials_rejects_a_mutated_shared_fixture(tmp_path, monkeypatch):
+    """Audit 7b: resumed sessions append rows in place; a shared fixture
+    whose bytes no longer match the manifest must never be measured."""
+    reg = _engine_reg(tmp_path, monkeypatch)
+    corpus, _sha = _corpus(tmp_path)
+    reg.fixtures["session-10mib-v3"] = StubFixture("0" * 64)  # stale manifest
+    scroll = reg.benchmark("compare.scroll_typing")
+    ran = []
+    scroll.measure = lambda product, ctx, record, driver, fixture=None: ran.append(1)
+    out_dir = tmp_path / "results"
+    out_dir.mkdir(parents=True)
+    from bench.trials import run_trials
+    jsonl = run_trials(reg, FakeDriver(FakeSession()), "compare.scroll_typing",
+                       ["capfake"], 1, out_dir,
+                       {"session-10mib-v3": corpus}, aa=False, phase_tag="w1")
+    rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
+    assert ran == []  # the trial never measured against the mutated artifact
+    assert "staged fixture sha256" in rows[0]["error"]
+    assert "manifest" in rows[0]["error"]
+    assert "fixture" not in rows[0]  # nothing proved opened
 
 
 # ---- audit F10: the live pin + provenance check ------------------------------

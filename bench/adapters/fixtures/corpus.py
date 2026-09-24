@@ -10,7 +10,26 @@ from bench.adapters.fixtures.corpus_text import (_ipython_code, _markdown_block,
                                                  _paragraph, _ts, _usage)
 
 
-def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = True) -> list:
+def digest_row_fields(digest: str, digest_display: bool | None) -> dict:
+    """The harness_digest custom_message fields for one row.
+
+    ``digest_display=None`` (fixture v2) omits the visibility fields — on
+    replay the TUI dispatch defaults absent ``display`` to true and renders
+    a generic panel per row. ``digest_display=False`` (fixture v3) mirrors
+    what both real products persist (TS createHarnessDigestMessage and
+    Rust harness_digest_prompt_row both set ``display: false`` with the raw
+    digest in ``details``), so the rows render nothing on replay, exactly
+    like a real session.
+    """
+    fields = {"customType": "harness_digest",
+              "content": f"[harness-digest] {digest}"}
+    if digest_display is None:
+        return fields
+    return {**fields, "display": digest_display, "details": {"digest": digest}}
+
+
+def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = True,
+                  digest_display: bool | None = None) -> list:
     """The corpus entries for ``turns`` turns (session header included)."""
     import random
 
@@ -45,10 +64,8 @@ def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = T
     for base in range(11):
         record = entry(
             "custom_message",
-            {
-                "customType": "harness_digest",
-                "content": f"[harness-digest] base note {base}: persistent state summary for the scale corpus.",
-            },
+            digest_row_fields(f"base note {base}: persistent state summary for the scale corpus.",
+                              digest_display),
             next_id(),
             counter,
         )
@@ -125,10 +142,8 @@ def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = T
         if (turn + 1) % 20 == 0:
             record = entry(
                 "custom_message",
-                {
-                    "customType": "harness_digest",
-                    "content": f"[harness-digest] note {turn}: persistent state summary for the scale corpus.",
-                },
+                digest_row_fields(f"note {turn}: persistent state summary for the scale corpus.",
+                                  digest_display),
                 next_id(),
                 counter,
             )

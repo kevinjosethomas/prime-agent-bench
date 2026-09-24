@@ -10,6 +10,10 @@ from bench.adapters.fixtures.subagent_tree import (level_counts, write_tree)
 # cwd is embedded in the session header, so the golden pins it.
 NODE_CWD = "/home/ubuntu/bench/fixtures/work"
 NODE_SHA256 = "f8d7fba0e81a972a5c31eb205a2ba23702ebf294c2b9db49ab42f63e783bc90a"
+#: v3 (product-parity digest rows): same size/seed, its own corpus+golden
+V3_SHA256 = "4b580429dc97bd317c21ef85821ab5a85cb639d5067a9e8f25eca01b374aa7be"
+V3_ROWS = 7330
+V3_DIGEST_ROWS = 130
 
 
 def test_session_10mib_is_byte_exact(tmp_path):
@@ -17,6 +21,32 @@ def test_session_10mib_is_byte_exact(tmp_path):
     assert info["bytes"] == 10 * (1 << 20)
     assert info["rows"] == 7391
     assert info["sha256"] == NODE_SHA256
+    assert info["fixture_version"] == 2
+    # v2 keeps the historical digest shape: no visibility fields at all
+    rows = [json.loads(l) for l in (tmp_path / "corpus.jsonl").read_text().splitlines()]
+    digests = [r for r in rows if r.get("customType") == "harness_digest"]
+    assert len(digests) == 131
+    assert all("display" not in r and "details" not in r for r in digests)
+
+
+def test_session_10mib_v3_is_byte_exact_with_product_parity_digest_rows(tmp_path):
+    """v3: harness_digest rows persist display:false + details.digest like
+    both real products (TS createHarnessDigestMessage / Rust
+    harness_digest_prompt_row), so replay renders no digest panels."""
+    info = build_session(10.0, tmp_path / "corpus-v3.jsonl", cwd=NODE_CWD,
+                         digest_display=False)
+    assert info["bytes"] == 10 * (1 << 20)
+    assert info["rows"] == V3_ROWS
+    assert info["sha256"] == V3_SHA256
+    assert info["fixture_version"] == 3
+    assert info["sha256"] != NODE_SHA256  # v3 is its own corpus, not a v2 edit
+    rows = [json.loads(l) for l in (tmp_path / "corpus-v3.jsonl").read_text().splitlines()]
+    digests = [r for r in rows if r.get("customType") == "harness_digest"]
+    assert len(digests) == V3_DIGEST_ROWS
+    assert all(r["display"] is False for r in digests)
+    assert all(r["details"]["digest"] in r["content"] for r in digests)
+    # only the digest rows carry visibility fields; message rows stay bare
+    assert all("display" not in r for r in rows if r.get("type") == "message")
 
 
 def test_session_exact_bytes_small(tmp_path):

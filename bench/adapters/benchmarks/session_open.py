@@ -22,7 +22,7 @@ class SessionColdOpen(Benchmark):
     """Cold open of the 10MiB session fixture -> interactive."""
 
     name = "session.cold_open_10mib"
-    requires_fixture = "session-10mib"
+    requires_fixture = "session-10mib-v3"
     applicable_products = ["rust", "ts"]  # spec §A: session.* is RT-only
     applicability_note = ("session.* benchmarks resume the Prime session fixture; "
                           "BENCHMARK_SUITE_SPEC §A scopes them to Prime Agent Rust/TS")
