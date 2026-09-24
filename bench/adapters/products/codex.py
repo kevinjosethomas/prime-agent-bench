@@ -2,11 +2,13 @@
 
 npm-installed CLI with real ChatGPT auth (Kevin: codex msg_send may use
 the real API under the $10 budget; codex 0.156 rejects chat wire_api, so
-no mock provider override is installed). The FULL .codex state is copied:
-codex 0.156 boots to the login menu when it finds auth.json without the
-accompanying device state (installation_id/version/sqlites), and a login
-walk would silently replace the real OAuth with a typed key. Onboarding
-prepass required (the per-workdir trust dialog)."""
+no mock provider override is installed). The FULL .codex state is copied
+(config/model caches), but auth must be walked: codex 0.156 shows the
+login menu for ANY copied home (trial homes on the node AND sandboxes;
+the ChatGPT tokens do not authenticate a copied .codex), so the prepass
+walks option 3 with a dummy key to the settled interactive state - the
+same state the sequential baseline settled. Real-API msg_send needs
+Kevin's call (real key / device-code login / node-side run)."""
 from __future__ import annotations
 
 import shutil
@@ -17,7 +19,10 @@ from bench.core.env import scrubbed_env
 from bench.core.product import DialogStep, ProductAdapter, TrialContext
 
 DIALOG_STEPS: list[DialogStep] = [
-    ("Trust and continue", ["\r"]),   # folder trust (option 1 preselected, enter confirms)
+    ("3. Provide your own API key", ["3"]),                           # welcome menu (copied ChatGPT tokens do not authenticate a copied home: codex shows the login menu)
+    ("Paste or type your API key", ["sk-bench-dummy-not-real\r"]),   # key box -> settled dummy-key state
+    ("Press enter to continue", ["\r"]),                             # generic continue
+    ("Trust and continue", ["\r"]),                                  # folder trust (option 1 preselected, enter confirms)
 ]
 
 

@@ -40,13 +40,16 @@ class MsgSend(Benchmark):
             # the streamed response, detected the same stability way)
             t_settle = None
             stable_since = None
-            last_hash = None
+            last_hash = screen_hash(app)  # baseline at ack time: a dead screen cannot settle
+            seen_change = False
             need = DEFAULT_REPLY[:20] if product.name != "codex" else None
             deadline = now() + 90
             while now() < deadline:
                 h = screen_hash(app)
                 txt_now = app.screen_text()
-                if (need is None and t_ack is not None and h != last_hash) or (need and need in txt_now):
+                matched = (need and need in txt_now) or \
+                    (need is None and t_ack is not None and seen_change)
+                if matched:
                     if h == last_hash:
                         if stable_since is None:
                             stable_since = now()
@@ -55,6 +58,8 @@ class MsgSend(Benchmark):
                             break
                     else:
                         stable_since = None
+                if h != last_hash:
+                    seen_change = True
                 last_hash = h
                 time.sleep(0.02)
             routing = "real-api" if product.name == "codex" else "mock"
