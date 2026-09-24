@@ -256,6 +256,21 @@ def adopt_handle(cfg: dict, sandbox_ref: str, parallel_config_path,
     return backend, handle, state
 
 
+def _preflight_live(backend, handle) -> None:
+    """Fail with a clear message when the sandbox is no longer live (VM
+    expiry/eviction): the platform's exec error ('being placed on a node')
+    is misleading; the SDK get is the truth."""
+    if backend.name != "prime" or not handle.sandbox_id:
+        return
+    from prime_sandboxes import APIClient, SandboxClient
+    sb = SandboxClient(APIClient()).get(handle.sandbox_id)
+    status = getattr(sb, "status", None)
+    if status != "RUNNING":
+        raise RuntimeError(
+            f"sandbox {handle.name} ({handle.sandbox_id}) is {status}; "
+            f"re-run `bench sandbox setup {handle.name}`")
+
+
 _TRANSIENT_RPC = ("retry shortly", "unavailable", "Connect RPC failed",
                   "connection refused", "being placed")
 
@@ -287,6 +302,7 @@ def run_in_sandbox(cfg: dict, parallel_config_path, sandbox_ref: str,
     runs first, results collect locally."""
     backend, handle, state = adopt_handle(cfg, sandbox_ref, parallel_config_path,
                                          backend_name)
+    _preflight_live(backend, handle)
     spec = dict(state["spec"])
     spec["benchmarks"] = benchmarks
     spec["products"] = products or spec.get("products") or []
