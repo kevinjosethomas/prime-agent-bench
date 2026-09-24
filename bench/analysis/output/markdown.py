@@ -48,6 +48,17 @@ def markdown(stats: dict, cfg: dict) -> str:
         if not prods:
             lines.append("_No valid published trials._")
             lines.append("")
+        unstable = entry.get("unstable") or {}
+        if unstable:
+            lines.append("Unstable (A/A-to-wave drift over threshold):")
+            lines.append("")
+            lines.append("| product | A/A p50 | W1 p50 | drift |")
+            lines.append("|---|---|---|---|")
+            for p in unstable:
+                info = unstable[p]
+                lines.append(f"| {display.get(p, p)} | {info['aa_p50']} | "
+                             f"{info['w1_p50']} | +{info['drift_pct']}% |")
+            lines.append("")
         excluded = entry.get("excluded") or {}
         if excluded:
             lines.append("Excluded from rankings (validity gate):")

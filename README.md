@@ -32,10 +32,13 @@ discovered from the package structure.
 - Deterministic fixtures with sha256 manifests (the 10MiB corpus is byte-exact
   and pinned in the test suite)
 - Strict result-validity gate: only completed valid trials enter stats/rankings/
-  deltas (probe-deadline artifacts, auth-error settle, unconfirmed fixtures,
-  failed validation, incomplete measurements, debug rows are excluded with
-  reported counts + reasons); A/A calibration rows never mix into published
-  stats and per-phase trial counts label every denominator
+  deltas (probe-deadline artifacts, auth-error settle — Codex 401 — and
+  real-API-regime rows, unsupported product/benchmark combinations, unconfirmed
+  fixtures, failed validation, incomplete measurements, debug rows are excluded
+  with reported counts + reasons); A/A calibration rows never mix into published
+  stats, per-phase trial counts label every denominator, and a product whose
+  primary p50 drifts between the A/A pass and the waves (aa.drift_threshold_pct)
+  is marked unstable and never ranked
 
 ## Architecture
 

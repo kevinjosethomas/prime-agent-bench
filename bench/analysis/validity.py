@@ -25,6 +25,11 @@ Captured failure classes it excludes (reason codes):
   the 10MiB fixture.
 - ``validation_failed``: the trial completed but its validation evidence
   failed (probe echoed but not erased; ack or settle missing, ...).
+- ``real_api_regime``: msg_send rows routed through the real API
+  (``msg_routing == "real-api"``) while the benchmark's peers measure the
+  scripted mock; the settle detector fires on any screen growth, so the
+  observed Codex 401 auth-error render certifies as a "settle" —
+  cross-regime values never rank.
 - ``incomplete_measurement``: a declared completeness metric was falsy
   (e.g. scroll_typing ``typing_ok`` — a dropped key truncates the typing
   sequence).
@@ -34,6 +39,12 @@ Captured failure classes it excludes (reason codes):
 Phase rule: ``aa`` rows feed the A/A calibration section only; published
 stats aggregate the remaining non-debug phases, with per-product
 per-phase trial counts (``trials``) labeling every denominator.
+
+Stability rule: a product whose primary-metric p50 drifts between the
+A/A pass and the published waves beyond ``aa.drift_threshold_pct`` is
+marked unstable (``summary.unstable``) and never ranked or delta'd —
+the captured daemon.boot case: AA p50 46.1 vs W1 p50 219.6, a ~4.8x
+pass-to-pass shift that pooled medians hid.
 
 Per-benchmark gate metadata (fixture requirement, applicability,
 completeness keys) comes from the registry via ``cfg["gate_benchmarks"]``
@@ -49,22 +60,29 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from bench.core.measurement import metrics_for
+from bench.analysis.stats import stats
+from bench.core.measurement import metrics_for, primary_metric
 
-AUTH_ERROR_MARKERS = ("unauthorized", "invalid api key", "not logged in",
-                      "please log in", "authentication required", "login required")
-# HTTP 401 as its own token, never a numeric substring like "t=401.5s"
-AUTH_ERROR_CODE_PATTERNS = (r"\b401\b(?![.\d])",)
+#: (label, pattern) auth-failure markers; the label is what reports show.
+#: HTTP 401 is its own token so a timestamp like "t=401.5s" never matches.
+AUTH_ERROR_MARKERS = (
+    ("401", re.compile(r"\b401\b(?![.\d])")),
+    ("unauthorized", re.compile(r"unauthorized")),
+    ("invalid api key", re.compile(r"invalid api key")),
+    ("not logged in", re.compile(r"not logged in")),
+    ("please log in", re.compile(r"please log in")),
+    ("authentication required", re.compile(r"authentication required")),
+    ("login required", re.compile(r"login required")),
+)
 PROBE_DEADLINE_MARKERS = ("input never became ready",)
 #: exclusion reasons that denote a trial-level error (vs environment/phase)
 ERROR_REASONS = ("error", "auth_error", "probe_deadline")
 
 
 def auth_markers_in(text: str) -> list:
-    """The auth-failure markers found in one evidence string."""
+    """The auth-failure marker labels found in one evidence string."""
     low = text.lower()
-    return [m for m in AUTH_ERROR_MARKERS if m in low] \
-        + [p for p in AUTH_ERROR_CODE_PATTERNS if re.search(p, low)]
+    return [label for label, pattern in AUTH_ERROR_MARKERS if pattern.search(low)]
 
 
 def classify_error(error: str) -> str:
@@ -123,8 +141,10 @@ def fixture_confirmed(row: dict) -> bool:
 def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
     """The reason code excluding this row from rankings, or None if valid.
 
-    Precedence: phase evidence first, then the product-level causes, then
-    the row-level evidence (most-specific cause wins)."""
+    Precedence: phase evidence first, then benchmark applicability, then
+    the trial's own error, then the product-level causes (settle auth,
+    routing regime), then the row-level evidence (fixture, validation,
+    completeness, metrics)."""
     phase = str(row.get("phase") or "")
     if phase.startswith("debug"):
         return "debug_phase"
@@ -136,6 +156,8 @@ def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
         return classify_error(str(row["error"]))
     if row.get("product") in settle_auth:
         return "settle_auth_error"
+    if row.get("msg_routing") == "real-api":
+        return "real_api_regime"
     if meta.get("requires_fixture") and not fixture_confirmed(row):
         return "fixture_not_confirmed"
     if row.get("validated") is False:
@@ -176,3 +198,19 @@ def gate_rows(rows: list, settle_auth: dict | None = None,
 def is_aa_phase(row: dict) -> bool:
     """Whether the row belongs to the A/A calibration pass."""
     return str(row.get("phase") or "") == "aa"
+
+
+def aa_primary_p50s(rows: list) -> dict:
+    """{(benchmark, product): p50} over the rows' A/A pass, on each
+    benchmark's PRIMARY metric (the same metric the waves are ranked on)."""
+    vals: dict = defaultdict(list)
+    for row in rows:
+        if not is_aa_phase(row):
+            continue
+        primary, _ = primary_metric(row.get("benchmark")) or (None, None)
+        if not primary:
+            continue
+        value = (row.get("metrics") or {}).get(primary)
+        if value is not None:
+            vals[(row["benchmark"], row["product"])].append(value)
+    return {key: stats(v)["p50"] for key, v in vals.items() if v}

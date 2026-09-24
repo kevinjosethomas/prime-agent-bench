@@ -37,6 +37,7 @@ settle:
 
 aa:
   spread_threshold_pct: 10.0
+  drift_threshold_pct: 10.0   # max p50 drift between the A/A pass and the waves
 
 noop_control:
   rounds: 30

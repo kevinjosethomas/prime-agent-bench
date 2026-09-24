@@ -180,7 +180,8 @@ def cmd_analyze(args) -> None:
         print(f"wrote {results_dir / name}")
     if stats:
         excluded = {bench: {p: info["count"] for p, info in (entry.get("excluded") or {}).items()}
-                       for bench, entry in stats["summary"].items()}
+                       for bench, entry in stats["summary"].items()
+                       if entry.get("excluded")}
         if any(excluded.values()):
             print("excluded from rankings: " + json.dumps(excluded))
         print(json.dumps(stats["aa"], indent=1))

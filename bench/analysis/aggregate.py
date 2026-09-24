@@ -18,8 +18,8 @@ from pathlib import Path
 from bench.analysis.aa_validation import aa_validity
 from bench.analysis.rankings import delta_vs_baseline, rank_products
 from bench.analysis.stats import boot_ci_median, stats
-from bench.analysis.validity import (ERROR_REASONS, gate_rows, is_aa_phase,
-                                     settle_auth_products)
+from bench.analysis.validity import (ERROR_REASONS, aa_primary_p50s, gate_rows,
+                                     is_aa_phase, settle_auth_products)
 from bench.core.measurement import primary_metric
 
 
@@ -60,10 +60,15 @@ def aggregate(rows: list):
 
 
 def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
-              trials: dict | None = None) -> dict:
+              trials: dict | None = None, aa_p50s: dict | None = None,
+              drift_threshold_pct: float | None = None) -> dict:
     """The summary model: per-benchmark stats, primary ranks, ts deltas,
     plus the validity-gate report (excluded counts + reasons, per-phase
-    trial denominators) when provided."""
+    trial denominators, AA-to-wave drift) when provided.
+
+    Products whose primary p50 drifts more than ``drift_threshold_pct``
+    between the A/A pass and the published waves are marked unstable and
+    excluded from ranks and deltas (their stats stay visible)."""
     out = {}
     # union: benchmarks with valid rows AND fully-excluded benchmarks (their
     # exclusion report must still reach the summary artifacts)
@@ -86,6 +91,10 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
             entry["products"].setdefault(p, {})["failures"] = failures[bench][p]
         if primary:
             p50s = {p: s.get(primary, {}).get("p50") for p, s in entry["products"].items()}
+            unstable = _drift_unstable(bench, p50s, aa_p50s, drift_threshold_pct)
+            if unstable:
+                entry["unstable"] = unstable
+                p50s = {p: v for p, v in p50s.items() if p not in unstable}
             entry["ranks"] = rank_products(p50s)
             entry["primary_p50s"] = {p: v for v, p in
                                      sorted([(v, p) for p, v in p50s.items() if v is not None])}
@@ -96,6 +105,23 @@ def summarize(by: dict, failures: dict, cfg: dict, excluded: dict | None = None,
             entry["trials"] = trials[bench]
         out[bench] = entry
     return out
+
+
+def _drift_unstable(bench: str, p50s: dict, aa_p50s: dict | None,
+                    threshold_pct: float | None) -> dict:
+    """{product: {"aa_p50", "w1_p50", "drift_pct"}} for products whose
+    primary p50 drifted between the A/A pass and the published waves."""
+    if aa_p50s is None or threshold_pct is None:
+        return {}
+    unstable = {}
+    for product, w1 in p50s.items():
+        aa = aa_p50s.get((bench, product))
+        if w1 and aa:
+            drift = abs(w1 - aa) / min(w1, aa) * 100.0
+            if drift > threshold_pct:
+                unstable[product] = {"aa_p50": aa, "w1_p50": w1,
+                                    "drift_pct": round(drift, 1)}
+    return unstable
 
 
 def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> dict:
@@ -122,6 +148,9 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None) -> di
     for r in valid:
         trials[r["benchmark"]][r["product"]][str(r.get("phase") or "")] += 1
     threshold = float(cfg.get("aa", {}).get("spread_threshold_pct", 10.0))
+    drift_threshold = float(cfg.get("aa", {}).get("drift_threshold_pct", 10.0))
     settle = {prod: dict(info, auth_error=True) for prod, info in settle_auth.items()}
-    return {"summary": summarize(by, failures, cfg, excluded=excluded, trials=trials),
+    return {"summary": summarize(by, failures, cfg, excluded=excluded, trials=trials,
+                                 aa_p50s=aa_primary_p50s(valid),
+                                 drift_threshold_pct=drift_threshold),
             "aa": aa_validity(valid, threshold), "settle": settle}

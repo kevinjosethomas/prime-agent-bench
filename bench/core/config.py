@@ -45,7 +45,7 @@ DEFAULTS: dict[str, Any] = {
         "loop_s": 0.8,
         "echo_wait_s": 1.2,
     },
-    "aa": {"spread_threshold_pct": 10.0},
+    "aa": {"spread_threshold_pct": 10.0, "drift_threshold_pct": 10.0},
     "noop_control": {"rounds": 30},
     "benchmarks": {},  # per-benchmark overrides, e.g. compare.install_disk.trials
 }

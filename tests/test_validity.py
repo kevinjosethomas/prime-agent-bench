@@ -48,6 +48,15 @@ def model():
     return summarize_rows(rows, cfg, settle_rows=settle_rows)
 
 
+@pytest.fixture(scope="module")
+def model_clean_settle():
+    """The audited campaign's shape: settle.jsonl all-clean, codex routed
+    through the real API (its 'settle' is the 401 error render)."""
+    rows = load_all(FIXTURES)
+    cfg = dict(CFG, gate_benchmarks=gate_map())
+    return summarize_rows(rows, cfg, settle_rows=[])
+
+
 def _reasons(model, bench, product):
     return (model["summary"][bench].get("excluded") or {}).get(product) or {}
 
@@ -228,16 +237,62 @@ def test_gate_rows_counts_and_reasons():
                                                        "reasons": {"probe_deadline": 1}}
 
 
+# ---- AA-to-wave drift (stability) --------------------------------------------
+
+def test_drift_gate_marks_unstable_never_ranks(model):
+    """daemon.boot rust: A/A p50 ~46 vs W1 p50 ~220 (~4.8x pass-to-pass
+    shift) -> marked unstable, excluded from ranks and deltas; ts (4%
+    drift) still ranks."""
+    entry = model["summary"]["daemon.boot"]
+    unstable = entry["unstable"]
+    assert "rust" in unstable and "ts" not in unstable
+    assert unstable["rust"]["drift_pct"] > 300.0
+    assert entry["ranks"].get("rust") is None
+    assert "rust" not in entry["primary_p50s"]
+    assert "rust" not in entry["delta_vs_ts"]
+    assert entry["ranks"]["ts"] == 1
+    # the unstable product's raw stats stay visible for inspection
+    assert entry["products"]["rust"]["spawn_to_accept_ms"]["p50"] == unstable["rust"]["w1_p50"]
+
+
+def test_daemon_aa_calibrates_spawn_to_accept(model):
+    """daemon.boot A/A exists on its primary metric (the audit found no
+    tool-produced daemon A/A entries)."""
+    assert "daemon.boot/rust" in model["aa"]
+
+
+# ---- real-api regime -----------------------------------------------------------
+
+def test_real_api_regime_rows_never_ranked(model, model_clean_settle):
+    """codex msg_send rows are routed through the real API (the settle
+    detector fires on the 401 error render); cross-regime, never ranked.
+    With a clean settle pass (the audited campaign's shape) they fall to
+    real_api_regime; with a settle-auth failure, settle_auth_error —
+    either way they never rank."""
+    clean = model_clean_settle["summary"]["compare.msg_send"]
+    assert _reasons(model_clean_settle, "compare.msg_send", "codex")["reasons"] \
+        ["real_api_regime"] == 5
+    assert "codex" not in clean["ranks"]
+    assert "codex" not in clean["primary_p50s"]
+    assert "14650.0" not in json.dumps(clean["products"])
+    # and in the settle-401 tree the same rows are settle_auth_error
+    assert _reasons(model, "compare.msg_send", "codex")["reasons"]["settle_auth_error"] == 5
+
+
 # ---- artifacts report the gate ----------------------------------------------
 
-def test_outputs_render_exclusions_and_denominators(model):
+def test_outputs_render_exclusions_and_denominators(model, model_clean_settle):
     md = MarkdownAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model)
     assert "Excluded from rankings" in md
     assert "not_applicable=5" in md
     assert "settle_auth_error=5" in md
     assert "fixture_not_confirmed=4" in md
+    md_clean = MarkdownAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model_clean_settle)
+    assert "real_api_regime=5" in md_clean
     assert "w1=5" in md and "aa=10" in md      # labeled denominators
     assert "(n5)" in md                        # per-metric sample size
+    assert "Unstable (A/A-to-wave drift over threshold)" in md
+    assert "+373.7%" in md                    # the daemon.boot rust drift
     payload = json.loads(NotionAnalyzer(dict(CFG, gate_benchmarks=gate_map())).format_output(model))
     bullets = [b for b in payload["children"]
                if b["type"] == "bulleted_list_item"]

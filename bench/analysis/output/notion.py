@@ -52,6 +52,13 @@ def _blocks(stats: dict, cfg: dict) -> list:
                 cell += f", {delta['pct']:+.1f}% vs ts"
             out.append({"object": "block", "type": "bulleted_list_item",
                         "bulleted_list_item": {"rich_text": [_text(cell)]}})
+        unstable = entry.get("unstable") or {}
+        for p in unstable:
+            info = unstable[p]
+            out.append({"object": "block", "type": "bulleted_list_item",
+                        "bulleted_list_item": {"rich_text": [_text(
+                            f"{display.get(p, p)}: unstable \u2014 A/A p50 {info['aa_p50']} "
+                            f"vs W1 p50 {info['w1_p50']} (+{info['drift_pct']}% drift)")]}})
         excluded = entry.get("excluded") or {}
         for p in excluded:
             info = excluded[p]
