@@ -46,14 +46,17 @@ class FakeApp:
     persists consent when the product does; while the sheet is up, token
     input is DISCARDED (focus stolen — the run-3 TS shape)."""
 
-    def __init__(self, home, persist, launch_index, argv, env):
+    def __init__(self, home, persist, launch_index, argv, env,
+                 pop_delay_s=0.0):
         self.home = Path(home)
         self.persist = persist
         self.launch_index = launch_index
         self.argv, self.env = argv, env
+        self.pop_delay_s = pop_delay_s
         self.sheet_up = False
         self.buffer = ""
         self.echoed_once = False
+        self.last_echo = None
         self.alive_flag = True
         self.t_first_paint = 1.0
         self._lock = threading.Lock()
@@ -63,7 +66,17 @@ class FakeApp:
     def consent(self) -> bool:
         return (self.home / ".prime" / "agent" / "settings.json").exists()
 
+    def maybe_pop(self):
+        """The observed async shape: the sheet pops pop_delay_s AFTER the
+        first echo when no consent is persisted."""
+        if (not self.echoed_once or self.sheet_up or self.consent()
+                or self.last_echo is None):
+            return
+        if time.monotonic() - self.last_echo >= self.pop_delay_s:
+            self.sheet_up = True
+
     def screen_text(self):
+        self.maybe_pop()
         if self.sheet_up:
             return MARKER + "\n> Share\n  Not now"
         return "Prime Agent fake editor|" + self.buffer
@@ -97,11 +110,8 @@ class FakeApp:
         pass
 
     def wait_echo(self, timeout):
-        # the observed async pop: the sheet appears AFTER the first echo
-        if not self.echoed_once:
-            self.echoed_once = True
-            if not self.consent():
-                self.sheet_up = True
+        self.echoed_once = True
+        self.last_echo = time.monotonic()
         return
 
     def wait_for(self, pred, timeout=0, poll=0):
@@ -140,9 +150,10 @@ class FakeProd:
     has_daemon = False
     dialog_steps = [(MARKER, ["\x1b[B", "\r"])]
 
-    def __init__(self, persist=True, template=None):
+    def __init__(self, persist=True, template=None, pop_delay_s=0.0):
         self.persist = persist
         self.template = template
+        self.pop_delay_s = pop_delay_s
         self.launches = []
 
     def template_dir(self):
@@ -187,7 +198,7 @@ class FakeDriver:
 
     def start_session(self, argv, env=None, cwd=None, cols=120, rows=40):
         app = FakeApp(env["HOME"], self.prod.persist, len(self.apps),
-                      argv, dict(env))
+                      argv, dict(env), pop_delay_s=self.prod.pop_delay_s)
         self.prod.launches.append((argv, dict(env)))
         self.apps.append(app)
         return app
@@ -217,9 +228,10 @@ def test_drive_to_ready_answers_first_run_sheet(gate):
         app.kill_tree()
 
 
-def _run_gate(gate, tmp_path, persist):
+def _run_gate(gate, tmp_path, persist, pop_delay_s=0.0):
     prod = FakeProd(persist=persist,
-                    template=tmp_path / "template")
+                    template=tmp_path / "template",
+                    pop_delay_s=pop_delay_s)
     driver = FakeDriver(prod)
     root = tmp_path / "gate-root"
     root.mkdir(parents=True, exist_ok=True)
@@ -230,7 +242,8 @@ def _run_gate(gate, tmp_path, persist):
 
 def test_settle_persists_consent_and_measured_launch_is_sheet_free(gate, tmp_path):
     evidence, prod, driver = _run_gate(gate, tmp_path, persist=True)
-    assert evidence["pre_settle"] == "ready"
+    assert evidence["pre_settle"]["ready"] == "ready"
+    assert evidence["pre_settle"]["post_ready_answers"] == 1
     assert len(driver.apps) == 2                      # settle + measured
     assert evidence["pass"] is True
     # both launches: same settled home, isolated argv + dummy key
@@ -254,13 +267,35 @@ def test_settle_persists_consent_and_measured_launch_is_sheet_free(gate, tmp_pat
     assert evidence["mock_model_requests"] == 0
 
 
+def test_delayed_sheet_is_caught_by_stable_window(gate, tmp_path):
+    """Regression guard for the premature-exit flaw: the async sheet pops
+    >2s AFTER ready (the old early-quiet logic exited at 2s and missed it —
+    the exact run-3 failure). The stable window must still be observing,
+    witness the marker, answer it with the product's keys, and persist
+    consent so the measured launch is sheet-free."""
+    evidence, prod, driver = _run_gate(gate, tmp_path, persist=True,
+                                        pop_delay_s=3.0)   # > 2s old-quiet exit
+    assert evidence["pre_settle"]["post_ready_answers"] == 1
+    assert evidence["pre_settle"]["window_s"] >= 6.0     # stable window held
+    assert evidence["pass"] is True
+    home = Path(prod.launches[1][1]["HOME"])
+    assert (home / ".prime" / "agent" / "settings.json").exists()
+    assert driver.apps[1].sheet_up is False              # measured: clean
+    assert evidence["stress_focus_verified"] is True
+
+
 def test_no_persist_consent_gate_refuses_vacuous_pass(gate, tmp_path):
     """Report-not-hack posture: if answering the sheet does NOT persist
     consent, the settle cannot pre-complete onboarding — the measured
     launch pops the sheet mid-burst (dialog-free at send), input is
     swallowed, and the gate FAILS on focus. Never a vacuous pass."""
     evidence, prod, driver = _run_gate(gate, tmp_path, persist=False)
-    assert evidence["pre_settle"] == "ready"          # walk + drain ran
+    assert evidence["pre_settle"]["ready"] == "ready"   # walk + drain ran
+    # no persistence -> the sheet RE-POPPED inside the stable window and
+    # the drain answered it repeatedly until the bounded cap — the honest
+    # signature of a product that does not persist consent
+    assert evidence["pre_settle"]["post_ready_answers"] >= 2
+    assert evidence["pre_settle"]["window_s"] >= 6.0
     home = Path(prod.launches[1][1]["HOME"])
     assert not (home / ".prime" / "agent" / "settings.json").exists()
     assert evidence["stress_dialog_free"] is True      # true AT send time

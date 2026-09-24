@@ -35,11 +35,12 @@ real proof.
 
 Pre-settle (verification-only): before the measured launch, ONE isolated
 launch on the same trial home walks the product-owned first-run dialogs
-to ready and then drains any sheet that pops after ready (the observed
-share-traces sheet lands seconds in, after the probe echo), answering
-it with the product's own dialog keys. Campaign templates, fixtures and
-scenarios are untouched — the settled home is the gate's ephemeral
-trial home only.
+to ready and then holds a STABLE post-ready observation window (never
+an early-quiet exit — the observed share-traces sheet lands seconds in,
+after the probe echo), answering any configured marker inside the window
+with the product's own dialog keys and recording what was answered.
+Campaign templates, fixtures and scenarios are untouched — the settled
+home is the gate's ephemeral trial home only.
 """
 from __future__ import annotations
 
@@ -189,38 +190,42 @@ def gate_pass(evidence: dict) -> bool:
         and "transcript_dump_error" not in evidence)
 
 
-def pre_settle(prod, ctx, driver, post_ready_s: float = 10.0) -> str:
+def pre_settle(prod, ctx, driver, window_s: float = 6.0,
+               cap_s: float = 10.0) -> dict:
     """Verification-only onboarding consumption (the harness prepass
     pattern): one isolated launch on the trial home walks the
-    product-owned first-run dialogs to ready, then DRAINS any sheet that
-    pops after ready — the observed share-traces sheet lands seconds
-    in, after the probe echo, so a bare to-ready walk would miss it. The
-    measured launch that follows runs against the settled home. Mock-only
-    by construction (the same offline argv + dummy key as the measured
-    launch); the settle session is killed and swept, never measured."""
+    product-owned first-run dialogs to ready, then holds a STABLE
+    post-ready observation window — the observed share-traces sheet pops
+    seconds AFTER the probe echo, so an early-quiet exit would miss it.
+    Any configured marker seen inside the window is answered with the
+    product's own keys; the window never exits before window_s since
+    ready and is hard-capped at cap_s. The measured launch that follows
+    runs against the settled home. Mock-only by construction (the same
+    offline argv + dummy key as the measured launch); the settle session
+    is killed and swept, never measured."""
     app = launch_isolated(prod, ctx, driver)
     try:
         first_paint(app, timeout=60)
         result = drive_to_ready(app, prod.dialog_steps, timeout=150,
                                 probe="Zq7prep01", pacing={})
         keys_by_marker = dict(prod.dialog_steps)
-        quiet = 0.0
-        deadline = time.monotonic() + post_ready_s
-        while time.monotonic() < deadline:
+        start = time.monotonic()
+        answers = 0
+        while True:
             norm = " ".join(app.screen_text().split())
             marker = next((m for m in keys_by_marker if m in norm), None)
-            if marker is None:
-                quiet += 0.2
-                if quiet >= 2.0:
-                    break
-                time.sleep(0.2)
-                continue
-            quiet = 0.0
-            for key in keys_by_marker[marker]:
-                app.send(key)
-                time.sleep(0.4)
-            time.sleep(0.5)
-        return result
+            if marker is not None:
+                for key in keys_by_marker[marker]:
+                    app.send(key)
+                    time.sleep(0.4)
+                answers += 1
+                time.sleep(0.5)
+            elapsed = time.monotonic() - start
+            if elapsed >= cap_s or (elapsed >= window_s and marker is None):
+                break
+            time.sleep(0.2)
+        return {"ready": result, "post_ready_answers": answers,
+                "window_s": round(time.monotonic() - start, 2)}
     finally:
         app.kill_tree()
         sweep_trial(ctx)
