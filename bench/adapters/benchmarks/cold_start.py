@@ -1,8 +1,15 @@
 """compare.cold_start: launch -> first paint -> typed echo accepted -> erase.
 
-Onboarding dialogs are NOT product performance: if one appears, the harness
-auto-dismisses it and the ready measurement starts after the dismissal
-(dialog time excluded, event recorded). Also records the input gap.
+Onboarding dialogs are NOT product performance, and consent-settled
+products never see one: products that seed the return-user consent
+baseline (``seeds_consent_baseline``) launch a home whose settings.json
+already carries onboardingShown/agentTraces/telemetry.noticeShown, so any
+first-run sheet sighted during the measured launch is a BASELINE BREACH —
+the row records it, the validation fails, and the strict validity gate
+excludes it (never auto-dismissed and measured; no pre-settle process
+runs inside the measured cold-start). Products without a seedable
+baseline keep the walk semantics: a dialog is auto-dismissed, dialog time
+is excluded from the gap, and the event is disclosed per row.
 """
 from __future__ import annotations
 
@@ -34,6 +41,11 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
     """
     if product.needs_prepass:
         prepass(product, ctx, driver)
+    # the measured launch runs on the consent-settled template home (no
+    # pre-settle process: the baseline is seeded at template build, so a
+    # measured cold-start is exactly what the campaign measures)
+    baseline = product.seeds_consent_baseline
+    breaches: list[str] = []
     t_load = loadavg()
     app = product.launch(ctx, driver)
     try:
@@ -41,12 +53,22 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
         probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5, timeout=45.0,
                                       start_ts=t_paint,
                                       dialog_steps=ONBOARDING_AUTODISMISS)
+        if baseline:
+            # sheets answered mid-probe survived the seeded baseline
+            breaches += probe["dialogs"]
         # the erase budget must cover every probe char sent, and the
         # verification certifies EVERY attempt token gone (the input line
         # may hold buffered tokens from every unconfirmed attempt)
         erase_ok, erase_ms = app.erase_all(
             probe["probe_tokens"], max_backspaces=probe["chars_sent"] + 8)
         time.sleep(1.0)  # settled idle
+        if baseline:
+            # the observed sheet shape pops async AFTER ready (seconds in,
+            # past the probe echo): a sighting in the settled window is a
+            # breach even when the probe phase was clean
+            settled = " ".join(app.screen_text().split())
+            breaches += [m for m, _ in ONBOARDING_AUTODISMISS
+                        if m in settled and m not in breaches]
         rss = rss_tree(app.pid)
         bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())
         record["metrics"] = {
@@ -73,7 +95,17 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
                            "dialog_ms": probe["dialog_ms"]}
         if probe["dialogs"]:
             record["dialog_autodismissed"] = probe["dialogs"][0][:40]
-        record["validation"] = {"echoed": True, "erased": erase_ok}
+        if baseline:
+            # report-not-hack: a sheet on a consent-settled home means the
+            # baseline did not hold (stale template or a product that
+            # re-triggers first-run state, e.g. after a daemon restart) —
+            # the row keeps its numbers but the validation fails, and the
+            # strict validity gate excludes it as validation_failed
+            record["consent_baseline_breach"] = breaches
+            record["validation"] = {"echoed": True, "erased": erase_ok,
+                                    "consent_baseline_intact": not breaches}
+        else:
+            record["validation"] = {"echoed": True, "erased": erase_ok}
         record["resource"] = {"rss_settled": rss, "loadavg_before": t_load, "loadavg_after": loadavg()}
     finally:
         app.kill_tree()

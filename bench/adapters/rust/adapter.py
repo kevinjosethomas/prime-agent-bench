@@ -12,7 +12,8 @@ import subprocess
 from pathlib import Path
 
 from bench.core.env import (NODE_HOME_AUTH_PRIME, copy_prime_auth,
-                            global_caches, scrubbed_env, write_models_json)
+                            global_caches, scrubbed_env, write_consent_baseline,
+                            write_models_json)
 from bench.core.product import ProductAdapter, TrialContext
 from bench.core.process import sweep_trial
 
@@ -22,6 +23,9 @@ class PrimeAgentRustProduct(ProductAdapter):
     display_name = "Prime Agent Rust"
     has_daemon = True
     needs_kernel_venv = True
+    # the template seeds the return-user consent baseline; a first-run
+    # sheet in a measured launch is a breach, never measured dialog time
+    seeds_consent_baseline = True
     resume_fixture_capable = True  # argv passes --resume <fixture>
     default_binary_subpath = "repos/prime-agent-rust/target/release/prime-agent"
     # The campaign-verified build revision (audit F10: the earlier pin fix
@@ -64,11 +68,22 @@ class PrimeAgentRustProduct(ProductAdapter):
         return info
 
     def prepare_template(self, tpl: Path) -> None:
-        """Agent dir with mock models.json; preprovisioned Prime auth."""
+        """Agent dir with mock models.json; preprovisioned Prime auth.
+
+        Plus the return-user consent baseline, seeded before any measured
+        launch so no consent sheet can pop inside one (the observed async
+        share-traces sheet landed after the probe echo and stole editor
+        focus mid-measurement). Both product-visible settings locations
+        carry it: the trial agent dir (what the product reads — its env
+        pins PRIME_AGENT_CODING_AGENT_DIR there) and the HOME default
+        path (the env override's fallback; same bytes, so a template home
+        is a faithful return-user home either way)."""
         write_models_json(tpl / "agent", self.mock_base_url() + "/v1")
         copy_prime_auth(tpl / "agent")
+        write_consent_baseline(tpl / "agent")
         prime = tpl / "home" / ".prime"
         prime.mkdir(parents=True, exist_ok=True)
+        write_consent_baseline(prime / "agent")
         cfg = NODE_HOME_AUTH_PRIME / "config.json"
         if cfg.exists():
             shutil.copy(cfg, prime / "config.json")

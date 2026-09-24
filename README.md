@@ -53,6 +53,20 @@ discovered from the package structure.
   settle/template-state artifact) are auto-dismissed, excluded from the
   gap, and disclosed per row. The old ~2s probe floor was two 1.0s
   harness waits for absent dialog markers, not product latency.
+- Return-user consent baseline: Prime Agent rust/ts templates seed the
+  product-verified return-user settings (`onboardingShown:true`,
+  `agentTraces.enabled:false` — the persisted "Not now" — and
+  `telemetry.noticeShown:true`, verified against the pinned TS acc5bc0
+  and Rust bdf82f4f sources; never a `traces:not-now` shape) at both
+  product-visible locations before any measured launch, so a measured
+  cold-start runs NO pre-settle process on exactly the home the
+  campaign measures. Any first-run sheet sighted during a measured
+  launch (probe-phase, the async post-ready timing, or the settled
+  window) is a `consent_baseline_breach`: the row keeps its numbers but
+  `validated` fails and the strict validity gate excludes it — report,
+  never auto-dismissed-and-measured. Products without a seedable
+  baseline keep the walk semantics (dialog time excluded, disclosed per
+  row).
 - Provenance (audit F7/F8/F9): every row carries `run` — the campaign
   label plus the harness revision that measured it (deploy-bundle
   sha256 in sandbox runs); `bench analyze --phase w1` fixes the

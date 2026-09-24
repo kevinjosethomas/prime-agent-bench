@@ -112,6 +112,14 @@ class ProductAdapter(ABC):
     # False: fixture-based scenarios then record them not_comparable
     # (spec §F) instead of measuring a fresh session.
     resume_fixture_capable: bool = False
+    # Whether prepare_template seeds the return-user consent baseline
+    # (bench.core.env.CONSENT_BASELINE_SETTINGS). True means measured
+    # launches start consent-settled: any first-run dialog marker seen
+    # during a measured launch is a BASELINE BREACH — the trial is
+    # invalidated (validation fails loudly), never auto-dismissed and
+    # measured. Products without a seedable baseline keep their
+    # dialog-walk semantics (dialog time excluded, disclosed per row).
+    seeds_consent_baseline: bool = False
     # How a submitted message routes (MSG_ROUTING_REGIMES); product.yaml
     # ``msg_routing:`` overrides. Message-settle scenarios measure the
     # settle only in the mock regime — the harness declares the regime,
@@ -158,8 +166,23 @@ class ProductAdapter(ABC):
         return self.layout.homes / self.name / "template"
 
     def new_trial(self, trial: Path) -> TrialContext:
-        """Materialize an isolated trial (template home + fresh work repo)."""
-        shutil.copytree(self.template_dir(), trial / "home", symlinks=True)
+        """Materialize an isolated trial (template home + fresh work repo).
+
+        The template convention (every adapter writes it, and
+        settle_product rsyncs back into it): ``<template>/home`` IS the
+        trial home's content and ``<template>/agent`` is the agent dir
+        customize_trial copies out. The clone copies from ``home`` —
+        copying the template ROOT nested ``home/`` inside the trial home,
+        where no product ever read it (the latent quirk every adapter
+        survived via env overrides or the prepass walk; the consent
+        baseline's HOME-default copy made it load-bearing). Adapters
+        without a home subtree (pi stages its state inside the home in
+        customize_trial) get a fresh empty home."""
+        home_src = self.template_dir() / "home"
+        if home_src.exists():
+            shutil.copytree(home_src, trial / "home", symlinks=True)
+        else:
+            (trial / "home").mkdir(parents=True, exist_ok=True)
         work = trial / "work"
         make_workdir(work)
         (trial / "tmp").mkdir(exist_ok=True)

@@ -86,6 +86,14 @@ def test_dismiss_is_positive_match_only(gate, monkeypatch):
     # FakeApp keeps its last screen forever, so a never-clearing sheet
     # hits the bounded-rounds cap (4) — dismissals can never run unbounded
     assert gate.dismiss_dialogs(persistent) == 4
+    # the consent-breach ledger records every sighted marker exactly once
+    seen: list = []
+    sheet_then_clean2 = FakeApp([MARKER + "\neditor", MARKER + "\nagain",
+                                 "clean editor"])
+    assert gate.dismiss_dialogs(sheet_then_clean2, seen=seen) == 2
+    assert seen == [MARKER]
+    assert gate.dismiss_dialogs(FakeApp(["clean"]), seen=seen) == 0
+    assert seen == [MARKER]  # clean sightings add nothing
 
 
 def test_sheet_covered_stress_input_is_not_certified(gate):

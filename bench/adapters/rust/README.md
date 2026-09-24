@@ -19,6 +19,20 @@
   dialog never shows). The config entry stays anyway — harmless when the dialog
   is gone, and other products still need theirs.
 
+## Return-user consent baseline (seeded, not walked)
+The template seeds the product-verified return-user settings.json
+(`onboardingShown:true`, `agentTraces.enabled:false` — the persisted
+"Not now" — `telemetry.noticeShown:true`) at BOTH product-visible
+locations: the trial agent dir (what the product reads — its env pins
+`PRIME_AGENT_CODING_AGENT_DIR` there) and the HOME default path. The
+keys are gated by the pinned sources themselves (TS acc5bc0
+`shouldRunOnboarding` keys off `onboardingShown` alone; Rust bdf82f4f
+`onboarding_task` the same), so no consent sheet can appear in a
+measured launch and none is ever walked there. A sheet that DOES
+appear is a baseline breach (stale template, or a product that
+re-triggers first-run state, e.g. after a daemon restart): the trial
+is invalidated, never auto-dismissed and measured.
+
 ## Known quirks — the fix classes hit here
 - **TUI hard-wrapping breaks naive text matching** (rust + ts): dialog markers
   match the whitespace-normalized screen, never raw rows. Generalized fix:

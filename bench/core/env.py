@@ -139,6 +139,47 @@ def copy_prime_auth(agent_dir: Path) -> None:
         (agent_dir / "auth.json").write_bytes(auth.read_bytes())
 
 
+#: The return-user consent baseline in the products' own settings schema,
+#: verified against the pinned sources: TS acc5bc0 (settings-manager.ts +
+#: onboarding.ts — ``shouldRunOnboarding`` is gated on ``onboardingShown``
+#: alone; the share-traces sheet's "Not now" persists
+#: ``agentTraces.enabled=false``; the telemetry notice is gated on
+#: ``telemetry.noticeShown``) and Rust bdf82f4f (pa-core/src/settings/
+#: types.rs + pa-cli/src/interactive_mode.rs — the same camelCase keys).
+#: ``{"traces": "not-now"}`` is NOT a product shape; it existed only in an
+#: old bench fake and must never be seeded.
+CONSENT_BASELINE_SETTINGS = {
+    "onboardingShown": True,
+    "agentTraces": {"enabled": False},
+    "telemetry": {"noticeShown": True},
+}
+
+
+def write_consent_baseline(agent_dir: Path) -> dict:
+    """Seed the return-user consent baseline into a product settings.json.
+
+    Writes ``<agent_dir>/settings.json`` with the pinned keys; an existing
+    file keeps its other keys (a template rebuilt over product-persisted
+    settings must not lose them), and the three consent keys are enforced
+    to the pinned values — a seeded trial is a return user who has seen
+    onboarding, declined traces, and seen the telemetry notice, so no
+    consent sheet can appear in a measured launch. Returns the file's
+    final parsed content (evidence for tests)."""
+    agent_dir.mkdir(parents=True, exist_ok=True)
+    path = agent_dir / "settings.json"
+    settings: dict = {}
+    if path.exists():
+        try:
+            settings = json.loads(path.read_text())
+            if not isinstance(settings, dict):
+                settings = {}
+        except Exception:
+            settings = {}
+    settings.update(json.loads(json.dumps(CONSENT_BASELINE_SETTINGS)))
+    path.write_text(json.dumps(settings, indent=1) + "\n")
+    return settings
+
+
 def make_workdir(work: Path) -> None:
     """The deterministic work repo every trial launches in."""
     work.mkdir(parents=True, exist_ok=True)

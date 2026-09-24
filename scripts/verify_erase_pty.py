@@ -33,14 +33,20 @@ full-cohort acceptance: the missing-list records the cohort render
 state, and the full 66-token stress contract stays uncertified until
 real proof.
 
-Pre-settle (verification-only): before the measured launch, ONE isolated
-launch on the same trial home walks the product-owned first-run dialogs
-to ready and then holds a STABLE post-ready observation window (never
-an early-quiet exit — the observed share-traces sheet lands seconds in,
-after the probe echo), answering any configured marker inside the window
-with the product's own dialog keys and recording what was answered.
-Campaign templates, fixtures and scenarios are untouched — the settled
-home is the gate's ephemeral trial home only.
+Consent baseline (no pre-settle): products that seed the return-user
+consent baseline (adapter ``seeds_consent_baseline``; the template's
+settings.json carries onboardingShown/agentTraces.enabled=false/
+telemetry.noticeShown, verified from the pinned TS acc5bc0 + Rust
+bdf82f4f sources) launch this gate on exactly the home the campaign's
+measured cold-start runs on — NO settle launch runs first. The gate
+reads the seeded settings BEFORE launching (a stale template fails
+loudly instead of measuring a first-run walk), and every onboarding
+marker sighted during the flow (probe-phase answers, phase-boundary
+dismissals, the async post-ready sheet) is a BREACH: recorded, and the
+verdict fails. A sheet on a consent-settled home means the baseline
+did not hold — report, never a vacuous pass. Products without a
+seedable baseline keep the walk semantics (their markers are answered
+and recorded, not gated).
 """
 from __future__ import annotations
 
@@ -62,7 +68,6 @@ sys.path.insert(0, str(REPO))
 from bench.adapters.benchmarks.support import (  # noqa: E402
     PROBE_TOKEN, drive_to_ready, first_paint,
 )
-from bench.core.process import sweep_trial  # noqa: E402
 from bench.adapters.terminals.pty import PTYDriver  # noqa: E402
 from bench.core.config import load_config  # noqa: E402
 from bench.core.env import scrubbed_env  # noqa: E402
@@ -103,10 +108,13 @@ def dump_transcripts(name: str, app) -> None:
          "total": app.bytes_out()}))
 
 
-def dismiss_dialogs(app, rounds: int = 4, pause: float = 0.4) -> int:
+def dismiss_dialogs(app, rounds: int = 4, pause: float = 0.4,
+                    seen: list | None = None) -> int:
     """Dismiss any onboarding sheet that appears mid-trial. The probe's
     dialog_steps only cover the probe phase, but TS pops the share-traces
-    sheet AFTER readiness; later phases must measure the real editor."""
+    sheet AFTER readiness; later phases must measure the real editor.
+    ``seen`` (the consent-breach ledger) records every marker sighted:
+    for a consent-settled product each sighting is a baseline breach."""
     keys_by_marker = dict(ONBOARDING_AUTODISMISS)
     dismissed = 0
     for _ in range(rounds):
@@ -114,12 +122,40 @@ def dismiss_dialogs(app, rounds: int = 4, pause: float = 0.4) -> int:
         marker = next((m for m in keys_by_marker if m in text), None)
         if marker is None:
             return dismissed
+        if seen is not None and marker not in seen:
+            seen.append(marker)
         for key in keys_by_marker[marker]:
             app.send(key)
             time.sleep(pause)
         dismissed += 1
         time.sleep(0.5)
     return dismissed
+
+
+def consent_baseline_evidence(ctx) -> dict:
+    """The seeded return-user settings the trial launches against, read
+    BEFORE any launch (no pre-settle: the gate launches exactly what the
+    campaign's measured cold-start launches), plus the breach ledger the
+    flow fills. Both product-visible locations must carry the pinned
+    keys — the trial agent dir (what the product reads; its env pins
+    PRIME_AGENT_CODING_AGENT_DIR there) and the HOME default path."""
+    def seeded(path) -> bool:
+        try:
+            data = json.loads(Path(path).read_text())
+        except Exception:
+            return False
+        return (isinstance(data, dict)
+                and data.get("onboardingShown") is True
+                and isinstance(data.get("agentTraces"), dict)
+                and data["agentTraces"].get("enabled") is False
+                and isinstance(data.get("telemetry"), dict)
+                and data["telemetry"].get("noticeShown") is True)
+    agent_settings = Path(ctx.get("agent_dir") or
+                          Path(ctx["home"]) / ".prime" / "agent") / "settings.json"
+    home_settings = Path(ctx["home"]) / ".prime" / "agent" / "settings.json"
+    return {"seed": {"agent_dir": seeded(agent_settings),
+                     "home_default": seeded(home_settings)},
+            "breaches": []}
 
 
 def editor_window(app, rows_up: int, rows_down: int = 1) -> tuple:
@@ -175,7 +211,13 @@ def gate_pass(evidence: dict) -> bool:
     sentinel (appended right after the burst) positively witnessed in
     the editor region before the erase — NOT full 66-token acceptance:
     the cohort render state is recorded (rendered count + missing list)
-    and the full-stress contract stays uncertified until real proof."""
+    and the full-stress contract stays uncertified until real proof.
+    For consent-baseline products the seed must be present at both
+    product-visible locations and the breach ledger must stay EMPTY: a
+    sheet on a consent-settled home (stale template, or a product that
+    re-triggers first-run state, e.g. after a daemon restart) fails the
+    gate — the report-not-hack posture, never a vacuous pass."""
+    baseline = evidence.get("consent_baseline")
     return bool(
         evidence.get("probe_witnessed")
         and evidence.get("erase_ok") and not evidence.get("leftover_tokens")
@@ -187,48 +229,11 @@ def gate_pass(evidence: dict) -> bool:
         and evidence.get("stress_dialog_free")
         and evidence.get("stress_focus_verified")
         and "reap_leftovers" not in evidence
-        and "transcript_dump_error" not in evidence)
-
-
-def pre_settle(prod, ctx, driver, window_s: float = 6.0,
-               cap_s: float = 10.0) -> dict:
-    """Verification-only onboarding consumption (the harness prepass
-    pattern): one isolated launch on the trial home walks the
-    product-owned first-run dialogs to ready, then holds a STABLE
-    post-ready observation window — the observed share-traces sheet pops
-    seconds AFTER the probe echo, so an early-quiet exit would miss it.
-    Any configured marker seen inside the window is answered with the
-    product's own keys; the window never exits before window_s since
-    ready and is hard-capped at cap_s. The measured launch that follows
-    runs against the settled home. Mock-only by construction (the same
-    offline argv + dummy key as the measured launch); the settle session
-    is killed and swept, never measured."""
-    app = launch_isolated(prod, ctx, driver)
-    try:
-        first_paint(app, timeout=60)
-        result = drive_to_ready(app, prod.dialog_steps, timeout=150,
-                                probe="Zq7prep01", pacing={})
-        keys_by_marker = dict(prod.dialog_steps)
-        start = time.monotonic()
-        answers = 0
-        while True:
-            norm = " ".join(app.screen_text().split())
-            marker = next((m for m in keys_by_marker if m in norm), None)
-            if marker is not None:
-                for key in keys_by_marker[marker]:
-                    app.send(key)
-                    time.sleep(0.4)
-                answers += 1
-                time.sleep(0.5)
-            elapsed = time.monotonic() - start
-            if elapsed >= cap_s or (elapsed >= window_s and marker is None):
-                break
-            time.sleep(0.2)
-        return {"ready": result, "post_ready_answers": answers,
-                "window_s": round(time.monotonic() - start, 2)}
-    finally:
-        app.kill_tree()
-        sweep_trial(ctx)
+        and "transcript_dump_error" not in evidence
+        and (baseline is None
+             or (baseline.get("seed", {}).get("agent_dir")
+                 and baseline.get("seed", {}).get("home_default")
+                 and not baseline.get("breaches"))))
 
 
 def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
@@ -242,11 +247,23 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
     ctx = prod.new_trial(trial)
     sanitize_trial_home(ctx, name)
     evidence: dict = {"product": name}
-    # verification-only pre-settle: consume onboarding sheets BEFORE the
-    # measured launch so the async share-traces sheet cannot steal focus
-    # mid-burst; campaigns keep their own fresh-home templates untouched
-    evidence["pre_settle"] = pre_settle(prod, ctx, driver)
-    sanitize_trial_home(ctx, name)
+    # NO pre-settle launch: a consent-baseline product's gate runs on the
+    # exact home the campaign's measured cold-start runs on. The seed is
+    # read BEFORE launching (a stale template fails loudly — never a
+    # first-run walk masquerading as a settled home), and every onboarding
+    # marker sighted during the flow lands in the breach ledger
+    baseline = bool(getattr(prod, "seeds_consent_baseline", False))
+    breaches: list = []
+    if baseline:
+        evidence["consent_baseline"] = consent_baseline_evidence(ctx)
+        breaches = evidence["consent_baseline"]["breaches"]
+        seed = evidence["consent_baseline"]["seed"]
+        if not (seed["agent_dir"] and seed["home_default"]):
+            evidence["consent_baseline"]["stale_template"] = True
+
+    def dismiss(app) -> int:
+        return dismiss_dialogs(app, seen=breaches if baseline else None)
+
     app = None
     try:
         evidence["version"] = prod.version_info()
@@ -255,6 +272,9 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         probe = app.probe_input_ready(
             PROBE_TOKEN, retry_every=0.5, timeout=45.0, start_ts=t_paint,
             dialog_steps=ONBOARDING_AUTODISMISS)
+        if baseline:
+            # sheets answered mid-probe survived the seeded baseline
+            breaches += [m for m in probe["dialogs"] if m not in breaches]
         evidence["probe"] = {
             "sends": probe["sends"],
             "unconfirmed_attempts": probe["unconfirmed_attempts"],
@@ -266,7 +286,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         }
         tokens = probe["probe_tokens"]
         evidence["dialog_dismissals"] = []
-        n = dismiss_dialogs(app)
+        n = dismiss(app)
         if n:
             evidence["dialog_dismissals"].append(("post_probe", n))
         # the SUCCESSFUL probe token must be positively witnessed in the
@@ -292,7 +312,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         # rows of residue; the burst + dynamic-cap gate must clear it all.
         # A sheet up at send time swallows the input (run-2 TS: 0/66
         # rendered), so dismiss BEFORE sending.
-        n = dismiss_dialogs(app)
+        n = dismiss(app)
         if n:
             evidence["dialog_dismissals"].append(("pre_stress", n))
         # guaranteed dialog-free at send time (positive no-marker check)
@@ -307,7 +327,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         # sentinel proves focus, NOT full-cohort acceptance — the missing
         # list below records the cohort render state.
         app.send(STRESS_SENTINEL)
-        n = dismiss_dialogs(app)
+        n = dismiss(app)
         if n:
             evidence["dialog_dismissals"].append(("post_stress", n))
         # bounded wait (no blind sleeps): the sentinel echo on the input
@@ -342,7 +362,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         }
         # editor state + acceptance: alive, and fresh input still echoes
         evidence["alive_after_erase"] = app.alive()
-        n = dismiss_dialogs(app)
+        n = dismiss(app)
         if n:
             evidence["dialog_dismissals"].append(("pre_fresh_echo", n))
         app.start_echo_watch("Zq9k")
@@ -353,7 +373,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
             t_echo = True
         except TimeoutError:
             # one bounded retry after dismissing a sheet that stole focus
-            n = dismiss_dialogs(app)
+            n = dismiss(app)
             if n:
                 evidence["dialog_dismissals"].append(("fresh_retry", n))
                 app.start_echo_watch("Zq9k")
