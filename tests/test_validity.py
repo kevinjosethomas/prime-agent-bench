@@ -111,6 +111,19 @@ def test_session_open_120s_artifacts_never_ranked(model):
     assert _reasons(model, "session.cold_open_10mib", "ts")["reasons"]["fixture_not_confirmed"] == 4
 
 
+def test_session_open_ranks_on_the_completion_boundary(model):
+    """session.cold_open_10mib ranks on launch_to_complete_ms — the later of
+    typed echo and tail sentinel (spec §A). The historical captured rows
+    predate the recorded boundary metric, so the analyzer derives it from
+    each row's own two timestamps (max) at flattening; the sentinel-missing
+    rows derive no boundary and never reach the p50s."""
+    entry = model["summary"]["session.cold_open_10mib"]
+    assert entry["primary"] == "launch_to_complete_ms"
+    assert entry["primary_p50s"] == {"rust": 9600.0, "ts": 10300.0}
+    assert entry["ranks"] == {"rust": 1, "ts": 2}
+    assert entry["delta_vs_ts"]["rust"]["abs"] == -700.0
+
+
 # ---- auth-error settle (Codex 401) -------------------------------------------
 
 def test_settle_auth_error_excludes_product(model):
@@ -163,7 +176,12 @@ def test_aa_calibrates_primary_and_declared_metrics(model):
     assert aa["compare.msg_send/rust"]["valid"] is False          # captured shape
     assert aa["compare.msg_send/rust/submit_to_settle_ms"]["valid"] is False
     assert aa["compare.msg_send/claude"]["valid"] is True
-    assert "session.cold_open_10mib/rust" in aa
+    # the captured session.cold_open rows predate the recorded boundary
+    # metric (launch_to_complete_ms), so their raw rows cannot calibrate the
+    # new primary — the boundary is derived for them at flattening instead
+    # (test_session_open_ranks_on_the_completion_boundary); new-wave rows
+    # record the metric and calibrate like every other benchmark.
+    assert "session.cold_open_10mib/rust" not in aa
 
 
 # ---- fixture comparability ---------------------------------------------------

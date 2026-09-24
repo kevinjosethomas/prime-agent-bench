@@ -11,7 +11,10 @@ PRIMARY: dict[str, tuple[str, str]] = {
     "compare.warm_start": ("launch_to_ready_ms", "minimize"),
     "compare.msg_send": ("submit_to_ack_ms", "minimize"),
     "compare.scroll_typing": ("typing_ms_p50", "minimize"),
-    "session.cold_open_10mib": ("launch_to_ready_ms", "minimize"),
+    # spec §A: the measured boundary is tail sentinel AND typed echo —
+    # completion is when BOTH hold, so the ranked metric is the later of
+    # the two (a missing sentinel leaves it unset and the row invalid).
+    "session.cold_open_10mib": ("launch_to_complete_ms", "minimize"),
     "session.agent_view_roundtrip": ("chat_to_agents_ms", "minimize"),
     "daemon.boot": ("spawn_to_accept_ms", "minimize"),
     "compare.install_disk": ("installed_bytes", "minimize"),
@@ -74,6 +77,14 @@ def metrics_for(row: dict) -> dict:
         out["multi_kernel_n"] = m.get("n")
     if "rss_after_first_cell" in m and isinstance(m["rss_after_first_cell"], dict):
         out["kernel_rss_mb"] = m["rss_after_first_cell"].get("rss_mb")
+    if row.get("benchmark") == "session.cold_open_10mib":
+        # completion boundary back-compat: rows measured before the boundary
+        # metric was recorded carry both raw timestamps; the ranked value is
+        # the later of the two (a missing sentinel yields no boundary — the
+        # row stays invalid, never a fast success). Recorded values stand.
+        ready, sentinel = out.get("launch_to_ready_ms"), out.get("launch_to_sentinel_ms")
+        if ready is not None and sentinel is not None:
+            out.setdefault("launch_to_complete_ms", max(ready, sentinel))
     res = row.get("resource", {})
     if "rss_settled" in res:
         out["rss_settled_mb"] = res["rss_settled"].get("rss_mb")

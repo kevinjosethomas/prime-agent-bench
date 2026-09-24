@@ -281,6 +281,10 @@ def test_session_cold_open_missing_sentinel_invalidates_row(tmp_path, monkeypatc
     bench.measure(FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
                   _ctx(tmp_path), record, FakeDriver(session), fixture=Path("corpus.jsonl"))
     assert record["metrics"]["launch_to_sentinel_ms"] is None
+    # completion never happens without the tail sentinel: no boundary value
+    # (the row is invalid, never a fast success on an unresumed session)
+    assert record["metrics"]["launch_to_complete_ms"] is None
+    assert record["fixture"]["loaded"] is False
     assert record["validation"] == pytest.approx({"sentinel": False, "echoed": True, "erased": True})
     assert bench.validate(record) is False
 
@@ -297,7 +301,97 @@ def test_session_cold_open_valid_when_sentinel_renders(tmp_path, monkeypatch):
                   fixture=Path("corpus.jsonl"))
     assert product.last_resume_fixture == "corpus.jsonl"
     assert record["metrics"]["launch_to_sentinel_ms"] is not None
+    m = record["metrics"]
+    assert m["launch_to_complete_ms"] == max(m["launch_to_ready_ms"],
+                                             m["launch_to_sentinel_ms"])
     assert bench.validate(record) is True
+
+
+class LateSentinelSession(FakeSession):
+    """The tail sentinel renders AFTER the editor echo (the observed TS
+    shape: a ready editor whose resumed-transcript tail paints seconds
+    later — the completion boundary must be the later timestamp)."""
+
+    def __init__(self, render_after_polls=3):
+        super().__init__(show_sentinel=False)
+        self.polls = 0
+        self.render_after_polls = render_after_polls
+
+    def probe_input_ready(self, token="Zq7x", retry_every=0.5, timeout=45.0,
+                          start_ts=None, **kwargs):
+        self.calls.append("probe")
+        return {"gap_ms": 1.0, "echo_ts_offset_ms": 1.0, "sends": 1,
+                "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01",
+                "input_buffered": False, "probe_grid_ms": 50.0,
+                "quantized_ms": 50.0, "dialogs": [], "dialog_ms": 0.0}
+
+    def screen_text(self):
+        self.polls += 1
+        if self.polls > self.render_after_polls and SENTINEL not in self.screen:
+            self.screen.append(SENTINEL)
+        return "\n".join(self.screen)
+
+
+def test_session_cold_open_completion_boundary_is_max_of_echo_and_sentinel(
+        tmp_path, monkeypatch):
+    """Spec §A: the ranked boundary is when BOTH hold — the editor echo
+    AND the rendered tail sentinel — so a late sentinel (echo ~1ms,
+    sentinel seconds later) ranks at the sentinel, with both raw
+    timestamps preserved as evidence on the row."""
+    from bench.adapters.benchmarks import session_open as mod
+    from bench.core.measurement import primary_metric
+    monkeypatch.setattr(mod, "rss_tree", lambda pid: {"rss_mb": 1.0})
+    monkeypatch.setattr(mod, "loadavg", lambda: 0.0)
+    session = LateSentinelSession()
+    bench = SessionColdOpen(_cfg(tmp_path, {"session.cold_open_10mib":
+                                             {"sentinel_timeout_s": 5.0}}))
+    record = _record()
+    bench.measure(FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
+                  _ctx(tmp_path), record, FakeDriver(session), fixture=Path("corpus.jsonl"))
+    m = record["metrics"]
+    assert m["launch_to_ready_ms"] is not None
+    assert m["launch_to_sentinel_ms"] is not None
+    assert m["launch_to_sentinel_ms"] > m["launch_to_ready_ms"]
+    # the boundary is the LATER of the two, not the editor echo alone
+    assert m["launch_to_complete_ms"] == m["launch_to_sentinel_ms"]
+    # and the ranked metric for the benchmark is that boundary
+    assert primary_metric("session.cold_open_10mib") == ("launch_to_complete_ms",
+                                                         "minimize")
+    assert bench.validate(record) is True
+
+
+def test_session_cold_open_boundary_derived_for_historical_rows():
+    """Rows measured before the boundary metric was recorded (the captured
+    corpora, already-written live trees) still rank on the boundary: the
+    flattener derives it from the row's own two timestamps; a recorded
+    value stands; a missing sentinel derives nothing (the row stays
+    invalid — never a fast success)."""
+    from bench.core.measurement import metrics_for
+    hist = {"benchmark": "session.cold_open_10mib", "product": "ts", "phase": "w1",
+            "metrics": {"launch_to_ready_ms": 751.0, "launch_to_sentinel_ms": 2507.0},
+            "validated": True, "validation": {"sentinel": True, "echoed": True,
+                                              "erased": True}}
+    out = metrics_for(hist)
+    assert out["launch_to_complete_ms"] == 2507.0
+    no_sentinel = {"benchmark": "session.cold_open_10mib", "product": "ts",
+                   "phase": "w1",
+                   "metrics": {"launch_to_ready_ms": 751.0,
+                               "launch_to_sentinel_ms": None},
+                   "validated": False, "validation": {"sentinel": False}}
+    assert "launch_to_complete_ms" not in metrics_for(no_sentinel)
+    recorded = {"benchmark": "session.cold_open_10mib", "product": "rust",
+                "phase": "w1",
+                "metrics": {"launch_to_ready_ms": 23980.0,
+                            "launch_to_sentinel_ms": 23987.0,
+                            "launch_to_complete_ms": 23987.0},
+                "validated": True, "validation": {"sentinel": True, "echoed": True,
+                                                  "erased": True}}
+    assert metrics_for(recorded)["launch_to_complete_ms"] == 23987.0
+    # the derivation never leaks into other benchmarks' metrics
+    other = {"benchmark": "compare.cold_start", "product": "rust", "phase": "w1",
+             "metrics": {"launch_to_ready_ms": 100.0}, "validated": True,
+             "validation": {"echoed": True, "erased": True}}
+    assert "launch_to_complete_ms" not in metrics_for(other)
 
 
 def test_memory_sentinel_gates_loaded_session_rss(tmp_path, monkeypatch):

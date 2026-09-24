@@ -4,7 +4,9 @@ Cold open of the 10MiB fixture: the resumed transcript must render its
 tail sentinel AND the editor must accept a typed echo. Spec §A scopes
 session.* benchmarks to Prime Agent Rust/TS (they resume the Prime session
 fixture); other products are preserved as not_applicable status rows by
-the trial engine, never measured on a fresh session.
+the trial engine, never measured on a fresh session. The ranked completion
+boundary is the LATER of the two timestamps (`launch_to_complete_ms`); a
+missing sentinel keeps the row invalid (never a fast success).
 """
 from __future__ import annotations
 
@@ -19,7 +21,8 @@ from bench.core.process import loadavg, rss_tree
 
 
 class SessionColdOpen(Benchmark):
-    """Cold open of the 10MiB session fixture -> interactive."""
+    """Cold open of the 10MiB session fixture -> interactive; the ranked
+    boundary is completion = max(typed echo, tail sentinel)."""
 
     name = "session.cold_open_10mib"
     requires_fixture = "session-10mib"
@@ -54,10 +57,20 @@ class SessionColdOpen(Benchmark):
             time.sleep(1.0)
             rss = rss_tree(app.pid)
             bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())
+            # completion boundary (spec §A): the measured moment is when BOTH
+            # hold — the tail sentinel rendered AND the editor accepted the
+            # typed echo — so the ranked value is the LATER of the two; a
+            # missing sentinel leaves completion unset and the row invalid.
+            # (Rows measured before this metric was recorded are back-filled
+            # from their two timestamps at flattening: metrics_for.)
+            ready_ms = probe["echo_ts_offset_ms"]
+            sentinel_ms = round((t_sentinel - app.t_spawn) * 1000.0, 1) if t_sentinel else None
+            complete_ms = max(ready_ms, sentinel_ms) if sentinel_ms is not None else None
             record["metrics"] = {
                 "launch_to_first_paint_ms": round((t_paint - app.t_spawn) * 1000.0, 1),
-                "launch_to_sentinel_ms": round((t_sentinel - app.t_spawn) * 1000.0, 1) if t_sentinel else None,
-                "launch_to_ready_ms": probe["echo_ts_offset_ms"],
+                "launch_to_complete_ms": complete_ms,
+                "launch_to_sentinel_ms": sentinel_ms,
+                "launch_to_ready_ms": ready_ms,
                 "input_ready_gap_ms": probe["gap_ms"],
                 "pty_bytes": app.bytes_out(),
                 "frame_bursts": bursts["bursts"] if bursts else None,
