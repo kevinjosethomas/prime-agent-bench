@@ -17,6 +17,7 @@ discovered from the package structure.
 | `compare.install_disk` | Download + clean install bytes |
 | `daemon.boot` | Supervisor spawn -> handshake -> first client (RT only) |
 | `session.cold_open_10mib` | Cold open of the 10MiB fixture -> interactive (RT only) |
+| `session.agent_view_roundtrip` | Chat -> agents view -> same session chat, per leg (RT only) |
 | `kernel.*` | CPython kernel benchmarks (RT only) |
 
 ## Methodology

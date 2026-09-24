@@ -23,7 +23,8 @@ def test_discovery_finds_every_adapter(tmp_path):
     assert set(reg.fixtures) == {"session-10mib", "subagent-tree"}
     assert "compare.cold_start" in reg.benchmarks
     assert "kernel.multi_kernel_10" in reg.benchmarks
-    assert len(reg.benchmarks) == 17
+    assert "session.agent_view_roundtrip" in reg.benchmarks
+    assert len(reg.benchmarks) == 18
 
 
 def test_adapter_wiring(tmp_path):

@@ -49,11 +49,28 @@ KEY_TOKENS: dict[str, str] = {
 
 
 def keystroke(spec: str) -> str:
-    """One configured key: a token name (``enter``, ``down``, ...) or the
-    literal text to type (any other string, newlines become ``\r``)."""
-    token = KEY_TOKENS.get(str(spec).strip().lower())
+    """One configured key: a token name (``enter``, ``down``, ...), a
+    ``ctrl+<key>``/``alt+<key>`` combo, or the literal text to type (any
+    other string, newlines become ``\r``).
+
+    The PTY/tmux drivers write keystrokes verbatim, so a modifier combo
+    must resolve to the bytes a terminal actually delivers:
+    ``ctrl+a``..``ctrl+z`` are the C0 control range (``\x01``..``\x1a``),
+    ``alt+<token-or-char>`` is the ESC-prefixed sequence. Anything else
+    stays the literal text (the onboarding dialogs type API keys)."""
+    raw = str(spec).strip().lower()
+    token = KEY_TOKENS.get(raw)
     if token is not None:
         return token
+    if raw.startswith("ctrl+"):
+        key = raw[len("ctrl+"):]
+        # ctrl+<letter> -> C0 control byte (a -> \x01 ... z -> \x1a)
+        if len(key) == 1 and "a" <= key <= "z":
+            return chr(ord(key) - ord("a") + 1)
+    if raw.startswith("alt+"):
+        key = raw[len("alt+"):]
+        base = KEY_TOKENS.get(key) or key
+        return "\x1b" + base
     return str(spec).replace("\n", "\r")
 
 

@@ -12,6 +12,7 @@ PRIMARY: dict[str, tuple[str, str]] = {
     "compare.msg_send": ("submit_to_ack_ms", "minimize"),
     "compare.scroll_typing": ("typing_ms_p50", "minimize"),
     "session.cold_open_10mib": ("launch_to_ready_ms", "minimize"),
+    "session.agent_view_roundtrip": ("chat_to_agents_ms", "minimize"),
     "daemon.boot": ("spawn_to_accept_ms", "minimize"),
     "compare.install_disk": ("installed_bytes", "minimize"),
     "compare.memory_idle_load": ("rss_settled_mb", "minimize"),
