@@ -192,6 +192,21 @@ python -m bench.drivers.wave_chain --benchmarks compare.warm_start --aa   # one 
 
 Every command takes `--config <yaml>` to override `configs/default.yaml`.
 
+## Publishable records
+
+Campaign results are committed as minimal, privacy-audited record bundles
+under `records/campaigns/<run-label>/` — eligible rows only, the strict-gate
+summary, provenance + invalid-row notes, and SHASUMS.txt. Raw logs, screens,
+homes, vendor payloads, and session text are excluded by construction; ranks
+follow the campaign's rank policy (validation-only by default: no ranks).
+
+```bash
+python scripts/publish_records.py --results-dir ~/bench/results [--label <run-label>]
+python scripts/publish_records.py --check records/campaigns/<run-label>   # verify SHASUMS
+```
+
+See `records/README.md` for the bundle contract.
+
 ## Sequential vs parallel mode
 
 **Sequential (the default, gold standard).** `bench run` executes one

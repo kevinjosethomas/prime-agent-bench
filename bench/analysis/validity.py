@@ -164,7 +164,11 @@ def settle_auth_products(settle_rows: list) -> dict:
             latest[product] = rec
     out = {}
     for product, rec in latest.items():
-        hay = " ".join(str(rec.get(k) or "") for k in ("error", "screen_tail"))
+        # screen_markers is the redacted-records form (bench.records.publish
+        # replaces raw screen_tail with the auth-marker labels it matched),
+        # so a published bundle re-analyzes identically without the text.
+        hay = " ".join(str(rec.get(k) or "") for k in ("error", "screen_tail",
+                                                      "screen_markers"))
         markers = auth_markers_in(hay)
         if markers:
             out[product] = {"error": str(rec.get("error") or "auth error"),
