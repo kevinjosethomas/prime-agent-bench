@@ -29,8 +29,12 @@ DEFAULT_WAVES = [
 
 def run_wave_chain(config_path: str | None, benchmarks: list, products: list,
                    trials: int | None, phase: str, aa: bool,
-                   aa_trials: int = 10) -> list:
-    """Run the A/A calibration pass then the real trial waves."""
+                   aa_trials: int = 10, run_label: str | None = None) -> list:
+    """Run the A/A calibration pass then the real trial waves.
+
+    run_label: the campaign provenance label stamped on every row and on
+    versions.json (the orchestrator passes its manifest run_id so a
+    sandbox's rows join back to the run that scheduled them; audit F9)."""
     cfg = load_config(config_path)
     reg = discover(cfg)
     driver = reg.driver()
@@ -39,11 +43,11 @@ def run_wave_chain(config_path: str | None, benchmarks: list, products: list,
         print("=== A/A calibration pass ===", flush=True)
         jsonl_paths += run_suite(cfg, reg, driver, benchmarks, products,
                                  trials=aa_trials, aa=True, phase="aa",
-                                 skip_versions=False)
+                                 skip_versions=False, run_label=run_label)
     print(f"=== waves {benchmarks} phase {phase} ===", flush=True)
     jsonl_paths += run_suite(cfg, reg, driver, benchmarks, products,
                              trials=trials, aa=False, phase=phase,
-                             skip_versions=False)
+                             skip_versions=False, run_label=run_label)
     return jsonl_paths
 
 
@@ -60,11 +64,14 @@ def main() -> None:
     ap.add_argument("--no-aa", dest="aa", action="store_false",
                     help="debugging only: skip the A/A calibration pass")
     ap.add_argument("--aa-trials", type=int, default=10)
+    ap.add_argument("--run-label", default=None,
+                    help="campaign label stamped on every row (the orchestrator passes its run_id)")
     args = ap.parse_args()
     benchmarks = [b for b in args.benchmarks.split(",") if b]
     products = [p for p in args.products.split(",") if p]
     paths = run_wave_chain(args.config, benchmarks, products,
-                           args.trials, args.phase, args.aa, args.aa_trials)
+                           args.trials, args.phase, args.aa, args.aa_trials,
+                           args.run_label)
     print(json.dumps([str(p) for p in paths], indent=1))
 
 

@@ -9,7 +9,7 @@ discovered from the package structure.
 
 | Benchmark | What |
 |---|---|
-| `compare.cold_start` | Launch -> typed echo accepted (interactive-ready) |
+| `compare.cold_start` | Launch -> typed echo accepted (interactive-ready); first paint recorded separately |
 | `compare.warm_start` | Same with pre-warmed daemon |
 | `compare.msg_send` | Keystroke -> server submit-ack |
 | `compare.scroll_typing` | Scroll + typing latency on a 10MiB session |
@@ -32,6 +32,21 @@ discovered from the package structure.
   trials), load gate before every trial, per-trial loadavg + RSS + PTY bytes
 - Deterministic fixtures with sha256 manifests (the 10MiB corpus is byte-exact
   and pinned in the test suite)
+- Startup honesty (audit F13): first paint and interactive-ready are
+  distinct metrics (`launch_to_first_paint_ms` vs `launch_to_ready_ms`) —
+  never blended. Readiness is probed at a fine grid with the harness's own
+  quantization disclosed per row (`record["probe"]["quantized_ms"]`,
+  `input_buffered`); onboarding dialogs that surface mid-probe (a
+  settle/template-state artifact) are auto-dismissed, excluded from the
+  gap, and disclosed per row. The old ~2s probe floor was two 1.0s
+  harness waits for absent dialog markers, not product latency.
+- Provenance (audit F7/F8/F9): every row carries `run` — the campaign
+  label plus the harness revision that measured it (deploy-bundle
+  sha256 in sandbox runs); `bench analyze --phase w1` fixes the
+  published denominator, per-phase p50s label every pool, mixed-identity
+  trees are flagged, `versions.json` carries a `_meta` provenance stamp,
+  and the parallel-run manifest is written incrementally with
+  timestamped reference-calibration records.
 - Strict result-validity gate: only completed valid trials enter stats/rankings/
   deltas (probe-deadline artifacts, auth-error settle — Codex 401 — and
   real-API-regime rows, unsupported product/benchmark combinations, unconfirmed
@@ -101,7 +116,14 @@ pip install -r requirements.txt
 
 # build the vendor payload from the product configs (binaries + auth +
 # toolchain, laid out for the sandbox's HOME=/root):
-bench vendor build --products rust,ts,claude,codex,pi   # -> vendor/products.tar.gz
+bench vendor --products rust,ts,claude,codex,pi   # -> vendor/products.tar.gz
+# secret-free payload (drops every declared auth_sources entry; a
+# .secret-free marker rides in the tarball and the build manifest records
+# the redaction — for shipping/sharing, never the default bundle):
+bench vendor --no-secrets --products rust,ts,claude,codex,pi
+# privacy caveat: secret-free drops DECLARED auth only — the payload still
+# ships the whole declared toolchain breadth (the ~/.local/share/uv tree
+# may carry caches); trim the vendor/toolchain lists before shipping it.
 
 # ONE command: provision + deploy + bootstrap + warm kernels + verify every
 # product's interactive state; prints a readiness report:
@@ -175,7 +197,7 @@ loop over prime-agent-rust. One iteration:
 1. **Bump the rust binary** on the node (build + copy to
    `~/bench/repos/prime-agent-rust/target/release/prime-agent`), update
    the `revision:` pin in `bench/adapters/rust/product.yaml`, and
-   `bench vendor build --products rust` so sandbox setups carry the new
+   `bench vendor --products rust` so sandbox setups carry the new
    binary.
 2. **Set up a fresh sandbox**: `bench sandbox setup rust-<rev> --products
    rust` - the readiness report already proves the new binary (version +
@@ -194,8 +216,15 @@ loop over prime-agent-rust. One iteration:
 Why runs stay comparable across the loop: every result set carries
 `versions.json` (binary SHAs + product versions) and the A/A noise floor;
 parallel runs add the per-sandbox reference normalization (the canonical
-CPU loop, >5% outliers replaced). A regression that escapes the A/A
-validation is not a regression.
+CPU loop, >5% outliers replaced). What the A/A pass catches is measured
+noise: an environment too unstable for cross-product claims, or a
+product whose pass-to-pass drift exceeds the gate. What it cannot catch
+is a systematic error shared by both halves — the audit's 120s
+sentinel-deadline artifact passed its A/A with every row equally
+censored. A regression that escapes A/A is unverified, not disproven:
+the validity gate (per-row validation evidence, fixture confirmation,
+probe-quantization disclosure, run-identity provenance) is what makes a
+row trustworthy; A/A only bounds the noise around it.
 
 When a settle fails anywhere in the loop, `bench diagnose <product>`
 reproduces it and writes the evidence bundle (screen-at-end, raw output

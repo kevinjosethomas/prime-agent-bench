@@ -51,7 +51,7 @@ def cmd_run(args) -> None:
         return
     run_suite(cfg, reg, reg.driver(), benchmarks, products, trials=args.trials,
               aa=bool(args.aa), phase=args.phase, skip_versions=args.skip_versions,
-              settle_only=args.settle_only)
+              settle_only=args.settle_only, run_label=args.run_label)
 
 
 def cmd_versions(args) -> None:
@@ -76,7 +76,8 @@ def cmd_vendor(args) -> None:
     cfg, _ = _reg(args.config)
     products = [p for p in args.products.split(",") if p]
     out = Path(args.out).expanduser() if args.out else DEFAULT_OUT
-    manifest = build_vendor_tarball(cfg, products, out, dry_run=args.dry_run)
+    manifest = build_vendor_tarball(cfg, products, out, dry_run=args.dry_run,
+                                    no_secrets=args.no_secrets)
     print(json.dumps(manifest, indent=1))
 
 
@@ -155,8 +156,11 @@ def cmd_analyze(args) -> None:
 
     The strict result-validity gate applies: only completed valid trials
     enter stats/rankings/deltas; excluded counts + reasons are reported.
+    --phase fixes the published denominator (audit F1: pooled A/A + wave
+    rows must never masquerade as one phase's median); the methodology
+    block in summary.json states the aggregation rule it was produced by.
     """
-    from bench.analysis.aggregate import load_all
+    from bench.analysis.aggregate import load_all, summarize_rows
     from bench.analysis.output.json import JsonAnalyzer
     from bench.analysis.output.markdown import MarkdownAnalyzer
     from bench.analysis.output.notion import NotionAnalyzer
@@ -165,6 +169,8 @@ def cmd_analyze(args) -> None:
     results_dir = Path(args.results_dir or cfg["results_dir"])
     rows = load_all(results_dir)
     settle_rows = load_settle(results_dir)
+    phases = [p for p in (args.phase or "").split(",") if p] or None
+    cfg["analyze"] = {"results_dir": str(results_dir), "phases": phases}
     # per-benchmark gate metadata from the registry (fixture requirement,
     # applicability, completeness keys) for the validity gate
     cfg["gate_benchmarks"] = {name: {"requires_fixture": b.requires_fixture,
@@ -176,7 +182,7 @@ def cmd_analyze(args) -> None:
                  "summary.notion.json": NotionAnalyzer(cfg)}
     stats = None
     for name, analyzer in analyzers.items():
-        stats = analyzer.compute_stats(rows, settle_rows=settle_rows)
+        stats = analyzer.compute_stats(rows, settle_rows=settle_rows, phases=phases)
         (results_dir / name).write_text(analyzer.format_output(stats))
         print(f"wrote {results_dir / name}")
     if stats:
@@ -252,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--driver", default=None)
     p.add_argument("--skip-versions", action="store_true")
     p.add_argument("--settle-only", action="store_true")
+    p.add_argument("--run-label", default=None,
+                   help="campaign label stamped on every row (audit F9 provenance)")
     p.add_argument("--sandbox", default=None,
                    help="a live sandbox (name from `bench sandbox setup` or a raw id): run inside it")
     p.add_argument("--parallel-config", default="configs/parallel.yaml")
@@ -266,6 +274,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--products", default="rust,ts,claude,codex,pi")
     p.add_argument("--out", default=None)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--no-secrets", action="store_true",
+                   help="drop declared auth entries (secret-free payload)")
     p.set_defaults(func=cmd_vendor)
 
     p = sub.add_parser("sandbox", help="one-command sandbox setup/destroy/list")
@@ -304,6 +314,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("analyze", help="aggregate results into summaries")
     p.add_argument("--results-dir", default=None)
+    p.add_argument("--phase", default=None,
+                   help="published phases only (comma list, e.g. w1); "
+                        "default: every non-aa phase present")
     p.set_defaults(func=cmd_analyze)
 
     sub.add_parser("list", help="registry inventory").set_defaults(func=cmd_list)

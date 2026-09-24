@@ -416,7 +416,8 @@ def test_end_to_end_analyze_on_captured_tree(tmp_path, capsys, monkeypatch):
     from bench.cli import cmd_analyze
     results = tmp_path / "results"
     shutil.copytree(FIXTURES, results)
-    cmd_analyze(type("Args", (), {"config": None, "results_dir": str(results)})())
+    cmd_analyze(type("Args", (), {"config": None, "results_dir": str(results),
+                                   "phase": None})())
     out = capsys.readouterr().out
     assert "excluded from rankings" in out
     summary = json.loads((results / "summary.json").read_text())
@@ -424,7 +425,17 @@ def test_end_to_end_analyze_on_captured_tree(tmp_path, capsys, monkeypatch):
     assert set(session["ranks"]) <= {"rust", "ts"}
     assert all(v < 90_000 for v in session["primary_p50s"].values())
     assert summary["settle"]["codex"]["auth_error"] is True
+    # methodology provenance: the artifact states its own aggregation rule
+    method = summary["methodology"]
+    assert method["published_phases"] == ["all non-aa phases"]
+    assert method["gate"].startswith("strict")
+    assert "aa_coverage" in summary
+    # captured rows carry no run stamp: a single unstamped identity, never mixed
+    ident = summary["summary"]["compare.cold_start"]["identity"]
+    assert ident["run_labels"] == ["(unstamped)"]
+    assert not ident.get("mixed")
     md = (results / "summary.md").read_text()
     assert "Excluded from rankings" in md
+    assert "Published phases:" in md
     notion_payload = json.loads((results / "summary.notion.json").read_text())
     assert any("excluded" in json.dumps(b) for b in notion_payload["children"])

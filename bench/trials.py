@@ -20,7 +20,13 @@ from pathlib import Path
 
 from bench.core.registry import Registry
 from bench.core.harness import HarnessDriver
+from bench.core.identity import default_run_label, harness_identity
 from bench.gates import gate_idle, node_is_busy
+
+
+def cfg_run_label(reg: Registry) -> str:
+    """The campaign label configured for this suite run (``run.label``)."""
+    return str(reg.cfg.get("run", {}).get("label") or default_run_label())
 
 
 def effective_trials(reg: Registry, benchmark_name: str, cli_trials: int | None) -> int:
@@ -34,11 +40,12 @@ def effective_trials(reg: Registry, benchmark_name: str, cli_trials: int | None)
 
 
 def _status_record(run_id: str, benchmark_name: str, product: str, phase_tag: str,
-                   status: str, reason: str) -> dict:
+                   status: str, reason: str, run: dict) -> dict:
     """One preserved row for a product that gets no trials: status, not zeros."""
     return {
         "schema_version": 1,
         "run_id": run_id,
+        "run": run,
         "benchmark": benchmark_name,
         "product": product,
         "phase": phase_tag,
@@ -55,8 +62,15 @@ def _status_record(run_id: str, benchmark_name: str, product: str, phase_tag: st
 
 
 def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_names: list,
-               trials: int, out_dir: Path, fixture_paths: dict, aa: bool, phase_tag: str) -> Path:
-    """Run one benchmark's trials across products (ABBA-ordered)."""
+               trials: int, out_dir: Path, fixture_paths: dict, aa: bool, phase_tag: str,
+               run_label: str | None = None) -> Path:
+    """Run one benchmark's trials across products (ABBA-ordered).
+
+    Every row (trials and status rows alike) carries the provenance stamp
+    ``run = {"label": ..., "harness": {...}}`` (audit F7/F8/F9): the
+    campaign label groups a campaign's rows under the orchestrator's
+    manifest run_id; the harness revision names the code that measured
+    the row, so a results tree can never silently mix deploy versions."""
     layout = reg.layout
     benchmark = reg.benchmark(benchmark_name)
     results_dir = out_dir / benchmark_name
@@ -70,6 +84,8 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                         if benchmark.requires_fixture else None)
 
     run_id = str(uuid.uuid4())
+    run = {"label": run_label or cfg_run_label(reg),
+           "harness": reg.cfg.get("harness_identity") or harness_identity()}
     # comparability resolution: measure only what the spec can compare;
     # everything else is preserved as one status row (never numeric)
     comparable: list[tuple[str, str]] = []
@@ -87,7 +103,8 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             comparable.append((name, level))
     with open(jsonl, "a") as f:
         for product, status, reason in status_rows:
-            rec = _status_record(run_id, benchmark_name, product, phase_tag, status, reason)
+            rec = _status_record(run_id, benchmark_name, product, phase_tag,
+                                status, reason, run)
             f.write(json.dumps(rec) + "\n")
             print(f"[{benchmark_name}] {product}: status={status} ({reason[:90]})", flush=True)
     if not comparable:
@@ -116,6 +133,7 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             record = {
                 "schema_version": 1,
                 "run_id": run_id,
+                "run": run,
                 "benchmark": benchmark_name,
                 "product": name,
                 "phase": phase_tag,

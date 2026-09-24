@@ -9,9 +9,29 @@ from __future__ import annotations
 from bench.adapters.fixtures.corpus_text import (_ipython_code, _markdown_block,
                                                  _paragraph, _ts, _usage)
 
+#: The canonical session-header cwd recorded inside every generated fixture
+#: (audit 2026-09-24: the recorded cwd was the host's absolute fixtures/work
+#: path, so the fixture bytes — and the golden sha256 — changed with every
+#: sandbox root; the smoke run produced 8f8979d9... where the campaign
+#: canonical was f8d7fba0...). A fixed logical path makes the corpus
+#: byte-identical on every host; the directory is created at build time so
+#: products resuming the transcript never see a recorded cwd that does
+#: not exist.
+FIXTURE_SESSION_CWD = "/tmp/prime-agent-bench-session"
+
+
+def ensure_fixture_cwd(cwd: str = FIXTURE_SESSION_CWD) -> None:
+    """Create the recorded session cwd so resume semantics stay honest."""
+    from pathlib import Path
+    Path(cwd).mkdir(parents=True, exist_ok=True)
+
 
 def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = True) -> list:
-    """The corpus entries for ``turns`` turns (session header included)."""
+    """The corpus entries for ``turns`` turns (session header included).
+
+    ``cwd`` must be the canonical ``FIXTURE_SESSION_CWD`` (or an explicit
+    test override): a host-specific path bakes into the header row and
+    breaks byte reproducibility across bench roots and sandboxes."""
     import random
 
     rng = random.Random(seed)
