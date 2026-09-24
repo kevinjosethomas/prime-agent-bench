@@ -37,7 +37,21 @@ discovered from the package structure.
 - Per-trial process sweep (kills all daemon/worker/kernel processes between
   trials), load gate before every trial, per-trial loadavg + RSS + PTY bytes
 - Deterministic fixtures with sha256 manifests (the 10MiB corpus is byte-exact
-  and pinned in the test suite); `session-10mib` is the historical v2 golden
+  and pinned in the test suite)
+
+### Session fixture corpus roles (v2 / v3 / v4)
+
+- `session-10mib` (v2, golden dadaecfc...) — the recorded input of historical
+  campaign rows; byte-identical forever.
+- `session-10mib-v3` (golden 691d1ea7...) — the pathological STRESS corpus:
+  one 4.28MB padded tail row (40.9% of file bytes) kept for worst-case
+  gates; never the representative cold-open/scroll/memory input.
+- `session-10mib-v4` (golden 5fa6e193...) — the REPRESENTATIVE corpus: one
+  synthetic root marathon session calibrated to the measured marathon
+  conditioning (row-type/role mixes, stop reasons, KS-gated row-byte
+  distribution, compactions, hidden harness digests, small tail sentinel,
+  trailing lifecycle rows). Spec of record:
+  `bench/adapters/fixtures/session_v4_spec.py`.; `session-10mib` is the historical v2 golden
   (digest rows without `display`, which products render visible), and
   `session-10mib-v3` is the display-corrected corpus — every harness_digest
   row persisted `display: false` plus the raw digest in `details`, exactly

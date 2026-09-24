@@ -23,7 +23,7 @@ def test_discovery_finds_every_adapter(tmp_path):
     assert set(reg.products) == {"rust", "ts", "claude", "codex", "pi"}
     assert set(reg.terminals) == {"pty", "tmux"}
     assert set(reg.fixtures) == {"session-10mib", "session-10mib-v3",
-                                 "subagent-tree"}
+                                 "session-10mib-v4", "subagent-tree"}
     assert "compare.cold_start" in reg.benchmarks
     assert "kernel.multi_kernel_10" in reg.benchmarks
     assert "session.agent_view_roundtrip" in reg.benchmarks

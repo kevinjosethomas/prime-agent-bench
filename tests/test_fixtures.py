@@ -212,6 +212,9 @@ def test_bench_fixtures_command_on_a_fresh_root(tmp_path, capsys):
     corpus_v3 = (tmp_path / "fresh-bench" / "fixtures" / "scale-corpus-10mib-v3.jsonl")
     assert corpus_v3.exists()
     assert corpus_v3.stat().st_size == 10 * (1 << 20)
+    corpus_v4 = (tmp_path / "fresh-bench" / "fixtures" / "scale-corpus-10mib-v4.jsonl")
+    assert corpus_v4.exists()
+    assert corpus_v4.stat().st_size == 10 * (1 << 20)
     assert (tmp_path / "fresh-bench" / "fixtures" / "subagent-tree-n24").is_dir()
 
 
