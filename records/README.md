@@ -57,6 +57,10 @@ payloads, and never writes a screen:
   consumer — plus a char count);
 - machine paths (dropped as `path`/`cwd` keys; redacted inside strings);
 - typed probe tokens (synthetic, but screen-derived — counts stay);
+- credential-shaped values (`sk-…`, `bearer …`, `key/token/secret/password`
+  assignments — real or dummy) redacted to `<credential>`;
+- screen text embedded in harness error strings, reduced to the auth-marker
+  labels it matched (the gate's reason codes stay identical);
 - any string over 400 chars (the row quarantines, never silently trims).
 
 Kept: metrics and per-row evidence, run provenance, and harness-generated

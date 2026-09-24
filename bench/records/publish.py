@@ -36,6 +36,10 @@ The privacy contract (excluded from every bundle, by construction):
 - machine paths — dropped as keys (fixture/clone/native ``path``) and
   redacted inside strings (``<path>``);
 - typed probe tokens (synthetic, but screen-derived — counts stay);
+- credential-shaped values (sk-…, bearer …, key/token/secret/password
+  assignments — real or dummy): redacted to <credential>;
+- screen text embedded in harness error strings, reduced to the
+  auth-marker labels it matched (gate reason codes stay identical);
 - any string over MAX_TEXT_CHARS chars.
 
 Kept in rows: metrics, resource/probe/validation evidence, gate and
@@ -81,6 +85,19 @@ PRIVACY_DROP_KEYS = frozenset({
 _PRIVACY_DROP_RE = re.compile(r"screen|_tail$|^screens")
 #: a POSIX/home path inside a string: redacted, never published
 _ABS_PATH_RE = re.compile(r"(?<![\w.:/~-])~?/[\w.~@+/-]+")
+#: screen content embedded in a harness error string: reduced to the
+#: auth-marker labels it matched (classification survives, text does not)
+_SCREEN_IN_ERROR_RE = re.compile(r"(?i)\b(?:last screen|screen tail|screen)\s*:")
+#: credential-shaped material inside strings (real or dummy): redacted.
+#: Deliberately narrow: never matches the gate's auth marker phrases
+#: ("invalid api key" has no assignment) so reason codes stay intact.
+_CREDENTIAL_RE = re.compile(
+    r"(?i)(?:sk-[a-z0-9_-]{8,}"
+    r"|bearer\s+[a-z0-9._~+/-]{10,}"
+    r"|(?:api[_-]?key|auth[_-]?token|access[_-]?token|secret|password)"
+    r"\s*[:=]\s*\"?[a-z0-9._~+/-]{6,})")
+#: harness diagnostic keys whose strings may embed screen text
+_ERRORISH_KEYS = frozenset({"error", "source_error", "wire_error"})
 
 #: the current top-level row fields (trials.py + the scenario adapters).
 #: Anything else quarantines the row as unknown_fields.
@@ -116,20 +133,47 @@ def redact_paths(text: str) -> str:
     return _ABS_PATH_RE.sub("<path>", text)
 
 
-def _scrub(value, drops: defaultdict):
+def _screen_to_markers(text: str) -> str:
+    """Screen text embedded in a harness error string, reduced to the
+    auth-marker labels it matched. The validity gate classifies errors
+    by those markers (auth first, then probe-deadline markers in the
+    head), so the redacted string classifies identically without the
+    raw screen content."""
+    m = _SCREEN_IN_ERROR_RE.search(text)
+    if not m:
+        return text
+    head, screen = text[:m.start()].rstrip(" ;"), text[m.start():]
+    markers = auth_markers_in(screen)
+    return f"{head}; screen_markers: {', '.join(markers) or 'none'}"
+
+
+def _redact_credential(text: str) -> str:
+    return _CREDENTIAL_RE.sub("<credential>", text)
+
+
+def _scrub_string(text: str, key) -> str:
+    """One string through the privacy pipeline: embedded screen text to
+    marker labels (harness diagnostic keys), then path redaction, then
+    credential redaction."""
+    if key in _ERRORISH_KEYS:
+        text = _screen_to_markers(text)
+    return _redact_credential(redact_paths(text))
+
+
+def _scrub(value, drops: defaultdict, key=None):
     """Recursively drop/redact unsafe content; ``drops`` counts keys."""
     if isinstance(value, dict):
         out = {}
-        for key, item in value.items():
-            if key in PRIVACY_DROP_KEYS or _PRIVACY_DROP_RE.search(key):
-                drops[key] += 1
+        for k, item in value.items():
+            if k in PRIVACY_DROP_KEYS or _PRIVACY_DROP_RE.search(k):
+                drops[k] += 1
                 continue
-            out[key] = _scrub(item, drops)
+            out[k] = _scrub(item, drops, key=k)
         return out
     if isinstance(value, list):
-        return [_scrub(v, drops) for v in value]
+        return [_scrub(v, drops, key=key) for v in value]
     if isinstance(value, str):
-        return redact_paths(value)
+        return _scrub_string(value, key)
     return value
 
 
@@ -141,8 +185,10 @@ def _oversize_strings(value, prefix: str = "") -> list:
             out += _oversize_strings(item, f"{prefix}.{key}" if prefix else key)
         return out
     if isinstance(value, list):
-        return [s for s in (f"{prefix}[{i}]"
-                for i in _oversize_strings(v, prefix) for v in [0])]
+        out = []
+        for i, item in enumerate(value):
+            out += _oversize_strings(item, f"{prefix}[{i}]")
+        return out
     if isinstance(value, str) and len(value) > MAX_TEXT_CHARS:
         return [prefix]
     return []
@@ -184,7 +230,14 @@ def scrub_row(row: dict) -> tuple[dict, dict]:
     drops: defaultdict = defaultdict(int)
     clean = _scrub(row, drops)
     oversize = _oversize_strings(clean)
-    report = {"dropped_keys": dict(drops), "oversize": oversize}
+    blob = json.dumps(clean)
+    report = {
+        "dropped_keys": dict(drops),
+        "oversize": oversize,
+        "path_redactions": blob.count("<path>"),
+        "credential_redactions": blob.count("<credential>"),
+        "screen_reductions": blob.count("screen_markers:"),
+    }
     return clean, report
 
 
@@ -204,7 +257,7 @@ def redact_settle_row(rec: dict) -> dict:
         out["screen_tail_chars"] = len(str(tail))
     out.pop("screen", None)
     if isinstance(out.get("error"), str):
-        out["error"] = redact_paths(out["error"])
+        out["error"] = _scrub_string(out["error"], "error")
     return out
 
 
@@ -307,7 +360,7 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
     kept_by_file: dict = {}
     excluded: list = list(bad_lines)
     drops: defaultdict = defaultdict(int)
-    redactions = 0
+    redactions = creds = screens = 0
     for rel, rows in sorted(rows_by_file.items()):
         kept = []
         for i, row in enumerate(rows, 1):
@@ -335,8 +388,9 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
                                  + ", ".join(report["oversize"][:3])})
                 continue
             drops.update(report["dropped_keys"])
-            redactions += sum(1 for v in _iter_strings(clean)
-                              if "<path>" in v)
+            redactions += report["path_redactions"]
+            creds += report["credential_redactions"]
+            screens += report["screen_reductions"]
             kept.append(clean)
         if kept:
             kept_by_file[rel] = kept
@@ -422,6 +476,8 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
         "privacy": {
             "dropped_keys": dict(drops),
             "path_redactions": redactions,
+            "credential_redactions": creds,
+            "screen_reductions": screens,
             "settle_rows": {"source": len(settle_raw), "bundled": len(settle_rows)},
             "oversize_limit_chars": MAX_TEXT_CHARS,
             "contract": [
@@ -432,9 +488,13 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
                 "no machine paths: path/cwd keys dropped, strings redacted",
                 "no typed probe tokens (synthetic but screen-derived); counts stay",
                 f"no string over {MAX_TEXT_CHARS} chars (rows quarantine)",
-                "harness-generated error strings kept (≤400 chars at capture, "
-                "paths redacted) — the validity gate's reason codes derive "
-                "from them",
+                "no credentials: credential-shaped values (sk-…, bearer …, "
+                "key/token/secret/password assignments — real or dummy) are "
+                "redacted to <credential>",
+                "harness-generated error strings kept (≤400 chars at capture) "
+                "with screen text reduced to marker labels, paths and "
+                "credentials redacted — the validity gate's reason codes "
+                "derive from them and stay intact",
             ],
         },
         "gate": {
