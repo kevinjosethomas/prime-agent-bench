@@ -89,7 +89,7 @@ def wave_chain_cmd(handle, backend, spec_cfg: dict) -> str:
     root = Path(backend.bench_root(handle))
     benchmarks = ",".join(handle.spec["benchmarks"])
     products = ",".join(handle.spec["products"])
-    aa = "" if spec_cfg.get("aa", True) else "--no-aa "
+    aa = "--aa " if spec_cfg.get("aa", True) else "--no-aa "
     return (f"mkdir -p {root / 'logs'} && cd {hd} && "
             f"python3 -m bench.drivers.wave_chain --config configs/sandbox.yaml "
             f"--benchmarks {shlex.quote(benchmarks)} --products {shlex.quote(products)} "

@@ -55,8 +55,10 @@ def main() -> None:
     ap.add_argument("--products", default="rust,ts,claude,codex,pi")
     ap.add_argument("--trials", type=int, default=10)
     ap.add_argument("--phase", default="w1")
-    ap.add_argument("--aa/--no-aa", default=False,
+    ap.add_argument("--aa", dest="aa", action="store_true", default=False,
                     help="run the per-sandbox A/A calibration pass first")
+    ap.add_argument("--no-aa", dest="aa", action="store_false",
+                    help="skip the per-sandbox A/A calibration pass")
     ap.add_argument("--aa-trials", type=int, default=10)
     args = ap.parse_args()
     benchmarks = [b for b in args.benchmarks.split(",") if b]
