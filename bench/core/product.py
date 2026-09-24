@@ -132,7 +132,7 @@ class ProductAdapter(ABC):
         (ready). Pacing keys: key_pause_s, loop_s, echo_wait_s."""
         from bench.adapters.benchmarks.support import drive_to_ready
         return drive_to_ready(session, self.dialog_steps, timeout=timeout,
-                              probe_token="Zq7x01", pacing=pacing)
+                              probe="Zq7x01", pacing=pacing)
 
     def act(self, session: Session, keys: str) -> float:
         """Send keystrokes; returns the send timestamp."""
