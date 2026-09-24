@@ -24,11 +24,20 @@ Rust binary resolution: product.yaml pins the node build; locally the
 script overrides the pin with --rust-binary (default: the local
 release build) and drops the sha pin (the override is recorded in the
 evidence, never silently passed off as the pinned build).
+
+Stress bound (audit follow-up): the 66-token cohort is sent only after
+a positive dialog-free check, and a sentinel appended right after the
+burst must be positively witnessed rendered in the editor region
+before the erase. The sentinel proves editor focus at burst end — NOT
+full-cohort acceptance: the missing-list records the cohort render
+state, and the full 66-token stress contract stays uncertified until
+real proof.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import shutil
 import socket
@@ -55,6 +64,7 @@ ONBOARDING_AUTODISMISS = [
 DUMMY_KEY = "sk-bench-mock-offline"
 
 EVIDENCE_DIR_DEFAULT = "/tmp/erase-gate-evidence"
+STRESS_SENTINEL = "Zq9s"
 
 
 def evidence_dir() -> Path:
@@ -100,6 +110,17 @@ def dismiss_dialogs(app, rounds: int = 4, pause: float = 0.4) -> int:
     return dismissed
 
 
+def editor_window(app, rows_up: int, rows_down: int = 1) -> tuple:
+    """Cursor-anchored editor window text, row-wise + seam-joined."""
+    window = app.echo_window_text(rows_up=rows_up, rows_down=rows_down) \
+        or app.screen_text()
+    return window, "".join(window.splitlines())
+
+
+def token_in(window: str, joined: str, token: str) -> bool:
+    return token in window or token in joined
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -136,6 +157,24 @@ def launch_isolated(prod, ctx, driver):
     return driver.start_session(prod.argv(ctx), env=env, cwd=str(ctx["work"]))
 
 
+def gate_pass(evidence: dict) -> bool:
+    """The gate verdict: every witness positive — the probe echo AND the
+    full stress cohort must be positively witnessed rendered BEFORE the
+    erase, so no vacuous path (sheet-covered input, blank editor) passes."""
+    return bool(
+        evidence.get("probe_witnessed")
+        and evidence.get("erase_ok") and not evidence.get("leftover_tokens")
+        and evidence.get("post_erase_window_nonempty")
+        and evidence.get("alive_after_erase")
+        and evidence.get("fresh_echo_ok") and evidence.get("fresh_erase_ok")
+        and evidence.get("mock_model_requests") == 0
+        and evidence.get("stress", {}).get("erase_ok")
+        and evidence.get("stress_dialog_free")
+        and evidence.get("stress_sentinel_witnessed")
+        and "reap_leftovers" not in evidence
+        and "transcript_dump_error" not in evidence)
+
+
 def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
     prod = reg.product(name)
     trial = root / "trials" / name / "verify-erase"
@@ -169,6 +208,12 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         n = dismiss_dialogs(app)
         if n:
             evidence["dialog_dismissals"].append(("post_probe", n))
+        # the SUCCESSFUL probe token must be positively witnessed in the
+        # editor region before its erase can certify clearing it (a bare
+        # probe return is not itself a render witness)
+        pw, pwj = editor_window(app, rows_up=6)
+        last_probe = tokens[-1] if tokens else ""
+        evidence["probe_witnessed"] = bool(last_probe) and token_in(pw, pwj, last_probe)
         erase_ok, erase_ms = app.erase_all(
             tokens, max_backspaces=probe["chars_sent"] + 8)
         evidence["erase_ok"] = erase_ok
@@ -183,15 +228,48 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
                                        if t in window or t in joined]
         # 66-send stress: 396 chars pre-queued raw (pre-mount), plus the
         # probe flow's own attempts — the live Rust shape was SIX wrapped
-        # rows of residue; the burst + dynamic-cap gate must clear it all
+        # rows of residue; the burst + dynamic-cap gate must clear it all.
+        # A sheet up at send time swallows the input (run-2 TS: 0/66
+        # rendered), so dismiss BEFORE sending.
+        n = dismiss_dialogs(app)
+        if n:
+            evidence["dialog_dismissals"].append(("pre_stress", n))
+        # guaranteed dialog-free at send time (positive no-marker check)
+        evidence["stress_dialog_free"] = not any(
+            m in app.screen_text() for m, _ in ONBOARDING_AUTODISMISS)
         stress_tokens = [f"Zq7z{i:02d}" for i in range(1, 67)]
         for tok in stress_tokens:
             app.send(tok)
-        time.sleep(2.0)  # let the product mount/render the queued block
+        # sentinel appended in the SAME input block, right after the
+        # burst: its positive echo in the editor region proves the editor
+        # held focus at burst end (run-2 TS had zero renders). The
+        # sentinel proves focus, NOT full-cohort acceptance — the missing
+        # list below records the cohort render state.
+        app.send(STRESS_SENTINEL)
         n = dismiss_dialogs(app)
         if n:
             evidence["dialog_dismissals"].append(("post_stress", n))
-        all_tokens = tokens + stress_tokens
+        # bounded wait (no blind sleeps): the sentinel echo on the input
+        # line is the mount signal for the whole queued block
+        cols = int(getattr(app, "cols", 0) or 120)
+        stress_chars = sum(len(t) for t in stress_tokens) + len(STRESS_SENTINEL)
+        rows_up_s = math.ceil(stress_chars / cols) + 2
+        try:
+            app.wait_for(
+                lambda: token_in(*editor_window(app, rows_up_s), STRESS_SENTINEL),
+                timeout=10.0, poll=0.05)
+            evidence["stress_sentinel_witnessed"] = True
+        except TimeoutError:
+            evidence["stress_sentinel_witnessed"] = False
+        sw, swj = editor_window(app, rows_up_s)
+        # representative early/late witnesses + the full cohort state:
+        # recorded, not gated — viewport/burst coalescing can legitimately
+        # hide per-token raw echoes (rust run-2 raw showed 55/66)
+        evidence["stress_early_rendered"] = token_in(sw, swj, stress_tokens[0])
+        evidence["stress_late_rendered"] = token_in(sw, swj, stress_tokens[-1])
+        evidence["stress_missing_pre_erase"] = [t for t in stress_tokens
+                                                if not token_in(sw, swj, t)]
+        all_tokens = tokens + stress_tokens + [STRESS_SENTINEL]
         stress_budget = sum(len(t) for t in all_tokens) + 8
         stress_ok, stress_ms = app.erase_all(all_tokens,
                                              max_backspaces=stress_budget)
@@ -245,15 +323,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
             prod.reap(ctx)
         except Exception as e:
             evidence["reap_leftovers"] = str(e)[:200]
-    evidence["pass"] = bool(
-        evidence.get("erase_ok") and not evidence.get("leftover_tokens")
-        and evidence.get("alive_after_erase")
-        and evidence.get("fresh_echo_ok") and evidence.get("fresh_erase_ok")
-        and evidence.get("mock_model_requests") == 0
-        and evidence.get("stress", {}).get("erase_ok")
-        and "reap_leftovers" not in evidence
-        and evidence.get("post_erase_window_nonempty")
-        and "transcript_dump_error" not in evidence)
+    evidence["pass"] = gate_pass(evidence)
     out = evidence_dir() / name
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(json.dumps(evidence, indent=1, default=str))
