@@ -77,46 +77,70 @@ def _exec_json(backend, handle, cmd: str, timeout: float = 900.0) -> list:
     return rows
 
 
-def readiness_probe_cmd(hd: str, products: list) -> str:
-    """The in-sandbox verification: per-product version evidence."""
-    probe = ("import json, os; from bench.core.config import load_config; "
-             "from bench.core.registry import discover; "
-             "reg = discover(load_config('configs/sandbox.yaml')); "
-             "name = os.environ['BENCH_PRODUCT']; "
-             "print('BENCH-JSON ' + json.dumps({'product': name, "
-             "'version': reg.product(name).version_info()}))")
-    return (f"cd {hd} && for p in {' '.join(products)}; do "
-            f"BENCH_PRODUCT=$p python3 -c {shlex.quote(probe)}; done")
+def _download_json(backend, handle, remote: str, scratch: Path) -> dict | list:
+    """Pull one JSON file out of the sandbox (the exec channel wraps long
+    lines; downloads are the proven path for structured data)."""
+    local = scratch / Path(remote).name
+    backend.download(handle, remote, local)
+    return json.loads(local.read_text())
+
+
+def _download_json_rows(backend, handle, remote: str, scratch: Path) -> list:
+    """Pull one JSONL file out of the sandbox; one row per line."""
+    local = scratch / Path(remote).name
+    backend.download(handle, remote, local)
+    return [json.loads(line) for line in local.read_text().splitlines()
+            if line.strip()]
 
 
 def verify_products(backend, handle, products: list) -> dict:
-    """Per-product interactive-state verification from inside the sandbox."""
+    """Per-product interactive-state verification from inside the sandbox:
+    version evidence, the warm-kernel pass, and the settle walk (the
+    configured first-run dialogs)."""
+    import tempfile
+    scratch = Path(tempfile.mkdtemp(prefix="bench-setup-verify-"))
     hd = backend.harness_dir(handle)
+    root = backend.bench_root(handle)
+    versions_remote = f"{root}/readiness/versions.json"
+    # 1. version evidence (binary version + sha256, from the same registry)
+    code, log = backend.exec_cmd(
+        handle,
+        f"cd {hd} && mkdir -p {root}/readiness && python3 -m bench.cli "
+        f"--config configs/sandbox.yaml versions --products {','.join(products)} "
+        f"--out {versions_remote}", timeout=900.0)
+    if code != 0:
+        raise RuntimeError(f"version probe failed inside the sandbox: {log[-400:]}")
+    versions = _download_json(backend, handle, versions_remote, scratch)
     report: dict = {}
-    for row in _exec_json(backend, handle, readiness_probe_cmd(hd, products)):
-        report[row["product"]] = {"version": row["version"]}
-    # the warm-kernel pass: launch each kernel product once and WAIT for the
-    # daemon's own venv build (never pre-built - the daemon wipes those);
-    # idempotent: an already-ready venv returns immediately
+    for name, info in versions.items():
+        report[name] = {"version": info}
+    # 2. the warm-kernel pass: launch each kernel product once and WAIT for
+    # the daemon's own venv build (never pre-built - the daemon wipes
+    # those); idempotent: an already-ready venv returns immediately
     warm = "python3 -m bench.drivers.warm_kernels --config configs/sandbox.yaml"
     code, log = backend.exec_cmd(handle, f"cd {hd} && {warm}", timeout=7200.0)
     if code != 0:
         raise RuntimeError(f"warm_kernels failed inside the sandbox: {log[-400:]}")
-    code, log = backend.exec_cmd(
-        handle, f"cd {hd} && {warm} --status", timeout=300.0)
+    code, log = backend.exec_cmd(handle, f"cd {hd} && {warm} --status",
+                                 timeout=300.0)
     for line in log.splitlines():
         line = line.strip()
         if line.startswith("BENCH-JSON "):
             row = json.loads(line[len("BENCH-JSON "):])
             if row["product"] in report:
                 report[row["product"]]["kernel_venv_ready"] = row["ready"]
-    # the settle walk (dialogs from product.yaml) IS the interactive check
+    # 3. the settle walk (dialogs from product.yaml) IS the interactive
+    # state check; its JSONL record downloads as the evidence
     settle = ("python3 -m bench.cli --config configs/sandbox.yaml settle "
               f"--products {','.join(products)}")
-    backend.exec_cmd(handle, f"cd {hd} && {settle}", timeout=7200.0)
-    rows = _exec_json(
-        backend, handle,
-        f"cd {hd} && sed 's/^/BENCH-JSON /' {backend.bench_root(handle)}/results/settle.jsonl")
+    code, log = backend.exec_cmd(handle, f"cd {hd} && {settle}", timeout=7200.0)
+    if code != 0:
+        raise RuntimeError(f"settle failed inside the sandbox: {log[-400:]}")
+    try:
+        rows = _download_json_rows(
+            backend, handle, f"{root}/results/settle.jsonl", scratch)
+    except FileNotFoundError:
+        rows = []
     for row in rows:
         name = row.get("product")
         if name in report:

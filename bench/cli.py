@@ -58,7 +58,12 @@ def cmd_versions(args) -> None:
     """The pinned version/revision/sha evidence per product."""
     cfg, reg = _reg(args.config)
     products = [p for p in args.products.split(",") if p]
-    versions = {name: reg.product(name).version_info() for name in products}
+    versions = {}
+    for name in products:
+        try:
+            versions[name] = reg.product(name).version_info()
+        except Exception as e:
+            versions[name] = {"error": str(e)[:200]}
     if args.out:
         Path(args.out).write_text(json.dumps(versions, indent=1))
         print(f"wrote {args.out}")
