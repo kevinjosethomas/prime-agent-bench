@@ -106,6 +106,7 @@ class PrimeSandboxBackend(SandboxBackend):
     def provision(self, name: str, spec: dict) -> SandboxHandle:
         handle = SandboxHandle(name=name, spec=spec)
         out = self._prime("create", spec.get("image", "python:3.11-slim"),
+                          "--vm",
                           "--name", f"bench-{name}",
                           "--cpu-cores", str(spec.get("cpu_cores", 4)),
                           "--memory-gb", str(spec.get("memory_gb", 8)),
