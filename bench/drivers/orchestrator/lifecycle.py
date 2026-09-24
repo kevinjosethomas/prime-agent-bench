@@ -24,11 +24,16 @@ def _scratch_dir() -> Path:
 
 
 def harness_bundle(repo_root: Path = REPO_ROOT) -> Path:
-    """Tar the harness (bench/, configs/, requirements, pyproject) for deploy."""
+    """Tar the harness (bench/, configs/, requirements, pyproject) for deploy.
+
+    vendor/ (products tarball + bootstrap recipe) rides along when present,
+    so one upload gives the sandbox the full node setup."""
+    members = ["bench", "configs", "requirements.txt", "pyproject.toml"]
+    if (repo_root / "vendor").is_dir():
+        members.append("vendor")
     bundle = _scratch_dir() / f"bench-harness-{uuid.uuid4().hex[:8]}.tar.gz"
-    subprocess.run(["tar", "-czf", str(bundle), "-C", str(repo_root),
-                    "bench", "configs", "requirements.txt", "pyproject.toml"],
-                   check=True, timeout=120)
+    subprocess.run(["tar", "-czf", str(bundle), "-C", str(repo_root), *members],
+                   check=True, timeout=1800)
     return bundle
 
 
