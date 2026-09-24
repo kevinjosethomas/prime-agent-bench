@@ -26,12 +26,40 @@ def ensure_fixture_cwd(cwd: str = FIXTURE_SESSION_CWD) -> None:
     Path(cwd).mkdir(parents=True, exist_ok=True)
 
 
-def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = True) -> list:
+def digest_row_fields(note: str, digest_display: bool | None) -> dict:
+    """The harness_digest custom_message fields for one corpus note.
+
+    ``digest_display=None`` (fixture v2) omits the visibility keys: the
+    product renderers fall back to visible for a missing key, so v2
+    digest rows render as panels. Any other value (fixture v3 passes
+    ``False``) mirrors what BOTH real products persist — TS
+    ``createHarnessDigestMessage`` (messages.ts:141-153) and Rust
+    ``harness_digest_prompt_row``/``persist_digest``
+    (harness_digest.rs:117-145) write ``display: false`` plus the raw
+    digest in ``details`` — so the rows replay hidden exactly like real
+    session files.
+    """
+    fields = {
+        "customType": "harness_digest",
+        "content": f"[harness-digest] {note}",
+    }
+    if digest_display is None:
+        return fields
+    return {**fields, "display": digest_display, "details": {"digest": note}}
+
+
+def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = True,
+                  digest_display: bool | None = None) -> list:
     """The corpus entries for ``turns`` turns (session header included).
 
     ``cwd`` must be the canonical ``FIXTURE_SESSION_CWD`` (or an explicit
     test override): a host-specific path bakes into the header row and
-    breaks byte reproducibility across bench roots and sandboxes."""
+    breaks byte reproducibility across bench roots and sandboxes.
+
+    ``digest_display`` selects the harness-digest row schema (see
+    ``digest_row_fields``): ``None`` (the default) builds the byte-stable
+    v2 corpus; ``False`` builds the display-corrected v3 corpus
+    (session-size/3)."""
     import random
 
     rng = random.Random(seed)
@@ -65,10 +93,8 @@ def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = T
     for base in range(11):
         record = entry(
             "custom_message",
-            {
-                "customType": "harness_digest",
-                "content": f"[harness-digest] base note {base}: persistent state summary for the scale corpus.",
-            },
+            digest_row_fields(f"base note {base}: persistent state summary for the scale corpus.",
+                              digest_display),
             next_id(),
             counter,
         )
@@ -145,10 +171,8 @@ def generate_rows(turns: int, cwd: str, seed: int = 1234, big_markdown: bool = T
         if (turn + 1) % 20 == 0:
             record = entry(
                 "custom_message",
-                {
-                    "customType": "harness_digest",
-                    "content": f"[harness-digest] note {turn}: persistent state summary for the scale corpus.",
-                },
+                digest_row_fields(f"note {turn}: persistent state summary for the scale corpus.",
+                                  digest_display),
                 next_id(),
                 counter,
             )
