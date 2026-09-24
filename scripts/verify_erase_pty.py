@@ -54,6 +54,25 @@ ONBOARDING_AUTODISMISS = [
 ]
 DUMMY_KEY = "sk-bench-mock-offline"
 
+EVIDENCE_DIR_DEFAULT = "/tmp/erase-gate-evidence"
+
+
+def evidence_dir() -> Path:
+    """Stable evidence dir that survives the trial-root cleanup."""
+    d = Path(os.environ.get("PRIME_BENCH_ERASE_EVIDENCE_DIR",
+                            EVIDENCE_DIR_DEFAULT))
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def dump_transcripts(name: str, app) -> None:
+    """Raw PTY stream + rendered screen (kept for every product, pass or
+    failure; the trial env carries only the dummy key, so no secrets ride)."""
+    out = evidence_dir() / name
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "raw.pty").write_bytes(app.bytes_out())
+    (out / "screen.txt").write_text(app.screen_text())
+
 
 def free_port() -> int:
     with socket.socket() as s:
@@ -168,6 +187,10 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
                 1 for _ in open(mock_log))
     finally:
         if app is not None:
+            try:
+                dump_transcripts(name, app)
+            except Exception as e:
+                evidence["transcript_dump_error"] = f"{type(e).__name__}: {e}"[:200]
             app.kill_tree()
         try:
             prod.reap(ctx)
@@ -180,6 +203,9 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         and evidence.get("mock_model_requests") == 0
         and evidence.get("stress", {}).get("erase_ok")
         and "reap_leftovers" not in evidence)
+    out = evidence_dir() / name
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "result.json").write_text(json.dumps(evidence, indent=1, default=str))
     return evidence
 
 
@@ -216,12 +242,22 @@ def main() -> int:
             try:
                 results.append(verify_product(name, reg, driver, mock_log, root))
             except Exception as e:
-                results.append({"product": name, "error": f"{type(e).__name__}: {e}"[:400]})
+                rec = {"product": name, "error": f"{type(e).__name__}: {e}"[:400]}
+                try:
+                    out = evidence_dir() / name
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out / "result.json").write_text(json.dumps(rec, indent=1))
+                except Exception:
+                    pass
+                results.append(rec)
     finally:
         mock_proc.terminate()
-    print(json.dumps({"results": results}, indent=1))
+    ok = (len(results) == len(names)
+          and all(r.get("product") in names and r.get("pass") is True
+                  for r in results))
+    print(json.dumps({"results": results, "ok": ok,
+                      "evidence_dir": str(evidence_dir())}, indent=1))
     shutil.rmtree(root, ignore_errors=True)
-    ok = all(r.get("pass") for r in results if r.get("product") in names)
     return 0 if ok else 1
 
 
