@@ -59,7 +59,9 @@ def deploy_harness(backend, handle, bundle: Path) -> None:
     _upload_text(backend, handle, _sandbox_config_yaml(handle, backend),
                  hd / "configs" / "sandbox.yaml")
     code, log = backend.exec_cmd(
-        handle, f"cd {hd} && python3 -m pip install -q --break-system-packages "
+        handle, f"python3 -m pip --version >/dev/null 2>&1 || "
+                f"(apt-get update -qq && apt-get install -qq -y python3-pip); "
+                f"cd {hd} && python3 -m pip install -q --break-system-packages "
                 f"-r requirements.txt && echo PIP-DONE", timeout=1800.0)
     if code != 0:
         raise RuntimeError(f"pip install failed on {handle.name}: {log[-300:]}")

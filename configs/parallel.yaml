@@ -20,8 +20,10 @@ retry:
 
 sandbox_defaults:
   # Image with the full node setup (products installed + authenticated).
-  # A bare python image runs the harness mechanics but no product trials.
-  image: python:3.11-slim
+  # ubuntu:22.04: the proven VM platform image (VM infra only builds some
+  # platform images; python:3.11-slim has no completed VM artifact) and it
+  # matches the benchmark node exactly (Ubuntu 22.04, python3.10, glibc 2.35).
+  image: ubuntu:22.04
   cpu_cores: 4
   memory_gb: 8
   disk_gb: 60
