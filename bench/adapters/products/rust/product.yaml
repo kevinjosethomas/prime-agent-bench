@@ -3,7 +3,10 @@
 # walk (config, not code). vendor: what sandbox setup ships for this
 # product. See README.md in this folder for needs/quirks/fix classes.
 binary: ~/bench/repos/prime-agent-rust/target/release/prime-agent
-revision: 2017ac619e8cc83dd652704be072c4d7a22ff0aa
+# Campaign-verified build (audit F10): revision bdf82f4f1 (#2672 fold),
+# 202,707,000 bytes, built 2026-09-24 06:43 UTC, rustc 1.98.1.
+revision: bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad
+binary_sha256: eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1
 needs_kernel_venv: true
 install:
   installed_paths: [~/bench/repos/prime-agent-rust/target/release/prime-agent]

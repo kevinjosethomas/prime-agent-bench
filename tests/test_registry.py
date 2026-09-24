@@ -50,7 +50,9 @@ def test_deep_merge_override_wins():
 
 def test_product_config_loads_pinning():
     cfg = product_config("rust")
-    assert cfg["revision"] == "2017ac619e8cc83dd652704be072c4d7a22ff0aa"
+    # the campaign-verified build revision (audit F10 pin fix, live product.yaml)
+    assert cfg["revision"] == "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
+    assert cfg["binary_sha256"] == "eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1"
     assert "install" in cfg
 
 

@@ -18,6 +18,9 @@ class ClaudeCodeProduct(ProductAdapter):
     name = "claude"
     display_name = "Claude Code"
     needs_prepass = True
+    # argv() ignores resume_fixture: no native Prime-JSONL resume; a
+    # vendor-native history fixture (spec §F) does not exist yet.
+    resume_fixture_capable = False
 
     @property
     def binary(self) -> Path:

@@ -82,6 +82,11 @@ class ProductAdapter(ABC):
     has_daemon: bool = False
     needs_prepass: bool = False
     needs_kernel_venv: bool = False
+    # Whether argv() actually resumes the Prime session-JSONL fixture
+    # (--resume). Competitors without a vendor-native equivalent stay
+    # False: fixture-based scenarios then record them not_comparable
+    # (spec §F) instead of measuring a fresh session.
+    resume_fixture_capable: bool = False
     dialog_steps: list[DialogStep] = []  # fallback; config is the source of truth
 
     def __init__(self, cfg: dict):

@@ -22,8 +22,11 @@ class PrimeAgentRustProduct(ProductAdapter):
     display_name = "Prime Agent Rust"
     has_daemon = True
     needs_kernel_venv = True
+    resume_fixture_capable = True  # argv passes --resume <fixture>
     default_binary_subpath = "repos/prime-agent-rust/target/release/prime-agent"
-    default_revision = "2017ac619e8cc83dd652704be072c4d7a22ff0aa"
+    # The campaign-verified build revision (audit F10: the earlier pin fix
+    # landed in a config file no code reads, leaving the live pin stale).
+    default_revision = "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
 
     @property
     def binary(self) -> Path:
@@ -37,13 +40,28 @@ class PrimeAgentRustProduct(ProductAdapter):
         return f"http://127.0.0.1:{self.mock_port}"
 
     def version_info(self) -> dict:
-        """Pinned binary version + revision + sha256 evidence."""
+        """Pinned binary version + revision + machine-collected identity.
+
+        The --version output prints no revision, so the revision is the pin
+        and the sha256/bytes are collected from the binary itself. When the
+        product.yaml pins ``binary_sha256``, a mismatch fails loudly: a
+        stale pin or a swapped binary must never masquerade as collected
+        provenance (audit F10).
+        """
         from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60)
-        return {"version": v.stdout.strip() or v.stderr.strip(),
+        binary_sha256 = sha256_file(self.binary)
+        info = {"version": v.stdout.strip() or v.stderr.strip(),
                 "revision": self.product_cfg.get("revision", self.default_revision),
                 "binary": str(self.binary),
-                "binary_sha256": sha256_file(self.binary)}
+                "binary_sha256": binary_sha256,
+                "binary_bytes": self.binary.stat().st_size}
+        pinned = self.product_cfg.get("binary_sha256")
+        if pinned and pinned != binary_sha256:
+            raise RuntimeError(
+                f"{self.name} binary sha256 {binary_sha256} != pinned {pinned}; "
+                "update the pin or restore the pinned binary before benchmarking")
+        return info
 
     def prepare_template(self, tpl: Path) -> None:
         """Agent dir with mock models.json; preprovisioned Prime auth."""

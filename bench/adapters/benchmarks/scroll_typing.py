@@ -1,14 +1,20 @@
-"""compare.scroll_typing: typing + scroll latency on a 10MiB session.
+"""compare.scroll_typing: typing + scroll latency on the 10MiB session.
 
-RT: --resume the fixture; competitors: their native large history when
-available, else their current session (comparability recorded via the
-fixture column in the row).
+Rust/TS resume the verified 10MiB fixture (sentinel evidence per trial).
+Products whose argv ignores the fixture have no vendor-native large
+history yet: the trial engine records them as not_comparable status rows
+(spec §F) — fresh-session typing latency is never ranked against
+loaded-session typing. A dropped keystroke (typing_ok false) invalidates
+the row instead of contributing partial latency values.
 """
 from __future__ import annotations
 
 import time
 
-from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint, prepass, screen_hash
+from bench.adapters.benchmarks.support import (PROBE_TOKEN, first_paint,
+                                                prepass, screen_hash,
+                                                wait_sentinel)
+from bench.adapters.fixtures.session_size import SENTINEL
 from bench.core.benchmark import Benchmark
 from bench.core.harness import now
 from bench.core.process import rss_tree
@@ -21,9 +27,13 @@ class ScrollTyping(Benchmark):
 
     name = "compare.scroll_typing"
     requires_fixture = "session-10mib"
-    # A dropped key (typing_ok falsy) truncates the typing sequence: the
-    # measurement is incomplete, not slow.
-    completeness_keys = ("typing_ok",)
+    completeness_keys = ("typing_ok",)  # dropped keys = incomplete measurement
+
+    def __init__(self, cfg: dict):
+        super().__init__(cfg)
+        spec = cfg.get("benchmarks", {}).get(self.name, {})
+        self.ready_timeout_s = float(spec.get("ready_timeout_s", 120.0))
+        self.sentinel_timeout_s = float(spec.get("sentinel_timeout_s", 30.0))
 
     def measure(self, product, ctx, record, driver, fixture=None) -> None:
         if product.needs_prepass:
@@ -31,11 +41,16 @@ class ScrollTyping(Benchmark):
         app = product.launch(ctx, driver, resume_fixture=str(fixture) if fixture else None)
         try:
             t_paint = first_paint(app, timeout=90)
-            probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5, timeout=90, start_ts=t_paint)
+            probe = app.probe_input_ready(PROBE_TOKEN, retry_every=0.5,
+                                          timeout=self.ready_timeout_s, start_ts=t_paint)
+            # fixture evidence: the loaded 10MiB transcript's tail rendered;
+            # without it the row is invalid (never a fresh-session typing rank)
+            t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
             app.erase_all(PROBE_TOKEN)
+            record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             # typing latency
             typing_ms, typing_ok = app.type_token(TYPING_TEXT, per_key_timeout=2.0, inter_key_pause=0.03)
-            typing_ms2, _ = app.type_token(TYPING_TEXT[-10:], per_key_timeout=2.0, inter_key_pause=0.03)
+            typing_ms2, typing_ok2 = app.type_token(TYPING_TEXT[-10:], per_key_timeout=2.0, inter_key_pause=0.03)
             # scroll: PageUp x5, key -> screen-change first paint
             scroll_lat = []
             for _ in range(5):
@@ -55,11 +70,11 @@ class ScrollTyping(Benchmark):
             time.sleep(1.0)
             wheel = app.burst_stats(t_start=t_wheel, t_end=t_wheel + 1.0)
             # typing again while scrolled
-            typing_scrolled, _ = app.type_token(TYPING_TEXT[:12], per_key_timeout=2.0, inter_key_pause=0.03)
+            typing_scrolled, typing_scrolled_ok = app.type_token(TYPING_TEXT[:12], per_key_timeout=2.0, inter_key_pause=0.03)
             rss = rss_tree(app.pid)
             record["metrics"] = {
                 "typing_ms": typing_ms + typing_ms2,
-                "typing_ok": typing_ok,
+                "typing_ok": typing_ok and typing_ok2,
                 "typing_scrolled_ms": typing_scrolled,
                 "scroll_pgup_ms": scroll_lat,
                 "wheel_bursts": wheel["bursts"] if wheel else None,
@@ -67,6 +82,9 @@ class ScrollTyping(Benchmark):
                 "launch_to_ready_ms": probe["echo_ts_offset_ms"],
                 "pty_bytes": app.bytes_out(),
             }
+            record["validation"] = {"sentinel": t_sentinel is not None, "echoed": True,
+                                    "typing_ok": typing_ok and typing_ok2,
+                                    "typing_scrolled_ok": typing_scrolled_ok}
             record["resource"] = {"rss_10mib": rss}
         finally:
             app.kill_tree()

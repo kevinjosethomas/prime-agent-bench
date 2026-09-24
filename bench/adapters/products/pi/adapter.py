@@ -19,6 +19,9 @@ class PiMonoProduct(ProductAdapter):
     name = "pi"
     display_name = "Pi Mono"
     default_revision = "b45597504eeaba1f11a9920a1d1048c361ed4b8e"
+    # argv() ignores resume_fixture: no native Prime-JSONL resume; a
+    # vendor-native history fixture (spec §F) does not exist yet.
+    resume_fixture_capable = False
 
     @property
     def cli_path(self) -> Path:

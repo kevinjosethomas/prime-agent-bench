@@ -17,6 +17,10 @@ from bench.core.product import ProductAdapter, TrialContext
 if TYPE_CHECKING:  # pragma: no cover
     from bench.core.harness import HarnessDriver
 
+#: Spec §F comparability levels, shown per cross-product row. Only
+#: ``not_comparable`` rows are never ranked (they carry a status, no numbers).
+COMPARABILITY_LEVELS = ("equivalent", "qualified", "not_comparable")
+
 
 class Benchmark(ABC):
     """A scenario measured against one product per trial.
@@ -28,6 +32,7 @@ class Benchmark(ABC):
     name: str = ""
     default_trials: int = 10
     applicable_products: list[str] | None = None  # None = every product
+    applicability_note: str = ""  # why non-applicable products are excluded (status rows)
     requires_fixture: str | None = None            # registry fixture name
     # Metrics that must be truthy for the trial to count as completed
     # (the analysis validity gate excludes rows whose completeness keys
@@ -44,6 +49,28 @@ class Benchmark(ABC):
     def applicable(self, product_name: str) -> bool:
         """Whether this benchmark applies to the product."""
         return self.applicable_products is None or product_name in self.applicable_products
+
+    def comparability(self, product: ProductAdapter,
+                      fixture: Path | None = None) -> tuple[str, str]:
+        """(level, reason) for this benchmark x product per spec §F.
+
+        ``equivalent``: identical PTY + user action, the fixture semantically
+        verified (sha256/rows/sentinel evidence on every trial row).
+        ``qualified``: equivalent user intent, distinct product UI/daemon.
+        ``not_comparable``: unsupported here — the product cannot consume the
+        fixture (its argv ignores resume_fixture and no vendor-native fixture
+        exists yet). The trial engine records such rows as status, never as
+        numbers, and nothing ranks them.
+        """
+        if self.requires_fixture:
+            if not product.resume_fixture_capable:
+                return ("not_comparable",
+                        f"{product.name} has no native {self.requires_fixture} fixture: its argv "
+                        "ignores resume_fixture, and spec §F large-session rows require a "
+                        "vendor-native fixture (sentinel + message count equivalence)")
+            return ("equivalent",
+                    "identical PTY + user action; fixture sha256/rows/sentinel verified per trial")
+        return ("qualified", "equivalent user intent; distinct product UI/daemon (spec §F)")
 
     def setup(self, product: ProductAdapter, ctx: TrialContext,
               fixture: Path | None = None) -> None:

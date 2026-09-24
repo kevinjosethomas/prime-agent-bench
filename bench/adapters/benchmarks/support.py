@@ -14,6 +14,22 @@ from bench.core.process import sweep_trial
 PROBE_TOKEN = "Zq7x"
 
 
+def wait_sentinel(session: Session, sentinel: str, timeout: float) -> float | None:
+    """Bounded wait for the fixture tail sentinel on screen; ts or None.
+
+    The sentinel is the per-trial proof that the resumed fixture actually
+    loaded (its tail rendered). A None result invalidates the trial — it is
+    never a fast success (spec: resumed transcripts require tail sentinel
+    AND typed echo).
+    """
+    try:
+        ts, _ = session.wait_for(lambda: sentinel in session.screen_text(),
+                                 timeout=timeout, poll=0.005)
+        return ts
+    except TimeoutError:
+        return None
+
+
 def first_paint(session: Session, timeout: float = 45.0) -> float:
     """Block until the first non-blank rendered frame; returns its timestamp."""
     deadline = now() + timeout
