@@ -47,7 +47,10 @@ class NavSession(Session):
     the view's search field)."""
 
     def __init__(self, row_title=FIRST_USER, open_view=True, returns=True,
-                 stale_chat=False, keeps_chrome=False):
+                 stale_chat=False, keeps_chrome=False,
+                 editor_rows=(), editor_clearable=True,
+                 dialog_marker=None, dialog_dismissible=True,
+                 prompt_visible=True):
         self.t_spawn = now()
         self.t_first_paint = now()
         self.pid = None
@@ -56,12 +59,49 @@ class NavSession(Session):
         self.returns = returns
         self.stale_chat = stale_chat
         self.keeps_chrome = keeps_chrome
+        # pre-nav gate surfaces: typed text on the editor prompt row and
+        # a first-run dialog overlay, each with its own dismiss behavior
+        self.editor_rows = list(editor_rows)
+        self.editor_clearable = editor_clearable
+        self.dialog_marker = dialog_marker
+        self.dialog_dismissible = dialog_dismissible
+        self.prompt_visible = prompt_visible
+        self._dialog_down_seen = False
         self.sends: list[str] = []
-        self.screen = ["chat", SENTINEL]
+        self.screen = self._chat_screen()
+
+    def _chat_screen(self):
+        # the chat dock the real products render: transcript, then the
+        # editor prompt row (bare when nothing is typed, dirty when
+        # fragments sit on it), then any first-run dialog overlay
+        rows = ["chat", SENTINEL]
+        rows.extend(self.editor_rows if self.editor_rows else [" >"])
+        if not self.prompt_visible:
+            rows = [r for r in rows if not r.lstrip().startswith(">")]
+        if self.dialog_marker:
+            rows.append(self.dialog_marker)
+        return rows
 
     def send(self, data):
         self.sends.append(data)
-        if data == LEFT and self.open_view:
+        if self.dialog_marker and data == "\x1b[B":
+            self._dialog_down_seen = True
+        elif (self.dialog_marker and self.dialog_dismissible
+              and data == "\r" and self._dialog_down_seen):
+            self.dialog_marker = None
+            self.screen = self._chat_screen()
+        elif data == "\x7f" and self.editor_rows and self.editor_clearable:
+            # erase_all's backspaces trim the typed text char by char
+            last = self.editor_rows[-1].rstrip()
+            if len(last.rstrip(">").rstrip()) <= 1:
+                self.editor_rows = []
+            else:
+                self.editor_rows[-1] = last[:-1]
+            self.screen = self._chat_screen()
+        elif data == "\x15" and self.editor_rows and self.editor_clearable:
+            self.editor_rows = []
+            self.screen = self._chat_screen()
+        elif data == LEFT and self.open_view:
             view = ["chat", AGENTS_CHROME, self.row_title]
             if self.stale_chat:
                 view.append(SENTINEL)
@@ -89,7 +129,7 @@ class NavSession(Session):
         return now()
 
     def probe_input_ready(self, token="Zq7x", retry_every=0.5,
-                          timeout=45.0, start_ts=None):
+                          timeout=45.0, start_ts=None, dialog_steps=()):
         return {"gap_ms": 3.0, "echo_ts_offset_ms": 30.0, "sends": 1,
                 "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01"}
 
@@ -177,12 +217,14 @@ def _fixture(tmp_path, rows=None):
 
 
 def _measure(tmp_path, session, monkeypatch, fixture=None,
-             benchmark_overrides=None):
+             benchmark_overrides=None, product_dialog_steps=None):
     from bench.adapters.benchmarks import agent_view_roundtrip as mod
     monkeypatch.setattr(mod, "rss_tree", lambda pid: {"rss_mb": 1.0})
     monkeypatch.setattr(mod, "loadavg", lambda: 0.0)
     bench = SessionAgentViewRoundtrip(_cfg(tmp_path, benchmark_overrides))
     product = FakeProduct({"layout": None, "product": {}, "mock": {}}, session)
+    if product_dialog_steps is not None:
+        product.dialog_steps = product_dialog_steps
     record = _record()
     bench.measure(product, _ctx(tmp_path), record, FakeDriver(session),
                   fixture=fixture or _fixture(tmp_path))
@@ -205,10 +247,93 @@ def test_roundtrip_measures_each_leg_and_validates(tmp_path, monkeypatch):
     assert m["roundtrip_ok"] is True
     assert record["validation"] == {
         "sentinel_loaded": True, "erased_before_nav": True,
+        "dialogs_clear": True, "line_cleared": True,
         "agents_chrome": True, "roster_row": True,
         "sentinel_gone": True, "tail_after": True,
         "chrome_gone_after": True, "echoed_after": True}
     assert bench.validate(record) is True
+
+
+# ---- pre-nav gate: dialog dismissed, editor line truly empty -------------
+
+TRACE_DIALOG = "Share agent traces with Prime Intellect?"
+TRACE_STEPS = [(TRACE_DIALOG, ["down", "enter"])]
+
+
+def test_first_run_dialog_is_answered_before_navigation(tmp_path, monkeypatch):
+    # a dialog that surfaces after the probe is answered with the
+    # product's own dialog keys, then the roundtrip proceeds
+    session = NavSession(dialog_marker=TRACE_DIALOG)
+    bench, _, record = _measure(tmp_path, session, monkeypatch,
+                                product_dialog_steps=TRACE_STEPS)
+    assert "\x1b[B" in session.sends and "\r" in session.sends
+    assert _nav_keys(session) == [LEFT, RIGHT]
+    assert record["validation"]["dialogs_clear"] is True
+    assert record["validation"]["line_cleared"] is True
+    assert bench.validate(record) is True
+
+
+def test_undismissable_dialog_is_partial_not_rankable(tmp_path, monkeypatch):
+    # the dialog never leaves: the nav keys are never sent (they would
+    # be consumed by the dialog), the row stays a partial invalid row
+    session = NavSession(dialog_marker=TRACE_DIALOG, dialog_dismissible=False)
+    bench, _, record = _measure(tmp_path, session, monkeypatch,
+                                product_dialog_steps=TRACE_STEPS)
+    assert _nav_keys(session) == []
+    assert record["metrics"]["chat_to_agents_ms"] is None
+    assert record["validation"]["dialogs_clear"] is False
+    assert bench.validate(record) is False
+
+
+def test_probe_residue_on_editor_line_is_cleared_before_left(tmp_path, monkeypatch):
+    # buffered probe fragments sit ON the prompt row: ctrl+u clears the
+    # whole line, the bare prompt gates, and the roundtrip proceeds
+    session = NavSession(editor_rows=[" >  Zq7x01Zq7x02Zq7x03"])
+    bench, _, record = _measure(tmp_path, session, monkeypatch)
+    assert session.sends.count("\x15") >= 1  # ctrl+u: delete to line start
+    assert _nav_keys(session) == [LEFT, RIGHT]
+    assert record["validation"]["line_cleared"] is True
+    assert bench.validate(record) is True
+
+
+def test_unclearable_editor_line_is_partial_not_rankable(tmp_path, monkeypatch):
+    # the editor row keeps its text: LEFT would be an editor cursor move,
+    # so the nav never starts and the row stays unrankable
+    session = NavSession(editor_rows=[" >  Zq7x01Zq7x02Zq7x03"],
+                         editor_clearable=False)
+    bench, _, record = _measure(tmp_path, session, monkeypatch)
+    assert _nav_keys(session) == []
+    assert record["metrics"]["chat_to_agents_ms"] is None
+    # ctrl+u was a no-op and the residue is retained: neither the
+    # needle-based erase nor the verified-clean recomputation certifies
+    assert record["validation"]["erased_before_nav"] is False
+    assert record["validation"]["line_cleared"] is False
+    assert bench.validate(record) is False
+
+
+def test_no_prompt_row_is_ambiguous_never_a_clean_editor(tmp_path, monkeypatch):
+    # a screen with no editor prompt row in the dock (a dialog, the
+    # roster, a splash) is NOT a vacuous pass: the gate stops, sends no
+    # ctrl+u into the unknown surface, and the row stays unrankable
+    session = NavSession(prompt_visible=False)
+    bench, _, record = _measure(tmp_path, session, monkeypatch)
+    assert session.sends.count("\x15") == 0  # no keys into an unknown surface
+    assert _nav_keys(session) == []
+    assert record["metrics"]["chat_to_agents_ms"] is None
+    assert record["validation"]["line_cleared"] is False
+    assert bench.validate(record) is False
+
+
+def test_multiple_prompt_rows_in_dock_are_ambiguous(tmp_path, monkeypatch):
+    # two '>' rows in the dock (a blockquote quoted into the dock) never
+    # certify which one is the editor: stop rather than guess (rows carry
+    # no probe token, so erase_all never touches them)
+    session = NavSession(editor_rows=[" >  quoted reply", " >  older quote"],
+                         editor_clearable=True)
+    bench, _, record = _measure(tmp_path, session, monkeypatch)
+    assert _nav_keys(session) == []
+    assert record["validation"]["line_cleared"] is False
+    assert bench.validate(record) is False
 
 
 def test_first_user_text_is_the_row_identity(tmp_path):
