@@ -155,6 +155,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         # substring in any single row)
         window = app.echo_window_text(rows_up=6, rows_down=1) or app.screen_text()
         joined = "".join(window.splitlines())
+        evidence["post_erase_window_nonempty"] = bool(window.strip())
         evidence["leftover_tokens"] = [t for t in tokens
                                        if t in window or t in joined]
         # 66-send stress: 396 chars pre-queued raw (pre-mount), plus the
@@ -210,6 +211,7 @@ def verify_product(name: str, reg, driver, mock_log: str, root: Path) -> dict:
         and evidence.get("mock_model_requests") == 0
         and evidence.get("stress", {}).get("erase_ok")
         and "reap_leftovers" not in evidence
+        and evidence.get("post_erase_window_nonempty")
         and "transcript_dump_error" not in evidence)
     out = evidence_dir() / name
     out.mkdir(parents=True, exist_ok=True)
