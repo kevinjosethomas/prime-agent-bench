@@ -222,7 +222,16 @@ def methodology_block(cfg: dict, phases: list | None) -> dict:
             "published_phases": phases or ["all non-aa phases"],
             "aa_rows": "calibration only, never in published stats",
             "gate": "strict result-validity (bench.analysis.validity)",
-            "denominators": "entry.trials per product per phase"}
+            "denominators": "entry.trials per product per phase",
+            "fixture_proof": ("fixture benchmarks rank only rows carrying "
+                              "per-trial clone evidence (fixture.clone.sha256 "
+                              "== golden sha256, the bytes actually staged for "
+                              "--resume); rows measured before the 2026-09-24 "
+                              "per-trial clone fix (the historical campaign "
+                              "trees, e.g. the 820 campaign) carry no such "
+                              "proof and are excluded as "
+                              "fixture_no_clone_evidence / "
+                              "fixture_hash_mismatch — loudly, never silently")}
 
 
 def _stability_marks(bench: str, p50s: dict, entry_products: dict,

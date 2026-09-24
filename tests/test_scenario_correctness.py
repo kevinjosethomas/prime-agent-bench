@@ -470,17 +470,32 @@ def test_resume_fixture_capability_flags(tmp_path):
 # ---- trial engine: status rows + stamped comparability ----------------------
 
 class StubFixture:
-    """Manifest-only fixture stand-in (no artifact build in tests)."""
+    """Manifest stand-in over a REAL tiny golden file: the engine's
+    per-trial staging hash-verifies the source, so tests stage from an
+    actual artifact whose sha256 the manifest reports truthfully."""
+
+    def __init__(self, golden):
+        self.golden = Path(golden)
 
     def manifest(self):
-        return {"path": "/tmp/corpus.jsonl", "bytes": 10485760, "rows": 7391,
-                "sha256": "deadbeef", "sentinel": SENTINEL,
+        import hashlib
+        return {"path": str(self.golden), "bytes": self.golden.stat().st_size,
+                "rows": 7391,  # the manifest claim; clone evidence is per-row
+                "sha256": hashlib.sha256(self.golden.read_bytes()).hexdigest(),
+                "sentinel": SENTINEL,
                 "generator_seed": 1234, "target_mib": 10.0}
 
 
 def _engine_reg(tmp_path, monkeypatch):
     reg = discover(_cfg(tmp_path))
-    reg.fixtures["session-10mib"] = StubFixture()
+    golden = tmp_path / "corpus.jsonl"
+    golden.write_text("\n".join(json.dumps({"type": "message", "id": str(i),
+                                             "message": {"role": "user",
+                                                         "content": [{"type": "text",
+                                                                      "text": f"row {i}"}]}})
+                                    for i in range(3)) + "\n")
+    reg.fixtures["session-10mib"] = StubFixture(golden)
+    reg.fixture_paths = {"session-10mib": golden}
     # no real product launches; no load gating in unit tests
     for name, cls in (("capfake", FakeProduct), ("freshfake", FreshSessionProduct)):
         product = cls({"layout": reg.layout, "product": {}, "mock": {}}, FakeSession())
@@ -507,7 +522,7 @@ def test_run_trials_skips_fresh_session_products_as_status_rows(tmp_path, monkey
     jsonl = __import__("bench.trials", fromlist=["run_trials"]).run_trials(
         reg, FakeDriver(FakeSession()), "compare.scroll_typing",
         ["freshfake", "capfake"], 2, out_dir,
-        {"session-10mib": Path("/tmp/corpus.jsonl")}, aa=False, phase_tag="w1")
+        reg.fixture_paths, aa=False, phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     status_rows = [r for r in rows if r.get("status")]
     measured_rows = [r for r in rows if not r.get("status")]
@@ -539,7 +554,7 @@ def test_run_trials_preserves_not_applicable_products_as_status_rows(tmp_path, m
     from bench.trials import run_trials
     jsonl = run_trials(reg, FakeDriver(FakeSession()), "session.cold_open_10mib",
                        ["rust", "freshfake", "claude"], 1, out_dir,
-                       {"session-10mib": Path("/tmp/corpus.jsonl")}, aa=False,
+                       reg.fixture_paths, aa=False,
                        phase_tag="w1")
     rows = [json.loads(l) for l in jsonl.read_text().splitlines()]
     by_product = {r["product"]: r for r in rows}

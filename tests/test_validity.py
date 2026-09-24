@@ -111,31 +111,40 @@ def test_session_open_120s_artifacts_never_ranked(model):
     assert _reasons(model, "session.cold_open_10mib", "ts")["reasons"]["fixture_not_confirmed"] == 4
 
 
-def test_session_open_ranks_on_the_completion_boundary(model):
-    """session.cold_open_10mib ranks on launch_to_complete_ms — the later of
-    typed echo and tail sentinel (spec §A). The historical captured rows
-    predate the recorded boundary metric, so the analyzer derives it from
-    each row's own two timestamps (max) at flattening. Ranking a derived
-    value additionally requires an A/A calibration on the boundary: rust
-    (8 valid AA rows deriving it) ranks; ts (its only AA row is a
-    sentinel-missing invalid row) is marked unstable and never ranks or
-    delta'd on this tree."""
+def test_session_open_historical_rows_need_clone_proof_to_rank(model):
+    """The 2026-09-24 shared-golden mutation incident: rows carry the
+    golden manifest hash but no proof of the bytes actually loaded, so
+    pre-clone-era rows are unrankable — excluded LOUDLY with a visible
+    reason (fixture_no_clone_evidence), never silently rewritten. Only
+    rows with per-trial clone evidence rank on the completion boundary
+    (spec §A primary launch_to_complete_ms); the boundary derivation
+    itself stays covered by metrics_for (test_scenario_correctness) and
+    the clone-proven synthetic rank test (test_fixture_integrity). The
+    derived boundary's A/A-calibration requirement now gates only
+    clone-proven rows — composed with this gate it is tested below
+    (test_legacy_boundary_rows_require_aa_calibration_to_rank)."""
     entry = model["summary"]["session.cold_open_10mib"]
     assert entry["primary"] == "launch_to_complete_ms"
-    assert entry["primary_p50s"] == {"rust": 9600.0}
-    assert entry["ranks"] == {"rust": 1}
-    assert entry["delta_vs_ts"] == {}
-    assert entry["unstable"]["ts"]["aa_missing_boundary"]
-    assert entry["unstable"]["ts"]["aa_missing_boundary"]["reason"].startswith(
-        "ranked value derived from legacy rows")
+    assert entry["primary_p50s"] == {}
+    assert entry.get("ranks") in (None, {})
+    # the sentinel-passing historical rows are the loud exclusion class
+    # (5 w1 + 8 aa for rust, 2 w1 for ts)
+    assert _reasons(model, "session.cold_open_10mib", "rust")["reasons"] \
+        ["fixture_no_clone_evidence"] == 13
+    assert _reasons(model, "session.cold_open_10mib", "ts")["reasons"] \
+        ["fixture_no_clone_evidence"] == 2
 
 
 def test_legacy_boundary_rows_require_aa_calibration_to_rank():
     """The derived boundary may not rank uncalibrated: legacy rows (no
     recorded launch_to_complete_ms) rank only once an A/A pass calibrates
     the boundary; rows that record the metric (new waves) rank under the
-    normal policy exactly as before."""
+    normal policy exactly as before. Every synthetic row carries per-trial
+    clone proof (staged sha == golden sha), so the fixture byte-proof gate
+    passes and the A/A calibration requirement is exactly what's under
+    test."""
     cfg = dict(CFG, gate_benchmarks=gate_map())
+    GOLD = "d" * 64
 
     def sess_row(product, trial, ready, sentinel, phase="w1", recorded=False):
         m = {"launch_to_ready_ms": ready, "launch_to_sentinel_ms": sentinel}
@@ -144,7 +153,9 @@ def test_legacy_boundary_rows_require_aa_calibration_to_rank():
         return {"benchmark": "session.cold_open_10mib", "product": product,
                 "phase": phase, "trial": trial, "metrics": m, "validated": True,
                 "validation": {"sentinel": True, "echoed": True, "erased": True},
-                "fixture": {"loaded": True}, "comparability": "equivalent"}
+                "fixture": {"loaded": True, "sha256": GOLD,
+                            "clone": {"sha256": GOLD}},
+                "comparability": "equivalent"}
 
     legacy = [sess_row("rust", i, 9000.0 + i, 8000.0) for i in range(4)]
     entry = summarize_rows(legacy, cfg)["summary"]["session.cold_open_10mib"]
@@ -216,11 +227,14 @@ def test_aa_calibrates_primary_and_declared_metrics(model):
     assert aa["compare.msg_send/rust"]["valid"] is False          # captured shape
     assert aa["compare.msg_send/rust/submit_to_settle_ms"]["valid"] is False
     assert aa["compare.msg_send/claude"]["valid"] is True
-    # the captured session.cold_open rows predate the recorded boundary
-    # metric, but the A/A machinery reads through metrics_for: the AA rows'
-    # own two timestamps calibrate the derived boundary, so the primary is
-    # still A/A-covered on the historical tree (no row rewrite).
-    assert "session.cold_open_10mib/rust" in aa
+    # the captured session.cold_open AA rows would calibrate the derived
+    # boundary through metrics_for, but they predate the per-trial clone
+    # proof too, so the byte-proof gate excludes them (loudly, as
+    # fixture_no_clone_evidence) before the A/A machinery ever sees them:
+    # the historical tree calibrates nothing. The metrics_for reading path
+    # stays proven by the clone-proven synthetic rows
+    # (test_legacy_boundary_rows_require_aa_calibration_to_rank).
+    assert "session.cold_open_10mib/rust" not in aa
 
 
 # ---- fixture comparability ---------------------------------------------------
@@ -239,9 +253,14 @@ def test_unconfirmed_fixture_rows_never_ranked(model):
 
 
 def test_completeness_keys_exclude_dropped_typing(model):
-    """Fixture confirmed but typing dropped a key: incomplete, not slow."""
+    """Historical captured rows cannot reach the completeness check at all:
+    the two dropped-key ts rows have no per-trial clone proof, so they are
+    excluded as fixture_no_clone_evidence first (the loaded-bytes proof
+    precedes metric-level checks). The incomplete_measurement class stays
+    proven by the clone-proven synthetic row in
+    test_fixture_integrity.test_clone_proven_incomplete_row_excluded."""
     reasons = _reasons(model, "compare.scroll_typing", "ts")
-    assert reasons["reasons"]["incomplete_measurement"] == 2
+    assert reasons["reasons"]["fixture_no_clone_evidence"] == 2
 
 
 def test_validation_failed_excluded(model):
@@ -261,6 +280,7 @@ def test_debug_and_missing_metrics_excluded(model):
 
 def test_row_exclusion_precedence():
     gate = gate_map()
+    GOLD = "d" * 64
     settle = {"codex": "401"}
     debug = {"benchmark": "compare.cold_start", "product": "rust", "phase": "debug-x"}
     assert row_exclusion(debug, settle, gate) == "debug_phase"
@@ -278,11 +298,36 @@ def test_row_exclusion_precedence():
                    "validated": False}
     assert row_exclusion(unconfirmed, {}, gate) == "fixture_not_confirmed"
     incomplete = {"benchmark": "compare.scroll_typing", "product": "ts",
-                  "phase": "w1", "fixture": {"loaded": True},
+                  "phase": "w1", "fixture": {"loaded": True, "sha256": GOLD,
+                                             "clone": {"sha256": GOLD}},
                   "metrics": {"typing_ms": [1.0], "typing_ok": False},
                   "validated": True,
                   "validation": {"sentinel": True, "echoed": True, "erased": True}}
     assert row_exclusion(incomplete, {}, gate) == "incomplete_measurement"
+    # fixture byte-proof precedence: clone sha != golden sha -> never ranked
+    mismatch = {"benchmark": "compare.scroll_typing", "product": "ts",
+                "phase": "w1", "fixture": {"loaded": True, "sha256": GOLD,
+                                           "clone": {"sha256": "8c717..."}},
+                "metrics": {"typing_ms": [1.0], "typing_ok": True},
+                "validated": True,
+                "validation": {"sentinel": True, "echoed": True, "erased": True}}
+    assert row_exclusion(mismatch, {}, gate) == "fixture_hash_mismatch"
+    # a fixture row with NO clone proof at all: the loud historical class
+    no_evidence = {"benchmark": "compare.scroll_typing", "product": "ts",
+                   "phase": "w1", "fixture": {"loaded": True, "sha256": GOLD},
+                   "metrics": {"typing_ms": [1.0], "typing_ok": True},
+                   "validated": True,
+                   "validation": {"sentinel": True, "echoed": True, "erased": True}}
+    assert row_exclusion(no_evidence, {}, gate) == "fixture_no_clone_evidence"
+    # clone proof on a fixture benchmark + render proof + complete
+    # evidence + metrics: no exclusion (proven rows rank)
+    proven = {"benchmark": "compare.scroll_typing", "product": "ts",
+              "phase": "w1", "fixture": {"loaded": True, "sha256": GOLD,
+                                         "clone": {"sha256": GOLD}},
+              "metrics": {"typing_ms": [1.0], "typing_ok": True},
+              "validated": True,
+              "validation": {"sentinel": True, "echoed": True, "erased": True}}
+    assert row_exclusion(proven, {}, gate) is None
     vacuous = {"benchmark": "kernel.cold_start", "product": "rust", "phase": "w1",
                "metrics": {"submit_to_result_ms": 100.2}, "validated": True}
     assert row_exclusion(vacuous, {}, gate) == "no_validation_evidence"
@@ -432,10 +477,13 @@ def test_status_rows_reported_not_excluded(model):
 
 def test_comparability_modes_surfaced(model):
     """Measured rows carry comparability modes (equivalent/qualified); the
-    summary surfaces them per product for the report."""
+    summary surfaces them per product for the report. The session.*
+    captured rows are all excluded now (no clone proof), so the session
+    entry surfaces no comparability; the equivalent mode on a
+    fixture-resumed benchmark is asserted by the clone-proven synthetic
+    test (test_fixture_integrity.test_clone_proven_rows_rank)."""
     session = model["summary"]["session.cold_open_10mib"]
-    assert session["comparability"]["rust"] == "equivalent"
-    assert session["comparability"]["ts"] == "equivalent"
+    assert session.get("comparability", {}) == {}
     assert model["summary"]["compare.msg_send"]["comparability"]["claude"] == "qualified"
 
 
