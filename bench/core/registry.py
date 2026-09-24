@@ -77,6 +77,11 @@ def adapter_cfg(cfg: dict, kind: str, name: str) -> dict:
               "mock": cfg.get("mock", {})}
     if kind == "fixtures":
         slice_["fixture"] = cfg.get("fixtures", {}).get(name, {})
+    if kind == "benchmarks":
+        # per-benchmark overrides (configs/default.yaml ``benchmarks:``)
+        # must reach the adapter __init__s, which slice their own entry
+        # by name (ready_timeout_s, sentinel_timeout_s, ...)
+        slice_["benchmarks"] = cfg.get("benchmarks", {})
     return slice_
 
 

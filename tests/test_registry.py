@@ -56,6 +56,23 @@ def test_product_config_loads_pinning():
     assert "install" in cfg
 
 
+def test_benchmark_config_overrides_reach_registry_adapters(tmp_path):
+    """The configs/default.yaml ``benchmarks:`` overrides must reach the
+    adapter __init__s through discover() — not just the hand-constructed
+    tests. session_open/memory/scroll_typing slice their own entry
+    (ready_timeout_s, sentinel_timeout_s, ...) out of the map."""
+    reg = discover(_cfg(tmp_path, {"benchmarks": {
+        "session.cold_open_10mib": {"sentinel_timeout_s": 5.0,
+                                    "ready_timeout_s": 7.0}}}))
+    bench = reg.benchmark("session.cold_open_10mib")
+    assert bench.sentinel_timeout_s == 5.0
+    assert bench.ready_timeout_s == 7.0
+    base = discover(_cfg(tmp_path))
+    defaults = base.benchmark("session.cold_open_10mib")
+    assert defaults.sentinel_timeout_s == 30.0
+    assert defaults.ready_timeout_s == 120.0
+
+
 def test_effective_trials_precedence(tmp_path):
     reg = discover(_cfg(tmp_path, {"benchmarks":
                                    {"compare.cold_start": {"trials": 4}}}))
