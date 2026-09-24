@@ -57,8 +57,12 @@ class KernelStateSnapshot(Benchmark):
                 "compact_to_ack_ms": round((t_compact_done - t_compact_enter) * 1000.0, 1),
                 "post_compact_cell_ms": round((t_check - t1) * 1000.0, 1),
                 "state_size": self.size,
-                "state_preserved": True,
+                "state_preserved": True,  # derived: STATECHECK only renders if the frame survived
             }
+            # every stage raises on failure, so reaching here proves the
+            # build sentinel, the compaction ack, and the post-compact check
+            record["validation"] = {"echoed": True, "state_built": True,
+                                    "compacted": True, "state_preserved": True}
         finally:
             app.kill_tree()
             product.reap(ctx)
@@ -100,13 +104,19 @@ class KernelRestartRestore(Benchmark):
                     pass
             t_kill = now()
             _, t_check, t1 = submit_and_wait(app, "check the state", "STATECHECK", timeout=300)
+            state_restored = "STATECHECK" in app.screen_text()
             record["metrics"] = {
                 "kernels_killed": killed,
                 "kill_to_restored_cell_ms": round((t_check - t_kill) * 1000.0, 1),
                 "submit_to_result_ms": round((t_check - t1) * 1000.0, 1),
                 "state_size": self.size,
-                "state_restored": "STATECHECK" in app.screen_text(),
+                "state_restored": state_restored,
             }
+            # killed == 0 means no kernel process was found: the "restart"
+            # never happened and the row measured a normal cell instead
+            record["validation"] = {"echoed": True, "state_built": True,
+                                    "kernel_killed": killed > 0,
+                                    "state_restored": state_restored}
         finally:
             app.kill_tree()
             product.reap(ctx)

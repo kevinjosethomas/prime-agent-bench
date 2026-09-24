@@ -82,5 +82,13 @@ class Benchmark(ABC):
         """Run one trial and fill the record."""
 
     def validate(self, record: dict) -> bool:
-        """Whether the trial's evidence block proves the measurement."""
-        return all(bool(v) for v in (record.get("validation") or {}).values())
+        """Whether the trial's evidence block proves the measurement.
+
+        A scored row must carry its evidence: a missing or empty validation
+        block is NOT valid (the audit's missing-validation class — kernel.*
+        and daemon.boot rows passed with no proof at all). Every scenario
+        must record a validation block; the analysis gate additionally
+        rejects rows whose ``validated`` is absent.
+        """
+        evidence = record.get("validation")
+        return bool(evidence) and all(bool(v) for v in evidence.values())

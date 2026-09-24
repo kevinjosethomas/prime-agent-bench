@@ -104,6 +104,9 @@ class KernelColdStart(Benchmark):
                 "submit_to_result_ms": round((t_sent - t_enter) * 1000, 1),
                 "rss_after_first_cell": rss,
             }
+            # launch_ready's probe and submit_and_wait's sentinel wait both
+            # raise on failure, so reaching here proves the echo and render
+            record["validation"] = {"echoed": True, "marker_rendered": True}
         finally:
             app.kill_tree()
             product.reap(ctx)
@@ -127,6 +130,8 @@ class KernelCellExec(Benchmark):
                     "submit_to_result_ms": round((t_sent - t_enter) * 1000, 1),
                 }
             record["metrics"] = per_type
+            record["validation"] = {"echoed": True, "marker_rendered": True,
+                                    "cells_done": len(per_type) == 4}
             record["resource"] = {"rss_after_cells": rss_tree(app.pid)}
         finally:
             app.kill_tree()
@@ -180,6 +185,8 @@ class KernelMultiKernel(Benchmark):
                 "daemon_tree_rss_mb": rss_total.get("rss_mb"),
                 "marginal_rss_per_kernel_mb": round(rss_total.get("rss_mb", 0) / max(1, self.n_sessions), 1),
             }
+            record["validation"] = {"echoed": True, "marker_rendered": True,
+                                    "kernels_done": len(first_cell) == self.n_sessions}
         finally:
             for a in apps:
                 a.kill_tree()

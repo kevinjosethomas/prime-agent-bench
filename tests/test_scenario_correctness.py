@@ -132,7 +132,7 @@ def _ctx(tmp_path):
     trial.mkdir(parents=True, exist_ok=True)
     ctx: TrialContext = {"trial_dir": trial, "home": trial / "home",
                          "work": trial / "work", "tmp": trial / "tmp",
-                         "agent_dir": None, "daemon_socket": None}
+                         "agent_dir": None, "daemon_socket": trial / "d.sock"}
     for key in ("home", "work", "tmp"):
         ctx[key].mkdir(parents=True, exist_ok=True)
     return ctx
@@ -413,3 +413,219 @@ def test_version_info_collects_identity_without_a_hash_pin(tmp_path, monkeypatch
     info = product.version_info()
     assert info["binary_sha256"]
     assert info["binary_bytes"] == len(b"fake-binary")
+
+
+# ---- validation strictness + kernel evidence checks (integration review) ----
+
+def test_validate_rejects_missing_or_empty_validation():
+    from bench.adapters.benchmarks.daemon_boot import DaemonBoot
+    bench = DaemonBoot({})
+    assert bench.validate({"metrics": {"spawn_to_accept_ms": 1.0}}) is False  # no evidence
+    assert bench.validate({"validation": {}}) is False                        # empty evidence
+    assert bench.validate({"validation": {"accept": True}}) is True
+    assert bench.validate({"validation": {"accept": False, "hello": True}}) is False
+
+
+class KernelFakeSession(Session):
+    """Scripted TUI: Enter renders the reply carrying the expected sentinel."""
+
+    def __init__(self):
+        self.t_spawn = now()
+        self.t_first_paint = now()
+        self.pid = None
+        self.screen = ["ready"]
+        self.pending = None
+        self.replies: list[tuple[float, str]] = []
+
+    @staticmethod
+    def _reply_for(prompt: str | None) -> str:
+        if prompt is None:
+            return "ok"
+        if "marker cell" in prompt:
+            return "KREADY-bench marker rendered"
+        if prompt.startswith("cell "):
+            return f"CELLDONE-{prompt.split()[1]} ok"
+        if prompt.startswith("build the "):
+            return f"STATEBUILT-{prompt.split()[2]} done"
+        if "check the state" in prompt:
+            return "STATECHECK ok"
+        return "ok"
+
+    def send(self, data):
+        data = data if isinstance(data, str) else data.decode()
+        if data == "/compact\r":
+            self.replies.append((now(), "Checkpoint summary"))
+            self.screen.append("Checkpoint summary")
+            return now()
+        if data.endswith("\r"):
+            reply = self._reply_for(self.pending)
+            self.replies.append((now(), reply))
+            self.screen.append(reply)
+            self.pending = None
+            return now()
+        if data.strip():
+            self.pending = data
+        return now()
+
+    def screen_text(self):
+        return "\n".join(self.screen)
+
+    def alive(self):
+        return True
+
+    def kill_tree(self, sig=None):
+        pass
+
+    def start_echo_watch(self, token):
+        pass
+
+    def wait_echo(self, timeout=2.0):
+        return now()
+
+    def probe_input_ready(self, token="Zq7x", retry_every=0.5,
+                          timeout=45.0, start_ts=None):
+        return {"gap_ms": 1.0, "echo_ts_offset_ms": 10.0, "sends": 1,
+                "dropped_probes": 0, "chars_sent": 5, "probe_token": f"{token}01"}
+
+    def wait_output_after(self, t_start, timeout=10.0):
+        for ts, _ in self.replies:
+            if ts > t_start:
+                return ts
+        raise TimeoutError("no scripted reply after t_start")
+
+
+def _kernel_env(monkeypatch):
+    from bench.adapters.benchmarks import kernel as kernel_mod
+    from bench.adapters.benchmarks import kernel_state as state_mod
+    monkeypatch.setattr(kernel_mod, "rss_tree", lambda pid: {"rss_mb": 1.0})
+    monkeypatch.setattr(state_mod, "rss_tree", lambda pid: {"rss_mb": 1.0})
+    return kernel_mod, state_mod
+
+
+def _run_kernel_benchmark(monkeypatch, benchmark, tmp_path, name="fakecap"):
+    from bench.adapters.benchmarks import kernel as kernel_mod
+    _kernel_env(monkeypatch)
+    session = KernelFakeSession()
+    product = FakeProduct({"layout": None, "product": {}, "mock": {}}, session)
+    product.name = name
+    monkeypatch.setattr(kernel_mod.subprocess, "Popen",
+                        lambda *a, **k: SimpleProc())
+    record = _record()
+    benchmark.measure(product, _ctx(tmp_path), record, FakeDriver(session))
+    return record
+
+
+class SimpleProc:
+    pid = 4242
+
+    def terminate(self):
+        pass
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def test_kernel_cold_start_records_evidence(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks.kernel import KernelColdStart
+    bench = KernelColdStart({})
+    monkeypatch.setattr("bench.adapters.benchmarks.kernel.socket",
+                        _FakeSocketModule())
+    record = _run_kernel_benchmark(monkeypatch, bench, tmp_path)
+    assert record["validation"] == {"echoed": True, "marker_rendered": True}
+    assert record["metrics"]["submit_to_result_ms"] is not None
+    assert bench.validate(record) is True
+
+
+def test_kernel_cell_exec_records_evidence(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks.kernel import KernelCellExec
+    bench = KernelCellExec({})
+    monkeypatch.setattr("bench.adapters.benchmarks.kernel.socket",
+                        _FakeSocketModule())
+    record = _run_kernel_benchmark(monkeypatch, bench, tmp_path)
+    assert set(record["metrics"]) == {"simple", "multiline", "async", "subprocess"}
+    assert record["validation"] == {"echoed": True, "marker_rendered": True,
+                                    "cells_done": True}
+    assert bench.validate(record) is True
+
+
+def test_kernel_multi_kernel_records_evidence(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks.kernel import KernelMultiKernel
+    bench = KernelMultiKernel({})
+    monkeypatch.setattr("bench.adapters.benchmarks.kernel.socket",
+                        _FakeSocketModule())
+    record = _run_kernel_benchmark(monkeypatch, bench, tmp_path)
+    assert record["metrics"]["n"] == 3
+    assert record["validation"]["kernels_done"] is True
+    assert bench.validate(record) is True
+
+
+def test_state_snapshot_records_evidence(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks.kernel_state import KernelStateSnapshot
+    _kernel_env(monkeypatch)
+    session = KernelFakeSession()
+    product = FakeProduct({"layout": None, "product": {}, "mock": {}}, session)
+    product.name = "fakecap"
+    bench = KernelStateSnapshot({})
+    record = _record()
+    bench.measure(product, _ctx(tmp_path), record, FakeDriver(session))
+    assert record["validation"] == {"echoed": True, "state_built": True,
+                                    "compacted": True, "state_preserved": True}
+    assert bench.validate(record) is True
+
+
+def test_restart_restore_without_kernel_kill_is_invalid(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks import kernel_state as state_mod
+    from bench.adapters.benchmarks.kernel_state import KernelRestartRestore
+    _kernel_env(monkeypatch)
+    monkeypatch.setattr(state_mod, "kernel_pids", lambda ctx, product: [])
+    session = KernelFakeSession()
+    product = FakeProduct({"layout": None, "product": {}, "mock": {}}, session)
+    product.name = "fakecap"
+    bench = KernelRestartRestore({})
+    record = _record()
+    bench.measure(product, _ctx(tmp_path), record, FakeDriver(session))
+    assert record["metrics"]["kernels_killed"] == 0
+    assert record["validation"]["kernel_killed"] is False
+    assert bench.validate(record) is False  # bogus "restart": nothing was killed
+
+
+def test_restart_restore_valid_when_kernel_was_killed(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks import kernel_state as state_mod
+    from bench.adapters.benchmarks.kernel_state import KernelRestartRestore
+    _kernel_env(monkeypatch)
+    monkeypatch.setattr(state_mod, "kernel_pids", lambda ctx, product: [4242])
+    monkeypatch.setattr(state_mod.os, "kill", lambda pid, sig: None)
+    session = KernelFakeSession()
+    product = FakeProduct({"layout": None, "product": {}, "mock": {}}, session)
+    product.name = "fakecap"
+    bench = KernelRestartRestore({})
+    record = _record()
+    bench.measure(product, _ctx(tmp_path), record, FakeDriver(session))
+    assert record["validation"]["kernel_killed"] is True
+    assert bench.validate(record) is True
+
+
+class _FakeSocketModule:
+    """socket stand-in so the daemon-wait loop connects immediately."""
+
+    class socket:
+        def __init__(self, family=None, type=None):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def settimeout(self, t):
+            pass
+
+        def connect(self, path):
+            return None
+
+        def close(self):
+            pass
+
+    AF_UNIX = 1
+    SOCK_STREAM = 1

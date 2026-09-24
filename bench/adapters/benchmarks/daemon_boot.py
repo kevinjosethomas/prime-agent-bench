@@ -121,4 +121,8 @@ class DaemonBoot(Benchmark):
             "hello_ok": hello_ok,
             "create_ok": create_ok,
         }
+        # the benchmark's boundary is the full chain: accept -> hello -> create;
+        # a partial chain is an incomplete measurement, not a fast spawn
+        record["validation"] = {"accept": t_accept is not None, "hello": hello_ok,
+                                "create": create_ok}
         record["resource"] = {"loadavg_before": t_load}
