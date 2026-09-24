@@ -11,6 +11,10 @@
   version scheme and does NOT correspond to the pinned source;
   `product.yaml install.npm_version` records the SOURCE version — the
   binary is built from the pinned source, never packed from npm
+  (`npm pack @mariozechner/pi-coding-agent@0.87.1` 404s: the number is
+  the source package version, not a published npm release — do NOT use
+  it for `compare.install_disk` on pi; the pi footprint is the
+  built-from-source vendor payload, not an npm pack)
 
 ## Where auth comes from
 - `~/.prime/agent/auth.json` (preprovisioned Prime auth copied into the
