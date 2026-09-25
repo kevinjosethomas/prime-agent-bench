@@ -1,0 +1,54 @@
+[20260925-024951] plan: [{"kernel_cold_start": ["kernel.cold_start"]}, {"kernel_cell_exec": ["kernel.cell_exec"]}, {"kernel_multi_kernel_1": ["kernel.multi_kernel_1"]}, {"kernel_multi_kernel_3": ["kernel.multi_kernel_3"]}, {"kernel_multi_kernel_10": ["kernel.multi_kernel_10"]}, {"kernel_restart_restore_10MB": ["kernel.restart_restore_10MB"]}, {"kernel_state_snapshot_1MB": ["kernel.state_snapshot_1MB"]}, {"kernel_state_snapshot_10MB": ["kernel.state_snapshot_10MB"]}, {"kernel_state_snapshot_50MB": ["kernel.state_snapshot_50MB"]}]
+[kernel_multi_kernel_1] provisioned as ccqyxs7l9l5ggwlm5bwptxqq (vm)
+[kernel_state_snapshot_10MB] provisioned as uhaj8cdnlpbct5rsankkj6gr (vm)
+[kernel_cell_exec] provisioned as yfumas2doj9t1rt1j5ofk3hz (vm)
+[kernel_multi_kernel_3] provisioned as od82bn0kte5qy7ltczatqa4z (vm)
+[kernel_cold_start] provisioned as kih5koj2unzw3czk2jtanak9 (vm)
+[kernel_state_snapshot_1MB] provisioned as uw1gji483uy6wkhsxzldzlmh (vm)
+[kernel_restart_restore_10MB] provisioned as agnbk7sbkpj8ccwz4tak0uxs (vm)
+[kernel_multi_kernel_10] provisioned as z2oxegrqh6zz5otttbn9aklc (vm)
+[kernel_state_snapshot_10MB] running bootstrap
+[kernel_cell_exec] running bootstrap
+[kernel_cold_start] running bootstrap
+[kernel_multi_kernel_10] running bootstrap
+[kernel_multi_kernel_3] running bootstrap
+[kernel_state_snapshot_1MB] running bootstrap
+[kernel_restart_restore_10MB] running bootstrap
+[kernel_multi_kernel_1] running bootstrap
+[kernel_state_snapshot_50MB] provisioned as ljnuycs9olukvp15x2p0t066 (vm)
+[kernel_state_snapshot_50MB] running bootstrap
+[kernel_cold_start] reference 1286ms
+[kernel_cell_exec] reference 1262ms
+[kernel_multi_kernel_1] reference 1367ms
+[kernel_multi_kernel_3] reference 1269ms
+[kernel_multi_kernel_10] reference 1226ms
+[kernel_restart_restore_10MB] reference 1432ms
+[kernel_state_snapshot_1MB] reference 1306ms
+[kernel_state_snapshot_10MB] reference 1277ms
+[kernel_state_snapshot_50MB] reference 1226ms
+[kernel_multi_kernel_1] reference outlier +7.0% -> replacing
+[kernel_multi_kernel_1] provisioned as yspw9zizsjkvokxpnhgiihp7 (vm)
+[kernel_multi_kernel_1] running bootstrap
+[kernel_multi_kernel_1] replacement reference 1324ms
+[kernel_restart_restore_10MB] reference outlier +12.1% -> replacing
+[kernel_restart_restore_10MB] provisioned as yq36wkvvwymlnj05q2hm8msd (vm)
+[kernel_restart_restore_10MB] running bootstrap
+[kernel_restart_restore_10MB] replacement reference 1307ms
+[kernel_cold_start] wave exit 0 in 438s
+[kernel_cell_exec] wave exit 1 in 2712s
+[kernel_multi_kernel_1] wave exit 0 in 655s
+[kernel_multi_kernel_3] wave exit 0 in 595s
+[kernel_multi_kernel_10] wave exit 0 in 1558s
+[kernel_restart_restore_10MB] wave exit 1 in 10845s
+[kernel_state_snapshot_1MB] wave exit 1 in 10666s
+[kernel_state_snapshot_10MB] wave exit 1 in 10684s
+[kernel_state_snapshot_50MB] wave exit 1 in 10242s
+[kernel_cell_exec] wave failed; re-provision (retry 1)
+[kernel_cell_exec] provisioned as ccjhxihjvhxa2qpne70yc5n4 (vm)
+[kernel_cell_exec] running bootstrap
+[kernel_restart_restore_10MB] wave failed; re-provision (retry 1)
+[kernel_restart_restore_10MB] provisioned as g1b39zeljzj011ud00v9g0pr (vm)
+[kernel_restart_restore_10MB] running bootstrap
+[kernel_restart_restore_10MB] wave failed; re-provision (retry 2)
+[kernel_restart_restore_10MB] provisioned as o9o2ksma5nfeuhe2r99o6ql4 (vm)
+[kernel_restart_restore_10MB] running bootstrap
