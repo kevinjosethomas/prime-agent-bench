@@ -1,0 +1,230 @@
+{
+ "id": "baseline-7152746b",
+ "kind": "baseline-reference",
+ "base_revision": "7152746b99f6767843bb40b4674a23a5a501fdc0",
+ "binary_sha256": "fed929fefd3e3e6a9946e150e683926e953578df262ce0aafeb39362e7656a17",
+ "binary_bytes": 206444496,
+ "measured_at": "2026-09-25T22:27-23:26Z",
+ "method": "5 trials/suite, pty driver, offline mock, 16c/32GB Prime VM (hillclimb-baseline-rust), sequential load-gated",
+ "suites": {
+  "compare.cold_start": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "dropped_probes": {
+     "p50": 5,
+     "n": 5
+    },
+    "erase_ms": {
+     "p50": 11286.5,
+     "n": 5
+    },
+    "erase_ok": {
+     "p50": 1,
+     "n": 5
+    },
+    "frame_bursts": {
+     "p50": 34,
+     "n": 5
+    },
+    "input_ready_gap_ms": {
+     "p50": 281.1,
+     "n": 5
+    },
+    "launch_to_first_paint_ms": {
+     "p50": 59.6,
+     "n": 5
+    },
+    "launch_to_ready_ms": {
+     "p50": 341.5,
+     "n": 5
+    },
+    "pty_bytes": {
+     "p50": 7021,
+     "n": 5
+    }
+   }
+  },
+  "compare.memory_idle_load": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "launch_to_ready_ms": {
+     "p50": 24824.5,
+     "n": 5
+    }
+   }
+  },
+  "compare.msg_send": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "submit_to_ack_ms": {
+     "p50": 4.7,
+     "n": 5
+    },
+    "submit_to_settle_ms": {
+     "p50": 693.6,
+     "n": 5
+    }
+   }
+  },
+  "compare.scroll_typing": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "launch_to_ready_ms": {
+     "p50": 23363.8,
+     "n": 5
+    },
+    "pty_bytes": {
+     "p50": 77948,
+     "n": 5
+    },
+    "typing_ok": {
+     "p50": 1,
+     "n": 5
+    },
+    "wheel_bursts": {
+     "p50": 1,
+     "n": 5
+    },
+    "wheel_bytes": {
+     "p50": 1320,
+     "n": 5
+    }
+   }
+  },
+  "compare.warm_start": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "dropped_probes": {
+     "p50": 5,
+     "n": 5
+    },
+    "erase_ms": {
+     "p50": 11280.8,
+     "n": 5
+    },
+    "erase_ok": {
+     "p50": 1,
+     "n": 5
+    },
+    "frame_bursts": {
+     "p50": 34,
+     "n": 5
+    },
+    "input_ready_gap_ms": {
+     "p50": 295.7,
+     "n": 5
+    },
+    "launch_to_first_paint_ms": {
+     "p50": 6.2,
+     "n": 5
+    },
+    "launch_to_ready_ms": {
+     "p50": 301.6,
+     "n": 5
+    },
+    "pty_bytes": {
+     "p50": 7065,
+     "n": 5
+    }
+   }
+  },
+  "daemon.boot": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "create_ok": {
+     "p50": 1,
+     "n": 5
+    },
+    "hello_ok": {
+     "p50": 1,
+     "n": 5
+    },
+    "spawn_to_accept_ms": {
+     "p50": 76.5,
+     "n": 5
+    },
+    "spawn_to_first_create_ms": {
+     "p50": 379.4,
+     "n": 5
+    },
+    "spawn_to_hello_ms": {
+     "p50": 78.6,
+     "n": 5
+    }
+   }
+  },
+  "session.agent_view_roundtrip": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "agents_chrome_ms": {
+     "p50": 118.1,
+     "n": 5
+    },
+    "agents_to_tail_ms": {
+     "p50": 23499.5,
+     "n": 5
+    },
+    "chat_ready_after_ms": {
+     "p50": 23502.5,
+     "n": 5
+    },
+    "chat_to_agents_ms": {
+     "p50": 118.8,
+     "n": 5
+    },
+    "launch_to_ready_ms": {
+     "p50": 24176.9,
+     "n": 5
+    },
+    "pty_bytes": {
+     "p50": 47202,
+     "n": 5
+    },
+    "roundtrip_ok": {
+     "p50": 1,
+     "n": 5
+    }
+   }
+  },
+  "session.cold_open_10mib": {
+   "trials": 5,
+   "validated": 5,
+   "metrics": {
+    "frame_bursts": {
+     "p50": 406,
+     "n": 5
+    },
+    "input_ready_gap_ms": {
+     "p50": 24954.2,
+     "n": 5
+    },
+    "launch_to_first_paint_ms": {
+     "p50": 90.0,
+     "n": 5
+    },
+    "launch_to_ready_ms": {
+     "p50": 25249.2,
+     "n": 5
+    },
+    "launch_to_sentinel_ms": {
+     "p50": 25251.9,
+     "n": 5
+    },
+    "pty_bytes": {
+     "p50": 75500,
+     "n": 5
+    }
+   }
+  }
+ },
+ "results_tarball": "/home/ubuntu/hillclimb/baseline-results-7152746b.tar.gz",
+ "results_tarball_sha256": "2bf5f782fe6d49569e9c74d4c257ca1b48428205f97b18dcece0eb3258f3c598",
+ "note": "Reference point for 7152746b-based lanes. NOTE: origin/rust moved to 3c018a30 then 3940a1f23 during measurement (product merges); PRs need pairs measured on the PR-time head per the stability-window policy."
+}
