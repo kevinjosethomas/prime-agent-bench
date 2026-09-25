@@ -17,7 +17,11 @@ screen recording (chrome 250ms, typed text visible as typed, submit ~1.1s) match
 answered path. Campaign cmp5b readiness rows (rust 2068/2045ms cold/warm) measured the
 unanswered-PTY worst case.
 
-Implications: (1) product fix = 150ms bounded own query (recovery ~1.7s/session for
-iTerm2/Terminal.app/SSH users); (2) harness needs terminal-realism mode (answered-PTY
-driver) and a re-measure of readiness rows in both worlds; (3) Kevin experience validated
-by lab + field.
+Implications: (1) the current 150ms fallback does NOT unblock crossterm's shared reader
+(only the library poll returning unblocks it) - a genuinely bounded query or crossterm
+upgrade is a PROPOSED product change whose recovery must be proven by its own A/B;
+(2) harness needs terminal-realism mode (answered-PTY driver) and a re-measure of
+readiness rows in both worlds; (3) Kevin experience validated by lab + field;
+(4) the answered-vs-unanswered legs also differ in key encoding (CSI-u vs legacy) and
+carry +200ms deliberate pacing on the answered leg - report exact boundaries, do not
+attribute the launch-to-reply delta solely to the probe timeout.
