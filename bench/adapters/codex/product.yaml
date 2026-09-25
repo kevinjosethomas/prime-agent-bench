@@ -1,35 +1,42 @@
-# Codex CLI — the complete product config, one file.
 binary: /usr/bin/codex
 revision: npm@latest
-# msg_routing: real-api — codex 0.156 rejects the mock provider's chat
-# wire_api, so submitted messages hit the live API; with the settled
-# dummy-key state that is a 401. message-settle scenarios therefore do
-# not measure a settle for codex (the reply is unknowable); the ack
-# stays measured and rows record this regime so the result-validity
-# gate keeps them out of cross-regime rankings. Flip to mock when a
-# codex accepts the mock wire (or real auth is provisioned per Kevin's
-# call) to resume comparable settles.
 msg_routing: real-api
 install:
-  installed_paths: [/usr/lib/node_modules/@openai]
-  npm_pkg: "@openai/codex"
-  npm_version: "0.156.1"
+  installed_paths:
+  - /usr/lib/node_modules/@openai
+  npm_pkg: '@openai/codex'
+  npm_version: 0.157.0
 auth_sources:
-  - {src: ~/.codex, excl: [tmp, .tmp], note: full device state; copied ChatGPT tokens do NOT authenticate a copied home}
+- src: ~/.codex
+  excl:
+  - tmp
+  - .tmp
+  note: full device state; copied ChatGPT tokens do NOT authenticate a copied home
 first_run_dialogs:
-  - marker: "3. Provide your own API key"
-    keys: ["3"]
-    intent: "welcome/login menu (copied ChatGPT tokens never authenticate a copied home)"
-  - marker: "Paste or type your API key"
-    keys: ["sk-bench-dummy-not-real", enter]
-    intent: "key box -> settled dummy-key baseline state"
-  - marker: "Press enter to continue"
-    keys: [enter]
-    intent: "generic continue"
-  - marker: "Trust and continue"
-    keys: [enter]
-    intent: "folder trust (option 1 preselected, enter confirms)"
+- marker: 3. Provide your own API key
+  keys:
+  - '3'
+  intent: welcome/login menu (copied ChatGPT tokens never authenticate a copied home)
+- marker: Paste or type your API key
+  keys:
+  - sk-bench-dummy-not-real
+  - enter
+  intent: key box -> settled dummy-key baseline state
+- marker: Press enter to continue
+  keys:
+  - enter
+  intent: generic continue
+- marker: Trust and continue
+  keys:
+  - enter
+  intent: folder trust (option 1 preselected, enter confirms)
 vendor:
-  - {src: /usr/lib/node_modules/@openai, dst: usr/lib/node_modules/@openai}
-  - {src: /usr/bin/codex, dst: usr/bin/codex}
-  - {src: ~/.codex, dst: root/.codex, exclude: [tmp, .tmp]}
+- src: /usr/lib/node_modules/@openai
+  dst: usr/lib/node_modules/@openai
+- src: /usr/bin/codex
+  dst: usr/bin/codex
+- src: ~/.codex
+  dst: root/.codex
+  exclude:
+  - tmp
+  - .tmp

@@ -57,16 +57,48 @@ class ClaudeCodeProduct(ProductAdapter):
             data.setdefault("projects", {})[str(ctx["work"])] = {"hasTrustDialogAccepted": True}
             cj.write_text(json.dumps(data))
 
+    #: the live provider this harness routes claude through when the
+    #: benchmark requests real-api routing (no OAuth state on the node):
+    #: Prime Inference's Anthropic-protocol endpoint (verified: the
+    #: messages API speaks the Anthropic wire format; personal balances
+    #: are empty, so the team header selects team billing)
+    REAL_BASE_URL = "https://api.pinference.ai/api"
+    REAL_MODEL = "anthropic/claude-fable-5"
+
+    def _prime_config(self) -> dict:
+        """The node's Prime credentials (api key + team id) for the live route."""
+        try:
+            return json.loads((Path.home() / ".prime" / "config.json").read_text())
+        except (OSError, ValueError):
+            return {}
+
     def env(self, ctx: TrialContext) -> dict:
         extra = {
             "HOME": str(ctx["home"]),
             "TMPDIR": str(ctx["tmp"]),
-            "ANTHROPIC_API_KEY": "sk-bench-dummy-not-real",
-            "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{self.mock_port}",
-            "ANTHROPIC_AUTH_TOKEN": "sk-bench-dummy-not-real",
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         }
+        if ctx.get("routing") == "real-api":
+            cfg = self._prime_config()
+            extra.update({
+                "ANTHROPIC_BASE_URL": self.REAL_BASE_URL,
+                "ANTHROPIC_AUTH_TOKEN": cfg.get("api_key", ""),
+                "ANTHROPIC_MODEL": self.REAL_MODEL,
+                "ANTHROPIC_SMALL_FAST_MODEL": self.REAL_MODEL,
+            })
+            if cfg.get("team_id"):
+                extra["ANTHROPIC_CUSTOM_HEADERS"] = f"X-Prime-Team-ID: {cfg['team_id']}"
+        else:
+            extra.update({
+                "ANTHROPIC_API_KEY": "sk-bench-dummy-not-real",
+                "ANTHROPIC_BASE_URL": f"http://127.0.0.1:{self.mock_port}",
+                "ANTHROPIC_AUTH_TOKEN": "sk-bench-dummy-not-real",
+            })
         return scrubbed_env(extra)
+
+    def model_info(self, ctx: TrialContext) -> str:
+        """The model a real-api submit routes to (evidence per row)."""
+        return self.REAL_MODEL if ctx.get("routing") == "real-api" else "mock"
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
         return [str(self.binary)]

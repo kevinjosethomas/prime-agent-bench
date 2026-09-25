@@ -27,6 +27,7 @@ class TrialContext(TypedDict, total=False):
     tmp: Path
     agent_dir: Path | None
     daemon_socket: Path | None
+    routing: str
 
 
 DialogStep = tuple[str, list[str]]

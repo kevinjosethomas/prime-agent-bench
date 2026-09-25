@@ -39,12 +39,20 @@ def harness_bundle(repo_root: Path = REPO_ROOT) -> Path:
     return bundle
 
 
-def _sandbox_config_yaml(handle, backend) -> str:
-    """The per-sandbox config: bench root, results dir, mock port."""
+def _sandbox_config_yaml(handle, backend, cfg: dict | None = None) -> str:
+    """The per-sandbox config: bench root, results dir, mock port, and the
+    controller's per-benchmark overrides (``benchmarks:`` — trial counts
+    and the msg-routing regime — so a campaign's routing decisions reach
+    the sandbox's own run_suite without touching the harness defaults)."""
+    import yaml as _yaml
     root = backend.bench_root(handle)
-    return (f"bench_root: {root}\n"
+    text = (f"bench_root: {root}\n"
             f"results_dir: {Path(root) / 'results'}\n"
             f"mock:\n  port: {handle.spec['mock_port']}\n")
+    extra = ((cfg or {}).get("benchmarks") or {})
+    if extra:
+        text += _yaml.safe_dump({"benchmarks": extra}, sort_keys=False)
+    return text
 
 
 def _upload_text(backend, handle, content: str, remote: Path) -> None:
@@ -54,7 +62,8 @@ def _upload_text(backend, handle, content: str, remote: Path) -> None:
     backend.upload(handle, tmp, remote)
 
 
-def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None) -> None:
+def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None,
+                   cfg: dict | None = None) -> None:
     """Deploy the harness bundle + sandbox config + python deps (+bootstrap).
 
     identity: the deploy-bundle provenance (revision + bundle sha256),
@@ -63,7 +72,7 @@ def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None) 
     mix deploy versions (audit F7/F8)."""
     backend.deploy(handle, bundle)
     hd = Path(backend.harness_dir(handle))
-    _upload_text(backend, handle, _sandbox_config_yaml(handle, backend),
+    _upload_text(backend, handle, _sandbox_config_yaml(handle, backend, cfg),
                  hd / "configs" / "sandbox.yaml")
     if identity:
         _upload_text(backend, handle, json.dumps(identity, indent=1),

@@ -30,6 +30,9 @@ class CodexProduct(ProductAdapter):
     name = "codex"
     display_name = "Codex CLI"
     needs_prepass = True
+    # codex 0.157's resolved default (session rollouts record model
+    # "gpt-6-sol", model_provider "openai" under the ChatGPT auth)
+    DEFAULT_MODEL = "openai/gpt-6-sol"
     # argv() ignores resume_fixture: no native Prime-JSONL resume; a
     # vendor-native history fixture (spec §F) does not exist yet.
     resume_fixture_capable = False
@@ -62,3 +65,7 @@ class CodexProduct(ProductAdapter):
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
         return [str(self.binary)]
+
+    def model_info(self, ctx: TrialContext) -> str:
+        """The model a real-api submit routes to (evidence per row)."""
+        return self.DEFAULT_MODEL

@@ -23,10 +23,12 @@ class PrimeAgentRustProduct(ProductAdapter):
     has_daemon = True
     needs_kernel_venv = True
     resume_fixture_capable = True  # argv passes --resume <fixture>
-    default_binary_subpath = "repos/prime-agent-rust/target/release/prime-agent"
+    # the install-rust.sh layout (launcher + payload under ~/.local);
+    # product.yaml is the source of truth for the live pin
+    default_binary_subpath = None
     # The campaign-verified build revision (audit F10: the earlier pin fix
     # landed in a config file no code reads, leaving the live pin stale).
-    default_revision = "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
+    default_revision = "59a9c658d870bfc31dac9a09683d1679d8791011"
 
     @property
     def binary(self) -> Path:
@@ -77,7 +79,17 @@ class PrimeAgentRustProduct(ProductAdapter):
         ctx["agent_dir"] = ctx["trial_dir"] / "agent"
         shutil.copytree(self.template_dir() / "agent", ctx["agent_dir"])
         ctx["daemon_socket"] = ctx["trial_dir"] / "d.sock"
-        write_models_json(ctx["agent_dir"], self.mock_base_url() + "/v1")
+        if ctx.get("routing") == "real-api":
+            # live routing: the product's own provider config — the settled
+            # settings.json (provider/model/onboarding state of a user who
+            # already set the product up) with the mock models.json removed
+            # (it would pin traffic to the offline mock provider)
+            settings = NODE_HOME_AUTH_PRIME / "agent" / "settings.json"
+            if settings.exists():
+                shutil.copy(settings, ctx["agent_dir"] / "settings.json")
+            (ctx["agent_dir"] / "models.json").unlink(missing_ok=True)
+        else:
+            write_models_json(ctx["agent_dir"], self.mock_base_url() + "/v1")
 
     def env(self, ctx: TrialContext) -> dict:
         cfg = {}
@@ -95,11 +107,24 @@ class PrimeAgentRustProduct(ProductAdapter):
         return scrubbed_env(extra)
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
-        argv = [str(self.binary), "--daemon-socket", str(ctx["daemon_socket"]),
-                "--provider", "prime-inference", "--model", "mock-1", "--offline"]
+        argv = [str(self.binary), "--daemon-socket", str(ctx["daemon_socket"])]
+        if ctx.get("routing") != "real-api":
+            # mock-routed launches pin the offline provider/model; live
+            # launches run the product's settled defaults (settings.json)
+            argv += ["--provider", "prime-inference", "--model", "mock-1", "--offline"]
         if resume_fixture:
             argv += ["--resume", resume_fixture]
         return argv
+
+    def model_info(self, ctx: TrialContext) -> str:
+        """The model a real-api submit routes to (evidence per row)."""
+        try:
+            settings = json.loads((ctx.get("agent_dir") / "settings.json").read_text())
+            provider = settings.get("defaultProvider") or "prime-inference"
+            model = settings.get("defaultModel") or "unknown"
+            return f"{provider}/{model}"
+        except (OSError, ValueError):
+            return "unknown"
 
     def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
         return [str(self.binary), "--mode", "daemon",

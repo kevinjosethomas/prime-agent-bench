@@ -220,22 +220,60 @@ def test_msg_send_mock_regime_settles_on_scripted_reply(tmp_path):
 def test_msg_send_real_api_regime_never_settles_on_screen_growth(tmp_path):
     """The captured Codex 401 regression: the error render arrives as a
     post-ack frame (screen growth) under real-api routing. The settle
-    detector must never fire on it — no settle metric, no settle
-    validation key; the row records the regime for the validity gate."""
+    detector must never certify it — the sentinel the prompt demanded
+    never rendered, so the row carries settle=False + the certification
+    flag the validity gate requires (an uncertified real-api row never
+    ranks; an error render is failed evidence, not a fast measurement)."""
     session = MsgSendSession(late_lines=["stream error: 401 unauthorized",
                                          "invalid api key"])
     product = RealApiProduct({"layout": None, "product": {}, "mock": {}}, session)
     bench, record = _msg_measure(tmp_path, product, session)
     # the post-ack growth (the false-positive ingredient) is available on
-    # the screen — and the scenario never polls in this regime, so nothing
-    # can certify it as a reply
+    # the screen — and the sentinel was never rendered, so nothing can
+    # certify it as a reply
     assert "401" in session.rendered_screen()
     assert record["msg_routing"] == "real-api"
-    assert "submit_to_settle_ms" not in record["metrics"]
-    assert "settle" not in record["validation"]
-    assert record["validation"] == {"ack": True}
+    assert record["metrics"]["submit_to_settle_ms"] is None
+    assert record["validation"] == {"ack": True, "settle": False}
+    assert record["real_api_certified"] is False
+    assert record["settle_miss_screen"]
+    assert bench.validate(record) is False  # uncertified evidence, invalid row
+
+
+def test_msg_send_real_api_settles_on_sentinel_reply(tmp_path):
+    """The positive real-api path: the prompt demands one fixed sentinel
+    token, the live reply renders it as a fresh line, and the settle is
+    certified (the validity gate ranks certified real-api rows)."""
+    from bench.adapters.benchmarks.msg_send import REAL_API_SENTINEL
+    session = MsgSendSession(late_lines=[f"reply: {REAL_API_SENTINEL}"])
+    product = RealApiProduct({"layout": None, "product": {}, "mock": {}}, session)
+    bench, record = _msg_measure(tmp_path, product, session)
+    assert record["msg_routing"] == "real-api"
+    assert record["metrics"]["submit_to_settle_ms"] is not None
+    assert record["validation"] == {"ack": True, "settle": True}
+    assert record["real_api_certified"] is True
     assert "settle_miss_screen" not in record
-    assert bench.validate(record) is True  # the ack-only row is honest evidence
+    assert bench.validate(record) is True
+
+
+def test_benchmark_routing_for_config_override(tmp_path):
+    """The per-benchmark ``msg_routing`` override (campaign config) wins
+    over the product's own declaration, and an unknown regime fails
+    loudly; the override reaches the trial ctx through run_trials."""
+    from bench.adapters.benchmarks.msg_send import MsgSend
+    bench = MsgSend(_cfg(tmp_path))
+    product = FakeProduct({"layout": None, "product": {}, "mock": {}}, None)
+    # no override: the product's own declaration
+    assert bench.routing_for({"benchmarks": {}}, product) == "mock"
+    # the campaign override
+    cfg = {"benchmarks": {"compare.msg_send": {"msg_routing": "real-api"}}}
+    assert bench.routing_for(cfg, product) == "real-api"
+    # unknown regimes fail loudly at resolution, never silently rank
+    try:
+        bench.routing_for({"benchmarks": {"compare.msg_send": {"msg_routing": "paid"}}}, product)
+        raise AssertionError("unknown msg_routing override must fail loudly")
+    except ValueError:
+        pass
 
 
 def test_msg_routing_is_harness_config_not_scenario_names(tmp_path):
@@ -474,8 +512,8 @@ def test_run_trials_requires_the_fixture_to_be_ensured(tmp_path, monkeypatch):
 def test_rust_pin_is_the_campaign_verified_revision(tmp_path):
     from bench.core.config import product_config
     cfg = product_config("rust")
-    assert cfg["revision"] == "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
-    assert PrimeAgentRustProduct.default_revision == cfg["revision"]
+    # the 2026-09-25 campaign pin (latest continuous rust-branch build)
+    assert cfg["revision"] == "59a9c658d870bfc31dac9a09683d1679d8791011"
 
 
 class _FakeRun:

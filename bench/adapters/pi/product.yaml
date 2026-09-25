@@ -1,16 +1,21 @@
-# Pi Mono — the complete product config, one file.
 binary: ~/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
-revision: b45597504eeaba1f11a9920a1d1048c361ed4b8e
+revision: d6af72e1857cfb10b41d8ff8e69f0d72b4cf6d31
 install:
-  installed_paths: [~/bench/repos/pi-mono/node_modules, ~/bench/repos/pi-mono/packages]
-  npm_pkg: "@mariozechner/pi-coding-agent"
-  npm_version: "0.73.0"
+  installed_paths:
+  - ~/bench/repos/pi-mono/node_modules
+  - ~/bench/repos/pi-mono/packages
+  npm_pkg: '@earendil-works/pi-coding-agent'
+  npm_version: 0.87.1
   note: built from source; pack may 404 if unpublished
 auth_sources:
-  - {src: ~/.prime/agent/auth.json, note: the copied auth.json keeps pi authenticated (provider/model flags route traffic to the mock)}
-first_run_dialogs: []  # no first-run dialogs at the pinned revision: flags settle it
+- src: ~/.pi/agent/auth.json
+  note: pi's own credentials (openai API key + openai-codex OAuth) in pi's auth.json
+    format
+first_run_dialogs: []
 vendor:
-  - {src: ~/bench/repos/pi-mono, dst: root/bench/repos/pi-mono}
-  - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}
-  - {src: ~/.prime/agent/settings.json, dst: root/.prime/agent/settings.json}
-  - {src: ~/.prime/config.json, dst: root/.prime/config.json}
+- src: ~/bench/repos/pi-mono
+  dst: root/bench/repos/pi-mono
+- src: ~/.pi/agent/auth.json
+  dst: root/.pi/agent/auth.json
+- src: ~/.prime/config.json
+  dst: root/.prime/config.json
