@@ -48,16 +48,22 @@ class PrimeAgentRustProduct(ProductAdapter):
         and the sha256/bytes are collected from the binary itself. When the
         product.yaml pins ``binary_sha256``, a mismatch fails loudly: a
         stale pin or a swapped binary must never masquerade as collected
-        provenance (audit F10).
+        provenance (audit F10). The pinned binary may be the install-rust.sh
+        launcher (a 1KB script exec'ing the payload); the sha256/bytes then
+        target the RESOLVED payload binary — the file that actually runs.
         """
         from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60)
-        binary_sha256 = sha256_file(self.binary)
+        payload = (self.binary.parent / ".." / "share" / "prime-agent-rust"
+                   / "prime-agent").resolve()
+        evidence = payload if payload.exists() else self.binary
+        binary_sha256 = sha256_file(evidence)
         info = {"version": v.stdout.strip() or v.stderr.strip(),
                 "revision": self.product_cfg.get("revision", self.default_revision),
                 "binary": str(self.binary),
+                "payload": str(evidence),
                 "binary_sha256": binary_sha256,
-                "binary_bytes": self.binary.stat().st_size}
+                "binary_bytes": evidence.stat().st_size}
         pinned = self.product_cfg.get("binary_sha256")
         if pinned and pinned != binary_sha256:
             raise RuntimeError(

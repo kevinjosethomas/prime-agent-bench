@@ -1,9 +1,9 @@
-binary: ~/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
+binary: ~/bench-cmp5/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
 revision: d6af72e1857cfb10b41d8ff8e69f0d72b4cf6d31
 install:
   installed_paths:
-  - ~/bench/repos/pi-mono/node_modules
-  - ~/bench/repos/pi-mono/packages
+  - ~/bench-cmp5/repos/pi-mono/node_modules
+  - ~/bench-cmp5/repos/pi-mono/packages
   npm_pkg: '@earendil-works/pi-coding-agent'
   npm_version: 0.87.1
   note: built from source; pack may 404 if unpublished
@@ -13,7 +13,7 @@ auth_sources:
     format
 first_run_dialogs: []
 vendor:
-- src: ~/bench/repos/pi-mono
+- src: ~/bench-cmp5/repos/pi-mono
   dst: root/bench/repos/pi-mono
 - src: ~/.pi/agent/auth.json
   dst: root/.pi/agent/auth.json
