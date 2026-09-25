@@ -1,0 +1,48 @@
+{
+ "_meta": {
+  "run": {
+   "label": "20260925-044035"
+  },
+  "harness": {
+   "git_rev": "unknown",
+   "dirty": true,
+   "bundle_sha256": "2a1c157004461c658ae1b17bd6082ba55654c90a42be12527f10fe03c7b0759c"
+  },
+  "collected_at": "2026-09-25T05:14:36+0000"
+ },
+ "products": {
+  "claude": {
+   "version": "2.1.281 (Claude Code)",
+   "revision": "npm@latest",
+   "binary": "/usr/bin/claude",
+   "binary_sha256": "56fe3da88458465fb27d7e9299dddb3fead55750fb9c2de795f233b5eea6dce1"
+  },
+  "codex": {
+   "version": "codex-cli 0.156.1",
+   "revision": "npm@0.156.1",
+   "binary": "/usr/bin/codex",
+   "binary_sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+   "auth_limited": true
+  },
+  "pi": {
+   "version": "0.87.1",
+   "revision": "b45597504eeaba1f11a9920a1d1048c361ed4b8e",
+   "binary": "node /root/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js",
+   "binary_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774"
+  },
+  "rust": {
+   "version": "0.1.0",
+   "revision": "fa9395128d8c2f1f18b14b0f634f0df25525cc25",
+   "binary": "/root/bench/repos/prime-agent-rust/target/release/prime-agent",
+   "binary_sha256": "e61c5ca7b8a2ad8cd7cef2cf5df623723550fede0ce9f487144f2671af084ed0",
+   "binary_bytes": 205867840
+  },
+  "ts": {
+   "version": "0.9.5-beta.2043.1.acc5bc0",
+   "revision": "official-beta-0.9.5-beta.2043.1.acc5bc0",
+   "binary": "/root/.local/share/prime-agent/bin/prime-agent",
+   "binary_sha256": "e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb",
+   "binary_bytes": 163595464
+  }
+ }
+}

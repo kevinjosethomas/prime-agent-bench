@@ -1,0 +1,252 @@
+wrote /home/ubuntu/bench/results/parallel/20260925-044035/summary.json
+wrote /home/ubuntu/bench/results/parallel/20260925-044035/summary.md
+wrote /home/ubuntu/bench/results/parallel/20260925-044035/summary.notion.json
+{
+ "session.cold_open_10mib/rust": {
+  "a_p50": 2084.3,
+  "b_p50": 2078.2,
+  "spread_pct": 0.3,
+  "valid": true
+ },
+ "session.cold_open_10mib/ts": {
+  "a_p50": 938.8,
+  "b_p50": 906.7,
+  "spread_pct": 3.5,
+  "valid": true
+ },
+ "compare.scroll_typing/rust": {
+  "a_p50": 1.1,
+  "b_p50": 1.1,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.scroll_typing/ts": {
+  "a_p50": 3.3,
+  "b_p50": 3.2,
+  "spread_pct": 3.1,
+  "valid": true
+ },
+ "compare.scroll_typing/pi": {
+  "a_p50": 3.3,
+  "b_p50": 3.8,
+  "spread_pct": 15.2,
+  "valid": false
+ },
+ "daemon.boot/rust": {
+  "a_p50": 51.0,
+  "b_p50": 46.0,
+  "spread_pct": 10.9,
+  "valid": false
+ },
+ "daemon.boot/ts": {
+  "a_p50": 125.6,
+  "b_p50": 118.9,
+  "spread_pct": 5.6,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/rust": {
+  "a_p50": 119.3,
+  "b_p50": 119.3,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/rust/agents_to_tail_ms": {
+  "a_p50": 22936.1,
+  "b_p50": 22820.8,
+  "spread_pct": 0.5,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/rust/chat_ready_after_ms": {
+  "a_p50": 22942.0,
+  "b_p50": 22823.8,
+  "spread_pct": 0.5,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/ts": {
+  "a_p50": 65.3,
+  "b_p50": 67.0,
+  "spread_pct": 2.6,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/ts/agents_to_tail_ms": {
+  "a_p50": 1785.8,
+  "b_p50": 1808.6,
+  "spread_pct": 1.3,
+  "valid": true
+ },
+ "session.agent_view_roundtrip/ts/chat_ready_after_ms": {
+  "a_p50": 1793.2,
+  "b_p50": 1820.1,
+  "spread_pct": 1.5,
+  "valid": true
+ },
+ "compare.msg_send/rust": {
+  "a_p50": 38.2,
+  "b_p50": 33.0,
+  "spread_pct": 15.8,
+  "valid": false
+ },
+ "compare.msg_send/rust/submit_to_settle_ms": {
+  "a_p50": 750.3,
+  "b_p50": 747.4,
+  "spread_pct": 0.4,
+  "valid": true
+ },
+ "compare.msg_send/ts": {
+  "a_p50": 2.5,
+  "b_p50": 2.6,
+  "spread_pct": 4.0,
+  "valid": true
+ },
+ "compare.msg_send/ts/submit_to_settle_ms": {
+  "a_p50": 900.2,
+  "b_p50": 861.5,
+  "spread_pct": 4.5,
+  "valid": true
+ },
+ "compare.msg_send/claude": {
+  "a_p50": 57.9,
+  "b_p50": 82.1,
+  "spread_pct": 41.8,
+  "valid": false
+ },
+ "compare.msg_send/claude/submit_to_settle_ms": {
+  "a_p50": 717.1,
+  "b_p50": 708.6,
+  "spread_pct": 1.2,
+  "valid": true
+ },
+ "compare.msg_send/codex": {
+  "a_p50": 0.4,
+  "b_p50": 0.3,
+  "spread_pct": 33.3,
+  "valid": false
+ },
+ "compare.msg_send/codex/submit_to_settle_ms": {
+  "a_p50": 1014.6,
+  "b_p50": 975.0,
+  "spread_pct": 4.1,
+  "valid": true
+ },
+ "compare.msg_send/pi": {
+  "a_p50": 0.7,
+  "b_p50": 0.7,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.msg_send/pi/submit_to_settle_ms": {
+  "a_p50": 688.3,
+  "b_p50": 688.5,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.install_disk/rust": {
+  "a_p50": 205867840,
+  "b_p50": 205867840,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.install_disk/ts": {
+  "a_p50": 172147733,
+  "b_p50": 172147733,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.install_disk/claude": {
+  "a_p50": 474960387,
+  "b_p50": 474960387,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.install_disk/codex": {
+  "a_p50": 386998144,
+  "b_p50": 386998144,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.install_disk/pi": {
+  "a_p50": 466087714,
+  "b_p50": 466087714,
+  "spread_pct": 0.0,
+  "valid": true
+ },
+ "compare.warm_start/rust": {
+  "a_p50": 2040.8,
+  "b_p50": 2053.8,
+  "spread_pct": 0.6,
+  "valid": true
+ },
+ "compare.warm_start/ts": {
+  "a_p50": 558.9,
+  "b_p50": 568.6,
+  "spread_pct": 1.7,
+  "valid": true
+ },
+ "compare.warm_start/claude": {
+  "a_p50": 280.9,
+  "b_p50": 277.6,
+  "spread_pct": 1.2,
+  "valid": true
+ },
+ "compare.warm_start/codex": {
+  "a_p50": 294.8,
+  "b_p50": 294.4,
+  "spread_pct": 0.1,
+  "valid": true
+ },
+ "compare.warm_start/pi": {
+  "a_p50": 190.7,
+  "b_p50": 183.4,
+  "spread_pct": 4.0,
+  "valid": true
+ },
+ "compare.memory_idle_load/rust": {
+  "a_p50": 203.0,
+  "b_p50": 206.7,
+  "spread_pct": 1.8,
+  "valid": true
+ },
+ "compare.memory_idle_load/ts": {
+  "a_p50": 694.1,
+  "b_p50": 696.7,
+  "spread_pct": 0.4,
+  "valid": true
+ },
+ "compare.memory_idle_load/pi": {
+  "a_p50": 193.4,
+  "b_p50": 193.0,
+  "spread_pct": 0.2,
+  "valid": true
+ },
+ "compare.cold_start/rust": {
+  "a_p50": 2076.9,
+  "b_p50": 2096.6,
+  "spread_pct": 0.9,
+  "valid": true
+ },
+ "compare.cold_start/ts": {
+  "a_p50": 694.2,
+  "b_p50": 679.1,
+  "spread_pct": 2.2,
+  "valid": true
+ },
+ "compare.cold_start/claude": {
+  "a_p50": 279.3,
+  "b_p50": 274.4,
+  "spread_pct": 1.8,
+  "valid": true
+ },
+ "compare.cold_start/codex": {
+  "a_p50": 295.5,
+  "b_p50": 296.0,
+  "spread_pct": 0.2,
+  "valid": true
+ },
+ "compare.cold_start/pi": {
+  "a_p50": 241.4,
+  "b_p50": 255.1,
+  "spread_pct": 5.7,
+  "valid": true
+ }
+}
+EXIT=0
