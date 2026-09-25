@@ -1,0 +1,37 @@
+{
+ "note": "cmp5 extra redaction beyond --no-secrets (qual finding)",
+ "final_sha256": "0866b60930dac1da7aa523f0060211b6738965d568e5e3a56e14f3a048c3a083"
+}# campaign-full-five.yaml — DRAFT (untracked until Kevin's host decision + go).
+# The five-product campaign: declared cohorts, strict gates, ranks only via
+# aa.required. Launch protocol (owner: parent session):
+#   1. origin/rust freshness re-check at launch; if drifted from 7379b3b69,
+#      ~6min incremental rebuild + verify + re-pin before anything runs.
+#   2. Kill any process on the mock port + verify FREE (the runner reuses any
+#      live 8788 listener — stale-server hazard flagged by the qual worker).
+#   3. Freeze the Rust pin across ALL waves (7379b3b69 / binary 28501839...).
+#   4. cmp-v4 numbers stay labeled HISTORIC (bdf82f4f1); this campaign is the
+#      only source of current-pin numbers.
+# The benchmark-node layout (the orchestrator + collection host).
+bench_root: ~/bench
+results_dir: ~/bench/results
+mock:
+  port: 8788
+
+product_order: [rust, ts, claude, codex, pi]
+
+aa:
+  spread_threshold_pct: 10.0
+  required: true
+  # 20 = the calibration default: 10 trials per BALANCED half
+  trials: 20
+  expected_products:
+    compare.cold_start: [rust, ts, claude, codex, pi]
+    compare.msg_send: [rust, ts, claude, codex, pi]
+    compare.scroll_typing: [rust, ts, pi]
+    compare.warm_start: [rust, ts, claude, codex, pi]
+    compare.memory_idle_load: [rust, ts, pi]
+    compare.install_disk: [rust, ts, claude, codex]
+    session.cold_open_10mib: [rust, ts]
+    session.agent_view_roundtrip: [rust, ts]
+    daemon.boot: [rust, ts]
+  drift_threshold_pct: 10.0
