@@ -300,13 +300,17 @@ def _load_trial_rows(results_dir: Path):
     return rows_by_file, bad_lines
 
 
-def _scrub_versions(versions: dict) -> dict:
-    """versions.json minus machine paths (binary paths), provenance kept."""
-    out = {"_meta": versions.get("_meta", {}), "products": {}}
+def _scrub_versions(versions: dict, drops: defaultdict) -> dict:
+    """versions.json minus machine paths: binary paths dropped (counted
+    like row drops), every remaining string through the scrub pipeline —
+    the harness provenance note redacts like a row string, never verbatim."""
+    out = {"_meta": {}, "products": {}}
+    out["_meta"] = _scrub(dict(versions.get("_meta") or {}), drops)
     for name, info in (versions.get("products") or {}).items():
-        entry = dict(info)
-        entry.pop("binary", None)
-        out["products"][name] = entry
+        entry = dict(info or {})
+        if entry.pop("binary", None) is not None:
+            drops["binary"] += 1
+        out["products"][name] = _scrub(entry, drops)
     return out
 
 
@@ -387,7 +391,8 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
                                  f"{MAX_TEXT_CHARS} chars: "
                                  + ", ".join(report["oversize"][:3])})
                 continue
-            drops.update(report["dropped_keys"])
+            for key, n in report["dropped_keys"].items():
+                drops[key] += n
             redactions += report["path_redactions"]
             creds += report["credential_redactions"]
             screens += report["screen_reductions"]
@@ -408,7 +413,7 @@ def build_records_bundle(results_dir, cfg: dict, *, label: str | None = None,
     versions = None
     versions_path = results_dir / "versions.json"
     if versions_path.exists():
-        versions = _scrub_versions(json.loads(versions_path.read_text()))
+        versions = _scrub_versions(json.loads(versions_path.read_text()), drops)
 
     kept_rows = [r for kept in kept_by_file.values() for r in kept]
 

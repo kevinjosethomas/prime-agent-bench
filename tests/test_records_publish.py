@@ -161,7 +161,9 @@ def write_results(tmp_path: Path, *, labels=(LABEL, "other-campaign")) -> Path:
                       "screen_tail": tail}) + "\n")
     (root / "versions.json").write_text(json.dumps({
         "_meta": {"run": _run(),
-                  "harness": {"git_rev": "f442a9d", "dirty": False},
+                  "harness": {"git_rev": "f442a9d", "dirty": False,
+                              "note": "code-only redeploy; original "
+                                      "/root/bench-harness untouched"},
                   "collected_at": "2026-09-24T12:00:00+0000"},
         "products": {"rust": {"version": "0.9.5", "revision": "bdf82f4f",
                               "binary": "/root/bench/prime-agent",
@@ -246,6 +248,12 @@ def test_bundle_layout_and_row_eligibility(built):
     versions = prov["source"]["versions"]
     assert versions["products"]["rust"]["binary_sha256"] == "ab" * 32
     assert "binary" not in versions["products"]["rust"]
+    # versions provenance strings scrub like row strings (path redacted)
+    assert versions["_meta"]["harness"]["note"] == (
+        "code-only redeploy; original <path> untouched")
+    # dropped keys accumulate across rows and the versions file
+    assert prov["privacy"]["dropped_keys"]["path"] == 2
+    assert prov["privacy"]["dropped_keys"]["binary"] == 1
     # settle evidence: screen text reduced to the matched markers
     settle = [json.loads(l) for l in
               (b / "settle.jsonl").read_text().splitlines()]
