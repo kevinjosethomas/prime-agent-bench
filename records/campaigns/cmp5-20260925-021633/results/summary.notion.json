@@ -1,0 +1,2300 @@
+{
+ "children": [
+  {
+   "object": "block",
+   "type": "heading_1",
+   "heading_1": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Benchmark summary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_ready_ms p50=2083.9 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_ready_ms p50=669.6 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: launch_to_ready_ms p50=270.6 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: launch_to_ready_ms p50=295.4 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: launch_to_ready_ms p50=259.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified, Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'claude', 'codex', 'pi']: uncalibrated: claude, codex, pi, rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: installed_bytes p50=205867840 (n=10), trials aa=2, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: installed_bytes p50=172147733 (n=10), trials aa=2, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: installed_bytes p50=474960387 (n=10), trials aa=2, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: installed_bytes p50=386998144 (n=10), trials aa=2, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: installed_bytes p50=466087714 (n=10), trials aa=2, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified, Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (2/20 valid rows) (2/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (2/20 valid rows) (2/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: uncalibrated \u2014 partial A/A calibration (2/20 valid rows) (2/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: uncalibrated \u2014 partial A/A calibration (2/20 valid rows) (2/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (2/20 valid rows) (2/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'claude', 'codex']: uncalibrated: claude, codex, rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.memory_idle_load"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: rss_settled_mb p50=207.7 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: rss_settled_mb p50=695.2 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: rss_settled_mb p50=193.3 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_comparable \u2014 claude has no native session-10mib-v4 fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_comparable \u2014 codex has no native session-10mib-v4 fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent, Pi Mono=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'pi']: uncalibrated: pi, rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: submit_to_ack_ms p50=37.0 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: submit_to_ack_ms p50=2.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: submit_to_ack_ms p50=81.0 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: submit_to_ack_ms p50=0.3 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: submit_to_ack_ms p50=0.7 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified, Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: unstable (aa_drift) \u2014 A/A p50 44.5 vs W1 p50 37.0 (+20.3% drift)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: unstable (aa_drift) \u2014 A/A p50 0.9 vs W1 p50 0.7 (+28.6% drift)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: unstable (aa_spread) \u2014 submit_to_ack_ms: a=0.7 b=0.9 (28.6%)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: unstable (aa_spread) \u2014 submit_to_ack_ms: a=83.5 b=94.9 (13.7%)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'claude', 'codex', 'pi']: uncalibrated: claude, codex, pi, rust, ts; unstable: claude, pi, rust"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.scroll_typing"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: typing_ms_p50 p50=1.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: typing_ms_p50 p50=3.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: typing_ms_p50 p50=3.2 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_comparable \u2014 claude has no native session-10mib-v4 fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_comparable \u2014 codex has no native session-10mib-v4 fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent, Pi Mono=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: unstable (aa_drift) \u2014 A/A p50 3.5 vs W1 p50 3.1 (+12.9% drift)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: unstable (aa_drift) \u2014 A/A p50 3.6 vs W1 p50 3.2 (+12.5% drift)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'pi']: uncalibrated: pi, rust, ts; unstable: pi, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_ready_ms p50=2041.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_ready_ms p50=548.4 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: launch_to_ready_ms p50=272.8 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: launch_to_ready_ms p50=295.5 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: launch_to_ready_ms p50=179.9 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified, Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts', 'claude', 'codex', 'pi']: uncalibrated: claude, codex, pi, rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "daemon.boot"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: spawn_to_accept_ms p50=51.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: spawn_to_accept_ms p50=113.2 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: unstable (aa_drift) \u2014 A/A p50 46.1 vs W1 p50 51.1 (+10.8% drift)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: unstable (aa_spread) \u2014 spawn_to_accept_ms: a=51.0 b=46.0 (10.9%)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts']: uncalibrated: rust, ts; unstable: rust"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: chat_to_agents_ms p50=119.8 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: chat_to_agents_ms p50=67.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts']: uncalibrated: rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.cold_open_10mib"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_complete_ms p50=2078.4 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_complete_ms p50=891.1 (n=10), trials aa=10, cmp5=10"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: uncalibrated \u2014 partial A/A calibration (10/20 valid rows) (10/20 valid A/A rows)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "ranks withheld (incomplete_cohort) \u2014 expected cohort ['rust', 'ts']: uncalibrated: rust, ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "A/A calibration"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.cold_open_10mib/rust: a=2101.8 b=2103.0 spread=0.1% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.cold_open_10mib/ts: a=915.5 b=913.6 spread=0.2% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.scroll_typing/rust: a=1.2 b=1.1 spread=9.1% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.scroll_typing/ts: a=3.7 b=3.5 spread=5.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.scroll_typing/pi: a=3.6 b=3.9 spread=8.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "daemon.boot/rust: a=51.0 b=46.0 spread=10.9% NOISY"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "daemon.boot/ts: a=114.0 b=117.5 spread=3.1% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/rust: a=119.4 b=120.2 spread=0.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/rust/agents_to_tail_ms: a=23080.0 b=23144.9 spread=0.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/rust/chat_ready_after_ms: a=23083.0 b=23148.0 spread=0.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/ts: a=69.2 b=66.7 spread=3.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/ts/agents_to_tail_ms: a=1830.4 b=1877.5 spread=2.6% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip/ts/chat_ready_after_ms: a=1837.3 b=1883.2 spread=2.5% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/rust: a=44.5 b=44.8 spread=0.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/rust/submit_to_settle_ms: a=767.5 b=775.0 spread=1.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/ts: a=2.3 b=2.5 spread=8.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/ts/submit_to_settle_ms: a=926.3 b=900.2 spread=2.9% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/claude: a=83.5 b=94.9 spread=13.7% NOISY"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/claude/submit_to_settle_ms: a=712.2 b=715.2 spread=0.4% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/codex: a=0.3 b=0.3 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/codex/submit_to_settle_ms: a=1041.7 b=1021.0 spread=2.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/pi: a=0.7 b=0.9 spread=28.6% NOISY"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send/pi/submit_to_settle_ms: a=689.8 b=690.1 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk/rust: a=205867840 b=205867840 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk/ts: a=172147733 b=172147733 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk/claude: a=474960387 b=474960387 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk/codex: a=386998144 b=386998144 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk/pi: a=466087714 b=466087714 spread=0.0% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start/rust: a=2053.3 b=2048.0 spread=0.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start/ts: a=540.1 b=548.7 spread=1.6% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start/claude: a=275.0 b=291.2 spread=5.9% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start/codex: a=295.4 b=293.7 spread=0.6% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start/pi: a=189.9 b=187.7 spread=1.2% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.memory_idle_load/rust: a=207.6 b=205.2 spread=1.2% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.memory_idle_load/ts: a=694.8 b=696.6 spread=0.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.memory_idle_load/pi: a=193.8 b=196.4 spread=1.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/rust: a=2080.7 b=2096.0 spread=0.7% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/ts: a=701.9 b=732.5 spread=4.4% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/claude: a=274.1 b=296.2 spread=8.1% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/codex: a=298.2 b=294.3 spread=1.3% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/pi: a=250.3 b=253.8 spread=1.4% valid"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

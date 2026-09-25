@@ -1,0 +1,407 @@
+[20260925-021633] plan: [{"compare_cold_start": ["compare.cold_start"]}, {"compare_warm_start": ["compare.warm_start"]}, {"compare_msg_send": ["compare.msg_send"]}, {"compare_scroll_typing": ["compare.scroll_typing"]}, {"compare_memory_idle_load": ["compare.memory_idle_load"]}, {"compare_install_disk": ["compare.install_disk"]}, {"session_cold_open_10mib": ["session.cold_open_10mib"]}, {"session_agent_view_roundtrip": ["session.agent_view_roundtrip"]}, {"daemon_boot": ["daemon.boot"]}]
+[compare_msg_send] provisioned as n3gos13m8te11ihm2rozcqt7 (vm)
+[session_cold_open_10mib] provisioned as i5pggveudoh3kv4ocuwqs149 (vm)
+[compare_cold_start] provisioned as nbvi20dodeqsvdmcee74h0v5 (vm)
+[compare_memory_idle_load] provisioned as kisscjoow0acuhhbf07focsb (vm)
+[compare_warm_start] provisioned as cj7fit65acsb5kye71xiwsb8 (vm)
+[compare_scroll_typing] provisioned as bgniinf1i507kb51ish5famg (vm)
+[compare_install_disk] provisioned as l42ktba8or05qutkdpvh7hav (vm)
+[session_agent_view_roundtrip] provisioned as boqv1xgfi0ufyy6wfy2ke7ps (vm)
+[session_cold_open_10mib] running bootstrap
+[compare_scroll_typing] running bootstrap
+[compare_cold_start] running bootstrap
+[compare_install_disk] running bootstrap
+[compare_msg_send] running bootstrap
+[compare_warm_start] running bootstrap
+[session_agent_view_roundtrip] running bootstrap
+[compare_memory_idle_load] running bootstrap
+[daemon_boot] provisioned as wa81uw9lb54j3bdmvkgg9pym (vm)
+[daemon_boot] running bootstrap
+[compare_cold_start] reference 1243ms
+[compare_warm_start] reference 1334ms
+[compare_msg_send] reference 1250ms
+[compare_scroll_typing] reference 1293ms
+[compare_memory_idle_load] reference 1249ms
+[compare_install_disk] reference 1255ms
+[session_cold_open_10mib] reference 1220ms
+[session_agent_view_roundtrip] reference 1209ms
+[daemon_boot] reference 1319ms
+[compare_warm_start] reference outlier +6.7% -> replacing
+[compare_warm_start] provisioned as uzpzkbxok8x5cr2ef2dnso1l (vm)
+[compare_warm_start] running bootstrap
+[compare_warm_start] replacement reference 1246ms
+[daemon_boot] reference outlier +5.6% -> replacing
+[daemon_boot] provisioned as ltqiwgwrcpretlazj0n4glwm (vm)
+[daemon_boot] running bootstrap
+[daemon_boot] replacement reference 1282ms
+[compare_cold_start] wave exit 0 in 452s
+[compare_warm_start] wave exit 0 in 509s
+[compare_msg_send] wave exit 0 in 519s
+[compare_scroll_typing] wave exit 0 in 796s
+[compare_memory_idle_load] wave exit 0 in 480s
+[compare_install_disk] wave exit 0 in 61s
+[session_cold_open_10mib] wave exit 0 in 260s
+[session_agent_view_roundtrip] wave exit 0 in 1658s
+[daemon_boot] wave exit 0 in 104s
+[20260925-021633] manifest: ~/bench/results/parallel/20260925-021633/manifest.json
+{
+ "run_id": "20260925-021633",
+ "backend": "prime",
+ "benchmarks": [
+  "compare.cold_start",
+  "compare.warm_start",
+  "compare.msg_send",
+  "compare.scroll_typing",
+  "compare.memory_idle_load",
+  "compare.install_disk",
+  "session.cold_open_10mib",
+  "session.agent_view_roundtrip",
+  "daemon.boot"
+ ],
+ "products": [
+  "rust",
+  "ts",
+  "claude",
+  "codex",
+  "pi"
+ ],
+ "wave": {
+  "trials": 10,
+  "phase": "cmp5",
+  "aa": true,
+  "aa_trials": 20,
+  "run_label": "20260925-021633"
+ },
+ "sandboxes": [
+  {
+   "name": "compare_cold_start",
+   "benchmarks": [
+    "compare.cold_start"
+   ],
+   "reference_ms": 1242.8,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 452.5,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 450028.7ms\n"
+   },
+   "notes": [
+    "provisioned as nbvi20dodeqsvdmcee74h0v5 (vm)",
+    "running bootstrap",
+    "reference 1243ms",
+    "wave exit 0 in 452s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_cold_start",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_cold_start-results.tar.gz"
+   }
+  },
+  {
+   "name": "compare_warm_start",
+   "benchmarks": [
+    "compare.warm_start"
+   ],
+   "reference_ms": 1245.7,
+   "normalize_factor": 1.0,
+   "replaced": true,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 509.0,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 506541.1ms\n"
+   },
+   "notes": [
+    "provisioned as uzpzkbxok8x5cr2ef2dnso1l (vm)",
+    "running bootstrap",
+    "replacement reference 1246ms",
+    "wave exit 0 in 509s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_warm_start",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_warm_start-results.tar.gz"
+   }
+  },
+  {
+   "name": "compare_msg_send",
+   "benchmarks": [
+    "compare.msg_send"
+   ],
+   "reference_ms": 1249.6,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 519.2,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 516734.2ms\n"
+   },
+   "notes": [
+    "provisioned as n3gos13m8te11ihm2rozcqt7 (vm)",
+    "running bootstrap",
+    "reference 1250ms",
+    "wave exit 0 in 519s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_msg_send",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_msg_send-results.tar.gz"
+   }
+  },
+  {
+   "name": "compare_scroll_typing",
+   "benchmarks": [
+    "compare.scroll_typing"
+   ],
+   "reference_ms": 1292.6,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 795.5,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 792893.2ms\n"
+   },
+   "notes": [
+    "provisioned as bgniinf1i507kb51ish5famg (vm)",
+    "running bootstrap",
+    "reference 1293ms",
+    "wave exit 0 in 796s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_scroll_typing",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_scroll_typing-results.tar.gz"
+   }
+  },
+  {
+   "name": "compare_memory_idle_load",
+   "benchmarks": [
+    "compare.memory_idle_load"
+   ],
+   "reference_ms": 1249.4,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 479.5,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 476902.2ms\n"
+   },
+   "notes": [
+    "provisioned as kisscjoow0acuhhbf07focsb (vm)",
+    "running bootstrap",
+    "reference 1249ms",
+    "wave exit 0 in 480s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_memory_idle_load",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_memory_idle_load-results.tar.gz"
+   }
+  },
+  {
+   "name": "compare_install_disk",
+   "benchmarks": [
+    "compare.install_disk"
+   ],
+   "reference_ms": 1254.8,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 60.8,
+    "tail": "_sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 58288.6ms\n"
+   },
+   "notes": [
+    "provisioned as l42ktba8or05qutkdpvh7hav (vm)",
+    "running bootstrap",
+    "reference 1255ms",
+    "wave exit 0 in 61s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/compare_install_disk",
+    "tarball": "~/bench/results/parallel/20260925-021633/compare_install_disk-results.tar.gz"
+   }
+  },
+  {
+   "name": "session_cold_open_10mib",
+   "benchmarks": [
+    "session.cold_open_10mib"
+   ],
+   "reference_ms": 1220.1,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 259.7,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 257087.5ms\n"
+   },
+   "notes": [
+    "provisioned as i5pggveudoh3kv4ocuwqs149 (vm)",
+    "running bootstrap",
+    "reference 1220ms",
+    "wave exit 0 in 260s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/session_cold_open_10mib",
+    "tarball": "~/bench/results/parallel/20260925-021633/session_cold_open_10mib-results.tar.gz"
+   }
+  },
+  {
+   "name": "session_agent_view_roundtrip",
+   "benchmarks": [
+    "session.agent_view_roundtrip"
+   ],
+   "reference_ms": 1208.9,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 1658.4,
+    "tail": "ha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 1655900.3ms\n"
+   },
+   "notes": [
+    "provisioned as boqv1xgfi0ufyy6wfy2ke7ps (vm)",
+    "running bootstrap",
+    "reference 1209ms",
+    "wave exit 0 in 1658s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/session_agent_view_roundtrip",
+    "tarball": "~/bench/results/parallel/20260925-021633/session_agent_view_roundtrip-results.tar.gz"
+   }
+  },
+  {
+   "name": "daemon_boot",
+   "benchmarks": [
+    "daemon.boot"
+   ],
+   "reference_ms": 1281.6,
+   "normalize_factor": 1.0,
+   "replaced": true,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 104.1,
+    "tail": "sha256\": \n\"e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 103678.5ms\n"
+   },
+   "notes": [
+    "provisioned as ltqiwgwrcpretlazj0n4glwm (vm)",
+    "running bootstrap",
+    "replacement reference 1282ms",
+    "wave exit 0 in 104s"
+   ],
+   "results": {
+    "path": "~/bench/results/parallel/20260925-021633/daemon_boot",
+    "tarball": "~/bench/results/parallel/20260925-021633/daemon_boot-results.tar.gz"
+   }
+  }
+ ],
+ "reference": {
+  "median_ms": 1249.4,
+  "outliers": {},
+  "policy": "replace",
+  "records": [
+   {
+    "sandbox": "compare_cold_start",
+    "ms": 1242.8,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_warm_start",
+    "ms": 1333.7,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_msg_send",
+    "ms": 1249.6,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_scroll_typing",
+    "ms": 1292.6,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_memory_idle_load",
+    "ms": 1249.4,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_install_disk",
+    "ms": 1254.8,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "session_cold_open_10mib",
+    "ms": 1220.1,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "session_agent_view_roundtrip",
+    "ms": 1208.9,
+    "collected_at": "2026-09-25T02:20:31+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "daemon_boot",
+    "ms": 1319.2,
+    "collected_at": "2026-09-25T02:20:33+0000",
+    "replaced": false
+   },
+   {
+    "sandbox": "compare_warm_start",
+    "ms": 1245.7,
+    "collected_at": "2026-09-25T02:22:06+0000",
+    "replaced": true,
+    "replaces_ms": 1333.7
+   },
+   {
+    "sandbox": "daemon_boot",
+    "ms": 1281.6,
+    "collected_at": "2026-09-25T02:23:48+0000",
+    "replaced": true,
+    "replaces_ms": 1319.2
+   }
+  ],
+  "per_sandbox_ms": {
+   "compare_cold_start": 1242.8,
+   "compare_warm_start": 1245.7,
+   "compare_msg_send": 1249.6,
+   "compare_scroll_typing": 1292.6,
+   "compare_memory_idle_load": 1249.4,
+   "compare_install_disk": 1254.8,
+   "session_cold_open_10mib": 1220.1,
+   "session_agent_view_roundtrip": 1208.9,
+   "daemon_boot": 1281.6
+  }
+ },
+ "kept_sandboxes": false,
+ "created_at": "2026-09-25T02:16:33+0000",
+ "updated_at": "2026-09-25T02:51:55+0000",
+ "harness": {
+  "git_rev": "unknown",
+  "dirty": true,
+  "bundle_sha256": "5844cc1a4a524b0a895561bf1651f64b13c8119efa36dd048d47d66bbab6c396"
+ }
+}
+ORCHESTRATOR_EXIT=0
+CMP5_DONE 2026-09-25T02:51:58Z results=/home/ubuntu/bench/results/parallel/20260924-122847/
