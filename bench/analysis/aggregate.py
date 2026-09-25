@@ -301,12 +301,13 @@ def _stability_marks(bench: str, p50s: dict, entry_products: dict,
     never here."""
     marks: dict = defaultdict(dict)
     if aa_p50s is not None and drift_threshold_pct is not None:
-        for product, w1 in p50s.items():
+        for product, published in p50s.items():
             aa = aa_p50s.get((bench, product))
-            if w1 and aa:
-                drift = abs(w1 - aa) / min(w1, aa) * 100.0
+            if published and aa:
+                drift = abs(published - aa) / min(published, aa) * 100.0
                 if drift > drift_threshold_pct:
-                    marks[product]["aa_drift"] = {"aa_p50": aa, "w1_p50": w1,
+                    marks[product]["aa_drift"] = {"aa_p50": aa,
+                                                 "published_p50": published,
                                                  "drift_pct": round(drift, 1)}
     for product, failing in (aa_failing or {}).get(bench, {}).items():
         published = {m: e for m, e in failing.items()

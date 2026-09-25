@@ -265,7 +265,7 @@ def test_strict_captured_tree_withholds_incomplete_cohort():
     assert daemon["ranks_withheld"]["unstable"] == ["rust"]
     assert daemon["ranks"] == {}          # no lone ts survivor
     assert daemon["products"]["rust"]["spawn_to_accept_ms"]["p50"] \
-        == daemon["unstable"]["rust"]["aa_drift"]["w1_p50"]
+        == daemon["unstable"]["rust"]["aa_drift"]["published_p50"]
 
 
 def test_complete_fresh_rows_with_aa_rank_in_strict_campaign():
@@ -535,7 +535,7 @@ def test_drift_gate_marks_unstable_never_ranks(model):
     assert "rust" not in entry["primary_p50s"]
     # the unstable product's raw stats stay visible for inspection
     assert entry["products"]["rust"]["spawn_to_accept_ms"]["p50"] \
-        == unstable["rust"]["aa_drift"]["w1_p50"]
+        == unstable["rust"]["aa_drift"]["published_p50"]
 
 
 def test_daemon_aa_calibrates_spawn_to_accept(model):

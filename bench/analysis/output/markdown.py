@@ -18,8 +18,8 @@ def _reasons_cell(info: dict) -> str:
 def _stability_detail(reason: str, info: dict) -> str:
     """One stable/unstable mark rendered as evidence text."""
     if reason == "aa_drift":
-        return (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
-                f"(+{info['drift_pct']}% drift)")
+        return (f"A/A p50 {info['aa_p50']} vs published p50 "
+                f"{info['published_p50']} (+{info['drift_pct']}% drift)")
     metrics = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} ({e['spread_pct']}%)"
                         for m, e in sorted(info["metrics"].items()))
     return f"A/A spread over threshold \u2014 {metrics}"

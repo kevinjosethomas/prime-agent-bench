@@ -69,8 +69,8 @@ def _blocks(stats: dict, cfg: dict) -> list:
         for p in unstable:
             for reason, info in unstable[p].items():
                 if reason == "aa_drift":
-                    detail = (f"A/A p50 {info['aa_p50']} vs W1 p50 {info['w1_p50']} "
-                              f"(+{info['drift_pct']}% drift)")
+                    detail = (f"A/A p50 {info['aa_p50']} vs published p50 "
+                              f"{info['published_p50']} (+{info['drift_pct']}% drift)")
                 else:
                     detail = "; ".join(f"{m}: a={e['a_p50']} b={e['b_p50']} "
                                        f"({e['spread_pct']}%)"
