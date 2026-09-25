@@ -83,3 +83,56 @@ A/A-calibrated, spread/drift-stable cohort (`ranks_withheld` otherwise).
 copied next to it) reproduces `summary.json`: the bundle carries every
 input the gate consumed, redacted without semantic loss. `SHASUMS.txt`
 pins the bytes; `--check` re-verifies them.
+
+## Published campaigns
+
+### `cmp-v4-campaign2-623b1a9` (2026-09-24) — validation-only, no ranks
+
+The cmp-v4 comparative campaign's second pass, measured on one Prime VM
+(8 vCPU / 16 GB / 100 GB, `tiequu6qsneqk9jxpwcdrw85`, deleted after
+capture, ~69 min billed). Sequential ABBA waves, raw-PTY driver, N=10
+published + N=10 A/A calibration rows per product, strict
+result-validity gate, `aa.required=false` — validation-only: every
+benchmark's ranks are withheld by policy (`validation_only`), so this
+record publishes stats, marks and denominators, never a leaderboard.
+
+- **Harness**: rev `623b1a9` = `f442a9d` + `92741f6` (session-10mib-v4
+  generator) + `c7bfd5e` (loaded-session scenario switch). Fixture
+  `session-10mib-v4` sha256 `5fa6e193…c3bba` (per-trial clone hashes
+  bundled in every row); vendor payload sha256 `7f335b9e…98a2be`, built
+  `--no-secrets` and audited with zero home/credential members.
+- **Pins** (products that produced the bundled rows — full map in
+  `provenance.json` → `source.versions`): rust `0.1.0`
+  (`bdf82f4f1`/`eaed8f00`), ts `0.9.5-beta.2043.1.acc5bc0`
+  (`e1583ca5`), pi `0.87.1` (`b455975`/`e79626f2`), claude `2.1.281`
+  (`56fe3da8`, from the campaign's W2 run log). Codex `0.156.1` was
+  pinned but excluded before capture (below).
+- **Gate outcomes** (the summary's own marks):
+  - `compare.warm_start` [rust, ts] — A/A and drift gates green.
+  - `compare.memory_idle_load` [rust, ts, pi] — A/A and drift gates
+    green.
+  - `compare.msg_send` [rust, ts, claude] — A/A calibrated; ts (+19.0%)
+    and claude (+23.3%) published-vs-A/A drift over the 10% threshold
+    (unstable marks; sub-ms floor: the probe quantizes at 0.1 ms and the
+    harness noop-control floor measured p50 0.072 ms / p95 0.095 ms
+    over 30 rounds).
+  - `compare.scroll_typing` [rust, ts, pi] — ts typing A/A spread 12.9%
+    over the 10% floor (unstable mark).
+- **Excluded before capture** (never in the bundle's rows or stats):
+  codex on all benchmarks (unqualified for this campaign: trust-guard
+  uncommitted and the mock lacks the responses wire); claude
+  scroll_typing (`not_comparable` — no vendor-native session fixture);
+  pi msg_send (first W2 aborted: fd/rg startup-download side-effect on
+  the fresh home, settle=false at 90.93 s — rows preserved only in the
+  private evidence archive under label `cmp-v4-campaign-623b1a9`,
+  never pooled).
+- **Not published here**: `compare.cold_start` (W1). Its rows are not
+  part of the verified cmp2 evidence tree, so this record claims no W1
+  numbers.
+- **Evidence chain**: the bundle was built by
+  `scripts/publish_records.py` from the verified private evidence
+  archive `cmp-v4-final-evidence.tar.gz` (sha256
+  `853f355f…76f23a`), which stays private: raw PTY logs, trial homes,
+  fixture corpora and vendor payloads are never read by the publisher
+  (`provenance.json` → `source.never_read`). Bundle integrity:
+  `SHASUMS.txt` via `--check`.

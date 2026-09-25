@@ -1,0 +1,159 @@
+{
+ "schema": "bench-records-bundle/1",
+ "run_label": "cmp-v4-campaign2-623b1a9",
+ "generated_at": "2026-09-24T17:40:28-0700",
+ "publisher": {
+  "git_rev": "a03bf0389158780b4c88876efc652634520a5215",
+  "dirty": false
+ },
+ "source": {
+  "results_dir": "<path>",
+  "read": [
+   "*/trials-*.jsonl",
+   "settle.jsonl",
+   "versions.json"
+  ],
+  "never_read": [
+   "logs/ (raw PTY logs)",
+   "homes/ (trial homes + templates)",
+   "fixtures/ (fixture corpora)",
+   "vendor payloads (binaries/auth/toolchain)",
+   "diagnose/ (screen evidence bundles)",
+   "sandbox-runs/",
+   "noop-control.json",
+   "install-disk.json"
+  ],
+  "versions": {
+   "_meta": {
+    "run": {
+     "label": "cmp-v4-campaign2-623b1a9"
+    },
+    "harness": {
+     "git_rev": "623b1a948920859aa0cc65cc61a65d546e4a30a3",
+     "base": "f442a9d",
+     "cherry_picks": [
+      "92741f6 session-10mib-v4 generator",
+      "c7bfd5e loaded-session scenario switch"
+     ],
+     "bundle_sha256": "4fdaf3eaa3788a6eb5b200685a54a47a967261e15a4e507667a0fbde7cb560e6",
+     "vm": "tiequu6qsneqk9jxpwcdrw85",
+     "note": "code-only redeploy; original <path> (f442a9d) untouched; vendor payload and homes from setup preserved"
+    },
+    "collected_at": "2026-09-25T00:09:24+0000"
+   },
+   "products": {
+    "pi": {
+     "version": "0.87.1",
+     "revision": "b45597504eeaba1f11a9920a1d1048c361ed4b8e",
+     "binary_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774"
+    },
+    "rust": {
+     "version": "0.1.0",
+     "revision": "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad",
+     "binary_sha256": "eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1",
+     "binary_bytes": 202707000
+    },
+    "ts": {
+     "version": "0.9.5-beta.2043.1.acc5bc0",
+     "revision": "official-beta-0.9.5-beta.2043.1.acc5bc0",
+     "binary_sha256": "e1583ca50795971b0838f136596ab7da1e5b32a698221841a32733d40f62b9bb",
+     "binary_bytes": 163595464
+    }
+   }
+  }
+ },
+ "campaign": {
+  "run_labels": [
+   "cmp-v4-campaign2-623b1a9"
+  ],
+  "harness_revs": [
+   "623b1a948920859aa0cc65cc61a65d546e4a30a3"
+  ],
+  "benchmarks": [
+   "compare.memory_idle_load",
+   "compare.msg_send",
+   "compare.scroll_typing",
+   "compare.warm_start"
+  ],
+  "phases": [
+   "aa",
+   "cmp2"
+  ]
+ },
+ "rows": {
+  "kept_total": 220,
+  "kept_by_file": {
+   "compare.memory_idle_load/trials-aa.jsonl": 30,
+   "compare.memory_idle_load/trials-cmp2.jsonl": 30,
+   "compare.msg_send/trials-aa.jsonl": 30,
+   "compare.msg_send/trials-cmp2.jsonl": 30,
+   "compare.scroll_typing/trials-aa.jsonl": 30,
+   "compare.scroll_typing/trials-cmp2.jsonl": 30,
+   "compare.warm_start/trials-aa.jsonl": 20,
+   "compare.warm_start/trials-cmp2.jsonl": 20
+  },
+  "excluded": [],
+  "excluded_summary": {}
+ },
+ "privacy": {
+  "dropped_keys": {
+   "path": 320,
+   "cwd": 120,
+   "binary": 3
+  },
+  "path_redactions": 260,
+  "credential_redactions": 0,
+  "screen_reductions": 0,
+  "settle_rows": {
+   "source": 0,
+   "bundled": 0
+  },
+  "oversize_limit_chars": 400,
+  "contract": [
+   "no raw screens: PTY/screen/tail text keys dropped; settle screen_tail reduced to auth-marker labels + char count",
+   "no raw logs, homes, fixtures, session payloads, vendor material: never read (see source.never_read)",
+   "no machine paths: path/cwd keys dropped, strings redacted",
+   "no typed probe tokens (synthetic but screen-derived); counts stay",
+   "no string over 400 chars (rows quarantine)",
+   "no credentials: credential-shaped values (sk-\u2026, bearer \u2026, key/token/secret/password assignments \u2014 real or dummy) are redacted to <credential>",
+   "harness-generated error strings kept (\u2264400 chars at capture) with screen text reduced to marker labels, paths and credentials redacted \u2014 the validity gate's reason codes derive from them and stay intact"
+  ]
+ },
+ "gate": {
+  "policy": "bench.analysis.validity (strict) over the bundled rows; ranks only per the campaign aa policy (validation-only default: no ranks)",
+  "valid_rows_total": 220,
+  "excluded": {},
+  "status_rows": {},
+  "settle_auth": {},
+  "rank_status": {
+   "compare.memory_idle_load": {
+    "ranks": false,
+    "withheld": {
+     "reason": "validation_only",
+     "detail": "aa.required=false: validation-only analysis \u2014 ranks are never emitted"
+    }
+   },
+   "compare.msg_send": {
+    "ranks": false,
+    "withheld": {
+     "reason": "validation_only",
+     "detail": "aa.required=false: validation-only analysis \u2014 ranks are never emitted"
+    }
+   },
+   "compare.scroll_typing": {
+    "ranks": false,
+    "withheld": {
+     "reason": "validation_only",
+     "detail": "aa.required=false: validation-only analysis \u2014 ranks are never emitted"
+    }
+   },
+   "compare.warm_start": {
+    "ranks": false,
+    "withheld": {
+     "reason": "validation_only",
+     "detail": "aa.required=false: validation-only analysis \u2014 ranks are never emitted"
+    }
+   }
+  }
+ }
+}
