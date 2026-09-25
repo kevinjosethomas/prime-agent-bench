@@ -294,7 +294,7 @@ def _wave_with_retry(backend, handle, spec_cfg: dict, attempts: int = 3,
 
 def run_in_sandbox(cfg: dict, parallel_config_path, sandbox_ref: str,
                    benchmarks: list, products: list, trials: int,
-                   aa: bool, phase: str, aa_trials: int = 10,
+                   aa: bool, phase: str, aa_trials: int = 20,
                    backend_name: str | None = None) -> dict:
     """Run the trial waves inside a live sandbox (setup + run share the
     product configs: the deployed bundle carries bench/). Idempotent:

@@ -1,9 +1,10 @@
 """The ABBA trial engine: one benchmark, N products, JSONL per trial.
 
 ABBA ordering across products (alternating trial order to cancel drift),
-A/A interleaving (the same product twice per round; halves are the
-even/odd trial indices), sequential isolation (one product benchmarking
-at a time, never concurrent), per-trial process sweep between trials.
+A/A interleaving (the same product twice per round; the analysis halves
+are position/direction-balanced — bench.analysis.aa_validation._aa_half),
+sequential isolation (one product benchmarking at a time, never
+concurrent), per-trial process sweep between trials.
 
 Comparability is resolved before any trial runs: products the spec scopes
 out (applicability) or that cannot consume the fixture (spec §F

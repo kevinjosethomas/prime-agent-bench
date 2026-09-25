@@ -29,7 +29,7 @@ DEFAULT_WAVES = [
 
 def run_wave_chain(config_path: str | None, benchmarks: list, products: list,
                    trials: int | None, phase: str, aa: bool,
-                   aa_trials: int = 10, run_label: str | None = None) -> list:
+                   aa_trials: int = 20, run_label: str | None = None) -> list:
     """Run the A/A calibration pass then the real trial waves.
 
     run_label: the campaign provenance label stamped on every row and on
@@ -63,7 +63,7 @@ def main() -> None:
                     help="run the per-sandbox A/A calibration pass first (default)")
     ap.add_argument("--no-aa", dest="aa", action="store_false",
                     help="debugging only: skip the A/A calibration pass")
-    ap.add_argument("--aa-trials", type=int, default=10)
+    ap.add_argument("--aa-trials", type=int, default=20)
     ap.add_argument("--run-label", default=None,
                     help="campaign label stamped on every row (the orchestrator passes its run_id)")
     args = ap.parse_args()

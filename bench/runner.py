@@ -191,12 +191,16 @@ def kernel_benchmarks_selected(benchmark_names: list) -> bool:
 def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_names: list,
               trials: int | None = None, aa: bool = False, phase: str = "w1",
               skip_versions: bool = False, settle_only: bool = False,
-              run_label: str | None = None) -> list:
+              run_label: str | None = None, aa_trials: int | None = None) -> list:
     """The sequential suite flow; returns the written JSONL paths.
 
     trials: CLI override; per-benchmark counts resolve CLI > config
-    (benchmarks.<name>.trials) > the benchmark's default. run_label: the
-    campaign provenance label stamped on every row and on versions.json
+    (benchmarks.<name>.trials) > the benchmark's default. aa_trials: the
+    A/A calibration trial count when this suite IS the A/A pass (aa=True)
+    — the default 20 (10 per balanced half) keeps the halves exactly
+    position/direction-balanced (bench.analysis.aa_validation._aa_half);
+    overrides `trials` for the calibration pass. run_label: the campaign
+    provenance label stamped on every row and on versions.json
     (default: wall-clock; the orchestrator passes its manifest run_id)."""
     from bench.adapters.benchmarks.kernel import kernel_script
     cfg["run"] = {"label": run_label or default_run_label()}
@@ -234,7 +238,7 @@ def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_name
         print("noop control (harness floor):", control)
         for b in benchmark_names:
             print(f"=== {b} ===", flush=True)
-            n_trials = effective_trials(reg, b, trials)
+            n_trials = effective_trials(reg, b, aa_trials if aa else trials)
             jsonl = run_trials(reg, driver, b, prod_names, n_trials, out_dir,
                               fixture_paths, aa, phase)
             jsonl_paths.append(jsonl)

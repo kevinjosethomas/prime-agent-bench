@@ -38,7 +38,7 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
     pcfg = load_parallel_config(parallel_config_path)
     run_id = time.strftime("%Y%m%d-%H%M%S")
     spec_cfg = {"trials": trials, "phase": phase, "aa": aa,
-                "aa_trials": pcfg.get("aa_trials", 10),
+                "aa_trials": pcfg.get("aa_trials", 20),
                 "retry": pcfg.get("retry", {}),
                 "wave_timeout_s": pcfg.get("wave_timeout_s", 14400.0),
                 "run_label": run_id}

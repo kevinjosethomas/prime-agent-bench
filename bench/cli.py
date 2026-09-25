@@ -46,12 +46,13 @@ def cmd_run(args) -> None:
         state = run_in_sandbox(cfg, args.parallel_config, args.sandbox,
                                benchmarks, products, trials=args.trials,
                                aa=aa, phase=args.phase,
-                               aa_trials=args.aa_trials or 10)
+                               aa_trials=args.aa_trials or 20)
         print(json.dumps(state, indent=1))
         return
     run_suite(cfg, reg, reg.driver(), benchmarks, products, trials=args.trials,
               aa=bool(args.aa), phase=args.phase, skip_versions=args.skip_versions,
-              settle_only=args.settle_only, run_label=args.run_label)
+              settle_only=args.settle_only, run_label=args.run_label,
+              aa_trials=args.aa_trials or 20)
 
 
 def cmd_versions(args) -> None:
@@ -252,7 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-aa", dest="aa", action="store_false",
                    help="debugging only: skip the A/A calibration pass")
     p.add_argument("--aa-trials", type=int, default=None,
-                   help="A/A pass trial count for sandbox runs (default 10)")
+                   help="A/A calibration trial count (default 20 = 10 per balanced half)")
     p.add_argument("--phase", default="w1")
     p.add_argument("--out", default=None)
     p.add_argument("--driver", default=None)

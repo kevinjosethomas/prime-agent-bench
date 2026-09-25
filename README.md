@@ -26,7 +26,13 @@ discovered from the package structure.
   driver as the proven alternative (interchangeable `HarnessDriver`)
 - Sequential isolation — one product benchmarking at a time, never concurrent
 - ABBA ordering across products (alternating trial order to cancel drift)
-- A/A calibration (same product measured twice -> noise floor must be <10%)
+- A/A calibration (same product measured twice -> noise floor must be <10%);
+  the two halves are position/direction-balanced (each half samples the same
+  mix of launch-occurrence positions and ABBA rounds — a schedule-locked
+  effect cannot masquerade as instability; 20 aa trials = 10 per half, the
+  exact-balance default; cmp-v4 W1 evidence: the legacy even/odd split
+  aliased halves with occurrence position and read a ~+40ms claude
+  second-occurrence effect as 13.8% instability)
 - Rank policy: `aa.required=false` (default) is validation-only — the analysis
   reports stats, marks and denominators but NEVER emits ranks; a publishable
   campaign declares `aa.required=true` + explicit `aa.expected_products` (the

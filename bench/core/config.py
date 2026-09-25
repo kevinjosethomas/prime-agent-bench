@@ -54,7 +54,9 @@ DEFAULTS: dict[str, Any] = {
            # expected_products (the eligible cohort per benchmark, global
            # list or map — never inferred from rows) + trials (the
            # expected valid A/A rows per product; mirrors --aa-trials).
-           "required": False, "trials": 10, "expected_products": None},
+           # aa.trials mirrors --aa-trials (20 = the calibration default:
+           # 10 trials per balanced half, exact position/direction balance)
+           "required": False, "trials": 20, "expected_products": None},
     "noop_control": {"rounds": 30},
     "benchmarks": {},  # per-benchmark overrides, e.g. compare.install_disk.trials
 }

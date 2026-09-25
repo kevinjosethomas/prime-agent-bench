@@ -5,7 +5,7 @@
 # numbers.
 
 backend: prime            # prime | local
-aa_trials: 10             # per-sandbox A/A calibration pass
+aa_trials: 20             # per-sandbox A/A calibration pass (10 per balanced half)
 keep_sandboxes: false
 wave_timeout_s: 14400.0    # hard cap per sandbox wave chain
 port_base: 8890           # local-backend mock port base

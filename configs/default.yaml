@@ -48,7 +48,9 @@ aa:
   # valid A/A rows on the primary, and pass the spread/drift stability gate —
   # any gap withholds the whole benchmark's ranks (no partial leaderboards).
   required: false
-  trials: 10
+  # 20 = the calibration default: 10 trials per BALANCED half (exact
+  # occurrence-position and ABBA-direction balance; aa_validation._aa_half)
+  trials: 20
   expected_products: null
   drift_threshold_pct: 10.0   # max p50 drift between the A/A pass and the waves
 

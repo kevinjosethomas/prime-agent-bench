@@ -18,7 +18,7 @@ from bench.drivers.orchestrator.backend import PrimeSandboxBackend
 
 PARALLEL_DEFAULTS: dict = {
     "backend": "prime",
-    "aa_trials": 10,
+    "aa_trials": 20,
     "keep_sandboxes": False,
     "wave_timeout_s": 14400.0,
     "reference": {"seconds": None, "outlier_pct": 5.0,

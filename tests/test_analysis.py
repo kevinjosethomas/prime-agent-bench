@@ -57,13 +57,16 @@ def test_aggregate_summarize_ranks():
 
 
 def test_aa_validity():
-    # halves are the even/odd trial indices (interleaved in time)
+    # balanced halves: a position-locked flap (every even trial fast, every
+    # odd trial slow) is schedule structure, not instability — each half
+    # samples the same mix of launch positions (see tests/test_aa_halves.py
+    # for the cmp-v4 W1 evidence and the instability case)
     rows = [_row("compare.cold_start", "rust", i,
                  100.0 if i % 2 == 0 else 250.0, phase="aa")
             for i in range(12)]
     out = aa_validity(rows, threshold_pct=10.0)
-    assert out["compare.cold_start/rust"]["valid"] is False
-    assert out["compare.cold_start/rust"]["spread_pct"] == 150.0
+    assert out["compare.cold_start/rust"]["valid"] is True
+    assert out["compare.cold_start/rust"]["spread_pct"] == 0.0
     rows2 = [_row("compare.warm_start", "ts", i,
                   100.0 if i % 2 == 0 else 105.0, phase="aa")
              for i in range(12)]
