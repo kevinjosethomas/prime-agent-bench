@@ -18,7 +18,8 @@
     "e824389848bdfe0198210056fe371d5b4a70f442",
     "bc1b3157d43b5b73b412f217edef2239fbe188a2",
     "d071981f88efb758904e055875c26c3c11e51f7b",
-    "966d93292c6cb3248fc5dde1685df5dffb036c46"
+    "966d93292c6cb3248fc5dde1685df5dffb036c46",
+    "f0999a30868016c9b363a5eaa3fc23f877e2b653"
   ],
   "build": {
     "sandbox_id": "p9m0c2vp95kd947p75mrp4wo",
@@ -273,7 +274,7 @@
     },
     "extra": {
       "current_base": "85ca8cc18711fe3d656307b2f571c2deabf199f9",
-      "current_candidate": "966d93292c6cb3248fc5dde1685df5dffb036c46",
+      "current_candidate": "f0999a30868016c9b363a5eaa3fc23f877e2b653",
       "same_vm_binary_sha256": "ac3acc1db49789e9bd1f9e6ee81f22efb7f12cf6639bbbbb7e8956d30647c714",
       "same_vm_binary_bytes": 209607816,
       "nonbinary_payload_file_bytes": {
@@ -343,7 +344,8 @@
           "/root/latest-85-cand-members.txt",
           "/root/latest-85-pkgrel-members.txt"
         ]
-      }
+      },
+      "status": "Deterministic pair measured at 966d93292; test-fixture-only f0999a not yet rebuilt. Verify no binary/payload impact before labeling exact final-head. Full gate and quiet neighbor pending."
     },
     "prior_head_quiet_neighbor": {
       "base_revision": "fb719b1367b09851b848895912208be60c49311c",
@@ -574,7 +576,7 @@
       "Intermediate fb719b13/8307c640 candidate packaging from dirty checkout leaked 13 ignored skills .pyc (+50234 skill file bytes); candidate binary compiled at /root/prime-agent-rust differed from baseline at /root/fb-base-checkout due compile path. Both are excluded. Fixed candidate from clean checkout at same path plus controlled rebuild used.",
       "First latest-head B/C diagnostic run overlapped full workspace tests and release rebuild on same VM; deliberately terminated, all logs retained, VOID for latency. Quiet final-head B/C is the valid follow-up."
     ],
-    "notes": "Primary CLEAN deterministic comparison: base 91eedb5d vs candidate bc1b3157, binary sha90ff703a (same path), exact removed 24 archive members, no additions, both producers agree. Historical B,C,C,B,B,C 90/90 trials were valid installed-tree-pinned but from symmetrically cache-polluted prior-head payloads, so their latency results are secondary context only; final-head short neighbor trial is primary neighbor sanity check. Do not claim latency speedup."
+    "notes": "Primary CURRENT clean deterministic comparison: base 85ca8cc1 vs corrected candidate 966d93292, identical binary sha ac3acc1d on same path, exact 23 removed archive entries/0 added, all four required docs including FEATURE_PARITY retained, both producers 104 members. Historical 91eedb5d/bc1b3157 24 removed and old absolute bytes are SUPERSEDED/INVALID final parity because candidate omitted quickstart-linked FEATURE_PARITY.md. Historical B,C,C,B,B,C 90/90 trials had installed-tree pins but symmetric ignored pyc contaminated absolute archive sizes; prior fb clean quiet 30/30 valid old-head iteration, 91eed quiet 30/30 valid timing old-head iteration. Current 85ca/f099 fixture-only follow-up tests and quiet benchmark pending."
   },
   "outcome": "Reviewable PR #2837 corrected docfix + deterministic exact-head payload delta PASS, full gate and short quiet neighbor PENDING, no merge",
   "decision": "Open reviewable PR after quiet neighbor and structured record. Orchestrator numeric final-head verdict and explicit APPROVE from BOTH formal standing adversaries required before any merge. Lane owner does not merge.",
@@ -584,5 +586,5 @@
     "worker": "perf-install-tree",
     "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-7ba3b8cf/01a0db50-cf28-733b-897d-d843c865237e.jsonl"
   },
-  "timestamp": "2026-09-26T03:43:51.843349+00:00"
+  "timestamp": "2026-09-26T03:45:15.477697+00:00"
 }
