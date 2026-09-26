@@ -1,0 +1,242 @@
+{
+  "id": "20260926-005642-daemon-boot-config-persist-off-accept-path",
+  "axis": "startup",
+  "hypothesis": "daemon.boot spawn_to_accept is dominated by supervisor startup work sitting before the socket bind. Profiled (temporary eprintln instrumentation, 8 boots): the supervisor-config atomic write (write_file_atomic -> fsync) inside Supervisor::new was ~31ms p50 (30.9-103.6ms range) of a 31-104ms Supervisor::new, while every other pre-bind phase was <3ms (main_impl settings 0.3ms, telemetry 0.2ms, models/plugins keep-warm spawns 1.1ms, prepare+bind 0.1ms). The file is diagnostic state with no serving-path reader (load_supervisor_config has zero callers; descriptor sweeps skip it by extension), so the write can move after the bind without touching the accept contract.",
+  "approach": "crates/pa-daemon/src/supervisor.rs: removed persist_supervisor_config from Supervisor::new; added Supervisor::persist_startup_config called in Supervisor::run immediately after socket bind+restrict+log, before the boot reap and the accept loop. Same payload, same atomic write (write_file_atomic with fsync), same hard-fail-on-error boot contract. Plus an e2e assertion (tests/fd_lifecycle_e2e.rs::booted_supervisor_persists_its_config) that a client which has seen daemon_hello finds a valid supervisor-config (version 1, this socket, resolved default session dir, no lingering temp file). Lane: bd20c604d (perf) + 4d6e80aec/4f75cd055 (test+fix) + e4606e6b2 (fmt) with append-only folds to rust heads f2c02ade, 486457b8, fb5a83de, d3763dca; PR-time head 54f5e5399.",
+  "parity_notes": "Same socket path/identity, same wire protocol, same features. The supervisor-config file: TS writes it pre-listen too (daemon-supervisor.ts:869 in start()) and TS READS it at construction (:839 via loadPersistedSupervisorConfig :1712, merging the predecessor defaultSessionConfig; deleted at terminal stop :7560). The Rust port never ported that consumer: the Rust payload is default_session_dir, load_supervisor_config has zero callers, and both descriptor sweeps (load_descriptors, find_all_tracked_workers) skip the file by extension. No Rust serving path reads the file; the write still happens exactly once per boot before any client is served. OBSERVABLE FAILURE-MODE CHANGE (reviewer-routed, stated in the PR): a supervisor-config persist failure now occurs with the socket already bound - the process dies holding the bound socket path, and the next boot self-heals via prepare_socket_path's stale-socket cleanup (probe+unlink); before, the socket never appeared. No capability removed: same write, same durability (fsync), same boot-fail-on-error. spawn_to_hello unchanged in total (the fsync moves from before bind to between bind and the accept loop): measured hello p50 b=10.9 vs c=8.4ms (same disk state, poll-tick noise).",
+  "base": {
+    "revision": "d3763dca2cb84d5dc90dd973420ce648fb4266bb",
+    "note": "PR-time origin/rust head; hypothesis started at 7152746b (mechanism profiling)"
+  },
+  "branch": "lane/hillclimb-daemon-boot",
+  "commits": [
+    "bd20c604dd1ac8adaff53533dac0bec12d4d4be2",
+    "4d6e80aec6f55ba8a507cfdbce25a1eea92ac9d8",
+    "4f75cd055cd8ab725ebe5b80171e3d086ff8101e",
+    "e4606e6b2",
+    "folds: 45ccddfb1(f2c02ade), 7aae8fa28(486457b8), ebcbb2e60(fb5a83de), 54f5e5399(d3763dca)"
+  ],
+  "build": {
+    "sandbox_id": "t9ucwt7mfa9grye2pu1cdclh",
+    "binary_sha256": "60e3b8d611e8eff172b6bb63a3798d61b68190db6a3b280e26599f96525109f7",
+    "binary_bytes": 206659840,
+    "build_seconds": 163,
+    "toolchain": "rustup 1.98.1",
+    "base_binary_sha256": "e7ad6696ee587a6d75d69a5237671a6e5e886b621b8f6c4cfa31c62f86fc9ff0",
+    "base_binary_bytes": 206694480
+  },
+  "gates": {
+    "fmt": "pass",
+    "clippy": "pass",
+    "test": "pass except pa-daemon agent_family_e2e::family_edges_never_cross_families_end_to_end - PRE-EXISTING on the clean base: fails in isolation 2/2 on BOTH the candidate VM and the clean d3763dca base VM with the identical error ('RLM child terminal notice was not delivered... Invalid customMessage: the rlm_child_terminal_notice/rlm_child_failure custom types are reserved for daemon-injected RLM child status notices; record parent-broadcast.json never appeared'). Unrelated mechanism (RLM child-notice wire validation vs a config-file write). Earlier heads also showed two load-timing flakes (fd_lifecycle_e2e supervisor_restart_loop, pa-cli interactive_daemon_e2e tui_prompt_stash), each passing in isolation on both VMs; pa-core packages tests required npm (absent from the VM recipe; installed to complete the gate). No tests weakened or deleted; one test ADDED."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "daemon.boot": {
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 10.6,
+          "p95_ms": 88.0,
+          "values_ms": [
+            21.4,
+            88.0,
+            26.0,
+            26.8,
+            10.7,
+            5.5,
+            5.4,
+            5.4,
+            5.5,
+            5.5,
+            76.4,
+            5.6,
+            20.8,
+            10.6,
+            10.5
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 5.6,
+          "p95_ms": 25.9,
+          "values_ms": [
+            10.6,
+            5.5,
+            5.5,
+            10.6,
+            25.9,
+            5.4,
+            5.5,
+            5.4,
+            15.7,
+            5.5,
+            5.6,
+            10.6,
+            5.5,
+            10.6,
+            10.6
+          ]
+        },
+        "delta_pct": -47.2,
+        "regression": false,
+        "protocol": "same-VM ABBA b,c,c,b,b,c on ONE 16-core sandbox VM; daemon.boot isolated (no interleaved suites); pinned binary page-warmed (cat > /dev/null) identically before each arm; sha-asserted pins (versions.json per run); 30/30 trials valid (accept/hello/create true, err none). Both arms share the same 5.4-5.6ms warm exec floor; the base arm shows fsync-flush bursts (20.8-88.0ms on 6/15 trials) the candidate arm lacks (max 25.9ms scheduler-tick noise). The disk is bimodal: on slow-flush states (persist profiled 30.9-103.6ms; f2c02ade cross-VM base warm trials 91.6-892.0ms) the gain is far larger; never worse on either arm."
+      },
+      "compare.cold_start": {
+        "baseline": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 290.3,
+          "p95_ms": 297.2,
+          "values_ms": [
+            290.47,
+            291.22,
+            289.93,
+            289.83,
+            297.19,
+            288.93,
+            290.51,
+            290.4,
+            289.28,
+            290.02
+          ]
+        },
+        "candidate": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 290.2,
+          "p95_ms": 295.4,
+          "values_ms": [
+            290.61,
+            289.77,
+            291.69,
+            289.23,
+            290.95,
+            289.5,
+            290.01,
+            290.35,
+            295.42,
+            287.78
+          ]
+        },
+        "delta_pct": -0.03,
+        "regression": false
+      },
+      "compare.warm_start": {
+        "baseline": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 263.5,
+          "p95_ms": 301.9,
+          "values_ms": [
+            263.25,
+            290.81,
+            301.92,
+            263.16,
+            263.69,
+            263.64,
+            262.11,
+            262.74,
+            263.96,
+            263.33
+          ]
+        },
+        "candidate": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 263.6,
+          "p95_ms": 266.0,
+          "values_ms": [
+            263.61,
+            263.44,
+            263.29,
+            262.74,
+            264.1,
+            263.95,
+            264.97,
+            261.94,
+            265.96,
+            263.26
+          ]
+        },
+        "delta_pct": 0.04,
+        "regression": false
+      },
+      "compare.msg_send": {
+        "baseline": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 2.2,
+          "p95_ms": 11.9,
+          "values_ms": [
+            2.7,
+            1.5,
+            2.5,
+            1.4,
+            1.9,
+            2.4,
+            1.8,
+            11.9,
+            8.2,
+            1.8
+          ]
+        },
+        "candidate": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 2.15,
+          "p95_ms": 7.8,
+          "values_ms": [
+            2.5,
+            1.5,
+            1.5,
+            2.7,
+            7.8,
+            2.8,
+            1.8,
+            6.1,
+            2.0,
+            2.5
+          ]
+        },
+        "delta_pct": -2.3,
+        "regression": false
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 206694480,
+        "candidate": 206659840
+      },
+      "rss_mb": {
+        "baseline": null,
+        "candidate": null
+      },
+      "spawn_to_hello_p50_ms": {
+        "baseline": 10.9,
+        "candidate": 8.4
+      },
+      "cold_exec_row_ms": "separate, never mixed: cold-exec of the 207MB binary dominates 400-990ms on a churned page cache (void A/A: 976.5/878.0 first trials; cross-VM first trials 892.0) - identical for both arms, no work removed",
+      "calibration_s": {
+        "base_vm_median": 1.0399,
+        "cand_vm_median": 1.0519,
+        "divergence_pct": 1.2
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "PR pair: 30/30 daemon.boot trials valid; noop harness floor ~0.05-0.09ms. Void-pair disclosure: an earlier ABBA attempt pinned BOTH arms to the candidate (bins-b vs bins-base path bug; versions.json caught it) - excluded as evidence, kept as a candidate A/A that characterized cold-exec noise. Cross-VM pairs kept only as corroboration per the fleet methodology addendum (VM factor: cand-VM cold_start ~2900ms vs base-VM ~750ms at one hour). Fleet baseline caveat: the 76.5ms fleet spawn_to_accept baseline is a warm/cold mixture; the warm-floor comparison here (10.6 -> 5.6ms p50 on identical warm cache state) is the apples-to-apples claim. Disk: Prime sandbox VM network-backed storage with bimodal fsync latency (2-5ms fast path, e.g. base pr4-b all-5.5ms trials, vs 30-104ms+ flushes) - numbers are for THIS disk class, not a local-SSD claim."
+  },
+  "outcome": "in-progress",
+  "decision": "PR opened; orchestrator decides merge/iterate/discard (adversarial parity review routed)",
+  "pr_url": "PENDING",
+  "record_path": "data/hillclimb/experiments/20260926-005642-daemon-boot-config-persist-off-accept-path.json",
+  "session": {
+    "worker": "perf-daemon-boot",
+    "session_dir": "~/.prime/agent/sessions/01a0daa4-39c1-740d-a03a-f9e68d9f88bc.jsonl"
+  },
+  "timestamp": "2026-09-26T00:56:42.100574+00:00"
+}
