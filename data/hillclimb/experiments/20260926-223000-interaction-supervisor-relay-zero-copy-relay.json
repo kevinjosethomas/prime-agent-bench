@@ -2727,7 +2727,7 @@
  "session": {
   "worker": "perf-supervisor-relay-fast"
  },
- "timestamp": "2026-09-26T23:05:00+00:00",
+ "timestamp": "2026-09-26T23:12:00+00:00",
  "fold": {
   "merge_commit": "5dc812aa8e156cd3b6d2878195d1027be785717f",
   "merge_base": "c12bed5a12dfaf170cc6ee9ea54705bd926d12fc (origin/rust at fold time)",
@@ -5501,5 +5501,21 @@
    "evidence": "/home/ubuntu/hillclimb/lane-supervisor-relay/folded-parity (raw dumps + leaf analysis at the folded head)"
   },
   "small_leg_notes": "the direct-transport and small-routed controls stay flat; canon routed_state (+3.9ms on a ~21ms leg) is a median-of-bimodal artifact - both arms show the same two per-create clusters (10-14ms and 27-48ms) with the candidate's low cluster FASTER (7.65 vs 10.01ms min); direct_attach_fresh swings +/-8% across fixtures with mixed signs (canon -2.4%, 450k +7.8%) - noise, no systematic direction"
+ },
+ "reviewer_rulings": {
+  "reviewer_1_parity_adversary_fast": {
+   "verdict": "EXPLICIT APPROVE on 5dc812aa8e156cd3b6d2878195d1027be785717f",
+   "effective_upon": "shard 3/4 completing green-or-registered-flake",
+   "noted_for_record": [
+    "the A/A control (base vs base, same probe, fresh daemons) produces EXACTLY the 16/6-leaf identity set and NOTHING ELSE - the mask is defined empirically, no manual leaf enumeration",
+    "the clients.rs dead-file state at c12bed5a1 (upstream's #2878 split not-yet-wired; the client-connection code still lives in src/supervisor.rs where the lane hunks are; the lane pre-commits to re-homing at the fold that wires it)"
+   ]
+  },
+  "reviewer_2_parity_adversary_2_fast": {
+   "verdict": "EXPLICIT APPROVE on 5dc812aa8e156cd3b6d2878195d1027be785717f",
+   "effective_upon": "test shard 3/4 completing",
+   "internal_protocol_ruling": "three-condition test passed (atomic same-binary endpoints; public client wire byte-proven unchanged; direct/chunked/rebound keep the typed path)"
+  },
+  "merge_gate_remainder": "operator dispositions (benchmark non-applicability; a_bang registered-family base-repro red; goal_turn_end_loop env-gate); NO MERGE by lane"
  }
 }
