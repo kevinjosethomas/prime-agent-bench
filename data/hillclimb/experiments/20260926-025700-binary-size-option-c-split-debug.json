@@ -5,7 +5,7 @@
   "approach": "Option C: release build keeps line tables and does not strip at link; scripts/release/split_debug.py derives gzip decoder and separate shipped ELF from one immutable linked Cargo image, with objcopy --only-keep-debug then objcopy --strip-debug --remove-section=.debug_gdb_scripts. Linux release and continuous workflows run split before assembly; release promotes gzip decoder as separate per-tag asset (not rolling nightly). assemble_artifacts.py hard-fails decoder-like sidecars inside staged/packed payload; channel manifest rejects decoder references. Assembler binds decoder SHA/build-ID to shipped ELF, promotion verifies exact decoder SHA and installed tar ELF SHA/build-ID, SHA256SUMS and provenance cover the per-tag decoder; rolling nightly checksum lists tarballs only. Option A (strip all) rejected: loses backtrace symbol names. Option B (strip=debuginfo at link) rejected: it preserves function names but omits a same-build decoder, so shipped file:line cannot be restored from an independently linked binary (the .text differed in tested link configurations).",
   "parity_notes": "RLM API/wire/session replay source untouched; all lane changes limited to Cargo.toml release profile, scripts/release, and Linux release/CI workflows. Linux ELF static .symtab/function names and .dynsym are kept; shipped backtraces lose file:line but detached same-image decoder restores them via addr2line. GLIBC release gate still inspects .dynsym. macOS unchanged (line tables kept); dSYM extraction is follow-up, macOS bytes not measured. Linux x64 measurement only; Linux arm64 workflow wired but not measured.",
   "base": {
-    "revision": "7b86bbc87a4be6a4910bb559741b822b2c029a4f"
+    "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
   },
   "branch": "lane/hillclimb-binary-size",
   "commits": [
@@ -28,24 +28,24 @@
     "161dfcb9f",
     "840ab1552",
     "5e19d8bf2",
-    "1054a9dcf"
+    "1054a9dcf",
+    "c12c4d7a8",
+    "18e29cdf9",
+    "ca03c8aff3",
+    "d4ff40754"
   ],
   "build": {
-    "sandbox_id": "jyk9va0j321teowwodw204mf",
-    "binary_sha256": "4a376d4ef3f7e7235226f87eb233905ba787b44c9e8e62746bc8f2f4d9c9f555",
-    "binary_bytes": 53607680,
-    "presplit_sha256": "73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678",
-    "presplit_bytes": 210042112,
-    "decoder_sha256": "8ac8e3014d2c7a1affe6a2d264c46ad11e56e42f486862623c9f5688dfcdc56c",
-    "decoder_bytes": 37096221,
-    "build_id": "c6382fab2fb60506ee1da28a2805846a588e0878",
-    "build_seconds": null,
-    "toolchain": "rustup 1.98.1"
+    "sandbox_id": "f6amo6er0yooziy0vbej8z55 (hillclimb-binary-size-s5)",
+    "binary_sha256": "64818f7ae718e20cc20ac11db36eec21f4699795e0a34bd137d165440f5a78b5",
+    "presplit_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+    "decoder_sha256": "8c9e79e9e13f5feb1c30546b281ce20738f772afc2c28975980195935a0fa619",
+    "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)"
   },
   "gates": {
-    "fmt": "PASS CI at exact final head 1054a9dcf; VM local cargo fmt --all -- --check rc0 at exact head",
-    "clippy": "PASS CI workspace clippy at 1054a9dcf; VM local cargo clippy --workspace --all-targets --locked -D warnings rc0 at exact head",
-    "test": "PASS: CI 4/4 Rust test shards + test summary at exact final head 1054a9dcf (incl. fold's new stop_escalation_e2e + prompt_history_nav_headless); VM local cargo test --workspace --locked rc0 at exact head. One documented flake: tui_prompt_stash_restores_a_pasted_image_with_the_draft failed once in a local full run at 840ab1552, passed isolated at 9afc61d1c and 5e19d8bf2, CI never failed it. Public 'benchmark' check (run 36221783028 at 1054a9dcf) = NON-APPLICABLE pre-build red: TS/main harness npm ci EUSAGE missing package-lock, PR 0 builds/0 trials, 42 unavailable; operator disposition pending, never called pass."
+    "fmt": "PASS CI at d4ff40754 (and 1054a9dcf/18e29cdf9/ca03c8aff3); VM local rc0 at exact heads",
+    "clippy": "PASS CI workspace clippy at d4ff40754 (and prior heads); VM local rc0",
+    "test": "CI at d4ff40754: shards 1,2,3 PASS (shard 3 includes bash_bang_headless PASS), shard 4 first run FAILED on upstream pa-ai oauth openai_codex timing test (rerun pending; upstream CI green at 7064d039); prior heads: 1054a9dcf 4/4 PASS; 18e29cdf9 shard 3 failed 2x on upstream bash_bang flake (identical test-binary hash to upstream's green run; upstream's own CI red at 6588b19cf on the same test); ca03c8aff3 4/4 PASS. All reds classified upstream base-red flakes with binary-identity evidence; operator disposition pending. Public 'benchmark' check = NON-APPLICABLE pre-build red (0/0, npm ci EUSAGE) at every head - never called pass.",
+    "arm64": "script-level cross-arch chain PASS on the real 3f6b462b4 aarch64 base artifact (see extra.final_head_chain_d4ff40754.arm64_script_level_proof); real candidate ARM release proof still absent; Kevin's scope ruling pending"
   },
   "measurements": {
     "method": "same-vm-sequential",
@@ -1582,6 +1582,82 @@
           }
         ],
         "note": "lane branch carries NO Rust src changes vs the folded upstream base at every pair; deterministic builds reproduce identical presplit ELF; strip-only design holds at every head"
+      },
+      "final_head_chain_d4ff40754": {
+        "fold_chain_after_1054a9dcf": [
+          {
+            "head": "1054a9dcf",
+            "folded_base": "7b86bbc87",
+            "note": "first final head; both reviewers verdicted here (R1 APPROVE conditional ARM64; R2 BLOCK-ARM64-only)"
+          },
+          {
+            "head": "c12c4d7a8+18e29cdf9",
+            "folded_base": "60e2e198c",
+            "conflict": "package_release.py import conflict (upstream install-tree moved shipped-content policy into assemble_artifacts); resolved by combining both import blocks; post-fold lane delta re-diffed = 13 expected files, no dropped hunks"
+          },
+          {
+            "head": "ca03c8aff3",
+            "folded_base": "6588b19cf",
+            "note": "supervisor.rs split 1/8 fold; clean"
+          },
+          {
+            "head": "d4ff40754",
+            "folded_base": "7064d039",
+            "note": "pa-tui mouse/touch click fold; clean; post-fold delta identical 13-file list"
+          }
+        ],
+        "final_head": "d4ff407544d31fb7f2cae1015a662b0a33ae596f",
+        "artifacts_at_d4ff40754": {
+          "presplit_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+          "presplit_bytes": null,
+          "pure_upstream_identity": "presplit at d4ff40754 == pure 7064d039 build byte-identically (994c5563 both) - lane still carries ZERO Rust src changes",
+          "shipped_sha256": "64818f7ae718e20cc20ac11db36eec21f4699795e0a34bd137d165440f5a78b5",
+          "decoder_sha256": "8c9e79e9e13f5feb1c30546b281ce20738f772afc2c28975980195935a0fa619",
+          "tar_members": 104,
+          "tar_decoder_members": 0,
+          "build_id": null,
+          "glibc_max": "GLIBC_2.34",
+          "prev_heads": {
+            "18e29cdf9": {
+              "presplit": "de46fabd68a5e86a7e502be75457dc08cdd21ccce84a25aa0855f8a3bac18d0f",
+              "shipped": "d4fa03a408ab74b14b762e2162f6cba79422d24df7858a65d0cf5cabde02611b",
+              "decoder": "3622460f242bd8ec3d30924195d4624de6709c6ae5ab06370fb98be0153e2d6c",
+              "tar_members": 104
+            },
+            "ca03c8aff3": {
+              "presplit": "7328d11e9c6d9a107a842364a339e18ed05d35b70a29e70c59c2c07972b88265",
+              "shipped": "0dcdd0007d1913c957a20ac38d343a0ec5f5adf078fb34013e5cc432c837d63a",
+              "decoder": "30fa112a54f9a3d8c82467a3806a0b257cd9815f8ad09c7c6966aee9d5355056",
+              "tar_members": 104
+            }
+          }
+        },
+        "strict_proof_at_final_head": {
+          "vm": "hillclimb-binary-size-s5 (f6amo6er0yooziy0vbej8z55, fresh 16CPU/32GB, rustc 1.98.1 48a229cea exact, clean checkout)",
+          "results": "28 unit gates OK; both fixed e2e tests rc0; make package rc0 tar 104 members ZERO decoder; extracted ELF sha == staged == shipped; binaries.json one linux-x64 row no decoder; build-id match ELF+decoder; addr2line ??:? -> crates/pa-agent/src/validation.rs:26; GLIBC 2.34; negatives all rc1 (missing --decoder / raw DWARF / wrong build-id sidecar / flagless assembler); direct packer rc0; release-dry-run rc0 + verify_decoders promotion + verify_release all OK; dist manifest binaries-1/decoders-1 separate",
+          "fmt_clippy": "VM rc0 both (after rustup component add on fresh VM); CI fmt+clippy PASS",
+          "tar_members_note": "104 members since the install-tree PR curation (was 128 at 1054a9dcf; 127 at 161dfcb9f-era)"
+        },
+        "arm64_script_level_proof": {
+          "label": "SCRIPT-LEVEL cross-arch verification on a REAL BASE aarch64 artifact (upstream CI continuous job, commit 3f6b462b4, pre-Option-C base packaging) - NOT a candidate ARM release build; operator (Kevin) ruling still required for scope",
+          "artifact": "actions artifact 10899143653 (continuous run 36221928355 at 3f6b462b4); extracted ELF sha 0f24dd9025d3516a1cede38f35449ac400cc2aef48fb5ddf6b6d91cbb7975805 == manifest executableSha256; BuildID 325fd1e05e8b37b93959b2c7f8c7ea49b32c6ff7; 213,572,744B, with debug_info, not stripped",
+          "chain_results": "split_debug rc0: shipped 49,336,872B sha 5b49dca7e399dd1085bdd3ad4733a078ded17fe6f5d38e607b9a412dc2db71af (-76.9%), decoder gzip 36,483,912B sha 96d18ec1df0d57e20cea9cf66883c533e47836cc2419e245efa91a5b7a3d49db; assemble_artifacts rc0 (aarch64-unknown-linux-gnu, paired shipped+decoder); verify_decoders promotion rc0: tar-extracted ELF 5b49dca7 == manifest executableSha256, decoder 96d18ec1, build-id 325fd1e0 all bound OK; ARM tar 103 members ZERO decoder members; cross-arch addr2line: symbol pa_agent::validation::validate_tool_arguments at 0x293998 -> shipped ??:? vs decoder /__w/prime-agent/prime-agent/crates/pa-agent/src/validation.rs:26; ARM negatives rc1 (missing --decoder; raw DWARF ELF)",
+          "environment": "x86_64 VM with binutils-multiarch + binutils-aarch64-linux-gnu (objcopy/readelf/addr2line cross-arch); ran at heads 18e29cdf9, ca03c8aff3, d4ff40754 - identical results (lane scripts unchanged across these heads)"
+        },
+        "upstream_base_red_flakes": {
+          "tests": [
+            "pa-tui a_bang_during_a_streaming_turn_holds_then_flushes (bash_bang_headless.rs:863 'the working loader row')",
+            "pa-ai oauth::openai_codex::tests::a_dead_callback_falls_to_the_prompt_without_a_paste_surface"
+          ],
+          "evidence_not_lane_caused": [
+            "lane delta vs every merge-base is ONLY packaging+scripts+the 2 e2e test files (13 files, re-diffed after each fold, no dropped hunks)",
+            "presplit release ELF byte-identical to the pure folded-tip build at every head (1054a9dcf/7b86bbc87, 18e29cdf9/60e2e198c, ca03c8aff3/6588b19cf, d4ff40754/7064d039)",
+            "at 18e29cdf9 the CI test binary hash bash_bang_headless-a9aa6a18c467afcf was IDENTICAL to upstream's PASS run at 60e2e198c - same compiled bits, different outcomes",
+            "UPSTREAM CI ITSELF failed on the same bash_bang test at 6588b19cf (run 36262428994, shard 3) - upstream's own branch is red there",
+            "nondeterministic across runs: passed at 1054a9dcf CI, failed 2x at 18e29cdf9 CI, passed CI + failed once locally at ca03c8aff3, passed CI shard 3 at d4ff40754 (failed locally once); pa-ai oauth test failed once at d4ff40754 CI (upstream CI at 7064d039 green) - rerun pending"
+          ],
+          "classification": "upstream-introduced timing-sensitive flakes from the 2026-09-26 merged perf PRs; NOT lane-caused; operator disposition required alongside the benchmark non-applicability"
+        }
       }
     }
   },
@@ -1590,15 +1666,15 @@
       "Cross-VM latency comparisons invalid: calibration medians differ 22.3%",
       "Prior-head and bf21a7cc9 ABBA pairs cannot be PR evidence after origin/rust advanced; preserve as iteration evidence."
     ],
-    "notes": "Final-head same-VM sequential short B,C,C,B pair pending after decoder-integrity patch. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3\u201318.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; historical long B,C,C,B,B,C \u00d75 campaign on dedicated VM ongoing; short latest-head B,C,C,B neighbor pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B\u00d75 cold/msg plus fresh RSS pending on gate VM. PR #2844 open for REVIEW ONLY on base bc412c5f/candidate e0ac38f0; next upstream f3ae85c0 queued batch fold; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B\u00d75 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims. Decoder-binding patch validated ONLY with toy GCC fixture: immutable Cargo input allowed 2x deterministic split; assembler produced manifest decoders SHA/build-ID + SHA256SUMS; promotion matched tar-installed ELF SHA/build-ID; missing/extra/wrong/forged-SHA sidecar rejected. Real bc412c5f/e0ac38f0 ELF/image GLIBC/file:line/fresh isolated install VERIFIED; current f3ae upstream Cost-cell change awaits fold and exact-head recheck. Public benchmark run 36213336231 FAIL before PR build/trial (npm ci EUSAGE missing package-lock on Rust PR), 0/0; not performance verdict, operator/CI disposition pending. FINAL-HEAD UPDATE 2026-09-26: strip-only same-commit neighbor pair EXECUTED at exact final head 1054a9dcf (b,c,c,b x5, 80/80 valid, noop p50 0.06ms) with NO REGRESSION; earlier pinned d5cd/840a neighbor (80/80 valid) and 6-slot b0af/38db campaign (120/120) are banked with HISTORICAL labels. Cold-start slot-phase drift flips sign between the two same-design strip-only campaigns (d5cd/840a: c faster; 1054a9dcf: b faster) - mins identical in all slots both arms (314.8-315.7ms), so no arm-attributable cold-start delta is claimed in either direction. RSS deltas within slot drift; .debug_* sections are not PT_LOAD so strip cannot add resident memory. msg_send 'ack' stays the known bimodal first-PTY-chunk metric - guard only. make package tar bytes can differ across runs (package_release write_tar does not pin directory mtimes); the content sha (extracted ELF == shipped) is the asserted standard and the CI channel artifact route (assemble_artifacts.pack_tarball mtime=0) is deterministic. Three amend force-with-lease pushes on the worker-owned lane head during the e2e-test fix iteration are disclosed in extra.e2e_test_pairing_fixes."
+    "notes": "Final-head same-VM sequential short B,C,C,B pair pending after decoder-integrity patch. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3\u201318.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; historical long B,C,C,B,B,C \u00d75 campaign on dedicated VM ongoing; short latest-head B,C,C,B neighbor pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B\u00d75 cold/msg plus fresh RSS pending on gate VM. PR #2844 open for REVIEW ONLY on base bc412c5f/candidate e0ac38f0; next upstream f3ae85c0 queued batch fold; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B\u00d75 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims. Decoder-binding patch validated ONLY with toy GCC fixture: immutable Cargo input allowed 2x deterministic split; assembler produced manifest decoders SHA/build-ID + SHA256SUMS; promotion matched tar-installed ELF SHA/build-ID; missing/extra/wrong/forged-SHA sidecar rejected. Real bc412c5f/e0ac38f0 ELF/image GLIBC/file:line/fresh isolated install VERIFIED; current f3ae upstream Cost-cell change awaits fold and exact-head recheck. Public benchmark run 36213336231 FAIL before PR build/trial (npm ci EUSAGE missing package-lock on Rust PR), 0/0; not performance verdict, operator/CI disposition pending. FINAL-HEAD UPDATE 2026-09-26: strip-only same-commit neighbor pair EXECUTED at exact final head 1054a9dcf (b,c,c,b x5, 80/80 valid, noop p50 0.06ms) with NO REGRESSION; earlier pinned d5cd/840a neighbor (80/80 valid) and 6-slot b0af/38db campaign (120/120) are banked with HISTORICAL labels. Cold-start slot-phase drift flips sign between the two same-design strip-only campaigns (d5cd/840a: c faster; 1054a9dcf: b faster) - mins identical in all slots both arms (314.8-315.7ms), so no arm-attributable cold-start delta is claimed in either direction. RSS deltas within slot drift; .debug_* sections are not PT_LOAD so strip cannot add resident memory. msg_send 'ack' stays the known bimodal first-PTY-chunk metric - guard only. make package tar bytes can differ across runs (package_release write_tar does not pin directory mtimes); the content sha (extracted ELF == shipped) is the asserted standard and the CI channel artifact route (assemble_artifacts.pack_tarball mtime=0) is deterministic. Three amend force-with-lease pushes on the worker-owned lane head during the e2e-test fix iteration are disclosed in extra.e2e_test_pairing_fixes. POST-1054a9dcf CHAIN 2026-09-26 evening: three more folds (60e2e198c with package_release.py import conflict resolved; 6588b19cf; 7064d039) - lane delta re-diffed at each merge-base (same 13 packaging/scripts/test files, no dropped hunks), presplit byte-identity vs pure tip re-asserted at every head. Upstream timing flakes (bash_bang_headless loader-row assert; pa-ai oauth openai_codex dead-callback test) fail nondeterministically on ANY branch incl. upstream's own CI (red at 6588b19cf); not lane-caused (binary-hash identity + zero lane Rust delta). ARM64 script-level proof executed on a real CI base aarch64 artifact with binutils-multiarch; labeled script-level, NOT a candidate ARM release - Kevin's ruling still required."
   },
-  "outcome": "final-head-evidence-complete-at-1054a9dcf; review-requested",
-  "decision": "PR #2844 OPEN FOR REVIEW at final head 1054a9dcf. Strict fail-closed routes (161dfcb9f) closed the BLOCK hole; real x64 make package/direct-packer/release-dry-run proofs executed AT the final head with all negatives rejecting; presplit byte-identity vs pure upstream 7b86bbc87 asserted; strip-only same-commit B,C,C,B x5 neighbor at the exact final head: NO REGRESSION (80/80 valid); CI fmt+clippy+4/4 shards+summary PASS at the final head; public 'benchmark' check = NON-APPLICABLE pre-build red (0/0) - operator disposition pending, never called pass. MERGE HOLD (unchanged): orchestrator numeric review of exact final-head evidence + EXPLICIT APPROVE from BOTH adversarial reviewers on the FINAL PR SHA + operator disposition of disclosed red gates (public benchmark non-applicability; ARM64 scope). ARM64: Linux aarch64 in release matrix, NO real ARM artifact proof - requires real ARM split/assemble/promotion proof or explicit operator (Kevin) ruling before any APPROVE; synthetic fixtures do not satisfy. Worker never merges.",
+  "outcome": "final-head-evidence-complete-at-d4ff40754; verdicts-pending; arm64-ruling-pending; upstream-flake-dispositions-pending",
+  "decision": "PR #2844 OPEN FOR REVIEW at final head d4ff407544d31fb7f2cae1015a662b0a33ae596f (fold chain 1054a9dcf -> 18e29cdf9 -> ca03c8aff3 -> d4ff40754; each fold batched at a clean boundary, each lane-delta re-diffed, presplit byte-identity vs the pure folded tip asserted at every head). Strict fail-closed routes intact (0-line drift through all folds); real x64 proofs re-executed at EVERY post-fold head (make package, member recount, negatives, direct packer, release-dry-run, promotion verify - all green); 28 unit gates + both paired e2e tests green; VM fmt/clippy rc0; CI fmt+clippy+shards 1/2/3 PASS at the final head. Disclosed reds (operator disposition pending): (a) public 'benchmark' check NON-APPLICABLE pre-build 0/0 (standing); (b) upstream base-red timing flakes - bash_bang_headless (upstream's own CI red at 6588b19cf; identical test-binary hash evidence) and pa-ai oauth openai_codex (one red at d4ff40754 first CI run, rerun pending) - NOT lane-caused per binary-identity evidence; (c) ARM64 - real candidate ARM release proof absent; SCRIPT-LEVEL cross-arch proof on the real 3f6b462b4 base aarch64 artifact PASSES end-to-end (split -76.9%, assemble, promotion verifier, cross-arch addr2line, negatives); Kevin's explicit scope ruling is surfaced with this evidence. MERGE HOLD (unchanged): orchestrator numeric review + EXPLICIT APPROVE from BOTH adversarial reviewers on the FINAL PR SHA + operator disposition of disclosed reds. Fresh verdict requests re-issued at d4ff40754 (prior verdicts at 1054a9dcf were SHA-bound and are void by the fold chain per the reviewers' own conditions). Worker never merges.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2844",
   "record_path": "data/hillclimb/experiments/20260926-025700-binary-size-option-c-split-debug.json",
   "session": {
     "worker": "perf-binary-size-fast",
     "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-733e18c5/01a0dbfa-85ba-77aa-a7b9-8baff05244e2.jsonl"
   },
-  "timestamp": "2026-09-26T06:40:00Z"
+  "timestamp": "2026-09-26T19:00:00Z"
 }
