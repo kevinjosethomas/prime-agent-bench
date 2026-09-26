@@ -151,7 +151,6 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 # + the fixture sentinel, which the scenario verifies per trial
                 record["fixture"] = {"name": benchmark.requires_fixture, **fixture_manifest}
             ctx = prod.new_trial(trial_dir)
-            ctx = prod.new_trial(trial_dir)
             # the per-benchmark routing regime (mock vs real-api), resolved
             # before any launch and applied to the trial's provider/auth
             # state (adapters that route per-trial do it in apply_routing)
