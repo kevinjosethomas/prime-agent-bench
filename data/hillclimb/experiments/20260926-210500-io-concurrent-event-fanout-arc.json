@@ -1234,7 +1234,11 @@
  },
  "review": {
   "reviewer_1_parity_adversary_fast": {
-   "verdict": "REQUESTED (delivered with full CI state)"
+   "conditions": "SHA-bound; ONE fold + re-gate on combined tree per stale-head rule (upstream-only + 6-file mechanism byte-identical); WATCH ITEM: when upstream wires mod clients; (#2878 follow-on), the events.send in clients.rs needs the same Arc wrap or the combined tree does not compile (type-enforced migration); ping for re-verification at the folded head; merge gate remainder: reviewer #2 verdict (now also APPROVE), orchestrator numeric review (ACCEPTED), operator dispositions (benchmark non-applicability; flake registrations)",
+   "github_ci_at_head": "FULLY GREEN (fmt, check+clippy, shards 1-4/4, test summary, Bugbot, Macroscope; only red = standing non-applicable TS benchmark)",
+   "scope_note": "reviewer #1 commended the follow-up NOT-attempted scope discipline (subscriber registry recv-time->send-time divergence needs its own lane)",
+   "sha": "4becda49a54abfbcc33413a6566947064760b378",
+   "verdict": "EXPLICIT APPROVE (effective 2026-09-26)"
   },
   "reviewer_2_parity_adversary_2_fast": {
    "conditions": "SHA-bound (head movement voids); stale-base fold + full re-gate on combined tree before any merge with re-bind at the folded head; operator dispositions (benchmark non-applicability + mcp_login known-red registration); needs reviewer #1 APPROVE on same SHA + operator red-gate disposition",
