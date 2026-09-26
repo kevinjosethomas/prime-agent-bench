@@ -2719,7 +2719,7 @@
   "notes": "single-driver guards verified before every launch (pgrep before relaunch; orphaned workers cleaned after every kill); the byte-parity evidence is I/O-independent and was taken from the straddle window's dumps (bytes are bytes); probe defect in baseline run1 (hello unpack) fixed before run2 - recorded in the decomposition record; the legacy attach label is VOID as a path distinction (supervisor forces slim) - corroborates only"
  },
  "outcome": "in-progress (candidate proven on paired evidence + wire byte-parity; PR open for numeric review + both adversarial reviewers + operator disposition; NO MERGE by lane)",
- "pr_url": "PENDING",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2897",
  "record_path": "data/hillclimb/experiments/20260926-223000-interaction-supervisor-relay-zero-copy-relay.json",
  "prior_record": "20260926-193000-interaction-supervisor-relay-decompose (baseline + phase decomposition + splice oracle; bench hillclimb 2c4cd12)",
  "session": {
