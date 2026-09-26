@@ -1,0 +1,1019 @@
+{
+ "id": "20260926-193000-interaction-supervisor-relay-decompose",
+ "axis": "interaction",
+ "hypothesis": "The supervisor-routed response relay (worker to_vec -> supervisor from_slice Value tree -> from_value DaemonResponse -> response_line deep clone -> client-line to_string) is the dominant supervisor-side cost at Kevin-scale routed attaches: attach-path's baseline measured +14..+54ms over the direct transport at 1.45-9.48MB wire. Decompose it at the current tip and test whether the wire bytes the client receives are spliceable from the worker's own payload bytes (i.e. whether the supervisor's parse+clone+re-serialize is necessary for routing, or routing needs only the frame header's requestId plus attach bookkeeping scalars).",
+ "approach": "BASELINE + DECOMPOSITION ONLY (no product edit). Pure tip 7064d039a release pa-daemon (rustc 1.98.1) on one 16c/32GB ubuntu:22.04 VM, same-VM sequential fresh-daemon probes over the REAL wire (supervisor socket routed + direct worker transport via ticket+peer_auth), 3 creates x per-fixture over attach-path's published synthetic fixtures (synth-150k, synth-450k, canonical-10mib); per fixture: routed get_session_header (floor) / get_state (1.1KB data) / get_messages (full-history data) / attach slim+legacy (fresh connection per attach), direct state/msgs/reattach/fresh-attach, per-trial fixture prehash asserted, pre/mid/post CPU calibration, raw wire dumps per kind. A second DIAGNOSTIC build (same tip + env-gated SRPHASE eprintlns in supervisor reader pump, protocol::response_line, supervisor write_line, routing.rs route wait, worker write_response_frame; PA_RELAY_TIMING only) decomposed the relay per phase; the diagnostic binary is never used for deltas. Splice oracle: routed raw line bytes vs direct raw payload bytes, per fixture, get_messages and attach.",
+ "parity_notes": "no product change; this record is baseline evidence + a byte-level wire analysis. The splice proof shows the exact byte relationship the routed client line has to the worker payload: get_messages routed line == '{\"id\":\"<cid>\",' + direct worker payload[1:] byte-identical at all 3 fixtures; attach differs only in data.client (id: supervisor-assigned routed client id vs the direct request's clientId; capabilities echo) at the response tail.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "lane/hillclimb-supervisor-relay",
+ "build": {
+  "sandbox_id": "wgfk4yorgvjfaz6bw5ub1s72",
+  "binary_sha256": "392efffae0c08cfba85911565adc8171a31002d17850daf20306d89fd7716402",
+  "binary_bytes": 151166696,
+  "build_seconds": 92,
+  "toolchain": "rustc 1.98.1 (rustup default)"
+ },
+ "diagnostic_binary": {
+  "sha256": "5c265126b804474760e7ea867d31c62e01b92ba07e390f965a56728c6f4a2e3f",
+  "note": "DIAGNOSTIC ONLY (env-gated SRPHASE eprintlns); never evidence for deltas"
+ },
+ "fixtures": {
+  "synth-150k": {
+   "sha256": "eff19eb64a3cba18aa769bb9f8bae16121026ca9e3168dd33798b4891bd7ca53",
+   "label": "SYNTH-150K-CTX-EQUIV-PROXY (attach-path-synthetic/1 seed 20260926)"
+  },
+  "synth-450k": {
+   "sha256": "fa45c5243ed6f0536202d33ee67cd56762e79a2fb041e86c66101966d9ff4923",
+   "label": "SYNTH-450K-CTX-EQUIV-PROXY (Kevin's ~442k scale class)"
+  },
+  "canonical_10mib": {
+   "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda",
+   "label": "stock full-window, ~996k ctx-equiv"
+  }
+ },
+ "measurements": {
+  "method": "same-vm-sequential fresh-daemon probes; wall = raw socket read to the complete line/frame (client-side python json parse timed separately, excluded from wall); calibration pre 1.061 / mid 1.042-1.060 / post 1.049",
+  "vm_calibration_s": {
+   "pre": 1.061,
+   "mid": [
+    1.046,
+    1.049
+   ],
+   "post": 1.049
+  },
+  "suites": {
+   "synth-150k": {
+    "routed_attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 29.0,
+     "min_ms": 27.3,
+     "max_ms": 40.1,
+     "values_ms": [
+      27.3,
+      27.3,
+      27.4,
+      27.9,
+      28.2,
+      28.3,
+      28.6,
+      29.0,
+      29.4,
+      29.5,
+      30.4,
+      31.0,
+      33.8,
+      35.9,
+      40.1
+     ]
+    },
+    "routed_attach_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 30.8,
+     "min_ms": 29.5,
+     "max_ms": 31.8,
+     "values_ms": [
+      29.5,
+      30.8,
+      31.8
+     ]
+    },
+    "routed_attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 27.6,
+     "min_ms": 26.4,
+     "max_ms": 36.9,
+     "values_ms": [
+      26.4,
+      26.9,
+      27.0,
+      27.1,
+      27.6,
+      28.8,
+      29.3,
+      29.4,
+      36.9
+     ]
+    },
+    "routed_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 22.75,
+     "min_ms": 21.37,
+     "max_ms": 40.39,
+     "values_ms": [
+      21.37,
+      21.77,
+      21.87,
+      21.97,
+      22.15,
+      22.18,
+      22.21,
+      22.52,
+      22.68,
+      22.68,
+      22.75,
+      22.97,
+      23.69,
+      24.22,
+      24.44,
+      24.53,
+      25.1,
+      25.1,
+      25.27,
+      30.33,
+      40.39
+     ]
+    },
+    "routed_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 5.57,
+     "min_ms": 4.47,
+     "max_ms": 6.29,
+     "values_ms": [
+      4.47,
+      4.62,
+      4.77,
+      5.05,
+      5.14,
+      5.18,
+      5.3,
+      5.38,
+      5.53,
+      5.55,
+      5.57,
+      5.66,
+      5.76,
+      5.85,
+      5.92,
+      5.95,
+      5.95,
+      6.05,
+      6.07,
+      6.27,
+      6.29
+     ]
+    },
+    "routed_noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.04,
+     "min_ms": 0.03,
+     "max_ms": 0.23,
+     "values_ms": [
+      0.03,
+      0.03,
+      0.03,
+      0.03,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.05,
+      0.05,
+      0.07,
+      0.16,
+      0.18,
+      0.23
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 16.8,
+     "min_ms": 12.3,
+     "max_ms": 18.2,
+     "values_ms": [
+      12.3,
+      12.4,
+      12.6,
+      13.3,
+      15.8,
+      16.3,
+      16.3,
+      16.5,
+      16.7,
+      16.9,
+      17.2,
+      17.3,
+      17.3,
+      17.4,
+      17.5,
+      17.6,
+      17.7,
+      18.2
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 19.4,
+     "min_ms": 16.9,
+     "max_ms": 20.1,
+     "values_ms": [
+      16.9,
+      18.4,
+      19.2,
+      19.2,
+      19.4,
+      19.5,
+      19.7,
+      20.1,
+      20.1
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 9.9,
+     "min_ms": 8.2,
+     "max_ms": 14.3,
+     "values_ms": [
+      8.2,
+      8.5,
+      8.6,
+      8.6,
+      8.9,
+      9.2,
+      9.2,
+      9.6,
+      9.9,
+      9.9,
+      9.9,
+      9.9,
+      9.9,
+      10.0,
+      10.3,
+      10.8,
+      11.1,
+      11.3,
+      12.9,
+      14.0,
+      14.3
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 5.8,
+     "min_ms": 4.6,
+     "max_ms": 6.9,
+     "values_ms": [
+      4.6,
+      4.9,
+      5.1,
+      5.2,
+      5.3,
+      5.5,
+      5.5,
+      5.5,
+      5.7,
+      5.8,
+      5.8,
+      5.8,
+      5.9,
+      6.0,
+      6.0,
+      6.0,
+      6.1,
+      6.3,
+      6.3,
+      6.4,
+      6.9
+     ]
+    }
+   },
+   "synth-450k": {
+    "routed_attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 88.8,
+     "min_ms": 78.1,
+     "max_ms": 110.6,
+     "values_ms": [
+      78.1,
+      79.8,
+      79.8,
+      81.9,
+      83.0,
+      85.1,
+      85.6,
+      88.8,
+      90.8,
+      93.1,
+      93.4,
+      96.7,
+      97.9,
+      100.4,
+      110.6
+     ]
+    },
+    "routed_attach_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 95.7,
+     "min_ms": 84.8,
+     "max_ms": 99.2,
+     "values_ms": [
+      84.8,
+      95.7,
+      99.2
+     ]
+    },
+    "routed_attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 87.6,
+     "min_ms": 80.0,
+     "max_ms": 97.6,
+     "values_ms": [
+      80.0,
+      80.1,
+      80.8,
+      85.4,
+      87.6,
+      89.1,
+      89.3,
+      93.9,
+      97.6
+     ]
+    },
+    "routed_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 83.5,
+     "min_ms": 71.77,
+     "max_ms": 110.28,
+     "values_ms": [
+      71.77,
+      72.34,
+      73.45,
+      74.13,
+      74.81,
+      77.02,
+      77.68,
+      78.33,
+      79.2,
+      80.49,
+      83.5,
+      84.87,
+      88.26,
+      90.65,
+      91.34,
+      91.55,
+      92.34,
+      94.42,
+      96.29,
+      98.55,
+      110.28
+     ]
+    },
+    "routed_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 20.91,
+     "min_ms": 14.53,
+     "max_ms": 28.0,
+     "values_ms": [
+      14.53,
+      14.64,
+      14.65,
+      14.93,
+      15.57,
+      15.65,
+      19.26,
+      19.36,
+      20.5,
+      20.64,
+      20.91,
+      21.32,
+      21.43,
+      22.3,
+      23.84,
+      24.07,
+      24.13,
+      25.36,
+      26.39,
+      27.02,
+      28.0
+     ]
+    },
+    "routed_noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.04,
+     "min_ms": 0.03,
+     "max_ms": 0.26,
+     "values_ms": [
+      0.03,
+      0.03,
+      0.03,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.05,
+      0.06,
+      0.16,
+      0.19,
+      0.26
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 49.95,
+     "min_ms": 46.3,
+     "max_ms": 66.4,
+     "values_ms": [
+      46.3,
+      46.5,
+      46.7,
+      47.8,
+      47.8,
+      48.0,
+      48.4,
+      48.6,
+      49.8,
+      50.1,
+      50.4,
+      50.6,
+      60.5,
+      61.1,
+      61.9,
+      62.1,
+      65.6,
+      66.4
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 52.0,
+     "min_ms": 46.3,
+     "max_ms": 61.8,
+     "values_ms": [
+      46.3,
+      47.6,
+      49.9,
+      50.5,
+      52.0,
+      54.3,
+      56.0,
+      57.1,
+      61.8
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 37.7,
+     "min_ms": 33.1,
+     "max_ms": 49.1,
+     "values_ms": [
+      33.1,
+      33.3,
+      35.4,
+      35.5,
+      36.5,
+      36.5,
+      36.8,
+      37.1,
+      37.4,
+      37.6,
+      37.7,
+      38.0,
+      38.7,
+      39.4,
+      41.0,
+      41.1,
+      41.5,
+      43.8,
+      48.4,
+      49.0,
+      49.1
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 15.6,
+     "min_ms": 14.4,
+     "max_ms": 31.8,
+     "values_ms": [
+      14.4,
+      14.5,
+      14.6,
+      14.7,
+      14.8,
+      14.9,
+      15.0,
+      15.1,
+      15.2,
+      15.4,
+      15.6,
+      15.9,
+      16.5,
+      17.7,
+      22.1,
+      22.5,
+      22.6,
+      22.6,
+      22.8,
+      23.0,
+      31.8
+     ]
+    }
+   },
+   "canon-10mib": {
+    "routed_attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 151.8,
+     "min_ms": 137.9,
+     "max_ms": 192.0,
+     "values_ms": [
+      137.9,
+      144.7,
+      146.8,
+      147.6,
+      147.9,
+      149.9,
+      151.6,
+      151.8,
+      156.0,
+      161.5,
+      164.3,
+      176.6,
+      178.8,
+      181.3,
+      192.0
+     ]
+    },
+    "routed_attach_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 153.9,
+     "min_ms": 142.5,
+     "max_ms": 155.6,
+     "values_ms": [
+      142.5,
+      153.9,
+      155.6
+     ]
+    },
+    "routed_attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 156.5,
+     "min_ms": 142.8,
+     "max_ms": 182.7,
+     "values_ms": [
+      142.8,
+      148.6,
+      149.3,
+      152.1,
+      156.5,
+      162.2,
+      172.1,
+      173.8,
+      182.7
+     ]
+    },
+    "routed_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 128.21,
+     "min_ms": 114.4,
+     "max_ms": 193.97,
+     "values_ms": [
+      114.4,
+      117.56,
+      118.51,
+      118.63,
+      121.88,
+      121.92,
+      122.7,
+      123.11,
+      126.59,
+      127.17,
+      128.21,
+      129.03,
+      130.87,
+      132.43,
+      133.12,
+      134.36,
+      135.64,
+      139.92,
+      151.77,
+      173.43,
+      193.97
+     ]
+    },
+    "routed_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 30.07,
+     "min_ms": 21.77,
+     "max_ms": 37.12,
+     "values_ms": [
+      21.77,
+      22.49,
+      22.6,
+      23.02,
+      23.44,
+      23.8,
+      24.12,
+      25.25,
+      26.8,
+      28.45,
+      30.07,
+      31.43,
+      32.23,
+      32.47,
+      33.41,
+      33.99,
+      34.23,
+      35.21,
+      35.89,
+      35.93,
+      37.12
+     ]
+    },
+    "routed_noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.05,
+     "min_ms": 0.04,
+     "max_ms": 0.31,
+     "values_ms": [
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.04,
+      0.05,
+      0.05,
+      0.05,
+      0.06,
+      0.06,
+      0.07,
+      0.1,
+      0.23,
+      0.28,
+      0.31
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 92.85,
+     "min_ms": 82.4,
+     "max_ms": 125.0,
+     "values_ms": [
+      82.4,
+      84.9,
+      85.5,
+      87.4,
+      88.3,
+      88.5,
+      89.6,
+      90.2,
+      90.9,
+      94.8,
+      96.3,
+      99.1,
+      101.1,
+      101.4,
+      116.2,
+      118.8,
+      124.2,
+      125.0
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 97.0,
+     "min_ms": 83.5,
+     "max_ms": 183.1,
+     "values_ms": [
+      83.5,
+      86.6,
+      92.3,
+      92.9,
+      97.0,
+      112.7,
+      133.4,
+      144.7,
+      183.1
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 78.1,
+     "min_ms": 60.5,
+     "max_ms": 146.0,
+     "values_ms": [
+      60.5,
+      64.6,
+      69.8,
+      71.4,
+      72.0,
+      72.4,
+      72.9,
+      75.1,
+      75.7,
+      75.7,
+      78.1,
+      79.5,
+      80.8,
+      81.1,
+      85.1,
+      85.1,
+      89.2,
+      92.7,
+      96.8,
+      97.0,
+      146.0
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 27.7,
+     "min_ms": 22.8,
+     "max_ms": 40.1,
+     "values_ms": [
+      22.8,
+      22.9,
+      23.0,
+      23.2,
+      24.0,
+      25.9,
+      26.1,
+      26.5,
+      27.1,
+      27.2,
+      27.7,
+      27.7,
+      27.8,
+      28.9,
+      29.7,
+      30.2,
+      32.6,
+      33.1,
+      33.4,
+      33.6,
+      40.1
+     ]
+    }
+   }
+  },
+  "relay_overhead_ms_p50": {
+   "synth-150k": {
+    "attach_routed_minus_direct": 12.2,
+    "msgs_routed_minus_direct": 12.85,
+    "state_routed_minus_direct": -0.23
+   },
+   "synth-450k": {
+    "attach_routed_minus_direct": 38.85,
+    "msgs_routed_minus_direct": 45.8,
+    "state_routed_minus_direct": 5.31
+   },
+   "canon-10mib": {
+    "attach_routed_minus_direct": 58.95,
+    "msgs_routed_minus_direct": 50.11,
+    "state_routed_minus_direct": 2.37
+   }
+  },
+  "wire_bytes_p50": {
+   "synth-150k": {
+    "routed_attach_line": 1447616,
+    "routed_msgs_line": 1444620,
+    "routed_state_line": 1105,
+    "direct_attach_payload": 1447598,
+    "direct_msgs_payload": 1444609
+   },
+   "synth-450k": {
+    "routed_attach_line": 4290324,
+    "routed_msgs_line": 4287331,
+    "routed_state_line": 1100,
+    "direct_attach_payload": 4290306,
+    "direct_msgs_payload": 4287320
+   },
+   "canon-10mib": {
+    "routed_attach_line": 9476442,
+    "routed_msgs_line": 9474073,
+    "routed_state_line": 1131,
+    "direct_attach_payload": 9476424,
+    "direct_msgs_payload": 9474062
+   }
+  }
+ },
+ "phase_decomposition_diagnostic": {
+  "synth-150k": {
+   "sup_parse_big_ms_p50": 3.0,
+   "sup_big_payload_bytes_p50": 1446107,
+   "sup_fromv_big_ms_p50": 1.0,
+   "sup_respline_clone_ms_p50": {
+    "gm": 1.0,
+    "ra": 2.0,
+    "st": 0.0
+   },
+   "sup_writeline_ms_p50": {
+    "gm": {
+     "to_string": 0.0,
+     "socket_write": 0.0
+    },
+    "ra": {
+     "to_string": 1.0,
+     "socket_write": 0.0
+    },
+    "st": {
+     "to_string": 0.0,
+     "socket_write": 0.0
+    }
+   },
+   "sup_route_ms_p50": {
+    "gm": 12.0,
+    "ra": 22.0,
+    "st": 6.0
+   },
+   "worker_respline_clone_ms_p50": {
+    "attach": 1.0,
+    "get_messages": 1.0
+   },
+   "worker_wire_ms_p50": {
+    "attach": {
+     "encode_incl_clone": 3.0,
+     "socket_write": 0.0
+    },
+    "get_messages": {
+     "encode_incl_clone": 2.0,
+     "socket_write": 0.0
+    }
+   }
+  },
+  "synth-450k": {
+   "sup_parse_big_ms_p50": 9.0,
+   "sup_big_payload_bytes_p50": 4288816,
+   "sup_fromv_big_ms_p50": 7.0,
+   "sup_respline_clone_ms_p50": {
+    "gm": 10.0,
+    "ra": 8.0,
+    "st": 0.0
+   },
+   "sup_writeline_ms_p50": {
+    "gm": {
+     "to_string": 4.0,
+     "socket_write": 2.0
+    },
+    "ra": {
+     "to_string": 4.0,
+     "socket_write": 2.0
+    },
+    "st": {
+     "to_string": 0.0,
+     "socket_write": 0.0
+    }
+   },
+   "sup_route_ms_p50": {
+    "gm": 58.0,
+    "ra": 68.0,
+    "st": 22.0
+   },
+   "worker_respline_clone_ms_p50": {
+    "attach": 7.0,
+    "get_messages": 4.0
+   },
+   "worker_wire_ms_p50": {
+    "attach": {
+     "encode_incl_clone": 16.0,
+     "socket_write": 1.0
+    },
+    "get_messages": {
+     "encode_incl_clone": 12.0,
+     "socket_write": 1.0
+    }
+   }
+  },
+  "canon-10mib": {
+   "sup_parse_big_ms_p50": 12.0,
+   "sup_big_payload_bytes_p50": 9475246,
+   "sup_fromv_big_ms_p50": 9.0,
+   "sup_respline_clone_ms_p50": {
+    "gm": 10.0,
+    "ra": 11.0,
+    "st": 0.0
+   },
+   "sup_writeline_ms_p50": {
+    "gm": {
+     "to_string": 8.0,
+     "socket_write": 13.0
+    },
+    "ra": {
+     "to_string": 8.0,
+     "socket_write": 16.0
+    },
+    "st": {
+     "to_string": 0.0,
+     "socket_write": 0.0
+    }
+   },
+   "sup_route_ms_p50": {
+    "gm": 92.0,
+    "ra": 101.0,
+    "st": 32.0
+   },
+   "worker_respline_clone_ms_p50": {
+    "attach": 9.0,
+    "get_messages": 6.5
+   },
+   "worker_wire_ms_p50": {
+    "attach": {
+     "encode_incl_clone": 25.0,
+     "socket_write": 5.0
+    },
+    "get_messages": {
+     "encode_incl_clone": 23.5,
+     "socket_write": 5.5
+    }
+   }
+  }
+ },
+ "splice_oracle": {
+  "get_messages": {
+   "synth-150k": "BYTE_IDENTICAL",
+   "synth-450k": "BYTE_IDENTICAL",
+   "canonical_10mib": "BYTE_IDENTICAL",
+   "rule": "routed client line == '{\"id\":\"<cid>\",' + worker payload[1:] (worker payload = response_line with id absent: type,command,success,data)"
+  },
+  "attach": {
+   "synth-150k": "DIFFERS only in data.client (id + capabilities echo) at the response tail",
+   "synth-450k": "same",
+   "canonical_10mib": "same",
+   "detail": "worker payload data.client.id = request clientId (supervisor connection id for routed; direct client's own for direct); supervisor patches data.client.capabilities to the CLIENT's normalized set; the patch is the only content edit on the routed attach line"
+  }
+ },
+ "key_findings": {
+  "relay_overhead_routed_minus_direct_p50_ms": {
+   "synth-150k": 12.1,
+   "synth-450k": 38.7,
+   "canonical_10mib": 57.0
+  },
+  "supervisor_relay_phase_split_p50_ms_at_9.47MB": {
+   "from_slice_parse": 12,
+   "from_value_walk_key_clones": 9,
+   "response_line_deep_clone": 11,
+   "client_line_to_string": 8,
+   "client_socket_write": 16,
+   "route_wait_incl_worker": 101
+  },
+  "supervisor_relay_phase_split_p50_ms_at_4.29MB": {
+   "from_slice_parse": 9,
+   "from_value_walk_key_clones": 7,
+   "response_line_deep_clone": 8,
+   "client_line_to_string": 4,
+   "client_socket_write": 2
+  },
+  "worker_side_at_9.47MB": {
+   "response_line_clone": 9,
+   "to_vec_encode_incl_clone": 25,
+   "socket_write": 5
+  },
+  "dominant_cost": "At Kevin-scale the supervisor pays ~28ms (450k) / ~40ms (10MiB) in pure JSON re-materialization on the routed response path (parse + from_value key-clone walk + response_line deep clone + to_string), on top of the inherent extra socket hop (~5-17ms). The from_value walk is NOT free: deserializing DaemonResponse from an owned Value clones every object key string in the tree. The generic routed response (get_messages) is provably spliceable byte-identically from the worker payload; the routed attach needs only the client-id splice plus the client-capabilities echo (worker-side, via the request payload) and the activeSessionId/success scalars for supervisor bookkeeping.",
+  "routed_floor": "routed get_session_header p50 0.04-0.06ms; routed get_state (1.1KB data) +1.5..2.4ms over direct \u2014 the route hop fixed cost is small; the overhead is payload-size-driven."
+ },
+ "validity": {
+  "notes": "Probe run 1 had a client-side unpack bug in the direct-transport opener (hello header unpacked from the payload slot): routed numbers from run1 are superseded by run2 (this record); no direct numbers existed in run1. The 'legacy' attach label is VOID as a path distinction: the supervisor forces slim_attach on every routed attach, so routed_attach_legacy_ms measures the same path as routed_attach_ms (kept as corroboration; wire differs by 13 bytes = client.capabilities echo). Diagnostic binary (env-gated SRPHASE instrumentation) used ONLY for phase attribution, never for delta evidence; its runs are separate from the baseline run. Fixture prehash asserted per create (copy sha == source sha); post-copy grows by bookkeeping rows. Calibration stable across the run (1.042-1.061). Wall excludes the client-side python parse (timed separately: 14-23ms at 9.47MB, identical in both arms so routed-minus-direct is unaffected).",
+  "excluded": []
+ },
+ "candidate_design": {
+  "summary": "Zero-copy routed response relay: the supervisor's reader pump hands the worker response payload BYTES to the route (reply channel carries an enum: typed DaemonResponse OR relayed bytes + header hints); route_client_command splices the client command id in front of the worker payload bytes and the client connection loop writes raw bytes without to_string. Attach/reattach keep typed post-processing only where bookkeeping needs it, fed by small response-frame header hints (ok + activeSessionId) emitted by the worker; the client-capabilities echo moves to the worker (request payload carries the client's normalized capabilities; direct path unchanged). Every other routed kind relays opaquely.",
+  "expected_effect_ms_p50": {
+   "synth-150k_routed_attach": -7,
+   "synth-450k_routed_attach": -28,
+   "canonical_10mib_routed_attach": -40,
+   "canonical_10mib_routed_msgs": -30
+  },
+  "wire_parity_plan": "byte-identical raw client lines per routed kind (attach/reattach/detach/get_messages/get_state/noop + event pushes unchanged), base vs candidate on the same VM, plus the splice identity re-verified per fixture.",
+  "risk": "internal worker-socket frame header gains optional fields (worker + supervisor both in-tree; direct clients parse the header as a JSON object and ignore unknown fields); reply-channel and dispatch-channel types widen to an enum; chunked-snapshot and rebound-reattach clients keep the typed path."
+ },
+ "outcome": "baseline-decompose",
+ "next": "implement the zero-copy relay candidate on a lane branch based on attach-path's head (its single-fold PR lands first per lane brief); paired ABBA at 7064d039a-adjacent base with wire byte-parity per routed kind",
+ "session": {
+  "worker": "perf-supervisor-relay-fast"
+ },
+ "timestamp": "2026-09-26T19:30:00+00:00"
+}
