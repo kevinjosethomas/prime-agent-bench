@@ -1,0 +1,351 @@
+{
+ "id": "20260926-193438-startup-catalog-second-parse-content-borrow",
+ "axis": "startup",
+ "hypothesis": "The remaining COLD roster scan cost at the catalog-cold lane's settled head (record 20260926-185033: ~57-59ms/1000 sessions; its stage split attributed ~15-20ms to the SECOND full-Value parse) is dominated by fold_scan_entry's guarded message arm re-parsing the ENTIRE line into SessionEntry (fields: Value flatten materializes envelope + message metadata + every block field of every content block, incl. tool-call args/thinking/image payloads) when its ONLY consumers are message.content -> message_text() for acc.first_message and the capped search corpus. Nothing else reads the second parse's output.",
+ "approach": "Baseline-first census (untracked example catalog_second_parse_census on the measurement VM; 4 passes/file: current-path replica, candidate-path replica, micro-variants, untimed census) answered the brief's question exactly: 2nd parse = full SessionEntry re-parse of GUARDED user/assistant message lines only (3276@100 / 5556@1000 / 25509@4096 of 10569/12856/63809 message lines); what still needs full Value = NOTHING but message.content. Candidate (single commit e6380768f on lane/hillclimb-catalog-second-parse, rebased onto catalog-cold's settled head b99cecedf): SessionInfoMessage gains content: Option<&'a RawValue> (#[serde(default, borrow)] - a zero-copy raw span captured by the ONE typed parse; SessionInfoEntry gains the matching lifetime + borrow on the message field), and the guarded arm extracts content_to_text(from_str::<Value>(content span)) once instead of re-parsing the whole entry (also kills the double message_text on first-user lines: one text, clone_from into first_message, append into the corpus). String fast-path was measured then DROPPED: all 12856@1000 real message contents are block arrays (0 plain strings). In-tree differential oracle added (session_store_info_tests::content_borrow_matches_full_parse_across_content_matrix): row-level candidate-vs-full-parse-reference across 15 content shapes (roles; string/array/missing/null/scalar content; JSON-byte escapes incl. surrogate pairs; non-text blocks; text:null/text:42; empty no-op appends; cap-cut; first-message-priority) + fold-level vs the EXISTING legacy full-parse reference fold; 17/17 info_tests and 54/54 session_store:: tests green at the candidate head.",
+ "parity_notes": "Row/wire parity: the borrowed content span IS the subtree message_text read (the typed parse walked the same bytes; parsing the span back yields the identical Value - content_to_text over it is the same function the full-parse path used, so the extraction is identical by construction). Differential ground truth on the real fixture (census, all 3 tiers): text hash equal on 34,341/34,341 guarded lines; corpus (first_message, capped all_messages_text, running char count) identical per file on 5,196/5,196 files; parse-acceptance identical (SessionInfoEntry-ok lines are exactly SessionEntry-ok: 0 divergences both directions); the guarded empty-text append is already a no-op in append_capped_search_text (returns used unchanged), so missing/empty content changes nothing. End-to-end row oracle: the probe's sha256 over a canonical serialization of every folded row is IDENTICAL across every arm, slot, and pass at every tier (100: ccc76960..., 1000: 8f41e882..., 4096: 40258404...) and the legacy length-sum checksums reproduce catalog-cold's published 762089/893085 at the byte-identical 100/1000 fixtures. SessionInfo rows, JSONL bytes, wire/API, replay, streaming catalog, resume/torn-tail semantics untouched; the borrow lives only inside fold_scan_entry's stack. Dependency surface (explicit reviewer sign-off requested): pa-daemon's serde_json dep gains the raw_value feature (additive feature of the existing dependency; enables &RawValue borrowing; workspace feature-unified as cargo features are; zero behavior change beyond the borrow parsing; the base arm was built from a pristine tree WITHOUT the feature and the candidate WITH it, so any feature-linked cost rides the candidate arm). Fixture integrity: perf-many-sessions-real.tar.gz verified against its manifest (1099/1100 rows clean; the ONE mismatch is the known stale-manifest row 100/01a0dad3 whose tar bytes hash 39fca708... exactly as catalog-cold's record documented); 4096 tier = the shipped perf-many-sessions-4096.tar.gz, fixture aggregate sha256 95a177c15e16873076e2316fc33b1f53c2b141488b206440c0cffc9a7646d839 (all 5196 files hashed on the VM). FIXTURE DISCLOSURE (per orchestrator): my 4096 tier is NOT catalog-cold's 4x+96 construction (my tier: 63809 message lines, checksum 4336641 vs their 53030/3680629) - cross-lane 4096 comparisons are INVALID and must never be aggregated; the pair's 4096 evidence is internally valid (same fixture both arms, row-sha256 oracle).",
+ "base": {
+  "revision": "b99cecedf2827200e48611747209a58d416f5337",
+  "note": "catalog-cold lane's SETTLED PR #2879 head (their test-only amend series from c33ecdf5b; my single commit is rebased directly onto it; origin/rust tip at PR time was 7064d039ac3437596f75b44423d76a8f4bf4856a, unchanged)"
+ },
+ "branch": "lane/hillclimb-catalog-second-parse",
+ "commits": [
+  "e6380768f41481ba073bf7a37d245f46d54f92fe"
+ ],
+ "build": {
+  "sandbox_id": "cfr3ur8rts9pazfcnyhgtmmz",
+  "toolchain": "rustup 1.98.1",
+  "lanehead_binary_sha256": null,
+  "base_probe_sha256": "dfa8fcfe98a50c7e74b8993972c39d17e85af44246b7f9fac22b867e14c5955b",
+  "cand_probe_sha256": "752c519b983c6ec2e642b1541be6257a7c916449a5712c2af9c4b03aa32f534f",
+  "census_probe_sha256": "060a1e531018701157979919c9768afd0b677ed3a880ed3c12f85c5b24fa002a",
+  "probe_note": "timing probe = pa-daemon example catalog_scan_probe2 (untracked on the VM: list_sessions, 7 passes, legacy length-sum checksum + sha256 row oracle; identical source both arms). Head-exact pair at b99cecedf: B = pristine-tree base probe, C = base+patch candidate probe; sha-asserted before every slot. Earlier probe builds at c33ecdf5b (base 4474caee, cand a56a3200) are HISTORICAL (superseded by the rebase to b99cecedf; binary-nondeterminism lesson re-confirmed: the test-only head move 3c7988ccd->c33ecdf5b->b99cecedf changed probe bytes).",
+  "binary_nondeterminism_note": "the probe binaries at c33ecdf5b+patch (a56a3200) and b99cecedf+patch (752c519b) differ though the release-code delta between those bases is cfg(test)-only - re-confirmed catalog-cold's lesson; the settled-head pair re-run is the load-bearing evidence"
+ },
+ "gates": {
+  "fmt": "PASS at b99cecedf+e6380768f (cargo fmt --all --check, clean tree, examples stashed; PROCESS NOTE: a first VM rustfmt pass used --edition 2024 and spuriously reformatted 2 unrelated pre-existing files - caught by diffstat review, reverted, redone with the project edition 2021; the patch carries only the 3 intended files)",
+  "clippy": "PASS at b99cecedf+e6380768f (cargo clippy --workspace --all-targets -- -D warnings, 0 errors; at the pre-rebase base c33ecdf5b+patch the ONLY clippy error was catalog-cold's pre-existing session_store.rs:2730 default_trait_access, since fixed at their settled head b99cecedf; my three findings (clone_from, slice::from_ref x2) were fixed and are green)",
+  "test": "VM run at b99cecedf+e6380768f: pa-daemon --lib info_tests 17/17 GREEN (incl. the new differential matrix), session_store:: 54 passed/0 failed/2 ignored GREEN; workspace full-suite + shards NOT re-run by this worker at this head (base-side flake family is documented in catalog-cold's record; my commit touches only the roster fold path; CI at the PR head will run the real shards)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "catalog.100.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 41.418,
+     "values_ms": [
+      41.053,
+      41.418,
+      41.463
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 30.782,
+     "values_ms": [
+      30.676,
+      30.782,
+      31.198
+     ]
+    },
+    "delta_pct": -25.7,
+    "regression": false,
+    "checksum": 762089,
+    "row_sha256": "ccc76960603443a4f2c8ee429ec321941cd6a05f71c9c733df97cbf67435c437"
+   },
+   "catalog.100.warm_ms": {
+    "baseline": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 0.471,
+     "values_ms": [
+      0.433,
+      0.439,
+      0.44,
+      0.444,
+      0.446,
+      0.452,
+      0.464,
+      0.466,
+      0.468,
+      0.474,
+      0.476,
+      0.479,
+      0.481,
+      0.482,
+      0.499,
+      0.501,
+      0.507,
+      0.516
+     ]
+    },
+    "candidate": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 0.471,
+     "values_ms": [
+      0.429,
+      0.43,
+      0.433,
+      0.436,
+      0.441,
+      0.443,
+      0.459,
+      0.467,
+      0.471,
+      0.471,
+      0.475,
+      0.477,
+      0.477,
+      0.503,
+      0.51,
+      0.545,
+      0.587,
+      0.62
+     ]
+    },
+    "delta_pct": 0.0,
+    "regression": null
+   },
+   "catalog.1000.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 59.309,
+     "values_ms": [
+      57.96,
+      59.309,
+      61.061
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 44.108,
+     "values_ms": [
+      43.398,
+      44.108,
+      44.159
+     ]
+    },
+    "delta_pct": -25.6,
+    "regression": false,
+    "checksum": 893085,
+    "row_sha256": "8f41e88269f375d5423d4c67b35c03345dfcb042187d31cf7a487cd0954b9f65"
+   },
+   "catalog.1000.warm_ms": {
+    "baseline": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 4.194,
+     "values_ms": [
+      3.697,
+      3.709,
+      3.724,
+      3.731,
+      3.735,
+      3.885,
+      3.918,
+      4.011,
+      4.023,
+      4.365,
+      4.516,
+      4.548,
+      4.653,
+      4.871,
+      4.994,
+      5.01,
+      5.19,
+      5.273
+     ]
+    },
+    "candidate": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 4.0525,
+     "values_ms": [
+      3.751,
+      3.758,
+      3.774,
+      3.776,
+      3.79,
+      3.826,
+      3.918,
+      3.993,
+      4.006,
+      4.099,
+      4.104,
+      4.336,
+      4.656,
+      4.7,
+      4.863,
+      4.959,
+      5.072,
+      5.175
+     ]
+    },
+    "delta_pct": -3.4,
+    "regression": null
+   },
+   "catalog.4096.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 279.153,
+     "values_ms": [
+      276.853,
+      279.153,
+      280.1
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 209.446,
+     "values_ms": [
+      208.133,
+      209.446,
+      211.223
+     ]
+    },
+    "delta_pct": -25.0,
+    "regression": false,
+    "checksum": 4336641,
+    "row_sha256": "40258404fe569c2aeda1b9d8682142b26c964f98d4540fa8c6ac1d20aa99f7e6"
+   },
+   "catalog.4096.warm_ms": {
+    "baseline": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 19.2715,
+     "values_ms": [
+      17.698,
+      17.874,
+      18.029,
+      18.049,
+      18.054,
+      18.125,
+      18.203,
+      18.373,
+      19.087,
+      19.456,
+      20.612,
+      21.043,
+      21.595,
+      22.52,
+      25.221,
+      26.74,
+      27.294,
+      28.622
+     ]
+    },
+    "candidate": {
+     "trials": 18,
+     "valid": 18,
+     "p50_ms": 18.9075,
+     "values_ms": [
+      17.875,
+      17.891,
+      18.136,
+      18.183,
+      18.302,
+      18.348,
+      18.38,
+      18.426,
+      18.812,
+      19.003,
+      19.602,
+      20.011,
+      24.034,
+      24.209,
+      24.31,
+      24.388,
+      24.449,
+      24.639
+     ]
+    },
+    "delta_pct": -1.9,
+    "regression": null
+   }
+  },
+  "extra": {
+   "design": "BCCBBC (B=base b99cecedf pristine probe, C=candidate probe; sha-asserted before every slot; noop CPU calibration ~119-120ms between slots; /proc/loadavg logged at every slot boundary), same-VM sequential, cold = pass 0 of a fresh probe process (empty scan-state cache), warm = passes 1-6 (cached states; the candidate does not run the fold warm)",
+   "primary_run": "settled-VM rerun 2026-09-26T19:33Z (pre-run 1-min loadavg 0.21, idle): the suites' numbers above; raw per-slot files preserved (pair-results2-csp.tar.gz, 18 probe runs)",
+   "corroboration_run": "first pass 2026-09-26T19:30Z ran on decaying post-clippy load (1-min loadavg 2.2 during slots): cold 100 -23.8% (41.51->31.62), cold 1000 -26.0% (59.30->43.88), cold 4096 -25.5% (279.66->208.27) - same class; its warm aggregates were slot-order-confounded (slot-4 B warm spike 5.7ms/25.9ms across tiers = transient) and are superseded by the settled run's warm numbers; raw preserved (pair-results-csp.tar.gz)",
+   "census_decomposition": {
+    "note": "diagnostic-only per-stage replica + differential ground truth (untracked example; labeled estimate, Instant-per-line overhead inflates both stages ~equally)",
+    "tiers": {
+     "100": {
+      "guarded_lines": 3276,
+      "msg_lines": 10569,
+      "stage_ms": {
+       "typed_a": 16.45,
+       "second_a": 12.22,
+       "text_a": 0.29,
+       "append_a": 0.56,
+       "typed_b": 16.44,
+       "extract_b": 3.84,
+       "cand_value": 3.82
+      },
+      "real_scan_ms": 43.9
+     },
+     "1000": {
+      "guarded_lines": 5556,
+      "msg_lines": 12856,
+      "stage_ms": {
+       "typed_a": 20.1,
+       "second_a": 15.99,
+       "text_a": 0.59,
+       "append_a": 0.73,
+       "typed_b": 19.69,
+       "extract_b": 4.54,
+       "cand_value": 4.68
+      },
+      "real_scan_ms": 60.8
+     },
+     "4096": {
+      "guarded_lines": 25509,
+      "msg_lines": 63809,
+      "stage_ms": {
+       "typed_a": 102.23,
+       "second_a": 75.7,
+       "text_a": 2.74,
+       "append_a": 3.38,
+       "typed_b": 97.61,
+       "extract_b": 21.46,
+       "cand_value": 21.17
+      },
+      "real_scan_ms": 323.1
+     }
+    },
+    "differential": "text_mismatches=0 (34,341 guarded lines hash-compared), corpus_mismatches=0 (5,196 files), info_ok_full_not=0, full_ok_info_not=0, typed_ok_borrow_not=0",
+    "content_census": "all message contents are block ARRAYS (0 plain strings at every tier: 10569/12856/63809); 0 non-string 'text' blocks; content_escaped 7776/7796/40201 lines; content_multibyte 3452/3459/17935; toolResult role lines never guarded (4030/4033/20762); the String fast-path was measured (cand_string_ms=0 - no lines hit it) and DROPPED from the design",
+    "why_end_to_end_exceeds_replica": "the replica's per-line Instant overhead inflates the candidate's extract stage relative to the real fold; the ABBA end-to-end is load-bearing"
+   },
+   "composition_with_catalog_cold": "catalog-cold's published base (origin/rust 7064d039a) at 1000 = 70.37ms on THEIR VM; their settled head on MY VM = 59.31ms; my candidate continues that file's line: 59.31 -> 44.11ms. Composed class vs their published base ~ -37% (cross-VM, class-level only; NOT a same-VM claim). My lane continues catalog-cold's record file line (same fold, same fixture at 100/1000, same oracle checksums)."
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "PRIMARY evidence = settled-VM BCCBBC pair (3 trials/arm/tier, sha-asserted per slot, idle loadavg 0.21). Row oracle: sha256 over canonical serialized rows identical across every arm/slot/pass/tier; legacy checksums reproduce catalog-cold's 762089/893085 at the shared 100/1000 fixtures. Delta class across two independent runs and three tiers: -24..-26% cold; within-arm cold spread <=3%; warm parity within the fleet's +/-3.2% noise band (exact parity at 100). Fixture read-only during trials (list_sessions never writes; no growth between trials). 4096-tier cross-lane comparisons INVALID (different fixture construction; disclosed). Known issues: (1) the benchmark CI check is the standing non-applicable TS-harness red (operator disposition); (2) my PR stacks on lane/hillclimb-catalog-cold (GitHub base branch) until #2879 lands - retarget to rust after, with the post-fold re-diff rule; (3) attach-path sequences FIRST per orchestrator: my fold of THEIR final head will be an append-only fold commit at a clean boundary before verdict requests if their head lands before mine."
+ },
+ "outcome": "pr-open-review-in-progress",
+ "decision": "Orchestrator numeric review of the settled-head paired evidence PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on the final PR SHA and operator disposition of the disclosed red gates (non-applicable benchmark CI 0/0; the base-side interactive_daemon_e2e co-scheduling flake family documented in catalog-cold's record). raw_value dependency-feature sign-off requested from reviewers. No merge by this worker.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-193438-startup-catalog-second-parse-content-borrow.json",
+ "session": {
+  "worker": "perf-catalog-second-parse-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-d061846c/01a0df1a-1b43-754a-9fe0-8463c6fbeb52.jsonl"
+ },
+ "timestamp": "2026-09-26T19:34:38.475901+00:00",
+ "provenance": {
+  "settled_head": "e6380768f41481ba073bf7a37d245f46d54f92fe",
+  "merge_base": "b99cecedf2827200e48611747209a58d416f5337 (catalog-cold's settled PR #2879 head; single commit rebased onto it - append-only, disclosed)",
+  "post_fold_rediff": "git diff b99cecedf..e6380768f = crates/pa-daemon/Cargo.toml (1-line raw_value feature) + crates/pa-daemon/src/session_store.rs (struct borrows + fold_scan_entry guarded arm + message_content_text helper) + crates/pa-daemon/src/session_store_info_tests.rs (differential matrix test) ONLY",
+  "vm": "cfr3ur8rts9pazfcnyhgtmmz (own lane VM; sibling catalog-cold's expired VM goeo4olr6p3hjubakouncijh was never touched)"
+ }
+}
