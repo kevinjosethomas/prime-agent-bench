@@ -295,11 +295,12 @@
  },
  "outcome": "candidate-positive: worker RSS -20 MiB p50 on the 10MiB canonical fixture (167.6->147.6, -12% worker; tree -19.5 p50, -5.7%), attribution exact (worker-only by per-proc), ready times consistently faster (the removed load-path clone), compacted parity, 6/6 ABBA pairs monotone; trial-level full separation holds on cold_open and scroll_typing but not the pooled primary suite",
  "decision": null,
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2890",
  "record_path": "data/hillclimb/experiments/20260926-203400-worker-rss-adopt-onecopy-abba.json",
  "session": {
   "worker": "perf-worker-rss-fast",
   "session_dir": "worker-rss lane"
  },
- "timestamp": "2026-09-26T20:34:00.000000+00:00"
+ "timestamp": "2026-09-26T20:34:00.000000+00:00",
+ "pr_head": "bcedaeac1"
 }
