@@ -323,7 +323,8 @@
     },
     "delta_pct_span_p50": -59.0,
     "regression": false,
-    "note": "Reviewer #1 nit fixed: wall arrays and span p50s are now separately labeled fields. Non-overlapping WALL distributions (base min 2659 > cand max 1682); Option C shipped (debug-stripped) ELFs; uv calls 12->4; skills phase 1808->457ms; boot control n=2 +3.5% (-1.1% over the 32-trial battery)."
+    "note": "Reviewer #1 nit fixed: wall arrays and span p50s are now separately labeled fields. Non-overlapping WALL distributions (base min 2659 > cand max 1682); Option C shipped (debug-stripped) ELFs; uv calls 12->4; skills phase 1808->457ms; boot control n=2 +3.5% (-1.1% over the 32-trial battery).",
+    "regime_label": "SUSPECT-REGIME (see measurements.extra.io_regime_disclosure): paired delta valid; absolute values inflated by degraded fsync"
    }
   },
   "extra": {
@@ -818,6 +819,18 @@
      "delta_pct": 0.13
     },
     "note": "Option C: shipped = debug-stripped ELF (split_debug.py), decoder is a separate asset never in the install payload. Pre-#2844 unstripped pair delta was +96,816 B binary / +0.046%."
+   },
+   "io_regime_disclosure": {
+    "warning_source": "perf-boot-floor-fast fleet infra warning 2026-09-26 ~20:10Z: lane VMs in degraded-I/O regime (4KB fsync 80-240ms vs 0.2-1ms healthy)",
+    "my_probe_20260926T2012Z": {
+     "fsync_4kb_ms_min": 0.27,
+     "fsync_4kb_ms_p50": 90.13,
+     "fsync_4kb_ms_max": 106.65,
+     "note": "16/20 probes in the 87-107ms band; last 4 probes 0.27-1.01ms (recovery starting mid-probe)"
+    },
+    "affected_measurements": "ab3 head-exact spot-check (16/16 valid, ~20:02-20:05Z) overlaps the degraded window: absolute spans labeled SUSPECT-REGIME; the paired ABBA delta (-59.0%, non-overlapping walls) stands as a same-regime comparison (both arms inflated); the unchanged-path boot control read 628/650ms vs the healthy 519-525ms p50, consistent with symmetric inflation",
+    "driver_taint_check": "no stray or duplicated drivers on the VM (ps checked); single-driver guards hold; load 0.00",
+    "action": "re-probe until sustained-healthy, then re-run the head-exact spot-check pair at the same SHAs and append the healthy-regime numbers"
    }
   }
  },
