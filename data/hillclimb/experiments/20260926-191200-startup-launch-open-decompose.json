@@ -1,0 +1,265 @@
+{
+ "id": "20260926-191200-startup-launch-open-decompose",
+ "axis": "startup",
+ "hypothesis": "The OPEN path (launch_to_ready ~452-553ms at ~316k ctx) is dominated by one phase that a narrow parity-safe fix can remove; decompose spawn->first-frame into process phases (exec/config, daemon boot, connect/hello, session resume, editor readiness, first paint) and identify the input-accept ladder's source.",
+ "approach": "Baseline FIRST at the current tip 6588b19cf on a quiet 16c/32GB VM (hillclimb-perf-launch-open-2 hnxa1yesjkglj31j60mub5wy; release build rc=0): (1) 10-trial quiet sequential baseline on the private real compacted fixture (sha 835c4473..., 12,987,770B/11,923 rows, retained 2,972/3.32MB, ~316k ctx) through the proven bench-harness launch contract (agent-view v2 probe adapted to launch-phase only: same first-paint + typed-echo ready + fixture pre/post hashes, plus a 2ms process-sighting watcher for daemon/worker spawn); (2) a clean 4-fixture scaling matrix (607KB/159 rows no-boundary, 5.1MB/2527 rows/362 retained, 11.83MB/10790/1839, 12.99MB/11923/2972) x 5 trials, binary-pin asserted per leg; (3) strace -ff -f -tt -T decomposition of 3 launches (wrapper around the pinned binary; labeled STRACE-INFLATED - phase ORDER/read structure only); (4) a 5ms-grid per-role CPU sampler (3 trials x 2 fixtures, clean) mapping worker/daemon/TUI CPU accumulation against paint/ready.",
+ "parity_notes": "No product change in any phase (measurement only). Privacy: the fixture is a private byte snapshot; records carry sha256/counts only, no transcript text (anchors hashed; strace files stayed on the VM; -s 192 truncation prevented full-row capture). The strace runs used a wrapper binary (product.yaml binary swap, restored and grep-asserted before every subsequent clean leg; the FIRST scaling matrix accidentally ran traced - those rows are INVALID, superseded by the clean rerun in this record).",
+ "base": {
+  "revision": "6588b19cf4cd69e2f0f9a54ae1c0e7e85b08a374"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "hnxa1yesjkglj31j60mub5wy",
+  "toolchain": "rustup 1.98.1",
+  "binary_note": "cargo build --release --locked --workspace rc=0 at origin/rust 6588b19cf on the VM; measurement-only phase (binary sha asserted by the harness settle, not pinned in this record)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0), per-trial fixture prehash==source sha, post-bytes differ, source unchanged, sentinel+echo+erase validated 10/10 baseline and 5/5 per matrix leg",
+  "baseline_real_fixture": {
+   "trials": 10,
+   "valid": 10,
+   "launch_to_first_paint_ms": {
+    "p50": 553.15,
+    "min": 463.6,
+    "max": 835.9,
+    "values": [
+     463.6,
+     487.7,
+     512.8,
+     532.3,
+     552.3,
+     554.0,
+     568.8,
+     618.8,
+     654.3,
+     835.9
+    ]
+   },
+   "launch_to_first_replay_ms": {
+    "p50": 559.6,
+    "min": 475.1,
+    "max": 843.4,
+    "note": "first meaningful paint lands 6-12ms after the first non-blank frame: the --resume first frame IS the content frame"
+   },
+   "launch_to_ready_ms": {
+    "p50": 569.855,
+    "min": 485.03,
+    "max": 852.71,
+    "values": [
+     485.03,
+     509.63,
+     532.25,
+     548.81,
+     568.88,
+     570.83,
+     584.46,
+     639.67,
+     671.38,
+     852.71
+    ]
+   },
+   "t_daemon_sighting_ms": {
+    "p50": 5.55,
+    "min": 4.9,
+    "max": 9.6
+   },
+   "t_worker_sighting_ms": {
+    "p50": 67.5,
+    "min": 58.2,
+    "max": 116.7
+   },
+   "cpu_at_first_paint_p50": {
+    "tui_s": 0.04,
+    "daemon_s": 0.0,
+    "worker_s": 0.32,
+    "other_s": 0.05,
+    "tree_rss_mb": 180.9
+   },
+   "probe": {
+    "gap_ms_p50": 16.96,
+    "range": [
+     15.67,
+     21.91
+    ],
+    "input_buffered": "false in 10/10",
+    "quantized_ms": 50.0,
+    "note": "typed-echo ready trails first paint by 15.7-21.9ms; one probe rides the PTY kernel buffer to the editor mount, so the echo timestamp IS the readiness render and quantized_ms=50 is the grid's worst-case bound, not an observed overshoot: launch_to_ready = launch_to_paint + ~17ms on this fixture"
+   }
+  },
+  "clean_scaling_matrix_5_trials_each": {
+   "note": "all rows valid; p50 launch_to_first_paint_ms",
+   "small_607kb_159rows_noboundary": {
+    "paint_p50": 369.9,
+    "values": [
+     391.4,
+     400.6,
+     259.3,
+     369.9,
+     274.2
+    ],
+    "worker_cpu_at_paint_s": [
+     0.07,
+     0.06,
+     0.07,
+     0.07,
+     0.06
+    ]
+   },
+   "orc_5.1mb_2527rows_362retained": {
+    "paint_p50": 478.6,
+    "values": [
+     388.6,
+     478.6,
+     662.0,
+     556.0,
+     432.7
+    ],
+    "worker_cpu_at_paint_s": [
+     0.16,
+     0.2,
+     0.15,
+     0.13,
+     0.18
+    ]
+   },
+   "large_11.83mb_10790rows_1839retained": {
+    "paint_p50": 500.8,
+    "values": [
+     542.4,
+     538.3,
+     458.5,
+     500.8,
+     453.9
+    ],
+    "worker_cpu_at_paint_s": [
+     0.41,
+     0.4,
+     0.44,
+     0.43,
+     0.41
+    ]
+   },
+   "real_12.99mb_11923rows_2972retained": {
+    "paint_p50": 556.7,
+    "values": [
+     556.7,
+     563.1,
+     638.4,
+     556.5,
+     624.0
+    ],
+    "worker_cpu_at_paint_s": [
+     0.31,
+     0.32,
+     0.34,
+     0.33,
+     0.36
+    ]
+   },
+   "scaling_reading": "paint scales with TOTAL rows (~0.02-0.03ms/row extra worker CPU), NOT with the retained window: large->real adds +61% retained rows for +56ms p50 while total rows grow only +10%. The fixed floor (small fixture, near-zero file work) is ~340-400ms of the real fixture's ~550ms open."
+  },
+  "clean_role_cpu_sampler_3_trials_each": {
+   "real": {
+    "paint": [
+     496.4,
+     545.2,
+     526.2
+    ],
+    "ready": [
+     515.7,
+     562.7,
+     552.0
+    ],
+    "cpu_at_ready": {
+     "tui_s": [
+      0.04,
+      0.04,
+      0.03
+     ],
+     "daemon_s": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "worker_s": [
+      0.3,
+      0.28,
+      0.29
+     ],
+     "other_s": [
+      0.05,
+      0.05,
+      0.05
+     ]
+    }
+   },
+   "small": {
+    "paint": [
+     353.8,
+     338.5,
+     364.2
+    ],
+    "ready": [
+     366.9,
+     351.2,
+     375.2
+    ],
+    "cpu_at_ready": {
+     "tui_s": [
+      0.01,
+      0.01,
+      0.02
+     ],
+     "daemon_s": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "worker_s": [
+      0.03,
+      0.03,
+      0.04
+     ],
+     "other_s": [
+      0.03,
+      0.02,
+      0.05
+     ]
+    }
+   },
+   "reading": "the WORKER owns nearly all launch CPU (0.29s of 0.39s tree total at ready on the real fixture; daemon ~0 CPU - the boot census is syscall-bound and cheap in clean CPU terms; TUI render only 0.03-0.04s). Worker CPU ramps continuously from ~117ms to paint: the session load is the wall-dominant phase after ~117ms; before that the open is a serialized boot dance (exec, daemon spawn/boot/socket ~60ms, TUI connect+hello, create dispatch, worker spawn sighting 59-87ms). Total tree CPU (0.39s) < wall (0.52s): the open is part WAIT-bound (serialized round trips), part worker-CPU-bound (session load)."
+  },
+  "strace_decomposition_3_runs": {
+   "method": "strace -ff -f -tt -T -s 192 around the pinned binary through the same harness launch; run d0 cited; STRACE-INFLATED (paint 1359.6ms vs 553 clean p50): phase ORDER + read/parse structure only",
+   "phases_d0_traced": {
+    "0_to_62ms": "TUI execve + dynamic link + config reads (settings.json lock-dance repeats ~8x); daemon VFORK at +8.3ms; daemon boot (supervisor-config write +18-58ms incl. a 39ms gap, auth/settings reads, daemon-workers dir scan); socket accepting; TUI first connect +62.5ms (after 3 ENOENT retries at +8/+11/+36ms)",
+    "62_to_214ms": "DAEMON BOOT_REAP: whole-/proc census (~358 pids x ~10 syscalls, 3587 events on the daemon main thread; boot_reap.rs same_socket_worker_targets reads /proc/N/stat then /proc/N/cmdline per pid); the hello only goes out at +213.4ms - the census is wall-serialized BEFORE hello. Clean CPU shows the census is syscall-bound and cheap (<5ms CPU); the 151ms traced span is strace amplification, but the pre-hello serialization stands (cold-daemon only).",
+    "214_to_307ms": "TUI hello + first commands; renderer setup (mouse-mode writes +215.6ms); create dispatched; the daemon forwards it to the worker (received +306.9ms)",
+    "307_to_1101ms": "WORKER SESSION LOAD - the file-work block, four fixture passes: (1) window-walk scan 11.74MiB in 179x64KB reads +317-431ms (WindowedSessionStore::open cold; writes the .window-cache.json sidecar), (2) FULL read_to_string 12.99MB at +726ms then ~320ms syscall-free parse CPU (set_session_file -> load_entries_from_file: the worker keeps FULL 11923-row history in file_entries), (3) cached retained-suffix read 3.08MiB +1059-1078ms, (4) another cached retained-suffix read 3.08MiB +1102-1112ms; plus skills/ + kernel-venv source-hash walk (+1056-1082ms) and kernel probes (python -c inspect/rlm import +1098ms; rlm.repl exec +1389ms AFTER paint - kernel boot is off the open critical path)",
+    "1101_to_1207ms": "create response -> worker transport resolution -> TUI connects DIRECTLY to the worker socket +1206.5ms (peer_auth)",
+    "1207_to_1359ms": "attach -> snapshot encode -> TUI first-frame render -> first paint"
+   },
+   "read_amplification": "the 12.99MB fixture is read ~30.3MB per open (11.74MiB scan + 12.99MB full read + 2x 3.08MiB cached window suffixes); rows parsed at least twice (window-walk envelope pass + full FileEntry parse) and the retained window parsed in up to 3 passes"
+  },
+  "ladder_source": "The measured readiness ladder (~258/500/650/1000/1500/2000ms rungs) is a HARNESS-GRID + fixture-size artifact, not a product-side quantization: probe tokens go out on a 50ms fine grid (first second) then a 500ms grid, and readiness lands on the next grid point whenever the probe races ahead of the editor mount. On the real compacted fixture the first paint already contains retained content (replay watcher agrees within 6-12ms) and the echo trails paint by 15.7-21.9ms (input_buffered=false, quantized_ms=50): launch_to_ready == launch_to_paint + ~17ms. The ~258ms gap rung (many-sessions UI fixture) and the 500ms rungs (10MiB UI suite) are the same probe-grid mechanism against slower editor mounts on bigger retained histories."
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All clean rows validated (sentinel rendered, echoed, erased; fixture pre-sha == source sha 835c4473...; post bytes differ; source unchanged). The first scaling matrix run (24 trials, strace-inflated paint 493-1318ms) is INVALID-labeled: it accidentally ran under the strace wrapper (product.yaml binary swap not restored between experiments); superseded by the clean rerun with a grep-pinned binary assertion per leg (kept as phase-structure evidence in the strace section). strace rows are phase-structure evidence only (paint 1180-1608ms vs clean 463-836ms shows the ~2.4x inflation). VM quiet throughout (loadavg gate <1.0 per trial). VM 1 (cq1b1jci4awq6onctkvbnjlx) was infra-terminated ~1h40m in (timeout_minutes=480 requested; no measurements ran on it); VM 2 (hnxa1yesjkglj31j60mub5wy) ran all measurements."
+ },
+ "outcome": "measured - DECOMPOSITION COMPLETE, no implementation",
+ "decision": "NO single dominant parity-safe cost >=50% of the open path. The open = ~340-400ms serialized boot floor (daemon spawn/boot+socket ~60ms; boot_reap /proc census wall-serialized before hello but syscall-cheap; create dispatch; worker spawn sighting 59-87ms; attach/render round trips; mostly WAIT - tree CPU at ready only ~0.39s vs ~0.52s wall on the real fixture) + ~150-200ms file-scaled worker session load (extra 0.26-0.27s worker CPU on the real fixture; scales with TOTAL rows, not the retained window). Concrete redundancy findings for a future fix lane: (a) the worker reads/parses the session file 4x per open (~30.3MB read for a 12.99MB file): window-walk scan, full read_to_string+parse (set_session_file), 2x cached retained-suffix loads - deduping the suffix loads or sharing one parse is the narrowest lever (~60-120ms est.); (b) the set_session_file full parse (~150-170ms clean est.) could adopt the discarded session-open lane's single-pass FileEntry parse - NEW end-to-end evidence at this scale (that lane was discarded for no gain at the 10MiB no-boundary fixture where the 21s replay pipeline dominated; here the parse is ~30% of the open); (c) a windowed-resume load (parse only the retained window) is NOT parity-safe as-is: file_entries full history is read by history views (GetMessages history_snapshot re-reads from disk only for windowed stores), /tree, branch/fork; would need a history-on-demand redesign; (d) daemon boot_reap census (stat-before-argv order, pre-hello serialization) is operator-directed semantics (#289 precedent) - reordering is cheap but not obviously semantics-identical; needs operator review; and it is cold-daemon-only (a warm daemon skips the entire boot floor).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-191200-startup-launch-open-decompose.json",
+ "session": {
+  "worker": "perf-launch-open-fast"
+ },
+ "timestamp": "2026-09-26T19:12:00+00:00"
+}
