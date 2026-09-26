@@ -289,10 +289,15 @@
   "VM iup0807aomd0xq8cii5793ie died at ~21:15Z (mid final-build); all results reported from it were downloaded before death; the final pair re-ran end-to-end on VM flqx63q2mkohg0zal65wj3hr",
   "Fixtures: canonical 10MiB dadaecfc (stock, full window ~996k ctx-equiv), private real compacted 835c4473 (retained 2972 rows/3.32MB, ~316k ctx-equiv; content never leaves the VMs; records carry hashes/counts only), synth-150k eff19eb6 + synth-450k fa45c524 (attach-path-synthetic/1 seed 20260926: dictionary-word content, real-schema shape incl. compaction rows; ctx-equivalent labels via the fleet's ~10.5 retained-bytes/token heuristic; the honest scaling variable is wire message count/bytes)"
  ],
- "outcome": "candidate",
- "pr": "PENDING - to be opened on lane/hillclimb-attach-path @ 8336dae18 vs rust",
+ "outcome": "SHIPPED VIA #2890 (SUPERSEDED): the mechanism landed on origin/rust inside PR #2890 (worker-rss lane), whose branch folded this lane's head per the agreed sequencing; lane/hillclimb-attach-path @ bbd060e1e is TREE-IDENTICAL to origin/rust (empty diff; byte-verified: walk_message_values + MessageWindowScalars in session_store.rs, scan_message_scalars in worker/summary.rs, both golden test fns in session_store_window_tests.rs - exactly as authored). This lane's PR #2898 closed as superseded-by-#2890 (orchestrator disposition 2026-09-26T23:01Z; evidence-anchor comment posted).",
+ "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2898 (CLOSED superseded-by-#2890; the mechanism ships in #2890)",
  "session": {
   "worker": "perf-attach-path-fast"
  },
- "timestamp": "2026-09-26T22:15:00+00:00"
+ "timestamp": "2026-09-26T23:05:00+00:00",
+ "gate_red_triage": {
+  "gate_1790461880": "RED on 1 UNKNOWN failure: pa-tui bash_bang_headless::a_bang_during_a_streaming_turn_holds_then_flushes (not a known red)",
+  "isolation_triage": "BASE 1507d399b: 1/3 isolation runs RED (rc=101, try3) - the flake exists AT THE MERGE BASE; LANE HEAD 8336dae18: 3/3 isolation PASS + whole bash_bang_headless file 8/8 PASS at BOTH heads. Verdict: timing flake present at base, NOT lane-caused; joins the registration evidence.",
+  "gate_2_at_folded_head": "bbd060e1e == tip tree (post-#2890); see the run dir fleet-pipeline-runs/gate_1790463515_600332"
+ }
 }
