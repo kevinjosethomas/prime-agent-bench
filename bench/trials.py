@@ -160,8 +160,11 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
             # Session resume writes bookkeeping rows to its input. Give each
             # trial a fresh inode with identical canonical bytes so no later
             # row advertises a stale manifest for a mutated shared corpus.
+            # Manifest-only fixture stubs (no on-disk artifact) keep the
+            # original path: there is nothing to copy or verify.
             trial_fixture = fixture
-            if benchmark.requires_fixture in ("session-10mib", "session-10mib-compacted"):
+            if (benchmark.requires_fixture in ("session-10mib", "session-10mib-compacted")
+                    and fixture and Path(fixture).exists()):
                 trial_fixture = trial_dir / fixture.name
                 shutil.copyfile(fixture, trial_fixture)
                 if sha256_file(trial_fixture) != fixture_manifest["sha256"]:
