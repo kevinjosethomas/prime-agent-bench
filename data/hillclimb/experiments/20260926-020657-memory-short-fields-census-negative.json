@@ -1,0 +1,94 @@
+{
+  "id": "20260926-020657-memory-short-fields-census-negative",
+  "axis": "memory",
+  "hypothesis": "Loaded-session RSS is materially dominated by repeated short owned string fields (role, model id, tool name, MIME/key names) and would benefit from scoped interning/arena.",
+  "approach": "No product change: baseline VM release build, five loaded-session RSS/PSS trials, per-process smaps_rollup inspection, native fixture cardinality census. Analyzing 7,395-row 10MiB session found 58,617 short (<24-byte) values containing 517,969 bytes and 133,897 JSON keys; a ~32-byte-per-allocation upper-order estimate puts short-value allocator headers at 1.79MiB per retained copy, plus 0.49MiB payload. Typed SessionEntry.type_ changes would be smaller still. Paired candidate build was not justified; aborted neighbor suites after first cold-open trial had started (zero neighbor rows). Bench fixture mutation/stale-manifest reported to perf-open-audit-sol, who owns harness fix.",
+  "parity_notes": "No product source, runtime, API, wire format, feature, prompt, session replay, macOS or Linux behavior changed. No candidate exists.",
+  "base": {
+    "revision": "1b3fe3791dd412330885746c07aef4bfd4628159"
+  },
+  "branch": "lane/hillclimb-memory-arena",
+  "commits": [],
+  "build": {
+    "sandbox_id": "zuep0wuqmccjtk6tjwfcpzs1",
+    "binary_sha256": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98",
+    "binary_bytes": 208907976,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": null,
+    "clippy": null,
+    "test": null
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.memory_idle_load": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": null,
+          "p95_ms": null,
+          "values_ms": null,
+          "rss_settled_mb_values": [
+            486.3,
+            485.4,
+            504.9,
+            537.0,
+            545.1
+          ],
+          "rss_settled_mb_p50": 504.9,
+          "rss_settled_mb_p95": 543.48,
+          "pss_settled_mb_values": [
+            450.5,
+            448.6,
+            468.6,
+            500.7,
+            508.9
+          ],
+          "pss_settled_mb_p50": 468.6
+        },
+        "candidate": null,
+        "delta_pct": null,
+        "regression": null
+      },
+      "session.cold_open_10mib": {
+        "baseline": null,
+        "candidate": null,
+        "delta_pct": null,
+        "regression": null
+      },
+      "compare.scroll_typing": {
+        "baseline": null,
+        "candidate": null,
+        "delta_pct": null,
+        "regression": null
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 208907976,
+        "candidate": null
+      },
+      "rss_mb": {
+        "baseline": 504.9,
+        "candidate": null
+      },
+      "raw_trials": "/home/ubuntu/hillclimb/results-perf-memory-arena-baseline.tar.gz"
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "5/5 benchmark row application-level validated (sentinel true and echoed), distinct new process trees each trial; strict byte-identical-fixture validity FAILS: bench manifest claimed original 10,485,760 bytes SHA dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda each trial, but product appended thinking_level_change + service_tier_change + session_state on first attach, then one session_state each subsequent attach. End fixture 10,487,224 bytes SHA 34655deda22774604931155eda122434426a3c7409617d227fb7a7a62d5abf46. 1,464 appended bytes cannot plausibly explain the 59.7MiB RSS spread; drift cause UNKNOWN, not called a leak. Bundled product.yaml revision 7152746b9 is stale; actual VM git HEAD asserted 1b3fe3791 and binary SHA matches versions.json. No A/A; no candidate because hypothesis weak. Cold-open first trial interrupted via SIGINT after five memory rows completed, no neighbor values; avoid claiming PR-grade performance result."
+  },
+  "outcome": "discarded",
+  "decision": "Worker recommends discard without edit: repeated short-string allocation ceiling (~2\u20133MiB per copy) is small relative to 485.4\u2013545.1MiB RSS and 59.7MiB spread; fixture bytes not identical; no meaningful performance gain established. Parent acknowledged negative-result plan; final owner approval pending publication.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-020657-memory-short-fields-census-negative.json",
+  "session": {
+    "worker": "perf-memory-arena-sol",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-0b991d72/01a0db61-fb63-77f5-ac1b-5f50f1985369.jsonl"
+  },
+  "timestamp": "2026-09-26T02:06:57.115181+00:00"
+}
