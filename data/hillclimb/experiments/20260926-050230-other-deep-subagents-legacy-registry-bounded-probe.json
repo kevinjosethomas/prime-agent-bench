@@ -1,0 +1,1297 @@
+{
+ "id": "20260926-050230-other-deep-subagents-legacy-registry-bounded-probe",
+ "axis": "other",
+ "hypothesis": "Deep-subagent navigation (subagents view, open child chat, go to parent) in deep trees: the passive roster walk's legacy registry probe (legacy_registry_path) read each live child's parent transcript WHOLE to extract the header id parsed off the first line, once per parent per walk => every saved-catalog fetch (list_saved_sessions, list --all) scanned linear in the family's total transcript bytes; deep families of large parents paid pathological catalog latency.",
+ "approach": "Bound the probe to the file's first line (read_first_line_bounded, 64KiB cap - the same helper/precedent the bounded session-list header read uses): same header id, one line of IO. crates/pa-daemon/src/rlm_ledger.rs fn legacy_registry_path + unit test (over-long first line reads as absent; a parent far past the cap still resolves). Diff vs 9f566686f: +51/-3, one file.",
+ "parity_notes": "No wire, prompt, schema, or user-visible change on any path that does not hit the legacy registry probe. Judgment change is disclosed and tested: (1) a first line longer than 64KiB now reads as absent (base parsed it after reading the whole file - far past any real session header, same class as the 512-byte list gate); (2) a corrupt tail no longer masks a readable header (display-grade metadata either way). read_first_line_bounded is pre-existing upstream code with its own test coverage (bounded matches, unterminated, CRLF, empty, over-long).",
+ "base": {
+  "revision": "9f566686f"
+ },
+ "branch": "lane/hillclimb-deep-subagents",
+ "commits": [
+  "d6c15624b",
+  "0b7748fc7"
+ ],
+ "build": {
+  "sandbox_id": "up3ug0th7ihm4ua6xq9cctei",
+  "binary_sha256": "1ea797c0bd7f447f8b3ec943206c2771cde3c654653779d98de35f0fc063ba9d",
+  "binary_bytes": 210100336,
+  "build_seconds": 85,
+  "toolchain": "rustup 1.98.1 (rustc 1.98.1 48a229cea)"
+ },
+ "gates": {
+  "fmt": "pass (exit 0 on 22996c87e)",
+  "clippy": "pass (workspace --all-targets -D warnings, exit 0)",
+  "test": "pass (cargo test --workspace exit 0; 152 test-result lines, all ok, 0 failed)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential B/C (5 trials/arm), sha-asserted atomic swaps, per-arm loadavg settle gate; plus one historical 6-arm ABBA",
+  "suites": {
+   "list_saved_sessions_warm_4mib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 13.42,
+     "p95_ms": 15.85,
+     "values_ms": [
+      15.85,
+      13.15,
+      13.42,
+      13.25,
+      13.9
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 9.42,
+     "p95_ms": 10.47,
+     "values_ms": [
+      9.42,
+      10.32,
+      8.03,
+      10.47,
+      8.07
+     ]
+    },
+    "delta_pct": -29.8,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_warm_4mib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 14.28,
+     "p95_ms": 16.9,
+     "values_ms": [
+      13.62,
+      14.28,
+      15.75,
+      14.07,
+      16.9
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 10.68,
+     "p95_ms": 11.82,
+     "values_ms": [
+      8.47,
+      11.82,
+      11.22,
+      10.68,
+      8.78
+     ]
+    },
+    "delta_pct": -25.2,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_cold_4mib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 191.1,
+     "p95_ms": 192.2,
+     "values_ms": [
+      191.4,
+      190.7,
+      192.2,
+      190.2,
+      191.1
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 184.5,
+     "p95_ms": 186.0,
+     "values_ms": [
+      185.4,
+      183.2,
+      186.0,
+      184.4,
+      184.5
+     ]
+    },
+    "delta_pct": -3.5,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_cold_4mib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 190.2,
+     "p95_ms": 194.1,
+     "values_ms": [
+      194.1,
+      192.3,
+      190.2,
+      189.1,
+      189.4
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 185.9,
+     "p95_ms": 569.6,
+     "values_ms": [
+      185.4,
+      185.9,
+      569.6,
+      185.8,
+      186.0
+     ]
+    },
+    "delta_pct": -2.3,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_after_append_4mib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 13.45,
+     "p95_ms": 14.45,
+     "values_ms": [
+      14.45,
+      12.5,
+      13.55,
+      12.45,
+      13.45
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 10.65,
+     "p95_ms": 212.75,
+     "values_ms": [
+      9.85,
+      10.65,
+      212.75,
+      13.2,
+      7.65
+     ]
+    },
+    "delta_pct": -20.8,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of 2 post-append samples"
+   },
+   "list_saved_sessions_after_append_4mib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 15.45,
+     "p95_ms": 16.6,
+     "values_ms": [
+      15.7,
+      13.65,
+      15.45,
+      13.2,
+      16.6
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 11.0,
+     "p95_ms": 11.75,
+     "values_ms": [
+      8.2,
+      11.75,
+      11.15,
+      11.0,
+      10.0
+     ]
+    },
+    "delta_pct": -28.8,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of 2 post-append samples"
+   },
+   "list_saved_sessions_warm_442kib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 9.2,
+     "p95_ms": 10.3,
+     "values_ms": [
+      9.2,
+      9.12,
+      10.3,
+      8.32,
+      10.05
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 11.32,
+     "p95_ms": 11.62,
+     "values_ms": [
+      11.32,
+      11.6,
+      8.8,
+      8.88,
+      11.62
+     ]
+    },
+    "delta_pct": 23.0,
+    "regression": true,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_warm_442kib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 10.05,
+     "p95_ms": 10.38,
+     "values_ms": [
+      10.05,
+      8.75,
+      9.1,
+      10.22,
+      10.38
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 11.38,
+     "p95_ms": 12.23,
+     "values_ms": [
+      12.23,
+      9.03,
+      11.95,
+      11.38,
+      10.15
+     ]
+    },
+    "delta_pct": 13.2,
+    "regression": true,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_cold_442kib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 40.1,
+     "p95_ms": 42.5,
+     "values_ms": [
+      42.5,
+      40.3,
+      39.0,
+      38.7,
+      40.1
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 39.8,
+     "p95_ms": 44.5,
+     "values_ms": [
+      40.3,
+      39.7,
+      39.6,
+      39.8,
+      44.5
+     ]
+    },
+    "delta_pct": -0.7,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_cold_442kib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 40.2,
+     "p95_ms": 42.1,
+     "values_ms": [
+      42.1,
+      39.3,
+      38.1,
+      41.3,
+      40.2
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 39.7,
+     "p95_ms": 40.7,
+     "values_ms": [
+      39.7,
+      39.8,
+      38.1,
+      36.5,
+      40.7
+     ]
+    },
+    "delta_pct": -1.2,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_after_append_442kib_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 8.65,
+     "p95_ms": 9.3,
+     "values_ms": [
+      9.3,
+      8.65,
+      8.9,
+      8.35,
+      8.35
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 9.45,
+     "p95_ms": 12.95,
+     "values_ms": [
+      12.95,
+      10.45,
+      9.35,
+      9.45,
+      9.05
+     ]
+    },
+    "delta_pct": 9.2,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of 2 post-append samples"
+   },
+   "list_saved_sessions_after_append_442kib_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 9.1,
+     "p95_ms": 10.15,
+     "values_ms": [
+      9.5,
+      8.65,
+      8.55,
+      9.1,
+      10.15
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 11.35,
+     "p95_ms": 14.6,
+     "values_ms": [
+      14.6,
+      8.8,
+      11.85,
+      11.35,
+      9.35
+     ]
+    },
+    "delta_pct": 24.7,
+    "regression": true,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of 2 post-append samples"
+   },
+   "list_saved_sessions_warm_normal_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.42,
+     "p95_ms": 3.8,
+     "values_ms": [
+      3.42,
+      3.2,
+      3.1,
+      3.65,
+      3.8
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.65,
+     "p95_ms": 4.08,
+     "values_ms": [
+      3.65,
+      4.08,
+      3.65,
+      4.03,
+      3.58
+     ]
+    },
+    "delta_pct": 6.7,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_warm_normal_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.42,
+     "p95_ms": 3.48,
+     "values_ms": [
+      3.42,
+      3.43,
+      3.48,
+      3.22,
+      3.15
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.5,
+     "p95_ms": 4.55,
+     "values_ms": [
+      3.38,
+      4.55,
+      3.5,
+      3.15,
+      4.42
+     ]
+    },
+    "delta_pct": 2.3,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of warm list_saved_sessions samples"
+   },
+   "list_saved_sessions_cold_normal_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 4.8,
+     "p95_ms": 5.0,
+     "values_ms": [
+      4.8,
+      4.5,
+      5.0,
+      4.7,
+      4.9
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 4.9,
+     "p95_ms": 5.2,
+     "values_ms": [
+      4.8,
+      4.9,
+      5.2,
+      4.9,
+      4.9
+     ]
+    },
+    "delta_pct": 2.1,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_cold_normal_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 4.4,
+     "p95_ms": 5.0,
+     "values_ms": [
+      4.6,
+      5.0,
+      4.4,
+      4.3,
+      4.4
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 5.1,
+     "p95_ms": 9.2,
+     "values_ms": [
+      7.2,
+      9.2,
+      5.1,
+      5.1,
+      5.1
+     ]
+    },
+    "delta_pct": 15.9,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial first (cold) sample"
+   },
+   "list_saved_sessions_after_append_normal_pad_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.6,
+     "p95_ms": 3.65,
+     "values_ms": [
+      3.6,
+      3.6,
+      3.1,
+      3.35,
+      3.65
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.4,
+     "p95_ms": 3.65,
+     "values_ms": [
+      3.65,
+      3.4,
+      3.4,
+      3.55,
+      3.3
+     ]
+    },
+    "delta_pct": -5.6,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial mean of 2 post-append samples"
+   },
+   "list_saved_sessions_after_append_normal_pad_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.3,
+     "p95_ms": 3.7,
+     "values_ms": [
+      3.15,
+      3.2,
+      3.7,
+      3.45,
+      3.3
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 3.4,
+     "p95_ms": 3.75,
+     "values_ms": [
+      3.4,
+      3.65,
+      3.0,
+      3.05,
+      3.75
+     ]
+    },
+    "delta_pct": 3.0,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; per-trial mean of 2 post-append samples"
+   },
+   "pty_open_view_chrome_ms_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 114.1,
+     "p95_ms": 114.3,
+     "values_ms": [
+      113.8,
+      114.2,
+      114.1,
+      114.3,
+      113.8
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 114.5,
+     "p95_ms": 119.3,
+     "values_ms": [
+      118.8,
+      119.3,
+      114.5,
+      114.1,
+      113.8
+     ]
+    },
+    "delta_pct": 0.4,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; ds_probe PTY legs on deep-tree fixture (36 children, depth 9)"
+   },
+   "pty_open_child_transcript_ms_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1132.4,
+     "p95_ms": 1228.1,
+     "values_ms": [
+      572.2,
+      1228.1,
+      1108.6,
+      1132.4,
+      1133.7
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1039.5,
+     "p95_ms": 1068.0,
+     "values_ms": [
+      1005.4,
+      1040.3,
+      1030.6,
+      1039.5,
+      1068.0
+     ]
+    },
+    "delta_pct": -8.2,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; ds_probe PTY legs on deep-tree fixture (36 children, depth 9); BIMODAL worker-spawn-bound leg: fast ~572-78ms / slow ~1005-1228ms modes; pair A mode mix favored cand (base 1 fast / cand 0 fast). NOT a perf claim either direction."
+   },
+   "pty_go_parent_transcript_ms_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 535.2,
+     "p95_ms": 607.4,
+     "values_ms": [
+      535.2,
+      567.0,
+      54.1,
+      607.4,
+      59.7
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 77.3,
+     "p95_ms": 542.4,
+     "values_ms": [
+      54.5,
+      542.4,
+      77.3,
+      77.6,
+      54.4
+     ]
+    },
+    "delta_pct": -85.6,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; ds_probe PTY legs on deep-tree fixture (36 children, depth 9); BIMODAL worker-spawn-bound leg: fast ~54-60ms / slow ~535-607ms; pair A base hit fast mode 2/5, cand 4/5. Mode mix is racy, NOT mechanism-attributable."
+   },
+   "pty_rss_tui_tree_mb_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 186.4,
+     "p95_ms": 187.5,
+     "values_ms": [
+      186.4,
+      185.0,
+      185.2,
+      187.5,
+      186.5
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 185.9,
+     "p95_ms": 189.4,
+     "values_ms": [
+      185.5,
+      186.7,
+      185.5,
+      185.9,
+      189.4
+     ]
+    },
+    "delta_pct": -0.3,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; TUI+tree RSS after navigation"
+   },
+   "pty_open_view_chrome_ms_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 114.2,
+     "p95_ms": 115.8,
+     "values_ms": [
+      114.1,
+      114.0,
+      114.2,
+      114.4,
+      115.8
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 114.1,
+     "p95_ms": 114.7,
+     "values_ms": [
+      114.1,
+      114.3,
+      113.9,
+      113.9,
+      114.7
+     ]
+    },
+    "delta_pct": -0.1,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; ds_probe PTY legs on deep-tree fixture (36 children, depth 9)"
+   },
+   "pty_open_child_transcript_ms_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1026.1,
+     "p95_ms": 1063.5,
+     "values_ms": [
+      61.8,
+      1039.5,
+      1026.1,
+      552.3,
+      1063.5
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1056.0,
+     "p95_ms": 1060.3,
+     "values_ms": [
+      1060.3,
+      1032.9,
+      1057.0,
+      1056.0,
+      545.8
+     ]
+    },
+    "delta_pct": 2.9,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; ds_probe PTY legs on deep-tree fixture (36 children, depth 9); BIMODAL worker-spawn-bound leg: pair B mode mix favored base (base 2 fast / cand 1 fast) - opposite of pair A on the same fixture, confirming mode-race noise, not a regression."
+   },
+   "pty_go_parent_transcript_ms_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 55.2,
+     "p95_ms": 546.8,
+     "values_ms": [
+      54.5,
+      55.2,
+      546.8,
+      54.6,
+      78.1
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 552.9,
+     "p95_ms": 574.6,
+     "values_ms": [
+      574.6,
+      54.4,
+      568.3,
+      552.9,
+      515.0
+     ]
+    },
+    "delta_pct": 901.6,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; ds_probe PTY legs on deep-tree fixture (36 children, depth 9); BIMODAL worker-spawn-bound leg: pair B base hit fast mode 4/5 vs cand 1/5 - opposite of pair A (cand 4/5). The +901% p50 delta is MODE MIX, not mechanism; both pairs' per-mode values are indistinguishable between arms."
+   },
+   "pty_rss_tui_tree_mb_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 183.4,
+     "p95_ms": 184.0,
+     "values_ms": [
+      182.5,
+      183.8,
+      183.4,
+      184.0,
+      182.7
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 184.7,
+     "p95_ms": 187.4,
+     "values_ms": [
+      184.7,
+      183.0,
+      183.1,
+      187.4,
+      184.7
+     ]
+    },
+    "delta_pct": 0.7,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; TUI+tree RSS after navigation"
+   },
+   "cold_start_launch_to_ready_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 289.37,
+     "p95_ms": 290.51,
+     "values_ms": [
+      288.56,
+      289.37,
+      289.92,
+      290.51,
+      288.38
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 294.46,
+     "p95_ms": 1259.73,
+     "values_ms": [
+      1259.73,
+      300.22,
+      292.48,
+      290.99,
+      294.46
+     ]
+    },
+    "delta_pct": 1.8,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; compare.cold_start suite; cand trial0 is a one-off 1259.7ms stall (first trial after binary swap), remaining 4 trials 291.0-300.2"
+   },
+   "cold_start_launch_to_first_paint_pairB": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 32.1,
+     "p95_ms": 32.5,
+     "values_ms": [
+      32.1,
+      32.5,
+      32.0,
+      32.2,
+      31.5
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 32.5,
+     "p95_ms": 1001.7,
+     "values_ms": [
+      1001.7,
+      31.9,
+      32.5,
+      32.4,
+      33.0
+     ]
+    },
+    "delta_pct": 1.2,
+    "regression": false,
+    "note": "pair B (PR-head pair): pure base 9f566686f (binary f886d3c7) vs cand 22996c87e (binary 1ea797c0), same VM, prefix final9f5-short-v1, CPU calibration stable (base 1.053s / cand 1.044s / end 1.055s), loadavg <=0.34 all arms; cand trial0 1001.7ms one-off stall, other 4 trials 31.9-33.0"
+   },
+   "cold_start_launch_to_ready_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 289.69,
+     "p95_ms": 367.26,
+     "values_ms": [
+      288.63,
+      314.76,
+      367.26,
+      289.69,
+      289.51
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 289.76,
+     "p95_ms": 290.95,
+     "values_ms": [
+      289.76,
+      290.95,
+      288.58,
+      289.29,
+      290.37
+     ]
+    },
+    "delta_pct": 0.0,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; compare.cold_start suite"
+   },
+   "cold_start_launch_to_first_paint_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 32.6,
+     "p95_ms": 110.4,
+     "values_ms": [
+      31.7,
+      58.0,
+      110.4,
+      32.6,
+      31.6
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 32.2,
+     "p95_ms": 32.5,
+     "values_ms": [
+      32.2,
+      32.2,
+      31.9,
+      31.7,
+      32.5
+     ]
+    },
+    "delta_pct": -1.2,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; compare.cold_start suite"
+   },
+   "scroll_typing_typing_med_top25_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1.09,
+     "p95_ms": 1.29,
+     "values_ms": [
+      1.12,
+      1.08,
+      1.29,
+      1.08,
+      1.09
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 1.11,
+     "p95_ms": 1.14,
+     "values_ms": [
+      1.14,
+      1.09,
+      1.1,
+      1.12,
+      1.11
+     ]
+    },
+    "delta_pct": 1.8,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial median of the first 25 typing probes (10MiB corpus, fixture sha dadaecfc asserted both arms)"
+   },
+   "scroll_typing_typing_med_scrolled_tail_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 0.27,
+     "p95_ms": 0.36,
+     "values_ms": [
+      0.285,
+      0.23,
+      0.36,
+      0.27,
+      0.23
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 0.26,
+     "p95_ms": 0.29,
+     "values_ms": [
+      0.29,
+      0.23,
+      0.26,
+      0.285,
+      0.26
+     ]
+    },
+    "delta_pct": -3.7,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; per-trial median of the post-scroll typing probes"
+   },
+   "scroll_typing_launch_to_ready_pairA_SUSPECT": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 24316.92,
+     "p95_ms": 24400.27,
+     "values_ms": [
+      24367.88,
+      24316.92,
+      23925.54,
+      23903.48,
+      24400.27
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 21100.21,
+     "p95_ms": 21354.37,
+     "values_ms": [
+      21096.71,
+      21354.37,
+      21179.78,
+      20953.91,
+      21100.21
+     ]
+    },
+    "delta_pct": -13.2,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; SUSPECT-ENVIRONMENTAL: base arm ran in the load shadow of fresh 400MB binary builds (loadavg_before 3.18-4.72); cand ~14% faster here is excluded from claims"
+   },
+   "agent_view_chat_to_agents_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 119.7,
+     "p95_ms": 124.9,
+     "values_ms": [
+      119.5,
+      119.1,
+      119.7,
+      124.9,
+      120.0
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 119.0,
+     "p95_ms": 119.5,
+     "values_ms": [
+      119.1,
+      118.9,
+      119.5,
+      119.0,
+      119.0
+     ]
+    },
+    "delta_pct": -0.6,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; session.agent_view_roundtrip suite view-open legs"
+   },
+   "agent_view_agents_chrome_pairA": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 118.9,
+     "p95_ms": 124.1,
+     "values_ms": [
+      118.7,
+      118.3,
+      118.9,
+      124.1,
+      119.2
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 118.2,
+     "p95_ms": 118.7,
+     "values_ms": [
+      118.2,
+      118.1,
+      118.7,
+      118.2,
+      118.2
+     ]
+    },
+    "delta_pct": -0.6,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; view-chrome render leg"
+   },
+   "agent_view_agents_to_tail_pairA_SUSPECT": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 23987.6,
+     "p95_ms": 24542.5,
+     "values_ms": [
+      24542.5,
+      23930.7,
+      24073.4,
+      23934.0,
+      23987.6
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 21100.8,
+     "p95_ms": 21243.7,
+     "values_ms": [
+      21091.6,
+      21054.7,
+      21243.7,
+      21125.8,
+      21100.8
+     ]
+    },
+    "delta_pct": -12.0,
+    "regression": false,
+    "note": "pair A: pure base f3ae85c0a (binary 9d2c2144) vs cand 132c2a5fd (binary ade8176b), cand VM up3ug0th, prefix final552-focused-v1; SUSPECT-ENVIRONMENTAL (same load-shadow caveat); also pty_bytes 47100 base vs 44336 cand on identical fixture hash, unexplained, excluded from claims"
+   },
+   "hist20d_abba_list_saved_sessions_warm_4mib_pad": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 15.5,
+     "p95_ms": 16.1,
+     "values_ms": [
+      16.1,
+      15.5,
+      15.2
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 10.6,
+     "p95_ms": 10.8,
+     "values_ms": [
+      10.6,
+      10.6,
+      10.8
+     ]
+    },
+    "delta_pct": -31.6,
+    "regression": false,
+    "note": "HISTORICAL 6-arm ABBA (b,c,c,b,b,c, 3 trials/arm): pure base fb719b13 vs cand 20d26068d fold, same VM; per-arm mean of warm list samples (arms 1,4,5 base vs 2,3,6 cand)"
+   },
+   "hist20d_abba_list_saved_sessions_after_append_4mib_pad": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 14.6,
+     "p95_ms": 15.0,
+     "values_ms": [
+      15.0,
+      14.6,
+      14.2
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 10.8,
+     "p95_ms": 11.1,
+     "values_ms": [
+      11.1,
+      10.6,
+      10.8
+     ]
+    },
+    "delta_pct": -26.0,
+    "regression": false,
+    "note": "HISTORICAL 6-arm ABBA (b,c,c,b,b,c, 3 trials/arm): pure base fb719b13 vs cand 20d26068d fold, same VM"
+   },
+   "hist20d_abba_list_saved_sessions_cold_4mib_pad": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 196.9,
+     "p95_ms": 198.1,
+     "values_ms": [
+      195.3,
+      198.1,
+      196.9
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 188.8,
+     "p95_ms": 218.9,
+     "values_ms": [
+      218.9,
+      188.8,
+      188.8
+     ]
+    },
+    "delta_pct": -4.1,
+    "regression": false,
+    "note": "HISTORICAL 6-arm ABBA (b,c,c,b,b,c, 3 trials/arm): pure base fb719b13 vs cand 20d26068d fold, same VM; cand arm-2 218.9 outlier (writeback coincidence)"
+   },
+   "hist20d_abba_list_saved_sessions_warm_normal": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 3.9,
+     "p95_ms": 4.0,
+     "values_ms": [
+      3.5,
+      4.0,
+      3.9
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 3.7,
+     "p95_ms": 4.4,
+     "values_ms": [
+      4.4,
+      3.7,
+      3.2
+     ]
+    },
+    "delta_pct": -5.1,
+    "regression": false,
+    "note": "HISTORICAL 6-arm ABBA (b,c,c,b,b,c, 3 trials/arm): pure base fb719b13 vs cand 20d26068d fold, same VM; unpadded fixture, parity within noise"
+   }
+  },
+  "extra": {
+   "binary_bytes": {
+    "baseline": 209996360,
+    "candidate": 210100336
+   },
+   "pairA_binary_bytes": {
+    "baseline": 209589232,
+    "candidate": 209585408
+   },
+   "pairA_binaries": {
+    "base_sha256": "9d2c21440bbee6c356058c7ab728998c5c0cc353bdd5022641723c96614c7cd8",
+    "cand_sha256": "ade8176b7d509b02eaf4c3ae363c9c588a3fccdb0ed3e4ebf27fb668242d3bf7"
+   },
+   "pairB_binaries": {
+    "base_sha256": "f886d3c7212d618d9452630cb739d74d5047ddee5653acba486355bda2bf1c51",
+    "cand_sha256": "1ea797c0bd7f447f8b3ec943206c2771cde3c654653779d98de35f0fc063ba9d"
+   },
+   "calibration_pairB_cpu_s": {
+    "base": 1.053,
+    "cand": 1.044,
+    "end": 1.055
+   },
+   "build_seconds_pairB": {
+    "base": 94,
+    "cand": 85
+   },
+   "fixture": "shipped subagent-tree fixture materialized per trial (n=36 children, depth 9, 37 session files, 33 parents); padding appends realistic transcript rows to every parent (mechanism probe); fixture sha asserted per trial on suite runs (dadaecfc...)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "SCOPE (orchestrator-reviewed): the win is pathological-size robustness ONLY - 4MiB/parent (102MiB family corpus, synthetic stress) warm catalog fetch -25% to -32% across three independent pairs (hist ABBA -31.6%, pair A -29.8%, pair B -25.2%). The realistic-size 442KiB/parent sensitivity probe shows NO gain and an adverse point estimate in both quiet pairs (pair A warm p50 9.2->11.3ms +23%, pair B 10.05->11.38ms +13.2%; cold lists parity), driven by per-trial all-sample elevations in some cand trials (probe itself reads strictly less IO; leading suspects writeback/flusher coincidence or lost whole-file pre-warm for the scan cache's tail re-reads - unresolved, disclosed). Normal-scale unpadded lists parity (+0.1-0.2ms). PTY legs: the ~0.5-1.1s open_child/go_parent legs are worker-spawn-bound and bimodal (fast ~55-78ms / slow ~515-1228ms modes); mode mix flips between arms and pairs (pair A: cand faster; pair B: base faster) - no consistent regression or win; the clean open_view chrome leg is 114.1-114.5ms parity in both pairs; RSS parity (186.4->185.9, 183.4->184.7). The historical +3.6%/+8.0% PTY transcript 'regression' did not reproduce on quiet pairs and is retired as arm-order/mode noise. Pair A base-arm 10MiB suite launch/tail legs ran in the load shadow of fresh 400MB binary builds (loadavg_before 3.18-4.72): cand ~14% faster there, labeled SUSPECT-ENVIRONMENTAL and excluded from claims (pair B, run settled and quiet with stable CPU calibration, shows cold_start launch parity). One-off stalls disclosed: pair B cand cold_start trial0 (first-paint 1001.7ms, ready 1259.7ms, remaining trials normal), pair A cand pad-4mib trial2 after_append 417.6ms single sample, pair B cand pad-4mib trial2 cold 569.6ms single trial. Same-commit discipline: both pairs are pure-base-vs-folded-lane-head on the same VM with sha-asserted binary swaps; pair B is the PR-head pair (9f566686f vs 22996c87e). Synthetic-stress disclaimer: 4MiB/parent padding is NOT Kevin's ~442k-token context and is never equated with it."
+ },
+ "outcome": "in-progress",
+ "decision": "",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-050230-other-deep-subagents-legacy-registry-bounded-probe.json",
+ "session": {
+  "worker": "perf-deep-subagents-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-a0e7bb56/01a0dbfa-8d38-7093-91b3-66aff4d51e21.jsonl"
+ },
+ "timestamp": "2026-09-26T05:02:30.544059+00:00"
+}
