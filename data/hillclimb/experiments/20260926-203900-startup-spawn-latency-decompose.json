@@ -323,14 +323,16 @@
     "p50_ms": 0.24,
     "note": "occasional 1.9-6.8ms tails mid-window; healthy regime (p50 sub-ms), far from the 80-240ms degraded class boot-floor flagged fleet-wide"
    },
-   "disclosure": "the FIRST cold arm (coldwarm, n=10) ran 19:26-19:29Z inside the fleet-degraded window boot-floor later flagged (not fsync-probed at the time): its admission p50 370.8ms/max 439.1 exceeds the healthy-window rerun (290.5/337.6). The healthy-window rerun (coldwarm2) supersedes it for claims; the coldwarm run is retained on the orchestrator as degraded-window evidence only."
+   "disclosure": "the FIRST cold arm (coldwarm, n=10) ran 19:26-19:29Z inside the fleet-degraded window boot-floor later flagged (not fsync-probed at the time): its admission p50 370.8ms/max 439.1 exceeds the healthy-window rerun (290.5/337.6). The healthy-window rerun (coldwarm2) supersedes it for claims; the coldwarm run is retained on the orchestrator as degraded-window evidence only.",
+   "correction": "SUPERSEDED (2026-09-26, perf-spawn-admission-fast record 20260926-204300 bench hillclimb d401db9): the probe used here (one file opened once, 30 repeated 4KB fsyncs) samples the STEADY-STATE fsync class only. The admission path pays the fresh-file + sync_all + rename durability class, which is a TIME-VARYING host regime (~0.3ms quiet / 38-78ms degraded, flipping within minutes). The 'healthy window' label on coldwarm2 is therefore UNDER-EVIDENCED for the durability class the admission p50s actually rode: unknown portions of the coldwarm2 trials may have paid the degraded class. The admission p50 values themselves are valid measured outcomes (they measured whatever regime was live); the structural conclusions are unchanged and are now MECHANISM-CONFIRMED by the admission lane: N=22 decomposition shows the registered->reply tail is dominated by durability writes (strace: -6.5 durability syscalls/trial with the approved candidate; PR #2892), and the epoch-2 boundary in my single-trial example split carried async skew. Corollary: my coldwarm (degraded-window) vs coldwarm2 (claimed-healthy) p50 difference (370.8 vs 290.5) must NOT be read as a clean I/O-regime delta - both arms rode an unquantified mix of the time-varying durability class."
   },
   "daemon_log_admission_split_coldwarm01_example_ms": {
    "spawn_call_to_child_worker_exec": 6.5,
    "child_worker_exec_to_registered": 37,
    "registered_to_create_re_registered": 168,
    "re_registered_to_admission_reply": 171,
-   "note": "single-trial example from the d.sock RotatingLog timestamps (worker registration epochs); the admission cost is dominated by the supervisor Create route (probe/auth/create handler) and the post-create reply tail, not by process exec"
+   "note": "single-trial example from the d.sock RotatingLog timestamps (worker registration epochs); the admission cost is dominated by the supervisor Create route (probe/auth/create handler) and the post-create reply tail, not by process exec",
+   "correction": "SUPERSEDED as a phase boundary (perf-spawn-admission-fast N=22): the 're_registered->admission_reply' ~171ms boundary in this example carried epoch-2 async skew; treat the four-way split as a pointer only. The admission lane's record (20260926-204300) owns the rigorous decomposition; the dominant mechanism is durability writes, not process exec or route overhead."
   }
  },
  "validity": {
@@ -350,5 +352,15 @@
   "worker": "perf-spawn-latency-fast",
   "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1e1ab275"
  },
- "timestamp": "2026-09-26T20:25:22Z"
+ "timestamp": "2026-09-26T20:25:22Z",
+ "amended": {
+  "when": "2026-09-26T21:55:00Z",
+  "why": "fsync attestation methodology correction relayed by perf-spawn-admission-fast after their N=22 decomposition + strace on the same VM (their record 20260926-204300)",
+  "changed_fields": [
+   "measurements.fsync_regime_attestation.correction (added)",
+   "measurements.daemon_log_admission_split_coldwarm01_example_ms.correction (added)",
+   "amended (this field)"
+  ],
+  "unchanged": "all measured values, all structural findings (admission dominance, depth-0 prewarm gate, per-worker probe memo miss, turn-boundary parent-size effect); the record's baseline role for LEG B and the admission lane is unaffected"
+ }
 }
