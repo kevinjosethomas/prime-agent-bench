@@ -1,0 +1,206 @@
+{
+ "id": "20260926-210500-worker-rss-adopt-onecopy-final-pair",
+ "axis": "memory",
+ "hypothesis": "Same as 20260926-203400 (the one-copy window adoption): this is the FINAL-HEAD same-commit paired evidence at the PR head.",
+ "approach": "4-pass ABBA (B,C,C,B) at the exact PR head bcedaeac1 (bin ef77f66a) vs the final base 041abf225 = rust c7ca05f10 + attach-path 88465f102 (bin 0a33ff82). Same-VM sequential, sha-asserted swaps, per-trial fixture prehash, per-suite sidecar dirs, pre/mid calibration + BOTH fsync-regime probe classes disclosed (repeat-fsync 287-479ms pre, 305-336ms mid - DEGRADED-I/O regime per the fleet warning; ready times are regime-tainted: observed, NOT claimed).",
+ "parity_notes": "Unit oracles unchanged and green (76/76 pa-core session tests incl. the 3 adoption oracles). Upstream pre-existing red disclosed: acp::compaction_arms::tests::threshold_arm_compacts_and_publishes_the_acp_meta FAILS IDENTICALLY on pure origin/rust c7ca05f10, on the final base, and on the PR head (0 vs 1 compaction meta) - NOT lane-caused, operator disposition requested. msg_send not re-run in this pair (the pinned 6-pass pair's clean-table msg evidence stands: base 2/5 ok vs cand 5/5 - base-side environmental typing flake).",
+ "base": {
+  "revision": "c7ca05f10 + attach-path 88465f102 (wrss-final-base 041abf225)"
+ },
+ "branch": "lane/hillclimb-worker-rss",
+ "commits": [
+  "bcedaeac1 (PR head: fold rust c7ca05f10 atop 4175eb674)"
+ ],
+ "build": {
+  "sandbox_id": "peedgvd2cxsq68ltudehky8v",
+  "base_binary_sha256": "0a33ff8202906fa0e1e9efc43bf4b97f06c3c30d120900efe23d6ec966f5fa37",
+  "cand_binary_sha256": "ef77f66a7d4f82f0158ad142a87aae373cd72ee342f34a42f3cfd1d404201f79",
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass at bcedaeac1",
+  "clippy": "pass (-D warnings) at bcedaeac1",
+  "test": "pa-core session 76/76; pa-daemon lib 750/751 - the 1 failure is threshold_arm_compacts_and_publishes_the_acp_meta, PRE-EXISTING on pure upstream c7ca05f10 (fails identically in isolation at rust/base/lane; disclosed, operator disposition); earlier full-workspace T4 run at 4175eb674 green except a pa-cli image-stash e2e that passes in isolation (known flake family)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential-abba",
+  "calibration_s_30m_loop": {
+   "pre": [
+    1.2175,
+    1.1934,
+    1.1916
+   ],
+   "mid": null
+  },
+  "fsync_regime": {
+   "repeat_4kb_fsync_ms_pre": [
+    287.5,
+    286.4,
+    286.2,
+    291.1,
+    425.1,
+    478.9
+   ],
+   "repeat_4kb_fsync_ms_mid": [
+    335.9,
+    311.8,
+    330.2,
+    305.4,
+    308.2,
+    324.8
+   ],
+   "note": "DEGRADED-I/O regime (fleet warning); the fresh-write+rename class was NOT probed in this lane (per the fleet correction, repeat-fsync does not sample it) - ready-time observations are regime-tainted and NOT claimed"
+  },
+  "suites": {
+   "compare.memory_idle_load.10mib.tree_rss": {
+    "base": {
+     "trials": 20,
+     "valid": 20,
+     "p50": 345.6,
+     "min": 315.3,
+     "max": 365.6,
+     "values": [
+      353.2,
+      339.6,
+      353.1,
+      341.5,
+      349.8,
+      365.6,
+      337.7,
+      343.9,
+      346.3,
+      345.0,
+      354.5,
+      332.8,
+      354.2,
+      342.8,
+      350.0,
+      350.1,
+      339.9,
+      361.7,
+      323.5,
+      315.3
+     ]
+    },
+    "cand": {
+     "trials": 20,
+     "valid": 20,
+     "p50": 324.9,
+     "min": 299.3,
+     "max": 333.6,
+     "values": [
+      333.6,
+      332.8,
+      324.5,
+      331.2,
+      324.9,
+      324.7,
+      319.4,
+      323.4,
+      325.9,
+      328.4,
+      299.3,
+      317.6,
+      320.5,
+      329.5,
+      327.0,
+      323.6,
+      324.1,
+      326.4,
+      325.6,
+      325.0
+     ]
+    },
+    "delta_pct": -6.0,
+    "pass_medians": {
+     "base": [
+      345.6,
+      346.4
+     ],
+     "cand": [
+      325.4,
+      324.6
+     ]
+    },
+    "separation": "PASS-MEDIAN FULL: max cand 325.4 < min base 345.6 (gap 20.2); 4/4 passes monotone; trial-level NOT full (base low tails 315.3/323.5/332.8 - allocator-timing outliers, raw arrays published)"
+   },
+   "worker_per_proc_rss.smaps": {
+    "base": {
+     "trials": 20,
+     "p50": 168.0,
+     "min": 135.1,
+     "max": 190.3
+    },
+    "cand": {
+     "trials": 20,
+     "p50": 147.6,
+     "min": 120.9,
+     "max": 155.8
+    },
+    "delta_mb": 20.4,
+    "parity": "TUI/daemon/kernel identical both sides; the whole tree delta is the worker"
+   },
+   "session.cold_open_10mib.tree_rss": {
+    "base": {
+     "trials": 10,
+     "p50": 346.1,
+     "min": 338.6,
+     "max": 355.0
+    },
+    "cand": {
+     "trials": 10,
+     "p50": 326.6,
+     "min": 298.2,
+     "max": 339.7
+    },
+    "ready_ms_p50": {
+     "base": 2208,
+     "cand": 2158,
+     "regime_tainted": true
+    }
+   },
+   "session.cold_open_10mib_compacted.tree_rss": {
+    "base": {
+     "trials": 10,
+     "p50": 116.3,
+     "min": 115.4,
+     "max": 118.1
+    },
+    "cand": {
+     "trials": 10,
+     "p50": 116.2,
+     "min": 114.4,
+     "max": 117.3
+    },
+    "parity": "compacted sessions unchanged"
+   },
+   "compare.scroll_typing.tree_rss": {
+    "base": {
+     "trials": 10,
+     "p50": 344.4,
+     "min": 319.5,
+     "max": 355.3
+    },
+    "cand": {
+     "trials": 10,
+     "p50": 321.5,
+     "min": 287.3,
+     "max": 341.8
+    }
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 80 rows valid (sentinel+echo, fixture prehash dadaecfc, fresh inodes). Degraded-I/O regime active through the whole pair (fleet warning cited); RSS is the claimed axis only. The -20.4/-20.7 MiB worker/tree delta at the PR head reproduces the 6-pass pair's -21.8/-19.5 within noise; the claim stays PASS-MEDIAN + worker attribution per the orchestrator ruling."
+ },
+ "outcome": "candidate-ready at PR head bcedaeac1: worker RSS -20.4 MiB p50 on the 10MiB canonical fixture (168.0->147.6, -12.1% worker; tree -20.7 p50, -6.0%), pass-median full separation both pairs, worker-only attribution, compacted parity",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-210500-worker-rss-adopt-onecopy-final-pair.json",
+ "session": {
+  "worker": "perf-worker-rss-fast",
+  "session_dir": "worker-rss lane"
+ },
+ "timestamp": "2026-09-26T21:05:00.000000+00:00"
+}
