@@ -149,12 +149,12 @@
     "notes": "Final baa7 candidate full suite PASS, fmt and clippy PASS. Pure baa7 baseline production probe 6/6 valid and folded candidate 6/6 valid; snapshot file and persisted state checked. Candidate first-start repair after out-of-band installed rlm and dill removal succeeds, snapshot restore and kill/restart check valid. Pure fa4 baseline and pre-fix candidate both failed installed dill removal with missing snapshot (baseline parity gap). A/A earlier on older head used for calibration; no latest-head A/A; short last-head ABBA only, sampling and cold outliers noted. macOS unmeasured."
   },
   "outcome": "in-progress",
-  "decision": "Numerics accepted provisionally by orchestrator; PR pending review and both formal adversaries. Never merge on this record alone.",
-  "pr_url": null,
+  "decision": "Orchestrator accepted numeric provisionally; PR #2857 opened for review only; pending latest-head fold/gates and both formal adversaries, never merge without explicit approvals.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2857",
   "record_path": "data/hillclimb/experiments/20260926-031426-startup-kernel-boot-probe-memo.json",
   "session": {
     "worker": "perf-kernel-boot",
     "session_dir": "/root/bench-root/homes/rust/trials/kernel_cell_exec-20260926-014925-kernel-boot-fixture-aa-base-00/agent/sessions/01a0db67-5ff7-747f-bb4d-764646d14307.jsonl"
   },
-  "timestamp": "2026-09-26T03:14:26.525875+00:00"
+  "timestamp": "2026-09-26T03:15:07.193645+00:00"
 }
