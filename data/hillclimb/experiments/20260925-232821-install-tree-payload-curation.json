@@ -31,10 +31,10 @@
   "gates": {
     "fmt": "Corrected 85ca/966d fmt running",
     "clippy": "Corrected 85ca/966d Clippy running",
-    "test": "Corrected 85ca/966d workspace gate RUNNING. Intermediate e824 full test retry RC101: 139 PASS targets, 4 FAIL (three held-lease expected-copy mismatch, one daemon connection refused); not current-head gate. Python package tests 24/24 PASS including 4 required docs, installed inline relative link-target resolution, dirty-cache negative. GitHub benchmark previous head RED/non-applicable: TS npm ci EUSAGE missing package-lock pre-build, PR trials 0/0, operator/CI disposition pending."
+    "test": "Latest 85ca/966d full VM workspace RC101: 141 target results PASS, five target FAIL. Two OWNED four-doc synthetic fixtures fixed on f099+34af (both focused targeted tests PASS on exact 34af), three held-lease expected-copy failures byte-identical to base, pure-base focused tests RUNNING. Exact latest folded current-head full gate PENDING. Intermediate e824 RC101 139 PASS 4 FAIL; Python packaging 24/24 PASS. Public CI TS benchmark RED/non-applicable npm ci EUSAGE 0/0; operator disposition pending."
   },
   "measurements": {
-    "method": "Final corrected 85ca/966d exact same-VM/path sequential release pair (full installed-tree pinned), archive membership/bytes PASS. Quiet 5-trial B/C and latest full gate RUNNING, historical 91eed/bc1 linked-doc omission superseded.",
+    "method": "Corrected 85ca/966d same-VM/path deterministic payload PASS; latest 85ca/966d 30/30 short B/C timing DIAGNOSTIC/VOID due strong host drift pre/post calibration ~27%, cannot conclude parity or regression; new stable reversal/latest-head rerun pending. Rust 34af fixture-only edits after measured binary require SHA verify.",
     "suites": {
       "cold_start": {
         "baseline": {
@@ -566,6 +566,39 @@
         "candidate": 677.6
       },
       "archive": "/home/ubuntu/hillclimb/vms/final-91-quiet-results.tar.gz"
+    },
+    "quiet_neighbor_85ca_966d_diagnostic": {
+      "base_revision": "85ca8cc18711fe3d656307b2f571c2deabf199f9",
+      "candidate_revision": "966d93292c6cb3248fc5dde1685df5dffb036c46",
+      "binary_sha256": "ac3acc1db49789e9bd1f9e6ee81f22efb7f12cf6639bbbbb7e8956d30647c714",
+      "tree_sha256": {
+        "baseline": "2ec123b316322b5b9a8fa628f6677dd8270ead8141e38ebf6d60161129289b16",
+        "candidate": "cbf5530946e72f7eb23250e92faf113fae2cf22d3e814d88bce8a29359365027"
+      },
+      "pre_calibration_s": [
+        1.0574220799990144,
+        1.0472532589992625,
+        1.068553023998902
+      ],
+      "post_calibration_s": [
+        1.343256961001316,
+        1.380408578001152,
+        1.1337414089994127
+      ],
+      "status": "30/30 per-trial qualified in own suite, but HOST DRIFT INVALIDATES neighbor causal comparison (+~27% calibration median). Diagnostic/VOID for parity; do not claim speedup/regression.",
+      "cold_start_p50_ms": {
+        "baseline": 296.54,
+        "candidate": 320.07
+      },
+      "warm_start_p50_ms": {
+        "baseline": 270.69,
+        "candidate": 297.42
+      },
+      "msg_send_settle_p50_ms": {
+        "baseline": 674.2,
+        "candidate": 732.8
+      },
+      "results_archive": "/home/ubuntu/hillclimb/vms/latest-85-results.tar.gz"
     }
   },
   "validity": {
@@ -586,5 +619,5 @@
     "worker": "perf-install-tree",
     "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-7ba3b8cf/01a0db50-cf28-733b-897d-d843c865237e.jsonl"
   },
-  "timestamp": "2026-09-26T03:45:15.477697+00:00"
+  "timestamp": "2026-09-26T03:53:09.835252+00:00"
 }
