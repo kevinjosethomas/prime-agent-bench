@@ -146,10 +146,10 @@
       "Prior b0 family-edge workspace gate and isolated baseline both red; #2828 upstream fixture subsequently fixed.",
       "Earlier 91eed head candidate first and second full suite failed different tests (agents_view_search and supervisor stats); both exact isolated tests green on candidate and pure base; not relabeled pass."
     ],
-    "notes": "Final baa7 candidate full suite PASS, fmt and clippy PASS. Pure baa7 baseline production probe 6/6 valid and folded candidate 6/6 valid; snapshot file and persisted state checked. Candidate first-start repair after out-of-band installed rlm and dill removal succeeds, snapshot restore and kill/restart check valid. Pure fa4 baseline and pre-fix candidate both failed installed dill removal with missing snapshot (baseline parity gap). A/A earlier on older head used for calibration; no latest-head A/A; short last-head ABBA only, sampling and cold outliers noted. macOS unmeasured."
+    "notes": "Final baa7 candidate full suite PASS, fmt and clippy PASS. Pure baa7 baseline production probe 6/6 valid and folded candidate 6/6 valid; snapshot file and persisted state checked. Candidate first-start repair after out-of-band installed rlm and dill removal succeeds, snapshot restore and kill/restart check valid. Pure fa4 baseline and pre-fix candidate both failed installed dill removal with missing snapshot (baseline parity gap). A/A earlier on older head used for calibration; no latest-head A/A; short last-head ABBA only, sampling and cold outliers noted. macOS unmeasured. [HISTORICAL label added 2026-09-26: this record's PR-facing tables were superseded by later folds; see the final record.]"
   },
-  "outcome": "in-progress",
-  "decision": "Orchestrator accepted numeric provisionally; PR #2857 opened for review only; pending latest-head fold/gates and both formal adversaries, never merge without explicit approvals.",
+  "outcome": "discarded",
+  "decision": "HISTORICAL (superseded 2026-09-26): baa7b323a/f18c0ac29 pair predates the d14 custom-override split and later rust folds; numbers remain valid for their heads but are NOT current-head evidence. Superseded by 20260926-095248-startup-kernel-boot-probe-memo-final (candidate 9d1f472d5 vs base f37144ffa). Review-only PR #2857; do not merge.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2857",
   "record_path": "data/hillclimb/experiments/20260926-031426-startup-kernel-boot-probe-memo.json",
   "session": {

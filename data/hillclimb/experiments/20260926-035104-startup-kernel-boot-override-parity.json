@@ -156,10 +156,10 @@
       "Prior c549/85ca workspace VM and dd4/bc public CI pa-ai OAuth dead-callback timeout at openai_codex.rs:932. Both pure bc base and dd4 candidate exact isolated passed, but red suite is not green.",
       "Public PR benchmark attempted TS adapter/npm ci with missing package lock, 0/0 trials; invalid for Rust kernel performance. CI remains red pending operator decision."
     ],
-    "notes": "Exact 1ce/0761 same-VM ABBA all output/state/snapshot assertions valid (6 per side), but load higher and cold outliers; these timings include separate dill interpreter probe on managed memo miss. Earlier ignored live witness initially failed due fixture omitting dill; repaired fixture copies installed rlm+dill, explicitly executed pass. Memo bound 16 entries. Scratch custom no-snapshot source SHA 4693c9093126357cd823623c04a4ae4c0a1b23590dd42e5a0eab7bb38afe0761; all logs remain on VM. Default managed rlm/dill out-of-band removal repair and snapshot/restore/restart passed at d14. MacOS unmeasured."
+    "notes": "Exact 1ce/0761 same-VM ABBA all output/state/snapshot assertions valid (6 per side), but load higher and cold outliers; these timings include separate dill interpreter probe on managed memo miss. Earlier ignored live witness initially failed due fixture omitting dill; repaired fixture copies installed rlm+dill, explicitly executed pass. Memo bound 16 entries. Scratch custom no-snapshot source SHA 4693c9093126357cd823623c04a4ae4c0a1b23590dd42e5a0eab7bb38afe0761; all logs remain on VM. Default managed rlm/dill out-of-band removal repair and snapshot/restore/restart passed at d14. MacOS unmeasured. [HISTORICAL label added 2026-09-26: the gates field above predates the eeef36f6e live-witness count fix and the settle-fold; see the final record for current gates.]"
   },
-  "outcome": "in-progress",
-  "decision": "Review-only PR #2857, orchestrator numeric and formal adversarial approvals pending exact latest gates, red CI disposition, and final SHA; do not merge.",
+  "outcome": "discarded",
+  "decision": "HISTORICAL (superseded 2026-09-26): 1ce0d94b1/0761f1b25 pair predates the folds past 049b6859b and the settle-fold; valid for its heads but NOT current-head evidence. Superseded by 20260926-095248-startup-kernel-boot-probe-memo-final (candidate 9d1f472d5 vs base f37144ffa). Review-only PR #2857; do not merge.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2857",
   "record_path": "data/hillclimb/experiments/20260926-035104-startup-kernel-boot-override-parity.json",
   "session": {
