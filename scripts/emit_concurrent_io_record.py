@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Emit the final concurrent-io lane record (measurements + narrative)."""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+BASE = json.loads(subprocess.run(
+    [sys.executable, "/home/ubuntu/prime-agent-bench/scripts/build_concurrent_io_record.py"],
+    capture_output=True, text=True).stdout)
+
+BASE_SHA = "392efffae0c08cfba85911565adc8171a31002d17850daf20306d89fd7716402"
+
+record = {
+ "id": "20260926-210500-io-concurrent-event-fanout-arc",
+ "axis": "io",
+ "lane": "concurrent-io (perf-concurrent-io-fast)",
+ "hypothesis": (
+   "Per-request supervisor cost for concurrent session I/O is superlinear in resident "
+   "sessions N: every session event (2 per append_custom_message: message_start + "
+   "message_end, each carrying the full message payload) is published on the one "
+   "daemon-wide tokio broadcast channel (supervisor.events), and every connected "
+   "client's event arm wakes, DEEP-CLONES the (ClientRouting, Value) frame, locks its "
+   "attached-list mutex, checks, and discards: Theta(N) per request, Theta(N^2) "
+   "aggregate for equal per-session traffic. Sharing the payload (Arc<Value>) removes "
+   "the per-receiver deep clone while keeping the same channel, ring capacity, routing "
+   "decisions in the same recv order, and byte-identical wire frames (the worker-side "
+   "EventPump already shares its frames this way via Arc<OutboundFrame>)."),
+ "approach": (
+   "External real-daemon benchmark (scripts/concurrent_io_curve.py, no product "
+   "imports): ONE supervisor hosts N live sessions; a P-process driver fan-out (one "
+   "thread per owned session, wall-clock deadline lock-step per phase) drives create+"
+   "attach, seed appends, idle window, 2x measured append phases (200 appends per "
+   "session per phase), kill+resume (create with sessionPath) storm, census. Metrics: "
+   "per-request client latency arrays, supervisor+worker CFS schedstat (summed over "
+   "all threads) per phase boundary, /proc/<pid>/io per boundary, fd census, "
+   "RSS/PSS census, meminfo, fixed-work calibration between phases. Byte-parity "
+   "oracles per session: JSONL structure, custom-row semantics, resume prefix "
+   "preservation; session_semantics_digest must match across roles (base vs "
+   "candidate) and trials. Baseline curve N in {1,10,50,100} x 2 trials at tip "
+   "7064d039, then same-vm sequential ABBA (B C C B per N) at N in {1,100} twice: "
+   "once at the iteration commit, once head-exact."),
+ "base": {"revision": "7064d039ac3437596f75b44423d76a8f4bf4856a",
+          "newer_unfolded_tip": "a40b33ea0 (post-baseline head moves 9d9cf2da7 #2844, 5dbf6f653 #2866, c7ca05f10 #2878 supervisor split 2/8, a40b33ea0 #2887; pair measured untouched at 7064d039 per standing policy; ONE fold to batch at clean boundary)"},
+ "branch": "lane/hillclimb-concurrent-io",
+ "commits": ["b56a2b332 (Arc<Value> event payloads)", "b4c89869b (2 missed send sites + test compile)",
+             "d3ac85973 (rustfmt/test helpers)", "ac83e5baf (style; head-exact pair commit)"],
+ "build": {"sandbox_id": "l0j1fuwrk79pvehuoevwn60f",
+           "base_binary_sha256": BASE_SHA,
+           "iteration_candidate_binary_sha256": "af49e01c2d1c7ac2fc35a0031f4993962713a9b4c162f977304d65d09f296ac4",
+           "head_exact_candidate_binary_sha256": "0967047cced911d33a49f746d6e1c550d3d527b62457bfba4edcc04fc49b1fa7",
+           "toolchain": "rustup 1.98.1 on ubuntu:22.04 (glibc 2.35); rustfmt+clippy components installed and exercised (real diffs/lints observed before green)"},
+ "gates": {"fmt": "pass (ac83e5baf)",
+           "clippy": "pass --workspace --all-targets -D warnings (ac83e5baf)",
+           "test": "pa-daemon --lib --release: 747 passed / 2 failed, 6 ignored. "
+                   "FAILED-1 acp::compaction_arms::tests::threshold_arm_compacts_and_publishes_the_acp_meta: "
+                   "PRE-EXISTING AT TIP - reproduced on base 7064d039 exact (disclosed). "
+                   "FAILED-2 worker::tests::goal_turn_end_loop_runs_to_completion: ENVIRONMENT - needs "
+                   "packaged kernel runtime (uv + PI_PACKAGE_DIR) not present on the measurement VM "
+                   "(documented requirement, docs/parity-battery.md)."},
+ "measurements": BASE["measurements"],
+ "decomposition": {
+   "sup_cpu_per_append_fit": "base: a=515us + b=21.2us*N fits N=1/10/50/100 within 4% at both trials; candidate: b drops to ~5.9us*N (clone share ~15us of the 21us per session per append)",
+   "append_latency_shape": "bimodal: fast cluster ~0.4-1ms (buffered appends), slow cluster 20-150ms (fdatasync barrier landing; VM storage dependent); at N>=10 ~98-99% of appends take the slow path",
+   "fsync_behavior": "strace (N=1 full set + N=20 io-only): exactly ONE fdatasync per append_custom_message in the worker (20/20, 400/400), ~2.2KB written per append (row + sidecar share), zero supervisor fsync; resume/worker-boot path pays ~8 fsync + ~300 write calls per boot (cross-lane: concurrent-boot serialization ~0.42s per create, 100 concurrent creates take ~42s wall - serialized)",
+   "socket_data_path": "daemon client socket I/O uses sendto/recvfrom (NOT counted in /proc/<pid>/io rchar/wchar/syscw/syscr - earlier sup_syscw numbers in the raw result.json are FILE-IO-ONLY and must not be read as request counts)",
+   "fd_growth": "supervisor fds = 12 + 4 per session (client conn + worker conn, unix sockets counted per end): 16 @ N=1 -> 412 @ N=100; linear, no leak; worker fds flat 12",
+   "memory": "worker RSS floor ~40MB/session at 20+220 rows (N=100 sum 4.11GB); supervisor RSS ~0.9MB/session (46MB -> 135MB); PSS follows; no superlinear growth to N=100",
+   "idle_cpu": "supervisor idle ~0.06-0.13us/s per session at census; no per-session timer storm",
+ },
+ "claims": {
+   "primary": "supervisor CPU per append_custom_message at N=100 live sessions: "
+              "base 2670.6us (iteration pair; legs 2698/2641/2728/2615) and 2643.8us "
+              "(head-exact pair; legs 2672/2664/2676/2563) -> candidate 995.9us "
+              "(legs 977/1033/1060/915) and 1011.0us (legs 1010/926/1061/1047): "
+              "-62.5%/-63.0% (iteration, append1/append2) and -61.7%/-61.2% (head-exact) "
+              "- same-vm sequential ABBA, B C C B, sha-asserted binaries, all legs disclosed",
+   "secondary_none": "wall/latency: NO CLAIM - append wall and p50/p95 are dominated by "
+                     "the fdatasync barrier + storage regime (see regime below); the "
+                     "re-pair window ran a slower I/O regime (p50 3x the first pair) "
+                     "while the CPU legs stayed in-band, demonstrating the CPU metric's "
+                     "regime independence. N=1 CPU: NO CLAIM (B/C ranges overlap).",
+   "projected_implication": "every session event pays the same per-connection cost class; "
+                             "turn streaming emits many more events per request than "
+                             "append_custom_message, so a daemon hosting many live "
+                             "sessions (Kevin's 30-concurrent-subagent waves, multi-user "
+                             "hosts) burns Theta(N) supervisor CPU per event; the change "
+                             "cuts that ~62% at N=100 and ~11% of the fixed N=1 term is "
+                             "untouched (routing/wakeup floor remains Theta(N) - see "
+                             "follow-up)."},
+ "follow_up": {
+   "targeted_delivery": "the remaining ~5.9us/session/append is the wakeup+recv+match "
+                        "floor of waking every connection per event; a per-session "
+                        "subscriber registry (send-time attached-check) would make "
+                        "delivery O(attached) instead of O(connections) - BUT it moves "
+                        "the attached-check from recv time to send time, changing which "
+                        "events a racing attach/detach observes (TS evaluates filters "
+                        "at send time in its single-threaded loop; the Rust recv-time "
+                        "check is already a divergence in the race window). Needs its "
+                        "own parity case vs TS - not attempted here.",
+   "boot_serialization": "concurrent create/resume serializes at ~0.42s per worker "
+                         "(100 concurrent creates: 42s wall) with ~8 fsync + ~300 "
+                         "writes per worker boot - belongs to the kernel/boot lanes "
+                         "(daemon-boot discarded, kernel-boot PR #2857): cross-lane "
+                         "note only.",
+   "resume_budget_flake": "1 of 8 N=100 runs hit 'session worker did not come up in "
+                           "time' (30s connect budget breached by the concurrent "
+                           "respawn storm tail; product-side budget, not "
+                           "candidate-specific; the run was rerun and disclosed)."},
+ "regime": {
+   "probe_correction": "per fleet correction, the 4KB repeat-fdatasync probe does not "
+                       "sample the fresh-write+sync_all+rename class; both classes were "
+                       "probed (scripts/dual_probe.py output in "
+                       "re-pair-regime.jsonl / abba-regime-watch.jsonl)",
+   "first_pair": "N=1 legs: repeat-class p50 0.19-0.21ms (healthy); N=100 legs: "
+                 "repeat-class p50 13-52ms - partly self-induced (100 concurrent "
+                 "fdatasync-per-append sessions saturate the shared storage: the "
+                 "concurrent-append latency mechanism itself)",
+   "re_pair": "repeat-class p50 0.17ms at probe time but product append p50 3x the "
+              "first pair - the product's durability class (fdatasync on a growing "
+              "file under 100-way concurrency) samples neither probe class cleanly; "
+              "latency legs are DIAGNOSTIC-ONLY everywhere in this record",
+   "calibration": "fixed 32MB sha256 work: min 0.017s across all 24 runs; single-sample "
+                  "max spikes to 0.021-0.036s in 4 runs (I/O-window turbulence); CPU "
+                  "legs unaffected (B legs stable 2563-2728us across both windows)."},
+ "evidence": {
+   "runner": "scripts/concurrent_io_curve.py + scripts/concurrent_io_analyze.py + "
+             "scripts/build_concurrent_io_record.py (bench hillclimb)",
+   "archive": "/home/ubuntu/hillclimb/archives/perf-concurrent-io/ (raw trial trees, "
+              "strace parses, regime logs, VM logs)",
+   "vm_record": "/home/ubuntu/hillclimb/vms/perf-concurrent-io.json",
+ },
+ "parity_notes": (
+   "Frozen surfaces untouched: session JSONL bytes, durability (1 fdatasync/append "
+   "unchanged), wire frames, routing decisions, ring capacity, recv order. The "
+   "session_semantics_digest is identical between base and candidate at every N "
+   "(4195cad0 @ N=1, 85607aee @ N=100) and all 24 runs validate every oracle "
+   "(structure, custom-row semantics, resume prefix preservation, fixture semantics). "
+   "Internal-only change: the broadcast carries (ClientRouting, Arc<Value>) and the "
+   "per-connection event arm serializes from the shared Value. The change mirrors the "
+   "worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers "
+   "deref back to owned Values so test assertions are unchanged in meaning."),
+ "decision": "PAIRED WIN on the mechanism (-62% supervisor CPU per event at N=100, "
+             "reproduced at two commits and two host regimes). Lane recommends PR "
+             "review; no PR opened yet (parent/orchestrator disposition; merge bar "
+             "requires numeric review + BOTH adversarial reviewers on final head).",
+}
+print(json.dumps(record, indent=1, sort_keys=True))

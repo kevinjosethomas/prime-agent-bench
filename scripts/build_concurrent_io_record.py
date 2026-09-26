@@ -87,6 +87,10 @@ def main():
     pair_n1 = paired(["abba-n1-B-0", "abba-n1-B-3"], ["abba-n1-C-1", "abba-n1-C-2"])
     pair_n100 = paired(["abba-n100-B-0", "abba-n100-B-3"],
                        ["abba-n100-C-1", "abba-n100-C-2"])
+    repair_n1 = paired(["re-pair-n1-B-0", "re-pair-n1-B-3"],
+                       ["re-pair-n1-C-1", "re-pair-n1-C-2"])
+    repair_n100 = paired(["re-pair-n100-B-0", "re-pair-n100-B-3"],
+                         ["re-pair-n100-C-1", "re-pair-n100-C-2"])
     regime = []
     for line in (RUNS / "abba-regime-watch.jsonl").read_text().splitlines():
         line = line.strip()
@@ -124,8 +128,10 @@ def main():
         "measurements": {
             "method": "same-vm-sequential ABBA (B C C B per N) + baseline curve",
             "baseline_curve": curve,
-            "abba_pair_n1": pair_n1,
-            "abba_pair_n100": pair_n100,
+            "abba_pair_n1_iteration_b4c89869b": pair_n1,
+            "abba_pair_n100_iteration_b4c89869b": pair_n100,
+            "abba_pair_n1_head_exact_ac83e5baf": repair_n1,
+            "abba_pair_n100_head_exact_ac83e5baf": repair_n100,
         },
         "regime": {
             "fsync_probe": "4KB fdatasync x20 per probe, 20s cadence during ABBA",
