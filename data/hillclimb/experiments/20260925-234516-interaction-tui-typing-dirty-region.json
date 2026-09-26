@@ -1,0 +1,161 @@
+{
+  "id": "20260925-234516-interaction-tui-typing-dirty-region",
+  "axis": "interaction",
+  "hypothesis": "Each keystroke/scroll re-renders more of the transcript than needed (full reflow of the visible window, re-wrapping unchanged rows, per-cell redraw); a parity-safe dirty-region/cached-line rendering fix cuts typing latency on large sessions.",
+  "approach": "REFUTED AT PROFILING STAGE - no code change, no candidate build. Evidence chain: (1) Code audit of the f2c02ade0 render path: the proposed mechanism is ALREADY the architecture - crates/pa-tui/src/view/lazy.rs SparseWindow (only visible sections materialize; tail-anchored walk), view/layout.rs EntryLayout per-entry row cache keyed (width, detail, spacing) + entry_heights wrap-count cache + md_caches markdown block cache keyed by width, interactive.rs inline paint per handled key with a 16ms coalescing gate, ratatui double-buffer cell diff. (2) perf profile (perf 5.15 on kernel 6.16, -F 199, 45s window) of the shipped base binary under the bench's exact scenario (resume 10MiB fixture, sentinel wait, typed token, 5x PageUp, 30-event SGR wheel burst, typing while scrolled): app CPU ~0.4% of one core; top self symbols are idle waits (futex, epoll, timerfd); ratatui Span::render_ref = 18% of a 92-sample window - the per-keystroke render work is microseconds. (3) Session-size independence probe (PTYSession driver, 120x40, mock provider, same launch shape as the adapter): fresh session vs 10MiB-loaded session typing per-key latencies are statistically identical - fresh: p50~0.8ms with 2-10.4ms idle-wake spikes; loaded: p50~0.5ms with 2-12.2ms spikes; typing_scrolled loaded: p50~0.55ms. The spikes appear equally on fresh sessions => they are CPU idle-wake/scheduler artifacts, not transcript-size render cost. (4) pty_bytes for the whole interaction phase: 12.4KB (loaded) / 8.3KB (fresh) in probes; 75-89KB in official trials (incl. the sentinel frames) - the paint pipeline already emits only changed cells. (5) Official 5-trial suites on the base VM (below) put typing_ms p50 at 1.53ms with the harness noop-control floor at p50 0.1ms; the residual app-side per-cell buffer render (~120x40 cells/paint, session-size independent) bounds ANY further dirty-region gain to well under the trial noise.",
+  "parity_notes": "No code change: lane/hillclimb-tui-typing == base f2c02ade0 with zero commits (branch tip = origin/rust at fold time; later product merges do not touch this lane). The binary benchmarked is byte-identical to the base build (sha256 6b79f847a77badad97e7cb8d2c8188faef0cd1b09f99d7c0a491ffe121e9b6c3). Parity trivially preserved: same features, same session-JSONL content, same wire protocol, same platforms.",
+  "base": {
+    "revision": "f2c02ade0056e37d1d0c143fc3b7fa67883f8eca"
+  },
+  "branch": "lane/hillclimb-tui-typing",
+  "commits": [],
+  "build": {
+    "sandbox_id": "lv7vl15ue1f4l3hnth7je5o4 (base VM)",
+    "binary_sha256": "6b79f847a77badad97e7cb8d2c8188faef0cd1b09f99d7c0a491ffe121e9b6c3",
+    "binary_bytes": 207702464,
+    "build_seconds": 181,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "not-run (no candidate: hypothesis refuted before implementation)",
+    "clippy": "not-run (no candidate: hypothesis refuted before implementation)",
+    "test": "not-run (no candidate: hypothesis refuted before implementation)"
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.scroll_typing": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "typing_ms_p50": 1.53,
+          "typing_ms_p95": 5.35,
+          "typing_ms_max": 14.1,
+          "typing_scrolled_p50": 0.56,
+          "scroll_pgup_p50_nonnull": 4.8,
+          "scroll_pgup_max": 96.0,
+          "scroll_pgup_nulls_of_25": 20,
+          "wheel_bursts": 1,
+          "wheel_bytes": 1320,
+          "launch_to_ready_ms_p50": 24305.6,
+          "rss_settled_mb_p50": 517.9,
+          "values_ms": [
+            23946.3,
+            23496.3,
+            28904.8,
+            24305.6,
+            22069.2
+          ]
+        },
+        "candidate": null,
+        "delta_pct": null,
+        "regression": false,
+        "note": "candidate = null: no code change was made (hypothesis refuted); the baseline row IS the pair on this axis. scroll_pgup nulls: 4 of 5 PageUps per trial paint into the fixture's 1MiB 'x'-pad region whose rows are textually identical, so the screen-hash probe records no change (fixture artifact, not an app stall); p50 is over the 5 non-null first-PageUp values."
+      },
+      "compare.msg_send": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "submit_to_ack_ms_p50": 2.2,
+          "submit_to_settle_ms_p50": 691.1,
+          "values_ms": [
+            1.7,
+            2.4,
+            13.3,
+            2.2,
+            1.5
+          ]
+        },
+        "candidate": null,
+        "delta_pct": null,
+        "regression": false
+      },
+      "compare.warm_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "launch_to_first_paint_ms_p50": 6.4,
+          "launch_to_ready_ms_p50": 264.9,
+          "values_ms": [
+            264.3,
+            263.1,
+            369.2,
+            264.9,
+            265.5
+          ]
+        },
+        "candidate": null,
+        "delta_pct": null,
+        "regression": false
+      },
+      "session.cold_open_10mib": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "launch_to_sentinel_ms_p50": 25029.5,
+          "values_ms": [
+            21669.9,
+            21931.4,
+            25029.5,
+            38720.2,
+            26148.0
+          ],
+          "rss_mb_p50": 551.0
+        },
+        "candidate": null,
+        "delta_pct": null,
+        "regression": false,
+        "note": "cold-open spread 21.7s-38.7s on ONE idle VM (78%) - host oversubscription dominates; corroborates the fleet A/A finding."
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 207702464,
+        "candidate": 207702464
+      },
+      "rss_mb": {
+        "baseline_p50_scroll_typing": 517.9,
+        "baseline_p50_cold_open": 551.0
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "Per-VM python calibration (3x sum(i*i for i in range(30_000_000)), median): base VM 1.374s clean-idle (wandered 1.08-1.45s across runs under different host load - +/-15%+); cand VM 1.341s (measured while its spare build ran - polluted, not used). No cross-VM pair is claimed: per the 2026-09-25 methodology addendum this record is same-VM baseline-only with candidate=null (discard). Harness noop-control floor: p50 0.10ms, p95 0.84ms (n=30, from the run's own control). typing_ok = true on all 5 trials. Official binary identity: versions.json binary_sha256 6b79f847a77badad97e7cb8d2c8188faef0cd1b09f99d7c0a491ffe121e9b6c3, bytes 207702464, base commit f2c02ade0 (product.yaml revision field still pins 7152746b - informational only).",
+    "probe_evidence": {
+      "loaded_typing_per_key_ms_p50": 0.5,
+      "fresh_typing_per_key_ms_p50": 0.8,
+      "loaded_spikes_ms": [
+        2.38,
+        2.82,
+        6.34,
+        4.22,
+        9.01,
+        5.03,
+        9.2,
+        12.16,
+        10.96
+      ],
+      "fresh_spikes_ms": [
+        6.17,
+        6.8,
+        4.95,
+        6.13,
+        9.44,
+        10.4,
+        7.94,
+        7.65
+      ],
+      "conclusion": "fresh-vs-loaded typing latency distributions identical within noise; spikes are idle-wake artifacts present on both."
+    }
+  },
+  "outcome": "discarded",
+  "decision": "PENDING orchestrator; worker recommendation: DISCARD - the proposed dirty-region/cached-line rendering already exists on this base (sparse windows, per-entry row/height/markdown caches keyed by width, ratatui cell diff); typing latency is session-size independent (p50 1.53ms loaded vs identical fresh-session distribution); residual per-cell buffer render is microseconds and session-size independent, far under trial noise (cold_open spread 78% on one VM). No PR. Headroom worth routing elsewhere: (a) cold_open launch_to_sentinel 21.7-38.7s on the 10MiB resume (load path, not render), (b) typing p95 spikes 5-14ms = CPU idle-wake latency (infrastructure), (c) RSS 480-580MB (memory axis).",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260925-234516-interaction-tui-typing-dirty-region.json",
+  "session": {
+    "worker": "perf-tui-typing",
+    "session_dir": "~/.prime/agent/sessions/01a0dad8-e77d-77cd-9fb2-bbcd89094834.jsonl"
+  },
+  "timestamp": "2026-09-26T00:17:50.115910Z"
+}
