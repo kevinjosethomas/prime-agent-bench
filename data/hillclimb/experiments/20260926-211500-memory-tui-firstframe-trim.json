@@ -333,13 +333,13 @@
   "excluded": [],
   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (/root/bin-base, /root/bin-cand regenerated per head), per-trial fresh fixture copy with canonical prehash assert (10MiB dadaecfc..., 40MiB 85be402f...; resumed sessions append bookkeeping rows - post bytes differ, never claimed identical), pre/post calibration per pass set. Evidence repeated at THREE successive upstream heads (7064d039, c7ca05f10, 1507d399b) with consistent deltas and full B/C separation at every head. FLEET I/O REGIME DISCLOSURE: during the ABBA windows the repeat-fsync probe read 36-43ms on the measurement VM (fleet-degraded regime class per boot-floor warning), while the product-write-class probe (fresh file + fsync + rename + stat) read 0.02-0.06ms (healthy, per spawn-admission's corrected probe class); primary claims are RSS/PSS/census-byte measures (deterministic, calibration-stable); timing legs are within-pair parity checks only. Baseline matrix trials t2/t3 at the pre-fold tip 60e2e198c used fixtures that had accumulated a few bookkeeping rows from t1 (pre-fresh-copy discipline); effect bounded at sub-0.1MB, superseded by the fresh-copy ABBA pairs. Census numbers come from a PROBE build (lane/hillclimb-tui-memory-probe, never ships): its RSS values are PROBE-labeled and never used as product baselines. PR CI also carries the standing NON-APPLICABLE public TS benchmark red (workflow 'Prime Agent benchmarks', 'Benchmark partial: failed or incomplete' on this run's mode; standing operator disposition, never called pass, 0 Rust trials). Numeric review ACCEPTED (parent) on the final PR SHA."
  },
- "outcome": "candidate-ready (PR #2895 open, CI green, reviewer routing in progress)",
- "decision": null,
+ "outcome": "merged",
+ "decision": "MERGED as PR #2895 squash 013e40a4a on origin/rust (2026-09-26 ~23:05Z under the operator's standing autonomous-merge authorization). Gate history: orchestrator numeric review ACCEPTED; parity-adversary-fast EXPLICIT APPROVE on 6f53ac6eb; parity-adversary-2-fast EXPLICIT APPROVE on 6f53ac6eb; org CI fully green at the review-bound head (single first-attempt red = the known rotating oauth dead-callback timing flake, symmetric on base, green on rerun; the standing non-applicable TS benchmark red disposed as the standing class). fleet_gate GREEN at the PR head; fleet_review GREEN (blockers 0). Follow-up (scroll retention: +65MB span-fragmented entry rows after a 2600-key walk) handed to the wave-4 perf-tui-scroll-retain-fast lane with this census data.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2895",
  "record_path": "data/hillclimb/experiments/20260926-211500-memory-tui-firstframe-trim.json",
  "session": {
   "worker": "perf-tui-memory-fast (GLM 5.3 Fast)",
   "session_dir": "hillclimb wave-2 tui-memory"
  },
- "timestamp": "2026-09-26T22:05:05.835703+00:00"
+ "timestamp": "2026-09-26T23:04:38.588491+00:00"
 }
