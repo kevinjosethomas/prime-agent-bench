@@ -24,8 +24,8 @@
   ],
   "build": {
     "sandbox_id": "p9m0c2vp95kd947p75mrp4wo",
-    "binary_sha256": "ac3acc1db49789e9bd1f9e6ee81f22efb7f12cf6639bbbbb7e8956d30647c714",
-    "binary_bytes": 209607816,
+    "binary_sha256": "f993c305d9725a81889953e14ab4581f55f8805470a4c3c07ae4c9f5441a8748",
+    "binary_bytes": 209665344,
     "build_seconds": null,
     "toolchain": "rustup 1.98.1"
   },
@@ -35,7 +35,7 @@
     "test": "Current 1974/32e full workspace gate RUNNING after freeing stale debug, 51GB free. Prior 85ca/966d gate RC101: 141 PASS target summaries, 5 red: two candidate-only synthetic fixtures fixed+targeted PASS on 34af, three held-lease expected-copy reds reproduced on pure 85ca base (RC101 each). GitHub fmt/Clippy PASS current 32e, shards pending. Public TS benchmark RED/non-applicable (npm ci EUSAGE 0/0) operator disposition pending."
   },
   "measurements": {
-    "method": "Corrected 85ca/966d same-VM/path deterministic payload PASS; latest 85ca/966d 30/30 short B/C timing DIAGNOSTIC/VOID due strong host drift pre/post calibration ~27%, cannot conclude parity or regression; new stable reversal/latest-head rerun pending. Rust 34af fixture-only edits after measured binary require SHA verify.",
+    "method": "1974/32e exact same-VM/path deterministic release payload PASS, four docs retained/104 members both producers; short 5-trial C,B,B,C with pre/mid/post calibration RUNNING. New 7988 origin/rust queued to fold at pair boundary, no stale final-head claim.",
     "suites": {
       "cold_start": {
         "baseline": {
@@ -276,7 +276,76 @@
     "extra": {
       "current_base": "1974f8da5418bc9a608a0b405cad02061f1f653f",
       "current_candidate": "32e078c8085e3edc1b2664e5ed8df517604b5353",
-      "status": "same-VM/path release build pair underway; previous corrected 85ca/966d numbers historical after fold"
+      "same_vm_binary_sha256": "f993c305d9725a81889953e14ab4581f55f8805470a4c3c07ae4c9f5441a8748",
+      "same_vm_binary_bytes": 209665344,
+      "nonbinary_payload_file_bytes": {
+        "baseline": 1542661,
+        "candidate": 672368,
+        "delta_bytes": -870293,
+        "delta_pct": -56.4151
+      },
+      "install_du_bytes": {
+        "baseline": 211384133,
+        "candidate": 210509744,
+        "delta_bytes": -874389
+      },
+      "tarball_gz_bytes": {
+        "baseline": 54194471,
+        "candidate": 53954115,
+        "delta_bytes": -240356
+      },
+      "archive_member_count": {
+        "baseline": 127,
+        "candidate": 104,
+        "removed": 23,
+        "added": 0
+      },
+      "removed_members": [
+        "docs/PORTING-NOTES.md",
+        "docs/completion-matrix.md",
+        "docs/extensions-runner-design.md",
+        "docs/installer-ci-design.md",
+        "docs/parity-battery.md",
+        "docs/parity-checklist.md",
+        "docs/protocol-breadth-audit.md",
+        "docs/telemetry-design.md",
+        "docs/telemetry-events.md",
+        "docs/tui-keyboard-probe.md",
+        "docs/update-flow-state-machine.md",
+        "docs/windows-readiness.md",
+        "prime-agent-runtime/test/",
+        "prime-agent-runtime/test/test_agent_message_skill.py",
+        "prime-agent-runtime/test/test_bash.py",
+        "prime-agent-runtime/test/test_create_session.py",
+        "prime-agent-runtime/test/test_harness.py",
+        "prime-agent-runtime/test/test_mcp.py",
+        "prime-agent-runtime/test/test_mcp_base.py",
+        "prime-agent-runtime/test/test_repl.py",
+        "prime-agent-runtime/test/test_subagent_registry.py",
+        "prime-agent-runtime/test/test_winjob.py",
+        "prime-agent-runtime/uv.lock"
+      ],
+      "installed_tree_sha256": {
+        "baseline": "b9ec92f09d4d1f9098beeff7bf4485ecab39dce15b1f764bf70d667cb1981e02",
+        "candidate": "d1bbbfc2b19cbcad76804ddf93f0c4fa036ed6a7404f6249279d5307b079ad8f"
+      },
+      "packaging_producer_member_parity": "candidate assemble_artifacts.py and package_release.py 104 exactly matching members",
+      "candidate_docs": [
+        "RUST_QUICKSTART.md",
+        "keybindings.md",
+        "MODEL-SURFACE.md",
+        "FEATURE_PARITY.md"
+      ],
+      "artifact_paths_on_vm": {
+        "base": "/root/final-1974-base.tar.gz",
+        "candidate": "/root/final-1974-cand.tar.gz",
+        "member_lists": [
+          "/root/final-1974-base-members.txt",
+          "/root/final-1974-cand-members.txt",
+          "/root/final-1974-pkgrel-members.txt"
+        ]
+      },
+      "candidate_vm": "p9m0c2vp95kd947p75mrp4wo"
     },
     "prior_head_quiet_neighbor": {
       "base_revision": "fb719b1367b09851b848895912208be60c49311c",
@@ -615,7 +684,7 @@
       "Intermediate fb719b13/8307c640 candidate packaging from dirty checkout leaked 13 ignored skills .pyc (+50234 skill file bytes); candidate binary compiled at /root/prime-agent-rust differed from baseline at /root/fb-base-checkout due compile path. Both are excluded. Fixed candidate from clean checkout at same path plus controlled rebuild used.",
       "First latest-head B/C diagnostic run overlapped full workspace tests and release rebuild on same VM; deliberately terminated, all logs retained, VOID for latency. Quiet final-head B/C is the valid follow-up."
     ],
-    "notes": "Primary CURRENT clean deterministic comparison: base 85ca8cc1 vs corrected candidate 966d93292, identical binary sha ac3acc1d on same path, exact 23 removed archive entries/0 added, all four required docs including FEATURE_PARITY retained, both producers 104 members. Historical 91eedb5d/bc1b3157 24 removed and old absolute bytes are SUPERSEDED/INVALID final parity because candidate omitted quickstart-linked FEATURE_PARITY.md. Historical B,C,C,B,B,C 90/90 trials had installed-tree pins but symmetric ignored pyc contaminated absolute archive sizes; prior fb clean quiet 30/30 valid old-head iteration, 91eed quiet 30/30 valid timing old-head iteration. Current 85ca/f099 fixture-only follow-up tests and quiet benchmark pending."
+    "notes": "Primary CURRENT clean deterministic comparison: base 1974f8da vs corrected candidate 32e078c80, identical binary sha f993c305 on same path, exact 23 removed archive entries/0 added, all four required docs including FEATURE_PARITY retained, both producers 104 members. Historical 91eedb5d/bc1b3157 24 removed and old absolute bytes are SUPERSEDED/INVALID final parity because candidate omitted quickstart-linked FEATURE_PARITY.md. Historical B,C,C,B,B,C 90/90 trials had installed-tree pins but symmetric ignored pyc contaminated absolute archive sizes; prior fb clean quiet 30/30 valid old-head iteration, 91eed quiet 30/30 valid timing old-head iteration. Current 85ca/f099 fixture-only follow-up tests and quiet benchmark pending."
   },
   "outcome": "Review only: corrected 1974/32e exact artifact/gates/quiet reversal pending; no merge",
   "decision": "Open reviewable PR after quiet neighbor and structured record. Orchestrator numeric final-head verdict and explicit APPROVE from BOTH formal standing adversaries required before any merge. Lane owner does not merge.",
@@ -625,5 +694,5 @@
     "worker": "perf-install-tree",
     "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-7ba3b8cf/01a0db50-cf28-733b-897d-d843c865237e.jsonl"
   },
-  "timestamp": "2026-09-26T03:58:00.330299+00:00"
+  "timestamp": "2026-09-26T04:00:20.862202+00:00"
 }
