@@ -188,12 +188,17 @@
     ],
     "notes": "Implementation bug trail, fully disclosed: the first four commits of this lane carried escape-damage, test-module path errors, fmt/clippy violations, and three oracle bugs - each caught by CI/VM gates and fixed commit-by-commit (462b261c9 -> d0b4eea40 -> 619f9fd09 -> b6ca1beb2 -> a1b7d26a2 -> 476f9308a -> 194c2e616 -> e927aa735 -> fold 43c215372); a channel-manifest network test flaked once on the VM (isolated exact rerun PASS 1/1 - environmental); the closure-freeze test found 18 real stdlib imports missing from its allowlist on first live run while the closure property itself held (zero third-party module-level imports in the probe closure) - allowlist completed at e927aa735. The memo-state tests serialize on a shared lock (the in-process map is process-global; a concurrent test's invalidation cannot clear another test's verdicts mid-run). The 'base fails at snapshot' delta from #2857 is HISTORICAL: the current base (which includes #2857) repairs dill heal-before-start like the candidate (both verified at the final head). fsync regime attestations per the fleet correction: repeat-fsync + fresh-write+rename+stat classes probed on both measurement VMs (healthy at measure time); LEG A additionally attests the daemon-config-write class. macOS unmeasured."
   },
-  "outcome": "in-progress",
-  "decision": "Review-only PR #2881 at final head 43c215372e41569fd79bb6e4f383900817b6c0d1 (one batched fold of c12bed5a1 - the agent_engine.rs split series has zero kernel-bootstrap overlap; mechanism-file diff e927->43c EMPTY). Orchestrator numeric review: LEG B + LEG C ACCEPTED; LEG A's no-delta verdict disclosed for disposition. Both formal adversarial reviewer final-SHA verdicts pending. No merge.",
+  "outcome": "merged",
+  "decision": "MERGED 2026-09-26T23:26:45Z: squash commit 8e1b853bea951491a03c2fb4c6ba7ef3714e65fe on origin/rust (#2881, 'perf: the cross-process runtime-ready probe memo - on-disk, same identity key, damage-aware'). Merge gate history: orchestrator numeric review COMPLETE (LEG B/C accepted, LEG A no-delta accepted as the honest disposition); BOTH formal adversarial reviewers gave effective APPROVEs at 43c215372e41569fd79bb6e4f383900817b6c0d1 (R1 unconditionally effective - green-or-registered-flake satisfied by the a_bang upstream-base repro, no isolated rerun per the registered-family policy; R2 effective - shard 4/4 SUCCESS on the same-SHA rerun, residual red inside their clause); operator merged under the standing autonomous-merge authorization with the benchmark non-applicability and the a_bang family registration as the disposition vehicles.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2881",
   "record_path": "data/hillclimb/experiments/20260926-223327-startup-kernel-boot-xproc-memo.json",
   "session": {
     "worker": "perf-kernel-boot-fast"
   },
-  "timestamp": "2026-09-26T22:33:27.470840+00:00"
+  "timestamp": "2026-09-26T22:33:27.470840+00:00",
+  "merge": {
+    "merged_at": "2026-09-26T23:26:45Z",
+    "squash_commit": "8e1b853bea951491a03c2fb4c6ba7ef3714e65fe",
+    "pr": 2881
+  }
 }
