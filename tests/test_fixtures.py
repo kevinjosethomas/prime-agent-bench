@@ -57,6 +57,21 @@ def test_session_exact_bytes_small(tmp_path):
     assert info["bytes"] == 1 * (1 << 20)
 
 
+def test_session_fixture_restores_mutated_artifact(tmp_path):
+    from bench.adapters.fixtures.session_size import SessionSizeCompactedFixture, SessionSizeFixture
+    from bench.core.env import BenchLayout
+
+    for cls in (SessionSizeFixture, SessionSizeCompactedFixture):
+        layout = BenchLayout.from_config({"bench_root": str(tmp_path / cls.name), "results_dir": str(tmp_path / cls.name / "results")})
+        fixture = cls({"layout": layout, "fixture": {"size_mib": 1.0}})
+        original = fixture.ensure()
+        fixture.path().write_bytes(fixture.path().read_bytes() + b"mutated\n")
+        restored = fixture.ensure()
+        assert restored == original
+        assert fixture.path().stat().st_size == original["bytes"]
+        assert fixture.validate(original["sha256"])
+
+
 def test_subagent_tree_shape(tmp_path):
     manifest = write_tree(tmp_path / "tree", n=6, active=2, depth=2, seed=1234)
     files = manifest["files"]

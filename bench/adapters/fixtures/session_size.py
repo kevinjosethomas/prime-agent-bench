@@ -137,7 +137,13 @@ class SessionSizeFixture(Fixture):
             print("fixture built:", info["bytes"], "bytes", info["rows"], "rows")
             return info
         ensure_fixture_cwd()  # the recorded session cwd must exist at trial time too
-        return self.manifest()
+        info = self.manifest()
+        if (self.path().stat().st_size != info["bytes"]
+                or not self.validate(info["sha256"])):
+            info = build_session(self.size_mib, self.path(), seed=self.seed)
+            (self.layout.fixtures / self.manifest_name).write_text(json.dumps(info, indent=1))
+            print("fixture restored:", info["bytes"], "bytes", info["rows"], "rows")
+        return info
 
     def manifest(self) -> dict:
         """The persisted build record (must exist; built by generate/ensure)."""
@@ -358,7 +364,13 @@ class SessionSizeCompactedFixture(Fixture):
             self.generate(self.spec)
             return self.manifest()
         ensure_fixture_cwd()
-        return self.manifest()
+        info = self.manifest()
+        if (self.path().stat().st_size != info["bytes"]
+                or not self.validate(info["sha256"])):
+            self.generate(self.spec)
+            info = self.manifest()
+            print("fixture restored:", info["bytes"], "bytes", info["rows"], "rows")
+        return info
 
     def manifest(self) -> dict:
         return json.loads((self.layout.fixtures / self.manifest_name).read_text())

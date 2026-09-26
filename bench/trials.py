@@ -18,6 +18,7 @@ import time
 import uuid
 from pathlib import Path
 
+from bench.core.env import sha256_file
 from bench.core.registry import Registry
 from bench.core.harness import HarnessDriver
 from bench.core.identity import default_run_label, harness_identity
@@ -150,10 +151,19 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 # + the fixture sentinel, which the scenario verifies per trial
                 record["fixture"] = {"name": benchmark.requires_fixture, **fixture_manifest}
             ctx = prod.new_trial(trial_dir)
+            # Session resume writes bookkeeping rows to its input. Give each
+            # trial a fresh inode with identical canonical bytes so no later
+            # row advertises a stale manifest for a mutated shared corpus.
+            trial_fixture = fixture
+            if benchmark.requires_fixture in ("session-10mib", "session-10mib-compacted"):
+                trial_fixture = trial_dir / fixture.name
+                shutil.copyfile(fixture, trial_fixture)
+                if sha256_file(trial_fixture) != fixture_manifest["sha256"]:
+                    raise RuntimeError(f"{trial_fixture} differs from its manifest before trial")
             error = None
             try:
-                benchmark.setup(prod, ctx, fixture=fixture)
-                benchmark.measure(prod, ctx, record, driver, fixture=fixture)
+                benchmark.setup(prod, ctx, fixture=trial_fixture)
+                benchmark.measure(prod, ctx, record, driver, fixture=trial_fixture)
                 record["validated"] = benchmark.validate(record)
             except Exception as e:
                 error = f"{type(e).__name__}: {e}"
