@@ -1,0 +1,186 @@
+{
+ "id": "20260926-183300-worker-rss-baseline-census",
+ "axis": "memory",
+ "hypothesis": "The agent worker process's loaded-session RSS (dominant process of the tree; ~17.3 MiB RSS per MiB of corpus) is dominated by REDUNDANT retained copies of the retained window, not by one necessary representation: predicted copies = (A) daemon store SessionEntry serde_json::Value trees, (B) core SessionManager.file_entries typed clone, (C1) WindowedSessionStore.entries typed original, (C2) WindowedSessionStore.raw_entries JSONL strings, (D) agent conversation messages; B/C1/C2 are duplicates derivable from each other.",
+ "approach": "BASELINE at tip 60e2e198c (pure release build, binary sha 0cd681ce4f..., harness bundle rebuilt from current hillclimb branch incl. e6980d5 fixture-restore; per-proc sidecar probe via rss_tree monkeypatch at matched settle). CENSUS via env-gated throwaway instrument build (worktree at same commit, PRIME_CENSUS_DUMP hooks at worker create_end/adopt_end/restore_windowed_context dumping per-structure sizes; never on any lane branch) + canonical-fixture byte arithmetic (7391 rows, 7259 messages, 9.61MiB message payload). heaptrack attempted first: heaptrack_preload UNSETS LD_PRELOAD so exec'd children are NOT traced (worker untraceable from a wrapper) - disclosed; instrument path used instead.",
+ "parity_notes": "No product source changed. The instrument build is env-gated and used only for attribution; baseline RSS numbers come from the PURE tip binary. The harness trials.py duplicated prod.new_trial line (branch bug) crashes every run (CalledProcessError git commit 'bench fixture' nothing to commit); patched on the measurement VM only; the one-line fix was separately committed to the bench repo as harness-repair 1596810 (orchestrator-authorized).",
+ "base": {
+  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b"
+ },
+ "branch": null,
+ "commits": [],
+ "build": {
+  "sandbox_id": "peedgvd2cxsq68ltudehky8v",
+  "binary_sha256": "0cd681ce4f0a19d04cf2d555b1d4600707102fe1a0f9e1b32c1fb80d37a73a4b",
+  "binary_bytes": 212218888,
+  "census_binary_sha256": "7156ed73394829841451da3164eb533ab13665743642f6fbe4518579b843f9d4",
+  "census_binary_bytes": 212693056,
+  "toolchain": "rustup 1.98.1 (rust:1 image Debian trixie)"
+ },
+ "gates": {
+  "fmt": null,
+  "clippy": null,
+  "test": null
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "baseline.tree_rss.settled": {
+    "fixture": "session-10mib canonical (sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda, 10485760 bytes, 7391 rows; per-trial fresh-inode copies, prehash asserted)",
+    "memory_idle_load_n10_tree_rss_mb": {
+     "p50": 383.9,
+     "min": 351.7,
+     "max": 396.0,
+     "values": [
+      382.6,
+      379.4,
+      377.0,
+      385.2,
+      385.5,
+      396.0,
+      387.7,
+      381.1,
+      351.7,
+      392.1
+     ]
+    },
+    "memory_idle_load_n10_tree_pss_mb": {
+     "p50": 348.2,
+     "values": [
+      346.9,
+      344.0,
+      341.3,
+      349.6,
+      350.0,
+      360.8,
+      352.0,
+      345.5,
+      316.1,
+      356.0
+     ]
+    },
+    "memory_idle_load_n10_worker_rss_mb": {
+     "p50": 207.53,
+     "min": 182.46,
+     "max": 217.88,
+     "values": [
+      202.74,
+      209.21,
+      198.4,
+      209.25,
+      206.55,
+      217.88,
+      208.51,
+      202.76,
+      182.46,
+      215.12
+     ]
+    },
+    "memory_idle_load_n10_tui_rss_mb": {
+     "p50": 122.7,
+     "values": [
+      125.2,
+      115.37,
+      124.48,
+      122.13,
+      124.66,
+      124.43,
+      124.18,
+      124.44,
+      114.38,
+      122.36
+     ]
+    },
+    "daemon_rss_mb_p50": 24.1,
+    "kernel_rss_mb_p50": 30.2,
+    "noise_band_note": "same-build worker spread 182.46-217.88 = 35.4 MiB (17.1% of p50) is the NO-CLAIM BAR; any candidate must fully separate below 182.46 or it is noise"
+   },
+   "baseline.size_curve.tree_rss_p50_mb": {
+    "fresh_cold_start_n5": 112.0,
+    "idle_load_1mib_n5": 140.6,
+    "idle_load_2mib_n5": 167.3,
+    "idle_load_5mib_n5": 247.9,
+    "idle_load_10mib_n10": 383.9,
+    "cold_open_10mib_n5": 377.3,
+    "compacted_10mib_cold_open_n5": 115.4,
+    "slope": "tree ~27 MiB/MiB corpus; worker ~17.3; TUI ~10; compacted == fresh floor -> discarded prefix costs ~ZERO, retained window is the whole story"
+   },
+   "census.worker.retained_copies.10mib": {
+    "method": "env-gated instrument at worker hooks; wire = serde_json bytes; heap = measured (Value trees) or 2.5-3x wire estimate (typed)",
+    "A_daemon_store_value_trees": {
+     "entries": 7393,
+     "value_heap_bytes": 19162060,
+     "wire_bytes": 10242596,
+     "expansion": 1.87,
+     "note": "daemon worker core.store SessionEntry.fields Value trees - MEASURED"
+    },
+    "B_manager_file_entries_typed_clone": {
+     "entries": 7394,
+     "wire_bytes": 10237707,
+     "note": "file_entries = window.entries().to_vec() - the CLONE"
+    },
+    "C1_window_entries_typed_original": {
+     "entries": 7394,
+     "wire_bytes": 10237707,
+     "note": "byte-identical wire to B - the ORIGINAL kept after the clone"
+    },
+    "C2_window_raw_entries_strings": {
+     "bytes": 10478748,
+     "note": "raw JSONL String per retained row - a JSON-level duplicate of B/C1"
+    },
+    "D_agent_messages": {
+     "messages": 7259,
+     "wire_bytes": 8818553,
+     "note": "the necessary conversation (roles 2420u/2420a/2419t)"
+    },
+    "worker_rss_at_create_end_mb": 140.9,
+    "worker_rss_at_adopt_end_mb_pre_trim": 243.5,
+    "worker_rss_at_settle_mb_census_build": 218.4,
+    "redundant_wire": {
+     "B+C1+C2": 30993662,
+     "as_fraction_of_retained_copies": "3 of 5 copies of the ~10MiB corpus are derivable duplicates (B==C1 identical; C2 raw)"
+    }
+   },
+   "census.fixture_arithmetic": {
+    "rows": 7391,
+    "message_rows": 7259,
+    "custom_message_rows": 131,
+    "roles": {
+     "user": 2420,
+     "assistant": 2420,
+     "toolResult": 2419
+    },
+    "top_key_bytes": {
+     "message": 9613340,
+     "timestamp": 192166,
+     "id": 73914,
+     "parentId": 73894,
+     "type": 67436
+    },
+    "content_part_bytes": {
+     "text": 7529927,
+     "thinking": 165849
+    },
+    "toolCalls_bytes": 610897,
+    "usage_bytes": 411400
+   },
+   "census.side_observations": {
+    "daemon_rss_anomaly": "census run daemon 50.1 MB vs baseline 24.4 (daemon-first launch shape; daemon performs session-file reads whose freed pages stay resident - no trim in the daemon process; future trim-candidate, out of lane scope)",
+    "heaptrack_peak_report": "ht-daemon.gz 684104 bytes, daemon-only stream (420607 calls, 14.29M peak): the DAEMON's own heap is ~12MiB; worker not traceable via wrapper (heaptrack_preload unsets LD_PRELOAD for children)"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 35 baseline trials application-level validated (sentinel true, echoed true, per-trial fixture prehash asserted, fresh inode per trial). Calibration python 30M-loop pre 1.154/1.154/1.161 vs post 1.217/1.220/1.223 (~5.5% host drift over the ~9min run - within limits for baseline spread work; pairs must carry their own pre/mid/post). Instrument-build worker RSS 218.4 sits inside the pure-build band top (182.5-217.9, one point slightly above after census walks) - instrument overhead disclosed. #2872's phase-boundary trims are IN the tip (worker live heap is the post-trim floor)."
+ },
+ "outcome": "census-positive: B+C1+C2 are redundant retained copies of the retained window (~29.5MiB wire = ~34-45MiB heap of the ~173MiB worker live heap above floor). Edit decision: eliminate the duplication by adopting the window's entries BY MOVE (drop the to_vec clone and the retained raw strings), serve active context from file_entries with the window's settings overlay, keep the window's snapshot/stats/metadata state for cheap lookups. Mandatory oracles: active-context equivalence (incl. compaction summary path + live child-usage fold), attach wire byte-equality, replay/JSONL append parity, compaction content frozen.",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-183300-worker-rss-baseline-census.json",
+ "session": {
+  "worker": "perf-worker-rss-fast",
+  "session_dir": "worker-rss lane (GLM 5.3 Fast)"
+ },
+ "timestamp": "2026-09-26T18:33:00.000000+00:00"
+}
