@@ -1046,8 +1046,8 @@
   "excluded": [],
   "notes": "Same-VM sequential ABBA; sha256-asserted atomic binary swaps; per-trial canonical fixture restore (bench integrity fix e6980d5) with identical prehash and fresh inode; env_gate recorded per trial (a self-inflicted 300s compile-marker stall from a waiter cmdline was found and fixed mid-run: affected trials only sat longer at the gate, never measured concurrently); stock suite is an adversarial long-unbroken-token wrap stress case, NOT a representative large-session resume benchmark; compacted suite is the representative neighbor and stays neutral."
  },
- "outcome": "measured",
- "decision": "PR #2870 OPEN with pinned same-commit evidence: -96.16% (26.0x) at d5cd4b132/9068febb7 (10/10 valid per side), reproduced -96.01% at bbb886dd8/31d5d38ab (6/6) and -96.08% at c9365d6ba/c6d74719 (6/6); compacted neighbor neutral in all three; styled first-frame byte-identical; gates disclosed (1 upstream pa-daemon worker-kill red reproduced on pure upstream, not lane-caused; rotating known-reds cited). Merge bar: orchestrator numeric review + both adversarial reviewers on the FINAL PR SHA + operator red-gate disposition - NOT to be merged by this worker.",
+ "outcome": "merged",
+ "decision": "MERGED as 6322ffb7a onto origin/rust. Same-head evidence: -96.16% (26.0x) pinned 10+10 at d5cd4b132/9068febb7; reproduced -96.01% (bbb886dd8/31d5d38ab) and -96.08% (c9365d6ba/c6d74719, PR head); compacted neighbor neutral in all pairs; styled first-frame byte-identical; RSS delta attributed to worker sampling artifact (fixed TUI process 7-8MB lighter); gates disclosed (upstream pa-daemon load flake classified by both reviewers' independent quiet-side reruns 737/0; public TS benchmark = standing non-applicable). Merge bar held end to end; this worker never merged.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2870",
  "record_path": "data/hillclimb/experiments/20260926-060449-interaction-replay-wrap-onepass.json",
  "session": {
@@ -1087,5 +1087,11 @@
    "received_at": "2026-09-26T06:5xZ"
   },
   "merge_bar_state": "orchestrator numeric review ACCEPTED; BOTH adversarial reviewers EXPLICIT APPROVE on c6d747190f; REMAINING: operator red-gate disposition (never this lane's act)"
+ },
+ "merge": {
+  "merge_sha": "6322ffb7ab0f79dfc233493db971991673a351f2",
+  "merged_via": "operator disposition (Kevin) after full merge bar: orchestrator numeric review ACCEPTED + BOTH adversarial reviewers EXPLICIT APPROVE on c6d747190f + operator red-gate disposition",
+  "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2870",
+  "merged_at": "2026-09-26T~17:58Z (origin/rust log timestamp 2026-09-26 10:58:24 -0700)"
  }
 }
