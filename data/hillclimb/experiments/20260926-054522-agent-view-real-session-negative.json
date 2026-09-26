@@ -1,0 +1,650 @@
+{
+ "id": "20260926-054522-agent-view-real-session-negative",
+ "axis": "interaction",
+ "hypothesis": "Kevin's ~400ms agents->chat view switch on a large post-compaction session (~442k ctx) is paid on the daemon attach/summary fold path that the lane patch optimizes (worker.rs handle_attach: one shared transcript fold instead of 3 full-history copies).",
+ "approach": "Fold origin/rust once (base 1cace8148; lane head 993559f6f), rebuild the exact pair on one VM (base f4822698 / cand 15d8e73b), then: (1) quiet same-VM sequential 5+5 B/C phase probe on the PRIVATE real compacted-session fixture (sha 835c4473, 12.99MB/11923 rows, retained 2972 rows/3.32MB, ~316k live ctx, max token 69 chars) with the corrected RENDERED-ANCHOR oracle (anchor = >=8-char token actually on screen outside the dock AND present in the retained window's JSON string values; required: anchor visible, identity row painted, anchor gone after LEFT, anchor repainted + fresh echo after RIGHT; per-trial fixture prehash; per-role CPU spans via psutil; first-meaningful-paint watcher on a 5ms grid); (2) 10MiB stock ABBA rechecks: r1 (b2,c3,c2,b3 all four suites) and r2 (drift-controlled b,c,b,c per suite with loadavg gates) for the old cold/warm/RSS risks and the claimed roundtrip win; (3) a third build-era pair (91eedb5d base vs da5df5129 cand) to test whether the 10MiB effect is build-stable; (4) a daemon-side attach microprobe (supervisor socket, canonical fixture dadaecfc) timing the attach and dumping the raw+stripped wire JSON per head for a structural diff.",
+ "parity_notes": "No product change in this phase (measurement only, on the already-committed lane patch: attach wire bytes pinned identical by committed golden tests incl key order; non-slim legacy duplicate preserved). Probe fixture is a private byte snapshot; records carry hashes/counts only, no transcript text.",
+ "base": {
+  "revision": "1cace81488d6db7c152495b08e586b58740d272a"
+ },
+ "branch": "lane/hillclimb-agent-view",
+ "commits": [
+  "35cf8270a",
+  "34f88e844",
+  "b97146a91",
+  "83614ec0a",
+  "3ac4ec1d4",
+  "993559f6f"
+ ],
+ "build": {
+  "sandbox_id": "fc2ryonbcoshhjdk1hqc7u4m",
+  "binary_sha256": "15d8e73b0ec6f7a79d708e46aafb83ed5facd48d3560748ed78fe9ab2b2c06d5",
+  "binary_bytes": 209836880,
+  "build_seconds": null,
+  "toolchain": "rustup 1.98.1",
+  "note": "base binary f4822698164b64b98f50b94fd5c9972d8272ef8a617b1c5f6b4024b1a03fbabd (209848152 bytes) built at 1cace8148 on the same VM; pair asserted per ABBA round"
+ },
+ "gates": {
+  "fmt": "pass (fleet_gate 993559f6f, pool VM, checkout DIRTY=0)",
+  "clippy": "pass (fleet_gate, -D warnings)",
+  "test": "gate RED with exactly 2 UNKNOWN failures, both timeout-shaped under 16-way parallel load on the 8-CPU pool VM (pa-ai oauth dead-callback 'Elapsed(())' at openai_codex.rs:932; supervisor_e2e golden read EAGAIN at supervisor_e2e.rs:119); isolation triage 3x/head on BOTH 993559f6f and 1cace8148: 12/12 PASS -> parallel-run flakes, not lane or base reds"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "session.agent_view_roundtrip": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 23575.4,
+     "p95_ms": 25655.2,
+     "values_ms": [
+      22097.9,
+      22232.2,
+      25655.2,
+      24918.6
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 28300.6,
+     "p95_ms": 29925.6,
+     "values_ms": [
+      27836.1,
+      26445.6,
+      28765.1,
+      29925.6
+     ]
+    },
+    "metric": "agents_to_tail_ms",
+    "delta_pct": 20.0,
+    "regression": true,
+    "note": "r1 recheck valid-only (2 invalid trials excluded: b2 t0, c2 t0, both roundtrip_ok=False on the wrap-stress reverse leg); +20.0% median"
+   },
+   "compare.scroll_typing": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 23552.51,
+     "p95_ms": 25560.14,
+     "values_ms": [
+      23266.0,
+      23201.21,
+      23552.51,
+      24643.18,
+      25560.14
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 27298.51,
+     "p95_ms": 31477.28,
+     "values_ms": [
+      26240.19,
+      27298.51,
+      27174.06,
+      31477.28,
+      28115.73
+     ]
+    },
+    "metric": "launch_to_ready_ms",
+    "delta_pct": 15.9,
+    "regression": true
+   },
+   "compare.cold_start": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 293.82,
+     "p95_ms": 303.15,
+     "values_ms": [
+      293.71,
+      293.82,
+      303.15,
+      293.35,
+      298.41
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 306.13,
+     "p95_ms": 324.45,
+     "values_ms": [
+      312.0,
+      297.41,
+      324.45,
+      301.23,
+      306.13
+     ]
+    },
+    "metric": "launch_to_ready_ms",
+    "delta_pct": 4.2,
+    "regression": false,
+    "note": "the old-pair +88% cold risk (median 546.3 w/ 4046ms outliers) does NOT reproduce at this pair"
+   },
+   "compare.warm_start": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 272.76,
+     "p95_ms": 278.74,
+     "values_ms": [
+      268.9,
+      274.36,
+      278.74,
+      270.68,
+      272.76
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 280.62,
+     "p95_ms": 385.48,
+     "values_ms": [
+      264.05,
+      269.8,
+      280.62,
+      326.56,
+      385.48
+     ]
+    },
+    "metric": "launch_to_ready_ms",
+    "delta_pct": 2.9,
+    "regression": false,
+    "note": "the old-pair +38% warm risk (median 724.4 w/ 4011ms outlier) does NOT reproduce at this pair"
+   }
+  },
+  "extra": {
+   "real_session_private_fixture": {
+    "fixture_sha256": "835c44732f333ff7088a918033fba5001b5f8ef6c03990e133f44710f3bb1be2",
+    "fixture_bytes": 12987770,
+    "fixture_rows": 11923,
+    "retained_rows": 2972,
+    "retained_bytes": 3320000,
+    "live_ctx_tokens_approx": 316000,
+    "max_token_chars": 69,
+    "note": "private byte snapshot of a real compacted session (never committed; hashes/counts only)",
+    "driver": "profile-agentview-real-v2.py (corrected rendered-anchor oracle; 5ms poll grid; ABBA b(2),c(3),c(2),b(3))",
+    "vm_calibration_s": {
+     "values": [
+      1.1012,
+      1.1015,
+      1.0685
+     ],
+     "median": 1.1012
+    },
+    "agents_to_tail_ms": {
+     "baseline": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 90.59,
+      "p95_ms": 124.89,
+      "values_ms": [
+       87.12,
+       82.89,
+       106.86,
+       90.59,
+       124.89
+      ]
+     },
+     "candidate": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 84.71,
+      "p95_ms": 94.09,
+      "values_ms": [
+       87.84,
+       74.67,
+       76.17,
+       94.09,
+       84.71
+      ]
+     },
+     "delta_pct": -6.49,
+     "regression": false,
+     "interpretation": "Kevin-metric leg: ~85-90ms on BOTH arms; ~400ms does NOT reproduce at this retained-window size; delta within noise (ranges overlap)"
+    },
+    "launch_to_ready_ms": {
+     "baseline": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 467.55,
+      "p95_ms": 554.26,
+      "values_ms": [
+       551.92,
+       415.28,
+       554.26,
+       467.55,
+       436.69
+      ]
+     },
+     "candidate": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 452.63,
+      "p95_ms": 621.17,
+      "values_ms": [
+       559.39,
+       439.64,
+       440.1,
+       621.17,
+       452.63
+      ]
+     },
+     "delta_pct": -3.19
+    },
+    "launch_to_first_paint_ms": {
+     "baseline": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 450.3,
+      "p95_ms": 536.4,
+      "values_ms": [
+       529.5,
+       398.3,
+       536.4,
+       450.3,
+       418.4
+      ]
+     },
+     "candidate": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 428.0,
+      "p95_ms": 594.5,
+      "values_ms": [
+       542.8,
+       422.4,
+       420.3,
+       594.5,
+       428.0
+      ]
+     }
+    },
+    "chat_to_row_ms": {
+     "baseline": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 116.6,
+      "p95_ms": 120.4,
+      "values_ms": [
+       116.0,
+       120.4,
+       116.6,
+       116.6,
+       116.3
+      ]
+     },
+     "candidate": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 116.3,
+      "p95_ms": 117.2,
+      "values_ms": [
+       116.8,
+       116.3,
+       117.2,
+       116.2,
+       111.5
+      ]
+     },
+     "delta_pct": -0.26
+    },
+    "first_meaningful_paint_ms": {
+     "baseline": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 456.9,
+      "p95_ms": 544.4,
+      "values_ms": [
+       538.8,
+       404.5,
+       544.4,
+       456.9,
+       425.0
+      ]
+     },
+     "candidate": {
+      "trials": 5,
+      "valid": 5,
+      "p50_ms": 439.0,
+      "p95_ms": 607.0,
+      "values_ms": [
+       550.0,
+       428.7,
+       429.1,
+       607.0,
+       439.0
+      ]
+     }
+    },
+    "cpu_spans": {
+     "worker_launch_to_first_paint_ms": {
+      "baseline": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 350.0,
+       "p95_ms": 360.0,
+       "values_ms": [
+        360.0,
+        330.0,
+        350.0,
+        350.0,
+        350.0
+       ]
+      },
+      "candidate": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 350.0,
+       "p95_ms": 350.0,
+       "values_ms": [
+        320.0,
+        350.0,
+        350.0,
+        350.0,
+        350.0
+       ]
+      }
+     },
+     "tui_launch_to_first_paint_ms": {
+      "baseline": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 40.0,
+       "p95_ms": 50.0,
+       "values_ms": [
+        50.0,
+        40.0,
+        40.0,
+        40.0,
+        40.0
+       ]
+      },
+      "candidate": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 40.0,
+       "p95_ms": 50.0,
+       "values_ms": [
+        50.0,
+        40.0,
+        40.0,
+        50.0,
+        40.0
+       ]
+      }
+     },
+     "tui_nav_legs_ms": {
+      "baseline": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 50.0,
+       "p95_ms": 60.0,
+       "values_ms": [
+        40.0,
+        50.0,
+        50.0,
+        60.0,
+        50.0
+       ]
+      },
+      "candidate": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 50.0,
+       "p95_ms": 60.0,
+       "values_ms": [
+        40.0,
+        50.0,
+        40.0,
+        50.0,
+        60.0
+       ]
+      }
+     },
+     "tree_rss_mb_at_return": {
+      "baseline": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 291.4,
+       "p95_ms": 299.7,
+       "values_ms": [
+        291.4,
+        254.0,
+        285.0,
+        299.7,
+        297.4
+       ]
+      },
+      "candidate": {
+       "trials": 5,
+       "valid": 5,
+       "p50_ms": 300.4,
+       "p95_ms": 308.0,
+       "values_ms": [
+        283.0,
+        308.0,
+        279.8,
+        301.8,
+        300.4
+       ]
+      }
+     }
+    },
+    "validity": "10/10 trials valid (anchor visible, identity row, anchor gone, repaint, fresh echo); per-trial fixture prehash == source sha; post bytes differ (bookkeeping rows); source unchanged"
+   },
+   "stock_10mib_r2_alternation": {
+    "design": "per-suite b,c,b,c rounds with loadavg<1.0 gates; all 8 roundtrip + 6 scroll trials valid",
+    "roundtrip_agents_to_tail_ms": {
+     "baseline": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 23009.85,
+      "p95_ms": 24232.5,
+      "values_ms": [
+       23796.2,
+       24232.5,
+       22223.5,
+       21835.7
+      ]
+     },
+     "candidate": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 28120.6,
+      "p95_ms": 29113.1,
+      "values_ms": [
+       26992.0,
+       29113.1,
+       28150.0,
+       28091.2
+      ]
+     },
+     "delta_pct": 22.2
+    },
+    "roundtrip_launch_to_ready_ms": {
+     "baseline": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 24323.95,
+      "p95_ms": 25482.11,
+      "values_ms": [
+       24800.61,
+       25482.11,
+       23847.29,
+       21565.5
+      ]
+     },
+     "candidate": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 27242.46,
+      "p95_ms": 27296.26,
+      "values_ms": [
+       26574.09,
+       27273.97,
+       27296.26,
+       27210.95
+      ]
+     },
+     "delta_pct": 12.0
+    },
+    "scroll_launch_to_ready_ms": {
+     "baseline": {
+      "trials": 3,
+      "valid": 3,
+      "p50_ms": 22407.92,
+      "p95_ms": 23904.63,
+      "values_ms": [
+       23904.63,
+       21804.0,
+       22407.92
+      ]
+     },
+     "candidate": {
+      "trials": 3,
+      "valid": 3,
+      "p50_ms": 25962.25,
+      "p95_ms": 26634.73,
+      "values_ms": [
+       24927.83,
+       25962.25,
+       26634.73
+      ]
+     },
+     "delta_pct": 15.9
+    },
+    "note": "cand never overlaps base range in adjacent pairs; but see build_era_pair_B: the sign is NOT stable across builds"
+   },
+   "build_era_pair_B_91eed": {
+    "note": "third build-era pair (base 91eedb5d b04bc26c vs cand da5df5129 ce552c50, prebuilt binaries, b,c,b,c, all valid) \u2014 tests whether the 10MiB effect is a stable property of the mechanism",
+    "agents_to_tail_ms": {
+     "baseline": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 24537.7,
+      "p95_ms": 26097.8,
+      "values_ms": [
+       25240.7,
+       26097.8,
+       23755.2,
+       23834.7
+      ]
+     },
+     "candidate": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 23670.55,
+      "p95_ms": 24007.4,
+      "values_ms": [
+       23647.1,
+       23539.0,
+       24007.4,
+       23694.0
+      ]
+     },
+     "delta_pct": -3.5
+    },
+    "launch_to_ready_ms": {
+     "baseline": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 24877.28,
+      "p95_ms": 25717.83,
+      "values_ms": [
+       25717.83,
+       25054.68,
+       24699.88,
+       24289.38
+      ]
+     },
+     "candidate": {
+      "trials": 4,
+      "valid": 4,
+      "p50_ms": 24614.39,
+      "p95_ms": 25199.41,
+      "values_ms": [
+       23930.74,
+       25199.41,
+       24625.45,
+       24603.33
+      ]
+     },
+     "delta_pct": -1.1
+    },
+    "conclusion": "FLAT (ranges fully overlap): the 10MiB end-to-end effect flips sign across build eras (pair A 3ac-era -13.7%, pair B 91eed-era -3.5%, pair C 1cace-era +12..+22%) -> dominated by the build-specific code layout of the TUI's pathological wrap loop, not by the mechanism"
+   },
+   "wire_attach_microprobe": {
+    "method": "supervisor-socket create over a fresh copy of the canonical 10MiB fixture (dadaecfc) + attach x3 slim + x1 legacy, both heads on the same base VM, throwaway test (never committed)",
+    "cand_slim_attach_ms": [
+     1081,
+     943,
+     941
+    ],
+    "base_slim_attach_ms": [
+     1210,
+     1066,
+     1154
+    ],
+    "cand_legacy_attach_ms": [
+     906
+    ],
+    "base_legacy_attach_ms": [
+     1048
+    ],
+    "delta": "cand attach ~-18% slim / -13.5% legacy wall \u2014 the mechanism IS faster where it acts",
+    "wire_length_bytes": {
+     "cand_slim": 9476345,
+     "base_slim": 9476345,
+     "cand_legacy": 9476331,
+     "base_legacy": 9476331
+    },
+    "messages": {
+     "cand": 7390,
+     "base": 7390
+    },
+    "wire_diff_verdict": "CLEAN: structural diff of the stripped attach JSON finds exactly 11 differing leaves, ALL per-run volatiles (activeSessionId x4, generation ids x3, workerInstanceId, temp cwd x2); snapshot.messages, summary values, state, replay content all IDENTICAL. No parity divergence."
+   },
+   "regression_profile": "wall-clock decomposition of the +12..+22% 10MiB regression: launch_to_ready (+9.3% r1/+12.0% r2) and agents_to_tail (+20.0% r1/+22.2% r2) scale TOGETHER \u2014 no leg doubled, so there is NO extra render pass, no re-fetch and no second replay; each big wrap render is uniformly slower on the cand BUILD. perf unavailable on the bench VM (kernel 6.16.9 tools missing); pair B + wire-clean attribute the delta to build layout, not the mechanism.",
+   "noop_control_p50_ms_range": [
+    0.049,
+    0.213
+   ],
+   "vm_calibration_s": {
+    "r1": [
+     1.2204,
+     1.1396,
+     1.2219
+    ],
+    "r2": [
+     1.1145,
+     1.1538,
+     1.059
+    ],
+    "pairB": null
+   }
+  }
+ },
+ "validity": {
+  "excluded": [
+   "r1 roundtrip b2 trial 0 (invalid: reverse leg never completed, ready 51,597.83ms, roundtrip_ok=False)",
+   "r1 roundtrip c2 trial 0 (invalid: reverse leg never completed, roundtrip_ok=False)",
+   "predecessor's v1 real-session pilots b1/pilot-corrected/pilot-corrected2 (precondition fail: file-derived tail sentinel never visible in the rendered viewport \u2014 superseded by the rendered-anchor oracle v2)"
+  ],
+  "notes": "host drift is visible inside the 10MiB rechecks (base itself 21.6-25.5s across rounds; r1 b2/b1 spread ~14%); the r2 per-suite b,c,b,c alternation with loadavg<1.0 gates controls it. Noop harness floor 0.049-0.213ms p50 across all rounds. Canonical fixture prehash dadaecfc asserted for every stock trial; per-trial fixture prehash asserted for every real-session trial (post bytes differ by appended bookkeeping rows; source unchanged)."
+ },
+ "outcome": "discarded",
+ "decision": "RECOMMEND DISCARD (orchestrator decides): (1) Kevin's ~400ms agents->chat does NOT reproduce on the real compacted-session proxy (~316k ctx, 3.32MB retained window): agents_to_tail 90.6ms base / 84.7ms cand medians; chat_to_agents ~116ms flat; the closest-to-400ms span is the OPEN path (launch_to_ready ~452-468ms) which the patch does not move (-3.2%, noise). (2) The mechanism's genuine -18% daemon-side attach saving does NOT translate into a stable end-to-end gain: real-session deltas noise-level; the 10MiB wrap-stress end-to-end effect flips sign across three build eras (-13.7% / -3.5% / +12..+22%) while the wire is content-identical \u2014 it is build-layout noise of the TUI's pathological wrap loop, not a property of the patch. (3) The old cold/warm/RSS risks (+88%/+38%/+8.6%) do NOT reproduce at the current pair (+4.2%/+2.9%/RSS flat) \u2014 no regression concern remains either. (4) Supersedes the lane's earlier -13.7% 10MiB claim (pair A): attributed to build layout, not the mechanism. The earlier-claimed PR case is void; no PR opened.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-054522-agent-view-real-session-negative.json",
+ "session": {
+  "worker": "perf-agent-view-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-996ea7a9/01a0dbfa-8f37-7681-9e0d-29748fa4ca38.jsonl"
+ },
+ "timestamp": "2026-09-26T05:45:22.099585+00:00"
+}
