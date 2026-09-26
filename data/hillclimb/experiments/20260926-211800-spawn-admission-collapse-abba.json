@@ -1,0 +1,154 @@
+{
+ "id": "20260926-211800-spawn-admission-collapse-abba",
+ "axis": "startup",
+ "hypothesis": "The orchestrator-approved fresh-create single-write collapse (drop the header-only rewrite#1, fold the session_info name append into the single rewrite; byte-identical final file) removes exactly one stall-class durability write plus one cheap sync_data append per fresh create, so one per rlm.spawn admission (the child's create) and one per daemon-boot session create: ~6 fewer durability syscalls per spawn trial, worth one fresh-write storage stall (~40-78ms in the degraded regimes measured on this host class, ~1-2ms in a quiet window).",
+ "approach": "Paired ABBA on the inherited spawn-latency VM (same driver contract: single pidfile driver, trials-adm/, per-trial binary sha asserted, mock queue audit, calibration per trial). Arms: A = base binary 994c5563 (archived pin 7064d039a), B = candidate 96f7f1b6 (pin + collapse; the later test-file split is a no-code reorganization, disclosed). Regime labeling: the fresh-file+fsync+rename class is probed before/after every round (the repeat-fsync probe cannot see this class - record 20260926-204300). 3 rounds x ABBA/BAAB ordering x n=4/leg (cold_warmvenv). A regime-gated quiet-window hunt (20 x 25s probes, fires a pair at fresh-class p50 < 1ms). A labeled strace mechanism leg (2 trials/arm, strace -f -e trace=fsync,fdatasync,rename*,renameat2; count-only evidence, strace timings never used). Parity oracles per trial: admission wire validity, child session JSONL row-type map, roster child row (family seed).",
+ "parity_notes": "Frozen parity untouched: no wire, no JSONL content change (byte-identical final session file - proven by the in-crate masked-byte differential oracle on the branch), no RLM API change. The changed crash window (no header-only intermediate mid-create) is disclosed for adversarial review and covered by the branch's failed-write and legacy-orphan tests.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "lane/spawn-admission-collapse -> PR #2892 (folded head 794623929 of org/rust 1a7b4d3ec)",
+ "commits": [
+  "78ee406c2 (collapse)",
+  "703690f81 (test split, no code change)"
+ ],
+ "build": {
+  "sandbox_id": "ivrus13jctfqzrj2nqfwrogh (inherited, kept alive)",
+  "binary_sha256_base": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_sha256_candidate": "96f7f1b688a6de64b31af261d3d70be46548d54a35392cc18604b1c2dccc6031",
+  "toolchain": "rustup 1.98.1, cargo build --release --locked --workspace rc=0 (both arms)"
+ },
+ "gates": {
+  "fmt": "clean (post-split, cargo fmt --check rc=0)",
+  "clippy": "cargo clippy --workspace --all-targets -- -D warnings: 0 warnings / 0 errors (branch pre-flight + fleet review pre-flight)",
+  "test": "pa-daemon lib 753 passed / 0 failed / 6 ignored; collapse suite 4/4; the pooled pre-flight fired the known-red rotating flake tool_result_entries_persisted_and_streamed (WORKER_NOT_CONNECTED #2727 family, auto-classified, expires 2026-09-27) once - solo-green on this branch",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA/BAAB x3 rounds + regime-gated pair + strace mechanism leg; per-round fresh-class regime probes bracketing; per-trial binary sha; per-trial calibration; single driver (pidfile)",
+  "regime_probes_fresh_class_p50_ms": {
+   "round1": {
+    "pre": 54.65,
+    "post": 63.84
+   },
+   "round2": {
+    "pre": 0.22,
+    "post": 67.21
+   },
+   "round3": {
+    "pre": 0.28,
+    "post": 66.63
+   },
+   "quiet_hunt_pair": {
+    "pre_trigger": 0.37,
+    "post": 78.27
+   },
+   "disclosure": "the regime flips within minutes and flipped WITHIN rounds 2-3 and the gated pair (pre-quiet, post-degraded): the legs themselves sampled the degraded state (their absolute values prove it); no genuinely-quiet leg pair was capturable in this session - the quiet-window expectation (~1-2ms delta: the removed name sync_data + the quiet-class rewrite) is derived from the measured class costs, not from a captured pair"
+  },
+  "abba_per_leg_p50_ms": {
+   "r1-A1": 426.3,
+   "r1-A2": 400.7,
+   "r1-B1": 499.6,
+   "r1-B2": 352.9,
+   "r2-A1": 497.0,
+   "r2-A2": 552.0,
+   "r2-B1": 410.7,
+   "r2-B2": 515.3,
+   "r3-A1": 519.2,
+   "r3-A2": 563.9,
+   "r3-B1": 476.4,
+   "r3-B2": 516.7
+  },
+  "pooled": {
+   "A": {
+    "n": 24,
+    "p50_ms": 491.3,
+    "mean_ms": 487.3
+   },
+   "B": {
+    "n": 24,
+    "p50_ms": 481.9,
+    "mean_ms": 448.8
+   },
+   "delta_mean_ms": -38.4,
+   "per_round_delta_mean_ms": {
+    "r1": 13.2,
+    "r2": -94.5,
+    "r3": -34.0
+   },
+   "honesty": "direction-consistent in 2/3 rounds (flat in r1); the per-trial distribution is a stall-count lottery (each of ~5-7 remaining ops draws ~40-78ms vs ~0.3-1ms), spread \u00b1115ms, so n=24/arm resolves the mechanism-sized effect only marginally; the mechanism evidence below is the load-bearing proof, the timing deltas are corroboration"
+  },
+  "regime_gated_pair_p50_ms": {
+   "A": 681.3,
+   "B": 352.0,
+   "n_per_arm": 4,
+   "note": "the pair ran as the regime flipped to its severest measured state (~78ms/op post-probe); same stall-lottery caveat; direction consistent"
+  },
+  "strace_mechanism_durability_syscalls_per_trial": {
+   "base": {
+    "n_trials": 2,
+    "fsync": [
+     33,
+     32
+    ],
+    "fdatasync": [
+     14,
+     14
+    ],
+    "rename": [
+     25,
+     24
+    ],
+    "total": [
+     72,
+     70
+    ]
+   },
+   "candidate": {
+    "n_trials": 2,
+    "fsync": [
+     30,
+     30
+    ],
+    "fdatasync": [
+     12,
+     12
+    ],
+    "rename": [
+     23,
+     22
+    ],
+    "total": [
+     65,
+     64
+    ]
+   },
+   "delta_per_trial": -6.5,
+   "expected": "-6 (one fsync + one rename from the dropped rewrite#1, plus one fdatasync from the folded name, per fresh create; two fresh creates per trial: the parent's boot create + the child's spawn create)",
+   "tmp_renames_per_fresh_create": {
+    "base": 2,
+    "candidate": 1
+   },
+   "note": "strace legs are labeled overhead-disclosed runs; only the syscall COUNTS are evidence, never their timings"
+  },
+  "parity_oracles": {
+   "admission_wire_valid": "48/48 A + 48/48 B (incl. the regime-gated pair)",
+   "child_session_jsonl_row_type_map": "IDENTICAL A vs B: {session:1, model_change:1, thinking_level_change:1, service_tier_change:1, session_state:1, session_info:1, message:4}, 10 rows",
+   "roster_child_row_family_seed": "present 24/24 per arm",
+   "in_crate": "masked-byte differential vs the legacy sequence; folded name lands once; failed write leaves no session file; legacy crash orphan tolerated (4/4 on the branch)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All legs n=4/trial-set valid (no spawn failures). The known-red flake is unrelated to this change (create-path session-file writes vs the supervisor worker-route availability race; solo-green documented). Binary attribution exact per trial (driver-recorded sha). The candidate binary was built from the pre-split source; the split commit moves tests between files with zero code change (disclosed; the shipped ELF is built from the folded head by the release contract)."
+ },
+ "outcome": "mechanism-proven, timing-corroborated, regime-labeled",
+ "decision": "PR opened on lane/spawn-admission-collapse (folded head of org/rust 1a7b4d3ec) with the paired evidence; NO merge by this lane (merge bar: numeric review + both adversarial APPROVEs on the final PR SHA + standard dispositions). The user-facing gain is host-regime-dependent: one fresh-write stall per spawn admission (~40-78ms in the degraded regimes dominating this host class; ~1-2ms quiet), plus one fewer durability op on every daemon-boot session create.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2892",
+ "record_path": "data/hillclimb/experiments/20260926-211800-spawn-admission-collapse-abba.json",
+ "session": {
+  "worker": "perf-spawn-admission-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-4e026d15"
+ },
+ "timestamp": "2026-09-26T21:20:00Z"
+}
