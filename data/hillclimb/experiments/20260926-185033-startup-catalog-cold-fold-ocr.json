@@ -1,0 +1,306 @@
+{
+ "id": "20260926-185033-startup-catalog-cold-fold-ocr",
+ "axis": "startup",
+ "hypothesis": "The remaining COLD roster scan cost (post-#2856 warm recency fix: ~70ms/1000, ~283ms/4096 sessions) is dominated NOT by syscall I/O time but by the fold's per-message userspace work: the search-text cap guard re-counted the capped corpus (chars().count()) for every user/assistant message plus two more counts per append (O(messages x 64KiB) per session), with the 8KiB-default BufReader chunking grown files into one read syscall per 8KiB as the second cost (strace census: 6.6k reads / 1k-session cold pass, 27.2k at 4,096).",
+ "approach": "Two surgical commits on pa-daemon session_store.rs, neither changing a row byte: (1) SessionScanAccumulator carries search_text_chars in lockstep with the one writer; append_capped_search_text takes and returns the running count (guard + append read the O(1) counter, fold stays O(messages)); lockstep + legacy-mirror unit tests added; the info_tests legacy reference fold now inlines the TS append (independent of the product helper). (2) The fold's BufReader capacity raised to SESSION_SCAN_READ_BUF_BYTES = 64KiB (line semantics, folded bytes, and resume cursor unchanged - only syscall chunking). Baseline-first evidence: per-stage replica probe split the cold fold at each tier; strace -cf census counted cold-pass syscalls at base and candidate.",
+ "parity_notes": "Row/wire parity: the char counter equals chars().count() by construction (single writer updates it from exactly the chars it appends: space + taken chars; multibyte chars counted via the char iterator), proven by the lockstep test across multibyte/cap-cut/post-cap sequences and by identical probe checksums across ALL tiers and arms (100=762089, 1000=893085, 4096=3680629 on every slot both before and after). SessionInfo rows, JSONL bytes, wire/API, replay, streaming catalog, resume/torn-tail semantics untouched; the counter rides SessionScanState clones (clone_for_resume) like the corpus string. 64KiB buffer only changes read() chunking; read_line consumes identical lines. No TS semantic is reinterpreted: TS caps the same way; this only stops re-counting. Fixture audit on both VMs: shipped many-sessions tar verified (manifest sha fcc8f70a; 1099/1100 clean + the known stale-manifest row 100/01a0dad3 whose VM bytes equal the tarball sha 39fca708); 4096 tier is byte-exact 4x+96 copies of the 1000 tier (4096/4096 sha-verified).",
+ "base": {
+  "revision": "6588b19cf1d96594b6b4b5ba6a5790f9d19dfcc2"
+ },
+ "branch": "lane/hillclimb-catalog-cold",
+ "commits": [
+  "43ce7e242",
+  "563ab79ac",
+  "ae46502d6"
+ ],
+ "build": {
+  "sandbox_id": "yg3h81ljfc28qt3kdsf8qzny",
+  "toolchain": "rustup 1.98.1",
+  "lanehead_binary_sha256": "727c6afae542e67bb6cd2736ef294098562f6cc7326b6d023b44fe87b0eb562e",
+  "lanehead_binary_bytes": 211634688,
+  "probe_base_sha256": "3bf287789c7f78056f279d9ef132ba74a17717dbbd9f2aa5394515b61070900d",
+  "probe_cand_sha256": "468114406261599898421fc052347d76d230b99fc311f65f730befc579091fdf",
+  "probe_note": "timing probe = pa-daemon example catalog_scan_probe (list_sessions, 7 passes, row checksum), identical source both arms; base probe at 6588b19cf, cand probe at lane head ae46502d6 (43ce7e242 counter + 563ab79ac 64KiB reads + fold merge of 6588b19cf); earlier arm shas: counter-only cand df1a6b96 (4b591fb5b superseded by fmt amend 43ce7e242), pre-fold cand e5bf3b67 (563ab79ac); base probe at 60e2e198c rebuilt twice = 1784dfab (reproducible)"
+ },
+ "gates": {
+  "fmt": "PASS at ae46502d6 (cargo fmt --all --check, clean tree; probe/diag example sources are UNTRACKED on the VM only and are stashed for gates)",
+  "clippy": "PASS at ae46502d6 (cargo clippy --workspace --all-targets -- -D warnings, 0 errors)",
+  "test": "VM workspace run at ae46502d6 (2 runs): run1 pa-cli clipboard_auth_commands_e2e tui_traces_renders_status_and_toggles_the_setting RED (connect supervisor socket race) - GREEN run2 and solo; run2 interactive_daemon_e2e tui_prompt_stash_restores_a_pasted_image_with_the_draft + tui_refused_submit_restores_the_draft_after_the_round_trip RED, clipboard GREEN - BOTH solo-green at lane head, and the same interactive_daemon_e2e target-level co-scheduling red REPRODUCES AT PRISTINE BASE 6588b19cf (30 passed/2 failed incl. prompt_stash panic at the same line) => rotating registered flake family (supervisor-socket race / tui_prompt_stash historical), NOT candidate-caused (candidate touches only the catalog fold; suspect tests green solo). worker::tests::goal_turn_end_loop_runs_to_completion is env-red unless the VM has uv + PI_PACKAGE_DIR (kernel runtime); GREEN with env set - documented VM-gate env requirement. pa-daemon --lib 751/751 GREEN at lane head with env set. Release workspace build GREEN (sha above).",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "catalog.100.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 52.019,
+     "values_ms": [
+      51.818,
+      52.019,
+      52.38
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 41.307,
+     "values_ms": [
+      40.871,
+      41.307,
+      43.951
+     ]
+    },
+    "delta_pct": -20.6,
+    "regression": false,
+    "checksum": 762089
+   },
+   "catalog.100.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.4515,
+     "values_ms": [
+      0.4385,
+      0.4515,
+      0.4635
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.437,
+     "values_ms": [
+      0.436,
+      0.437,
+      0.459
+     ]
+    },
+    "delta_pct": -3.2,
+    "regression": null
+   },
+   "catalog.1000.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 70.182,
+     "values_ms": [
+      68.083,
+      70.182,
+      71.56
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 57.291,
+     "values_ms": [
+      57.246,
+      57.291,
+      60.069
+     ]
+    },
+    "delta_pct": -18.4,
+    "regression": false,
+    "checksum": 893085
+   },
+   "catalog.1000.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 3.842,
+     "values_ms": [
+      3.83,
+      3.842,
+      3.8885
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 3.862,
+     "values_ms": [
+      3.8205,
+      3.862,
+      3.9290000000000003
+     ]
+    },
+    "delta_pct": 0.5,
+    "regression": null
+   },
+   "catalog.4096.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 282.762,
+     "values_ms": [
+      281.907,
+      282.762,
+      284.117
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 234.841,
+     "values_ms": [
+      234.326,
+      234.841,
+      234.856
+     ]
+    },
+    "delta_pct": -16.9,
+    "regression": false,
+    "checksum": 3680629
+   },
+   "catalog.4096.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 18.2945,
+     "values_ms": [
+      18.2765,
+      18.2945,
+      18.6525
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 18.368,
+     "values_ms": [
+      18.2695,
+      18.368,
+      18.505000000000003
+     ]
+    },
+    "delta_pct": 0.4,
+    "regression": null
+   }
+  },
+  "extra": {
+   "baseline_split_replica": {
+    "note": "diagnostic-only per-stage replica of the fold (same fixture bytes; labeled estimate - replica sum overestimates the real cold scan by 20-30%, ranking is the signal)",
+    "tiers": {
+     "100": {
+      "scan_cold_ms_real": 52.9,
+      "replica_sum_ms": 67.8,
+      "stages_ms": {
+       "read_syscall": 8.3,
+       "line_split": 0.5,
+       "typed_parse": 16.8,
+       "usage_fold": 0.7,
+       "acc_guard_chars_count": 24.9,
+       "second_parse_sessionentry": 16.4,
+       "store_clone": 0.3
+      },
+      "msg_lines": 10569,
+      "second_parses": 3276
+     },
+     "1000": {
+      "scan_cold_ms_real": 69.6,
+      "replica_sum_ms": 81.6,
+      "stages_ms": {
+       "read_syscall": 9.6,
+       "line_split": 0.6,
+       "typed_parse": 19.5,
+       "usage_fold": 0.8,
+       "acc_guard_chars_count": 29.8,
+       "second_parse_sessionentry": 21.0,
+       "store_clone": 0.3
+      },
+      "msg_lines": 12856,
+      "second_parses": 5556
+     },
+     "4096": {
+      "scan_cold_ms_real": 283.4,
+      "replica_sum_ms": 331.6,
+      "stages_ms": {
+       "read_syscall": 36.5,
+       "line_split": 2.5,
+       "typed_parse": 79.1,
+       "usage_fold": 3.0,
+       "acc_guard_chars_count": 122.5,
+       "second_parse_sessionentry": 86.8,
+       "store_clone": 1.3
+      },
+      "msg_lines": 53030,
+      "second_parses": 23250
+     }
+    }
+   },
+   "strace_cold_pass_counts": {
+    "base_1000": {
+     "read": 6625,
+     "statx": 4964,
+     "openat": 2005,
+     "close": 2005,
+     "lseek": 1000,
+     "total": 16756
+    },
+    "base_4096": {
+     "read": 27171,
+     "statx": 20326,
+     "openat": 8197,
+     "close": 8197,
+     "lseek": 4096,
+     "total": 67999
+    },
+    "cand_1000": {
+     "read": 3443,
+     "statx": 4964,
+     "openat": 2005,
+     "close": 2005,
+     "lseek": 1000,
+     "total": 13417
+    },
+    "cand_4096": {
+     "read": 14091,
+     "statx": 20326,
+     "openat": 8197,
+     "close": 8197,
+     "lseek": 4096,
+     "total": 46703
+    },
+    "note": "cand = counter + 64KiB reads; reads -48%, statx unchanged (5/file: 1 metadata pass + 4 in-fold fstats - NOT addressed, certification semantics must not move)"
+   },
+   "iterations": [
+    {
+     "pair": "counter-only 43ce7e242 vs 60e2e198c (pre-fold)",
+     "cold_100": "-19.2% (51.56->41.65)",
+     "cold_1000": "-16.7% (68.82->57.33)",
+     "cold_4096": "-15.3% (281.89->238.63)",
+     "warm": "parity"
+    },
+    {
+     "pair": "counter+reads 563ab79ac vs 60e2e198c (pre-fold, final arms iter2)",
+     "cold_100": "-21.1% (51.94->40.96)",
+     "cold_1000": "-17.1% (68.75->56.99)",
+     "cold_4096": "-17.4% (284.07->234.76)",
+     "warm": "parity"
+    },
+    {
+     "pair": "counter+reads+fold ae46502d6 vs 6588b19cf (post-fold, clean rerun)",
+     "cold_100": "-20.6% (52.02->41.31)",
+     "cold_1000": "-18.4% (70.18->57.29)",
+     "cold_4096": "-16.9% (282.76->234.84)",
+     "warm": "parity"
+    }
+   ]
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "PRIMARY evidence = post-fold pair at the folded head (BCCBBC 3x3, same VM, sequential, sha-asserted per slot, /proc/loadavg around the window; one earlier post-fold pass voided by a disclosed cargo-build load spike on the 1000-tier C slots - superseded by the clean rerun). Row oracle: probe checksums identical across every arm/slot/pass at every tier; warm parity within +/-3.2% run noise. Delta class across three independent pairs: -15..-21% cold per tier, stable; the durable claim is the class, not one absolute. Post-fold provenance: git diff 6588b19cf..ae46502d6 = ONLY session_store.rs + session_store_info_tests.rs (the two lane commits) - no supervisor/worker hunks, no dropped hunks. Remaining cold cost at 1000 after the fix (~57ms): typed parse ~19ms + second SessionEntry parse ~15-20ms + statx/open/close/lseek syscalls ~10ms + acc/alloc ~10ms - the dominant next levers are the second full-Value parse (parity-risky: message_text semantics) and an on-disk persistent index (stale semantics) - both left to future lanes with this split recorded."
+ },
+ "outcome": "pr-open",
+ "decision": "Orchestrator numeric review of the post-fold pair PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on the final PR SHA and operator disposition of the disclosed red gates (non-applicable benchmark CI 0/0; the registered interactive_daemon_e2e co-scheduling flake with base-red evidence). No merge by this worker.",
+ "pr_url": "PENDING",
+ "record_path": "data/hillclimb/experiments/20260926-185033-startup-catalog-cold-fold-ocr.json",
+ "session": {
+  "worker": "perf-catalog-cold-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-38754d5b/01a0dc70-bcbd-7623-b886-211dbc4d80a4.jsonl"
+ },
+ "timestamp": "2026-09-26T18:50:33.644693+00:00"
+}
