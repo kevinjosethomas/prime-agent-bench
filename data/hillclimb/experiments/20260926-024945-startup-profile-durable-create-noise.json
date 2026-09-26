@@ -1,0 +1,358 @@
+{
+  "id": "20260926-024945-startup-profile-durable-create-noise",
+  "axis": "startup",
+  "hypothesis": "Fresh-create startup serializes two session-file rewrites (~40 ms fsync each) and a worker identity persist (~40 ms fsync) before an independent worker-socket probe; eliminating the intermediate header-only write and overlapping descriptor persist with socket probe might lower launch-to-ready latency without changing final durable state.",
+  "approach": "Two pa-daemon hunks only relative to product rust: worker/create.rs handle_create (None,false) removes header-only created.rewrite() before append_creation_prefix; supervisor/supervision.rs spawn_worker_process commits pid/start-id/lifecycle synchronously under descriptor lock, launches durable persist_worker task concurrently with read-only probe_worker_socket, joins task before successful return. Branch c73c0433 folds origin/rust 91eedb5d; measured predecessor ed43bce8f versus pure fb719b13 (later folds only unrelated pa-tui styling; final-head candidate c73c0433 not measured).",
+  "parity_notes": "Final session JSONL content is identical: creation prefix and active state are in-memory before the same final rewrite. Descriptor pid/start identity is set synchronously prior to self-registration and liveness checks; descriptor is still persisted before successful connect/create response. Socket probe is read-only and independent of durable identity persist. On probe failure the task detaches, leaving same Starting-state durable descriptor. Crash mid-first-create before final rewrite can leave no session file instead of header-only; the lease still blocks concurrent open and stale-window reclamation plus durable create-command replay recovers. Wire protocol, RLM API, session replay, feature flags and macOS/Linux paths unchanged. Existing parity tests, family-edge e2e and full workspace test passed on measured candidate with serialized test threads. Optimization is discarded for no robust speedup; no PR is proposed.",
+  "base": {
+    "revision": "fb719b1367b09851b848895912208be60c49311c",
+    "final_fold_only_styling_revision": "91eedb5d016dcc93d422c6fc596813d9be066fd1"
+  },
+  "branch": "lane/hillclimb-startup-profile",
+  "commits": [
+    "3d5ea6c4cad65d137726616f92bdebaeb351b64e",
+    "7b833b1d58f0e111bd4bd93fc86d64cacc3f40b5",
+    "ed43bce8f544a98189acb483cffc31738bd9dc5d",
+    "c73c043328cbefe8477c18b0c5a90ef92372c51f"
+  ],
+  "build": {
+    "sandbox_id": "mparlwhd07cyxbthim4fccg0",
+    "base_build_sandbox_id": "zev9lspxs97qxbgg3zwkjllx",
+    "binary_sha256": "259a79a586f4613f188152a37de3e8728e66ac7e233fccadda15b2a0a1e417ff",
+    "binary_bytes": 209452664,
+    "base_binary_sha256": "5c5b2b4bff923a4f8787a179870d007dbbf863e07e50a57ed27b135c0800cc43",
+    "base_binary_bytes": 209122648,
+    "binary_delta_bytes": 330016,
+    "build_seconds": 105,
+    "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "measured_candidate_revision": "ed43bce8f544a98189acb483cffc31738bd9dc5d"
+  },
+  "gates": {
+    "fmt": "pass measured candidate ed43bce8f; final-fold c73c0433 fmt pass before early build cancellation",
+    "clippy": "pass measured candidate ed43bce8f --workspace --all-targets -D warnings; final-fold c73c0433 clippy pass before early build cancellation",
+    "test": "pass measured candidate ed43bce8f, RUST_TEST_THREADS=1 cargo test --workspace --locked on base VM (rc=0; 143 suite summaries; /tmp/startup-test-serial.log). A prior parallel full gate at ed43bce8f failed unrelated pa-ai Anthropic OAuth test: port 53692 Address already in use; isolated/serialized run passed; parallel gate is NOT relabeled green. Family_edges exact pure base fb719b13 and candidate ed43bce8f passed B,C,C,B (4/4), and candidate full serialized gate passed family_edges. Earlier b0afcdbe-era candidate full gate failed old family_edges; #2828 changed e2e test at fb719b13 and symmetric new-head test passed. Final-fold c73c0433 full workspace gate not run after discard approval."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.cold_start": {
+        "metric": "launch_to_ready_ms",
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 299.47,
+          "p95_ms": 1073.07,
+          "values_ms": [
+            564.35,
+            299.47,
+            1041.0,
+            320.4,
+            289.14,
+            1147.9,
+            291.6,
+            289.23,
+            291.23,
+            289.5,
+            965.72,
+            569.55,
+            290.28,
+            308.85,
+            291.81
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 294.02,
+          "p95_ms": 1031.03,
+          "values_ms": [
+            981.23,
+            578.54,
+            294.02,
+            291.53,
+            302.19,
+            447.67,
+            291.57,
+            344.35,
+            288.53,
+            293.11,
+            1147.23,
+            290.01,
+            291.34,
+            298.97,
+            293.65
+          ]
+        },
+        "delta_pct": -1.82,
+        "regression": false,
+        "wave_medians_ms": {
+          "baseline": [
+            320.4,
+            291.23,
+            308.85
+          ],
+          "candidate": [
+            302.19,
+            293.11,
+            293.65
+          ]
+        },
+        "wave_order": [
+          "b",
+          "c",
+          "c",
+          "b",
+          "b",
+          "c"
+        ]
+      },
+      "compare.warm_start": {
+        "metric": "launch_to_ready_ms",
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 269.15,
+          "p95_ms": 375.883,
+          "values_ms": [
+            275.22,
+            269.15,
+            267.12,
+            271.98,
+            268.79,
+            563.07,
+            262.87,
+            295.66,
+            264.78,
+            295.62,
+            263.38,
+            265.27,
+            264.88,
+            269.35,
+            293.52
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 265.48,
+          "p95_ms": 305.945,
+          "values_ms": [
+            263.53,
+            339.93,
+            271.38,
+            266.51,
+            270.21,
+            265.8,
+            263.94,
+            264.75,
+            262.38,
+            262.73,
+            265.48,
+            291.38,
+            264.12,
+            263.4,
+            270.17
+          ]
+        },
+        "delta_pct": -1.364,
+        "regression": false,
+        "wave_medians_ms": {
+          "baseline": [
+            269.15,
+            295.62,
+            265.27
+          ],
+          "candidate": [
+            270.21,
+            263.94,
+            265.48
+          ]
+        },
+        "wave_order": [
+          "b",
+          "c",
+          "c",
+          "b",
+          "b",
+          "c"
+        ]
+      },
+      "daemon.boot": {
+        "metric": "spawn_to_accept_ms",
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 5.4,
+          "p95_ms": 407.75,
+          "values_ms": [
+            163.3,
+            5.5,
+            5.5,
+            5.4,
+            5.4,
+            180.9,
+            5.4,
+            5.6,
+            5.4,
+            5.4,
+            406.4,
+            5.4,
+            5.4,
+            5.4,
+            410.9
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 5.5,
+          "p95_ms": 610.46,
+          "values_ms": [
+            608.9,
+            10.5,
+            5.4,
+            5.4,
+            5.5,
+            441.3,
+            5.4,
+            5.4,
+            5.5,
+            5.4,
+            614.1,
+            5.4,
+            5.5,
+            5.4,
+            5.5
+          ]
+        },
+        "delta_pct": 1.852,
+        "regression": true,
+        "wave_medians_ms": {
+          "baseline": [
+            5.5,
+            5.4,
+            5.4
+          ],
+          "candidate": [
+            5.5,
+            5.4,
+            5.5
+          ]
+        },
+        "wave_order": [
+          "b",
+          "c",
+          "c",
+          "b",
+          "b",
+          "c"
+        ]
+      },
+      "compare.msg_send": {
+        "metric": "submit_to_ack_ms",
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 1.9,
+          "p95_ms": 130.24,
+          "values_ms": [
+            408.0,
+            1.7,
+            6.0,
+            1.5,
+            1.8,
+            1.5,
+            2.0,
+            1.4,
+            1.9,
+            2.1,
+            1.8,
+            6.3,
+            6.3,
+            11.2,
+            1.3
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 2.2,
+          "p95_ms": 12.86,
+          "values_ms": [
+            13.0,
+            2.4,
+            2.1,
+            1.5,
+            2.5,
+            2.8,
+            2.1,
+            12.8,
+            2.2,
+            1.5,
+            2.3,
+            1.5,
+            1.6,
+            2.5,
+            1.7
+          ]
+        },
+        "delta_pct": 15.789,
+        "regression": true,
+        "wave_medians_ms": {
+          "baseline": [
+            1.8,
+            1.9,
+            6.3
+          ],
+          "candidate": [
+            2.4,
+            2.2,
+            1.7
+          ]
+        },
+        "wave_order": [
+          "b",
+          "c",
+          "c",
+          "b",
+          "b",
+          "c"
+        ]
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 209122648,
+        "candidate": 209452664
+      },
+      "rss_mb": {
+        "baseline": 50.3,
+        "candidate": 49.9
+      },
+      "calibration_python_sum_range_30m_s": {
+        "before": 0.1628601920001529,
+        "after": 0.14991841100163583,
+        "duration_delta_pct": -7.947,
+        "note": "Python loop is ~8% faster at end, so marginal startup changes <2% cannot be attributed to patch."
+      },
+      "raw_results_archive": "/home/ubuntu/hillclimb/startup-profile-fb719b13-results.tar.gz",
+      "vm_ids": {
+        "base": "zev9lspxs97qxbgg3zwkjllx",
+        "cand": "mparlwhd07cyxbthim4fccg0"
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "All 120 trials validated, no exclusions. Same preserved cand VM, each suite six sequential invocations b,c,c,b,b,c, five trials each, binary sha/revision pinned per slot; initial calibration 0.162860s vs final 0.149918s (~7.95% lower duration) means drift exceeds observed 1\u20132% startup changes. Cold-start p95 dominated by outliers on both roles; daemon.boot p50 5.4 vs 5.5ms and msg_send p50 1.9 vs 2.2ms, below useful timing resolution and no robust regression/gain. Bench run labels include harness git_rev unknown/dirty: harness benchmark settings had unrelated WIP; product binary SHA256/revision and file swaps audited per slot. Measured exact base fb719b13, candidate ed43bce8f; subsequent two pa-tui-only folds put product branch on c73c0433/91eedb5d but are unmeasured. Historical first iteration gate at older b0afcdbe candidate failed family_edges; subsequent base/candidate exact fb719b13 B,C,C,B family tests all passed after #2828. Parallel workspace gate on ed43bce8f failed fixed-port OAuth test (error Address already in use); serialized full workspace gate passed. Final-head rerun aborted promptly at operator discard direction; do not relabel final-head gates or pair green."
+  },
+  "outcome": "discarded",
+  "decision": "Orchestrator approved discard: startup p50 cold \u22121.82%, warm \u22121.36%, dwarfed by 7.95% calibration drift; no credible speedup, +330016 binary bytes, no PR. Preserve negative evidence and avoid claiming startup gain.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-024945-startup-profile-durable-create-noise.json",
+  "session": {
+    "worker": "perf-startup-profile GPT-6 Sol successor",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-b3491690/01a0db50-8042-7040-b0e1-b10866d4b341.jsonl"
+  },
+  "timestamp": "2026-09-26T02:49:45.304373+00:00"
+}
