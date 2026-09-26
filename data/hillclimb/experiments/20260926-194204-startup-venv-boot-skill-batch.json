@@ -294,13 +294,12 @@
     "delta_pct": -37.3,
     "regression": false
    },
-   "settled_head_spotcheck_session_warm_span": {
+   "settled_head_spotcheck_session_warm": {
     "baseline": {
      "trials": 6,
      "valid": 6,
-     "p50_ms": 2354.0,
-     "p95_ms": 2354.0,
-     "values_ms": [
+     "span_p50_ms": 2354.0,
+     "wall_values_ms": [
       2659,
       2695,
       2734,
@@ -312,9 +311,8 @@
     "candidate": {
      "trials": 6,
      "valid": 6,
-     "p50_ms": 965.0,
-     "p95_ms": 965.0,
-     "values_ms": [
+     "span_p50_ms": 965.0,
+     "wall_values_ms": [
       1188,
       1411,
       1531,
@@ -323,9 +321,9 @@
       1682
      ]
     },
-    "delta_pct": -59.0,
+    "delta_pct_span_p50": -59.0,
     "regression": false,
-    "note": "values_ms are WALL ms in this suite; span p50s: base 2354ms, cand 965ms; non-overlapping; Option C shipped (debug-stripped) ELFs; uv calls 12->4; skills phase 1808->457ms; boot control n=2 +3.5% (-1.1% over the 32-trial battery)"
+    "note": "Reviewer #1 nit fixed: wall arrays and span p50s are now separately labeled fields. Non-overlapping WALL distributions (base min 2659 > cand max 1682); Option C shipped (debug-stripped) ELFs; uv calls 12->4; skills phase 1808->457ms; boot control n=2 +3.5% (-1.1% over the 32-trial battery)."
    }
   },
   "extra": {
@@ -832,7 +830,7 @@
   "notes": "44/44 valid iteration pairs (60e2e198c vs 02e722676) and 32/32 valid final-head pairs (7064d039 vs 12d32fc59), all sha-asserted via symlink swap with per-trial binary sha check; ABBA order A,B,B,A; distributions do not overlap on the changed path; noop-control (boot_warm) shows parity (-1.1% span). Parity oracles: venv_bytes identical (290459505 both arms), marker content identical modulo harness tree prefix, runtime identity equal, kernel receipt + KERNEL_BOOT_OK on every session trial both arms. Settled-head spot-check 16/16 valid (ab3 tag). Option C repack correction: an intermediate 'base' tree was accidentally built at 5dbf6f653 (origin/rust had moved past the merge-base); DISCARDED and rebuilt pinned at the exact merge-base 9d9cf2da7 before any spot-check trial ran - no measurement used the wrong tree. venv_bytes medians at the spot-check: 290459485 (A) vs 290459505 (B), 7e-8 difference; byte-identity rests on the earlier identical-median runs plus marker/runtime-identity oracles."
  },
  "outcome": "PR open for review only (never merged by lane owner); final-head paired evidence + full gate red disposition disclosed",
- "decision": "Merge bar status at settled head 23764d5ee: orchestrator numeric review ACCEPTED; parity-adversary-2-fast EXPLICIT APPROVE on 23764d5ee (fresh ruling, its four-prong carry rule stated and satisfied: byte-identical venv.rs, upstream-only fold, green exact-head CI pulled by the reviewer, head-exact spot-check evidence binding); parity-adversary-fast mechanism-approve held, formal conversion at 23764d5ee pending its reply to the conversion ping. Remaining before any merge: reviewer #1's EXPLICIT APPROVE on this SHA + operator dispositions (benchmark non-applicability, a_bang known_reds registration, base-tip gate-red state). Lane owner never merges.",
+ "decision": "Merge bar status at settled head 23764d5ee: orchestrator numeric review ACCEPTED; parity-adversary-fast EXPLICIT APPROVE; parity-adversary-2-fast EXPLICIT APPROVE. ALL THREE REVIEW APPROVALS IN. Remaining before merge: operator dispositions only (benchmark non-applicability; a_bang known_reds registration; base-tip gate-red state - all pre-existing, none from this lane). Lane owner never merges; the operator's disposition + merge decision governs.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2884",
  "record_path": "data/hillclimb/experiments/20260926-194204-startup-venv-boot-skill-batch.json",
  "session": {
@@ -842,6 +840,6 @@
  "timestamp": "2026-09-26T19:00:19.830215+00:00",
  "reviewers": {
   "parity-adversary-2-fast": "EXPLICIT APPROVE on 23764d5ee (2026-09-26, fresh ruling; carry rule stated: byte-identical mechanism + upstream-only fold + green exact-head CI + head-exact evidence)",
-  "parity-adversary-fast": "MECHANISM-APPROVE at 12d32fc59 (all five audit points + perf evidence verified hands-on); conversion to formal APPROVE at 23764d5ee requested with SHA + CI rollup + spot-check numbers (condition (d))"
+  "parity-adversary-fast": "EXPLICIT APPROVE on 23764d5ee (2026-09-26, converted from mechanism-approve per its stated conditions: settled head, byte-identical venv.rs, green exact-head CI verified independently, head-exact spot-check verified from the record; non-blocking record nit fixed: wall arrays vs span p50s separately labeled)"
  }
 }
