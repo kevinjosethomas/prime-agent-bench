@@ -146,6 +146,87 @@
             "valid": 10
           }
         }
+      },
+      "compare.cold_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            900.06,
+            289.35,
+            290.12,
+            289.87,
+            290.16
+          ],
+          "p50_ms": 290.12
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            289.52,
+            288.97,
+            535.33,
+            290.13,
+            290.74
+          ],
+          "p50_ms": 290.13
+        },
+        "interpretation": "Small sequential neighbor sample; warm_start base has 578.03/505.93ms tail events, not an attributable candidate win. No regression decision from n=5."
+      },
+      "compare.warm_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            578.03,
+            262.54,
+            291.8,
+            505.93,
+            264.58
+          ],
+          "p50_ms": 291.8
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            268.96,
+            261.87,
+            263.41,
+            262.8,
+            263.23
+          ],
+          "p50_ms": 263.23
+        },
+        "interpretation": "Small sequential neighbor sample; warm_start base has 578.03/505.93ms tail events, not an attributable candidate win. No regression decision from n=5."
+      },
+      "compare.msg_send": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            1.5,
+            2.3,
+            1.5,
+            4.3,
+            1.4
+          ],
+          "p50_ms": 1.5
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "values_ms": [
+            2.0,
+            1.7,
+            1.7,
+            2.3,
+            1.8
+          ],
+          "p50_ms": 1.8
+        },
+        "interpretation": "Small sequential neighbor sample; warm_start base has 578.03/505.93ms tail events, not an attributable candidate win. No regression decision from n=5."
       }
     },
     "extra": {
@@ -155,9 +236,15 @@
         "delta": 64048
       },
       "rss_mb": {
-        "baseline": null,
-        "candidate": null,
-        "note": "daemon.boot harness did not capture RSS; previous pivot neighbor pair cold RSS med 112.9\u2192112.2, warm 37.1\u219237.3MB; corrected pair neighbors in progress."
+        "baseline": {
+          "cold_start_p50": 112.4,
+          "warm_start_p50": 37.3
+        },
+        "candidate": {
+          "cold_start_p50": 112.7,
+          "warm_start_p50": 37.1
+        },
+        "note": "5 valid trials each, settled RSS of compare suites; daemon.boot does not capture RSS; msg_send no RSS capture."
       },
       "spawn_to_hello_p50_ms": {
         "baseline": 7.05,
@@ -166,7 +253,17 @@
       "calibration_s": {
         "base_vm_median": null,
         "cand_vm_median": null,
-        "note": "No cross-VM latency comparison. Per-arm same-VM noop harness floors recorded with each run in source artifacts; previous base/cand VM calibration 1.0399/1.0519s diverged 1.2%. No new calibration for current pair."
+        "note": "No cross-VM latency comparison. Per-arm same-VM noop harness floors recorded with each run in source artifacts; previous base/cand VM calibration 1.0399/1.0519s diverged 1.2%. No new calibration for current pair.",
+        "same_vm_noop_p50_ms_by_phase": {
+          "latest1-b": 0.085,
+          "latest2-c": 0.088,
+          "latest3-c": 0.074,
+          "latest4-b": 0.073
+        },
+        "neighbor_noop_p50_ms_by_phase": {
+          "latestnb1-b": 0.083,
+          "latestnb2-c": 0.067
+        }
       }
     }
   },
@@ -175,7 +272,7 @@
       "Early mislabeled A/A pair pinned both arms to candidate via bins-b path bug; excluded from A/B (versions.json detects it).",
       "Post-bind prior pair measures rejected and reverted mechanism, not this pivot; kept in superseded record."
     ],
-    "notes": "Corrected pivot same-VM ABBA ec99d9452 base / 5101641bc candidate (payload equal to doc-only 80169057f/52f624b78), 20/20 valid. Accept p50 5.5\u21925.5ms; hello p50 7.05\u21926.25ms; create p50 77.2\u219279.05ms. Baseline accept 644.6/432.1/426.1ms and candidate 436.4/431.5ms cold-exec/page-cache tails; cannot attribute max/p95 difference to fsync. Quiet-disk prior pair acabfc57\u2192759e39be8 also accept p50 5.5\u21925.4ms, hello ~6.85\u21926.55ms (20/20 valid; fsync micro-bench p50 0.1ms max 1.4ms). Under slow-flush profiling sync_all cost p50 ~31ms (30.9\u2013103.6ms) but historical post-bind A/B measures a REJECTED mechanism, not pivot; neither corrected pivot pair demonstrates usable-latency win. Neighbor corrected pair in flight at decision; prior pivot neighbor n=5/arm cold_start 291.78\u2192290.12ms, warm_start 267.57\u2192262.62ms, msg_send ack 1.7\u21921.5ms, cold RSS 112.9\u2192112.2MB and warm RSS 37.1\u219237.3MB. Bench harness versions.json source git revision stale (7152746b...) because staged binary pin points at separate checkout; pinned binary SHA is definitive and asserted per arm. Cross-VM latency not used. macOS arm64 unmeasured; Linux sandbox VM tested. Windows not shipped. Numeric discard arrived before latest-head archival bea860606 VM builds: no unmeasured head claims."
+    "notes": "Corrected pivot same-VM ABBA ec99d9452 base / 5101641bc candidate (payload equal to doc-only 80169057f/52f624b78), 20/20 valid. Accept p50 5.5\u21925.5ms; hello p50 7.05\u21926.25ms; create p50 77.2\u219279.05ms. Baseline accept 644.6/432.1/426.1ms and candidate 436.4/431.5ms cold-exec/page-cache tails; cannot attribute max/p95 difference to fsync. Quiet-disk prior pair acabfc57\u2192759e39be8 also accept p50 5.5\u21925.4ms, hello ~6.85\u21926.55ms (20/20 valid; fsync micro-bench p50 0.1ms max 1.4ms). Under slow-flush profiling sync_all cost p50 ~31ms (30.9\u2013103.6ms) but historical post-bind A/B measures a REJECTED mechanism, not pivot; neither corrected pivot pair demonstrates usable-latency win. Corrected neighbor pair completed 30/30 valid (5 per arm per suite): cold_start p50 290.12\u2192290.13ms, warm_start 291.8\u2192263.23ms (base has 578.03/505.93ms outliers), msg_send ack 1.5\u21921.8ms; cold RSS 112.4\u2192112.7MB, warm RSS 37.3\u219237.1MB. Artifacts /home/ubuntu/hillclimb/daemon-boot-latest-full.tar.gz (SHA256 9b33a4874afd055c01fc20d059691927374d56a95e9e728dcd8b3fe59db9d1d6). prior pivot neighbor n=5/arm cold_start 291.78\u2192290.12ms, warm_start 267.57\u2192262.62ms, msg_send ack 1.7\u21921.5ms, cold RSS 112.9\u2192112.2MB and warm RSS 37.1\u219237.3MB. Bench harness versions.json source git revision stale (7152746b...) because staged binary pin points at separate checkout; pinned binary SHA is definitive and asserted per arm. Cross-VM latency not used. macOS arm64 unmeasured; Linux sandbox VM tested. Windows not shipped. Numeric discard arrived before latest-head archival bea860606 VM builds: no unmeasured head claims."
   },
   "outcome": "discarded-no-demonstrated-usable-latency-win",
   "decision": "Orchestrator numeric review DISCARD 2026-09-26 ~01:35 UTC. NO PR; no merge. Adversarial pre-review APPROVE-LEAN was NOT formal final PR approval. No latest-head gate/pair pursued after discard.",
@@ -185,5 +282,5 @@
     "worker": "perf-daemon-boot",
     "handoff": "/home/ubuntu/hillclimb/model-handoffs/perf-daemon-boot.md"
   },
-  "timestamp": "2026-09-26T01:35:48.010309+00:00"
+  "timestamp": "2026-09-26T01:42:31.846551+00:00"
 }
