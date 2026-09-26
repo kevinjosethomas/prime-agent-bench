@@ -1,0 +1,160 @@
+{
+  "id": "20260926-031426-startup-kernel-boot-probe-memo",
+  "axis": "startup",
+  "hypothesis": "Repeated Python process imports to check a prepared kernel venv dominate production kernel provisioner ensure time.",
+  "approach": "Memoize runtime-ready probes with a content identity of installed rlm and dill plus installed interpreter and bootstrap version, preserving out-of-band repair; fast-path cold/restore/restart in bootstrap/venv.rs, manager/startup.rs, provisioner.rs.",
+  "parity_notes": "Production path and checked Python output/state/snapshot restore/restart; Python runtime probe still validates frozen rlm API/wire and also imports dill; no RLM API/tool/wire/session schema changes. Linux x86_64 measured, macOS arm64 unmeasured. Base lacked dill auto-repair; candidate adds it.",
+  "base": {
+    "revision": "baa7b323a89eda31452fe6c2bf3c111c484c8328"
+  },
+  "branch": "lane/hillclimb-kernel-boot",
+  "commits": [
+    "78334a50b",
+    "88db801b11be939e657a6fae1b9f4aaeee812fd2",
+    "96fa6adddbeb4d65af11b828e62b158344dbd8ad",
+    "c403714316e7f4810ede47276e7a29c6d93d2fd6",
+    "44f4c053a17ed274fee9eddc7a14c470db15ea15",
+    "56b1df2154ccddb2844494071b7b81bcf310d0b7",
+    "f18c0ac299d31580f52d1f78fc29c3f518900002"
+  ],
+  "build": {
+    "sandbox_id": "ud9dwuqzh3eehm4x6pwp0k36",
+    "binary_sha256": "47819afd435d3c4bd14b38aeac63b0af354a2ba0b095d4e47ca2942d886f0709",
+    "binary_bytes": 5002944,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "pass (f18c0ac29)",
+    "clippy": "pass (f18c0ac29, workspace --all-targets -D warnings)",
+    "test": "pass (f18c0ac29 cargo test --workspace; family_edges and slash_menu_panel_headless executed). Prior b0 base/candidate family red; fb #2828 fixed. 91eed prior-head first full red search UI, second red supervisor stats, each isolated green candidate and base, current baa full green."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "cold_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 92.38178500000001,
+          "p95_ms": 93.56002600000001,
+          "values_ms": [
+            92.359594,
+            93.888677,
+            92.57407300000001,
+            89.661669,
+            89.771092,
+            92.403976
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 44.0198125,
+          "p95_ms": 97.46275299999999,
+          "values_ms": [
+            98.052719,
+            45.468474,
+            42.518958000000005,
+            95.692855,
+            42.571151,
+            42.258143999999994
+          ]
+        },
+        "delta_pct": -52.350116962992225,
+        "regression": false
+      },
+      "snapshot_restore_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 95.6437015,
+          "p95_ms": 97.54418675000001,
+          "values_ms": [
+            97.29104600000001,
+            96.06340200000001,
+            94.689816,
+            93.741803,
+            95.224001,
+            97.628567
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 46.5340165,
+          "p95_ms": 49.14582325,
+          "values_ms": [
+            49.699859,
+            47.483716,
+            46.402588,
+            46.665445,
+            46.103471,
+            46.0676
+          ]
+        },
+        "delta_pct": -51.346491436239525,
+        "regression": false
+      },
+      "kill_restart_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 94.508403,
+          "p95_ms": 96.18776600000001,
+          "values_ms": [
+            93.920713,
+            95.04392,
+            94.870248,
+            94.146558,
+            96.56904800000001,
+            93.851236
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 47.5503095,
+          "p95_ms": 48.294798750000005,
+          "values_ms": [
+            47.422250999999996,
+            47.717724000000004,
+            46.169863,
+            47.276878,
+            48.487157,
+            47.678368
+          ]
+        },
+        "delta_pct": -49.686686061132576,
+        "regression": false
+      }
+    },
+    "extra": {
+      "probe_source_sha256": "a916a1a3d63b49cde99b42343438bb673f11c23a5e49a1c942282b6e78478436",
+      "vm_id": "ud9dwuqzh3eehm4x6pwp0k36",
+      "trial_order": "A1/B1/B2/A2, 3 trials/leg",
+      "base_probe_sha256": "b5442cc185a868344c09b840ef64b3a1a86657ef84052a25ff0399f095d3b479",
+      "candidate_probe_sha256": "47819afd435d3c4bd14b38aeac63b0af354a2ba0b095d4e47ca2942d886f0709",
+      "cold_scope": "IpythonKernelProvisioner::ensure, not TUI ready/user-visible latency",
+      "same_binary_sha_on_prior_candidate": "56b1df215 candidate probe rebuilt same-path SHA 47819afd"
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Original PTY mock Python syntax was invalid (print marker then %who); response routing and marker-only output did not establish execution.",
+      "Corrected PTY fixture executed a checked cell but readiness detector timed out. All old PTY kernel.cell_exec and marker-only cold_start rows excluded.",
+      "Prior b0 family-edge workspace gate and isolated baseline both red; #2828 upstream fixture subsequently fixed.",
+      "Earlier 91eed head candidate first and second full suite failed different tests (agents_view_search and supervisor stats); both exact isolated tests green on candidate and pure base; not relabeled pass."
+    ],
+    "notes": "Final baa7 candidate full suite PASS, fmt and clippy PASS. Pure baa7 baseline production probe 6/6 valid and folded candidate 6/6 valid; snapshot file and persisted state checked. Candidate first-start repair after out-of-band installed rlm and dill removal succeeds, snapshot restore and kill/restart check valid. Pure fa4 baseline and pre-fix candidate both failed installed dill removal with missing snapshot (baseline parity gap). A/A earlier on older head used for calibration; no latest-head A/A; short last-head ABBA only, sampling and cold outliers noted. macOS unmeasured."
+  },
+  "outcome": "in-progress",
+  "decision": "Numerics accepted provisionally by orchestrator; PR pending review and both formal adversaries. Never merge on this record alone.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-031426-startup-kernel-boot-probe-memo.json",
+  "session": {
+    "worker": "perf-kernel-boot",
+    "session_dir": "/root/bench-root/homes/rust/trials/kernel_cell_exec-20260926-014925-kernel-boot-fixture-aa-base-00/agent/sessions/01a0db67-5ff7-747f-bb4d-764646d14307.jsonl"
+  },
+  "timestamp": "2026-09-26T03:14:26.525875+00:00"
+}
