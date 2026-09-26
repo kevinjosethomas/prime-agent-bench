@@ -5,15 +5,16 @@
  "approach": "Two surgical commits on pa-daemon session_store.rs, neither changing a row byte: (1) SessionScanAccumulator carries search_text_chars in lockstep with the one writer; append_capped_search_text takes and returns the running count (guard + append read the O(1) counter, fold stays O(messages)); lockstep + legacy-mirror unit tests added; the info_tests legacy reference fold now inlines the TS append (independent of the product helper). (2) The fold's BufReader capacity raised to SESSION_SCAN_READ_BUF_BYTES = 64KiB (line semantics, folded bytes, and resume cursor unchanged - only syscall chunking). Baseline-first evidence: per-stage replica probe split the cold fold at each tier; strace -cf census counted cold-pass syscalls at base and candidate.",
  "parity_notes": "Row/wire parity: the char counter equals chars().count() by construction (single writer updates it from exactly the chars it appends: space + taken chars; multibyte chars counted via the char iterator), proven by the lockstep test across multibyte/cap-cut/post-cap sequences and by identical probe checksums across ALL tiers and arms (100=762089, 1000=893085, 4096=3680629 on every slot both before and after). SessionInfo rows, JSONL bytes, wire/API, replay, streaming catalog, resume/torn-tail semantics untouched; the counter rides SessionScanState clones (clone_for_resume) like the corpus string. 64KiB buffer only changes read() chunking; read_line consumes identical lines. No TS semantic is reinterpreted: TS caps the same way; this only stops re-counting. Fixture audit on both VMs: shipped many-sessions tar verified (manifest sha fcc8f70a; 1099/1100 clean + the known stale-manifest row 100/01a0dad3 whose VM bytes equal the tarball sha 39fca708); 4096 tier is byte-exact 4x+96 copies of the 1000 tier (4096/4096 sha-verified).",
  "base": {
-  "revision": "7064d039a2e1d45b03d2d11bd70c020990b08b33",
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a",
   "note": "current origin/rust tip at PR time; earlier pairs used 60e2e198c and 6588b19cf (see iterations)"
  },
  "branch": "lane/hillclimb-catalog-cold",
  "commits": [
-  "43ce7e242",
-  "563ab79ac",
-  "ae46502d6",
-  "323f9fd20"
+  "43ce7e242d4e17089fd1611ef35bfb0a9c7c763a",
+  "563ab79ac77fb46810cd99a7563a097f734786cd",
+  "ae46502d62aa933f0e81d91d7e826971c42bfbd3",
+  "323f9fd2067f688d3a5d4763d0f224321d6f7766",
+  "3c7988ccd0f249fe73e55836b70f3a1f8f4ab57a"
  ],
  "build": {
   "sandbox_id": "yg3h81ljfc28qt3kdsf8qzny",
@@ -21,8 +22,8 @@
   "lanehead_binary_sha256": "727c6afae542e67bb6cd2736ef294098562f6cc7326b6d023b44fe87b0eb562e",
   "lanehead_binary_bytes": 211634688,
   "probe_base_sha256": "3bf287789c7f78056f279d9ef132ba74a17717dbbd9f2aa5394515b61070900d",
-  "probe_cand_sha256": "468114406261599898421fc052347d76d230b99fc311f65f730befc579091fdf",
-  "probe_note": "timing probe = pa-daemon example catalog_scan_probe (list_sessions, 7 passes, row checksum), identical source both arms; base probe at 6588b19cf, cand probe at lane head ae46502d6 (43ce7e242 counter + 563ab79ac 64KiB reads + fold merge of 6588b19cf); earlier arm shas: counter-only cand df1a6b96 (4b591fb5b superseded by fmt amend 43ce7e242), pre-fold cand e5bf3b67 (563ab79ac); base probe at 60e2e198c rebuilt twice = 1784dfab (reproducible) | post-fold-2 (#2865 pa-tui click, disjoint from pa-daemon): base probe at 7064d039a rebuilt = SAME sha 3bf28778 (pa-daemon lib unchanged), cand probe at 323f9fd20 = SAME sha 4681144062 - the pair binaries carry over byte-identical"
+  "probe_cand_sha256": "5836aded282a9e573fefdc4f63c9712f8e9f82818458f0ed870d672b145b4bbd",
+  "probe_note": "timing probe = pa-daemon example catalog_scan_probe (list_sessions, 7 passes, row checksum), identical source both arms; SETTLED-HEAD arms: base 3bf287789c at 7064d039ac, cand 5836aded2 at 3c7988ccd. PROBE-BYTES NOTE (binary-nondeterminism lesson, per reviewer #2's spot-check requirement): the cand probe at 3c7988ccd rebuilt to a DIFFERENT sha than the 323f9fd20 cand (5836aded2 vs 4681144062) even though the delta between those heads is test-only (cfg(test)) - release example bytes are not reproducible across content-identical-but-changed trees; this is exactly why the settled-head pair was re-run with the rebuilt arm. Earlier arm shas (HISTORICAL): base 1784dfab at 60e2e198c (rebuilt twice, byte-stable), counter-only cand df1a6b96 at 4b591fb5b (superseded by fmt amend 43ce7e242), pre-fold cand e5bf3b67 at 563ab79ac, post-fold-1 cand 4681144062 at ae46502d6 == 323f9fd20 (fold-2 #2865 is pa-tui-only, pa-daemon bytes unchanged), base 3bf287789c at 6588b19cf == 7064d039ac (pa-tui-only tip move)."
  },
  "gates": {
   "fmt": "PASS at ae46502d6 (cargo fmt --all --check, clean tree; probe/diag example sources are UNTRACKED on the VM only and are stashed for gates)",
@@ -37,24 +38,24 @@
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 52.019,
+     "p50_ms": 53.296,
      "values_ms": [
-      51.818,
-      52.019,
-      52.38
+      51.878,
+      53.296,
+      53.672
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 41.307,
+     "p50_ms": 41.708,
      "values_ms": [
-      40.871,
-      41.307,
-      43.951
+      40.861,
+      41.708,
+      42.756
      ]
     },
-    "delta_pct": -20.6,
+    "delta_pct": -21.7,
     "regression": false,
     "checksum": 762089
    },
@@ -62,48 +63,48 @@
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 0.4515,
+     "p50_ms": 0.4625,
      "values_ms": [
-      0.4385,
-      0.4515,
-      0.4635
+      0.4535,
+      0.4625,
+      0.474
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 0.437,
+     "p50_ms": 0.4585,
      "values_ms": [
-      0.436,
-      0.437,
-      0.459
+      0.4325,
+      0.4585,
+      0.4645
      ]
     },
-    "delta_pct": -3.2,
+    "delta_pct": -0.9,
     "regression": null
    },
    "catalog.1000.cold_ms": {
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 70.182,
+     "p50_ms": 70.373,
      "values_ms": [
-      68.083,
-      70.182,
-      71.56
+      69.348,
+      70.373,
+      70.615
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 57.291,
+     "p50_ms": 57.531,
      "values_ms": [
-      57.246,
-      57.291,
-      60.069
+      57.181,
+      57.531,
+      60.032
      ]
     },
-    "delta_pct": -18.4,
+    "delta_pct": -18.2,
     "regression": false,
     "checksum": 893085
    },
@@ -111,48 +112,48 @@
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 3.842,
+     "p50_ms": 4.0365,
      "values_ms": [
-      3.83,
-      3.842,
-      3.8885
+      3.9025,
+      4.0365,
+      4.631
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 3.862,
+     "p50_ms": 3.8905000000000003,
      "values_ms": [
-      3.8205,
-      3.862,
-      3.9290000000000003
+      3.8259999999999996,
+      3.8905000000000003,
+      3.9345
      ]
     },
-    "delta_pct": 0.5,
+    "delta_pct": -3.6,
     "regression": null
    },
    "catalog.4096.cold_ms": {
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 282.762,
+     "p50_ms": 282.823,
      "values_ms": [
-      281.907,
-      282.762,
-      284.117
+      281.093,
+      282.823,
+      287.011
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 234.841,
+     "p50_ms": 232.619,
      "values_ms": [
-      234.326,
-      234.841,
-      234.856
+      232.03,
+      232.619,
+      232.911
      ]
     },
-    "delta_pct": -16.9,
+    "delta_pct": -17.8,
     "regression": false,
     "checksum": 3680629
    },
@@ -160,24 +161,24 @@
     "baseline": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 18.2945,
+     "p50_ms": 18.384500000000003,
      "values_ms": [
-      18.2765,
-      18.2945,
-      18.6525
+      18.269,
+      18.384500000000003,
+      19.786
      ]
     },
     "candidate": {
      "trials": 3,
      "valid": 3,
-     "p50_ms": 18.368,
+     "p50_ms": 18.2905,
      "values_ms": [
-      18.2695,
-      18.368,
-      18.505000000000003
+      18.2825,
+      18.2905,
+      18.6205
      ]
     },
-    "delta_pct": 0.4,
+    "delta_pct": -0.5,
     "regression": null
    }
   },
@@ -269,41 +270,55 @@
    },
    "iterations": [
     {
-     "pair": "counter-only 43ce7e242 vs 60e2e198c (pre-fold)",
+     "label": "HISTORICAL pre-fold iteration (superseded by folds)",
+     "pair": "counter-only 43ce7e242 vs base 60e2e198c",
      "cold_100": "-19.2% (51.56->41.65)",
      "cold_1000": "-16.7% (68.82->57.33)",
      "cold_4096": "-15.3% (281.89->238.63)",
      "warm": "parity"
     },
     {
-     "pair": "counter+reads 563ab79ac vs 60e2e198c (pre-fold, final arms iter2)",
+     "label": "HISTORICAL pre-fold iteration (superseded by folds)",
+     "pair": "counter+reads 563ab79ac vs base 60e2e198c",
      "cold_100": "-21.1% (51.94->40.96)",
      "cold_1000": "-17.1% (68.75->56.99)",
      "cold_4096": "-17.4% (284.07->234.76)",
      "warm": "parity"
     },
     {
-     "pair": "counter+reads+fold ae46502d6 vs 6588b19cf (post-fold, clean rerun)",
+     "label": "HISTORICAL post-fold-1 (ancestor evidence; superseded head ae46502d6)",
+     "pair": "ae46502d6 vs base 6588b19cf",
      "cold_100": "-20.6% (52.02->41.31)",
      "cold_1000": "-18.4% (70.18->57.29)",
      "cold_4096": "-16.9% (282.76->234.84)",
      "warm": "parity"
     },
     {
-     "pair": "counter+reads+fold2 323f9fd20 vs 7064d039a (post-fold-2, same VM, same arm binaries)",
+     "label": "HISTORICAL post-fold-2 ancestor evidence (head 323f9fd20; delta since is test-only)",
+     "pair": "323f9fd20 vs base 7064d039ac",
      "cold_100": "-20.8% (51.69->40.95)",
      "cold_1000": "-15.9% (67.85->57.03)",
      "cold_4096": "-17.7% (284.32->233.92)",
      "warm": "parity (-1.6..-2.2%)"
+    },
+    {
+     "label": "SETTLED-HEAD PAIR (the suites' numbers)",
+     "pair": "3c7988ccd vs base 7064d039ac, cand probe REBUILT at the settled head (sha 5836aded2)",
+     "cold_100": "-21.7% (53.30->41.71)",
+     "cold_1000": "-18.2% (70.37->57.53)",
+     "cold_4096": "-17.8% (282.82->232.62)",
+     "warm": "parity (-3.6..-0.5%)",
+     "loadavg": "0.99 idle VM",
+     "note": "cfg(test)-only delta vs 323f9fd20 changed the release probe bytes (5836aded2 vs 4681144062) - the settled-head pair is the load-bearing evidence; the 323f pair is HISTORICAL ancestor evidence"
     }
    ]
   }
  },
  "validity": {
   "excluded": [],
-  "notes": "PRIMARY evidence = post-fold pair at the folded head (BCCBBC 3x3, same VM, sequential, sha-asserted per slot, /proc/loadavg around the window; one earlier post-fold pass voided by a disclosed cargo-build load spike on the 1000-tier C slots - superseded by the clean rerun). Row oracle: probe checksums identical across every arm/slot/pass at every tier; warm parity within +/-3.2% run noise. Delta class across three independent pairs: -15..-21% cold per tier, stable; the durable claim is the class, not one absolute. Post-fold provenance: git diff 6588b19cf..ae46502d6 = ONLY session_store.rs + session_store_info_tests.rs (the two lane commits) - no supervisor/worker hunks, no dropped hunks. Remaining cold cost at 1000 after the fix (~57ms): typed parse ~19ms + second SessionEntry parse ~15-20ms + statx/open/close/lseek syscalls ~10ms + acc/alloc ~10ms - the dominant next levers are the second full-Value parse (parity-risky: message_text semantics) and an on-disk persistent index (stale semantics) - both left to future lanes with this split recorded."
+  "notes": "PRIMARY evidence = post-fold pair at the folded head (BCCBBC 3x3, same VM, sequential, sha-asserted per slot, /proc/loadavg around the window; one earlier post-fold pass voided by a disclosed cargo-build load spike on the 1000-tier C slots - superseded by the clean rerun). Row oracle: probe checksums identical across every arm/slot/pass at every tier; warm parity within +/-3.2% run noise. Delta class across three independent pairs: -15..-21% cold per tier, stable; the durable claim is the class, not one absolute. Post-fold provenance: git diff 6588b19cf..ae46502d6 = ONLY session_store.rs + session_store_info_tests.rs (the two lane commits) - no supervisor/worker hunks, no dropped hunks. Remaining cold cost at 1000 after the fix (~57ms): typed parse ~19ms + second SessionEntry parse ~15-20ms + statx/open/close/lseek syscalls ~10ms + acc/alloc ~10ms - the dominant next levers are the second full-Value parse (parity-risky: message_text semantics) and an on-disk persistent index (stale semantics) - both left to future lanes with this split recorded. | SETTLED: suites hold the head-exact pair at 3c7988ccd/7064d039ac (cleanest run: idle VM loadavg 0.99); five pairs total across three bases hold the -15..-22% cold class; the probe-rebuild sha change on the test-only delta is disclosed in build.probe_note. | PHANTOM-SHA CORRECTION (reviewer #2 finding): the record's earlier base.revision values 7064d039a2e1d45... and 6588b19cf1d9659... were TRANSCRIPTION ERRORS (never-existing commit shas); corrected to the true merge-bases 7064d039ac3437596f75b44423d76a8f4bf4856a and 6588b19cfcd5263dcc3c73ad16120c064b1503f9 - the probe BINARY shas (sha256 of files, printed from sha256sum at build time) were always correct; only commit-id text was wrong."
  },
- "outcome": "pr-open",
+ "outcome": "pr-open-review-in-progress",
  "decision": "Orchestrator numeric review of the post-fold pair PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on the final PR SHA and operator disposition of the disclosed red gates (non-applicable benchmark CI 0/0; the registered interactive_daemon_e2e co-scheduling flake with base-red evidence). No merge by this worker.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2879",
  "record_path": "data/hillclimb/experiments/20260926-185033-startup-catalog-cold-fold-ocr.json",
@@ -311,5 +326,11 @@
   "worker": "perf-catalog-cold-fast",
   "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-38754d5b/01a0dc70-bcbd-7623-b886-211dbc4d80a4.jsonl"
  },
- "timestamp": "2026-09-26T18:50:33.644693+00:00"
+ "timestamp": "2026-09-26T18:50:33.644693+00:00",
+ "provenance": {
+  "settled_head": "3c7988ccd0f249fe73e55836b70f3a1f8f4ab57a",
+  "history": "Lane force-amended its own UNMERGED head twice: (1) 4b591fb5b -> 43ce7e242 (rustfmt on the new tests), (2) d90da0ad0 -> 9769f60a7 -> 563ab79ac (rustfmt on the BufReader line), and the test commit was amended fcd52b1680 -> 3c7988ccd after rustfmt (fcd52b1680 briefly had a fmt red - disclosed; CI at that sha must be ignored). No other worker's commits touched. All force-pushes are on lane/hillclimb-catalog-cold only.",
+  "merge_base": "7064d039ac3437596f75b44423d76a8f4bf4856a (current origin/rust tip; earlier pairs used bases 60e2e198c52ee6537db2eeb72206218a0c5b464b and 6588b19cfcd5263dcc3c73ad16120c064b1503f9 - both labeled per-iteration)",
+  "post_fold_rediff": "git diff 7064d039ac..3c7988ccd = crates/pa-daemon/src/session_store.rs + crates/pa-daemon/src/session_store_info_tests.rs ONLY (verified by worker and reviewer #2)"
+ }
 }
