@@ -351,7 +351,16 @@
  },
  "timestamp": "2026-09-26T08:05:00Z",
  "review_status": {
-  "reviewer_2": "BLOCK-convertible @ e11b326a4, same single item (CI shard 4/4 rerun queued, run 36265178071 job 108468554785); APPROVE issues on completion green or registered-flake-only.",
-  "reviewer_1": "APPROVE @ e11b326a4, effective upon CI shard 4/4 completing green-or-registered-flake (shards 1-3 + fmt + clippy already SUCCESS at this head; benchmark = standing non-applicable 0/0 red). Non-blocking nit applied in record. APPROVE carries across the queued fold ONLY under: upstream-only diff + tool_bridge hunk byte-identical + reviewer-verifies post-fold re-diff."
+  "reviewer_2": "WAIT (its ruling): flip requires a COMPLETED shard 4; discrimination accepted as the explanation; canary mechanism approved; escalation bound: if the degradation persists across the canary, surface to the orchestrator for an infra-window disposition decision.",
+  "reviewer_1": "EXPLICIT APPROVE - EFFECTIVE at e11b326a48a0ea90c908cfe4bcb2d6cbee1d9c2b (2026-09-26 ~21:20Z): shard-4 ceiling cancellation ruled environmental via the green-or-registered-flake triage clause on the upstream-confirmed discrimination. Bookkeeping conditions: this discrimination section verbatim (done), canary + rerun closure line to follow, head frozen; fold carries only under upstream-only + tool_bridge-byte-identical."
+ },
+ "ci_shard4_discrimination": {
+  "attempt_1": "cancelled at the ci.yml test-shard timeout-minutes:45 ceiling after 45m16s (step 'Run this shard's test subset'; all setup steps green)",
+  "attempt_2_rerun": "cancelled at the same ceiling after 45m18s (job 108476783024, 20:03-20:48Z window)",
+  "workflow_ceiling": "ci.yml test-shard job: timeout-minutes: 45",
+  "upstream_same_window": "upstream's own c7ca05f10 push: shard 4 cancelled at the same ceiling (20:04-20:45Z window) - the identical degraded-CI-infra window",
+  "green_family": "upstream 7064d039 shard 4 GREEN in 8m53s (18:35Z); upstream 5dbf6f653 shard 4 GREEN in 9m56s (19:46Z) - the same test-content family completes in <10min outside the degradation window",
+  "fleet_io_measurements": "lane VM fsync degradation measured in the same window: fresh-write+sync_all+rename class p50 23.34ms / repeat-fsync p50 23.42ms vs healthy 0.2-1ms (record validity.infra_regime_disclosure)",
+  "conclusion": "the shard-4 cancellations are a workflow-ceiling artifact of the measured CI-infra degradation window - environmental, upstream-confirmed, NOT a test red. Reviewer #1 ruled the triage clause satisfied: EXPLICIT APPROVE effective at e11b326a4 (2026-09-26, SHA-bound). Reviewer #2 rules WAIT: its flip requires a COMPLETED shard 4 (canary: upstream a40b33ea0 in flight; my rerun on recovery)."
  }
 }
