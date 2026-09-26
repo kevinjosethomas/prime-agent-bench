@@ -41,24 +41,34 @@ record = {
    "candidate) and trials. Baseline curve N in {1,10,50,100} x 2 trials at tip "
    "7064d039, then same-vm sequential ABBA (B C C B per N) at N in {1,100} twice: "
    "once at the iteration commit, once head-exact."),
- "base": {"revision": "7064d039ac3437596f75b44423d76a8f4bf4856a",
-          "newer_unfolded_tip": "a40b33ea0 (post-baseline head moves 9d9cf2da7 #2844, 5dbf6f653 #2866, c7ca05f10 #2878 supervisor split 2/8, a40b33ea0 #2887; pair measured untouched at 7064d039 per standing policy; ONE fold to batch at clean boundary)"},
- "branch": "lane/hillclimb-concurrent-io",
+ "base": {"revision": "7064d039ac3437596f75b44423d76a8f4bf4856a (baseline + 2 clean pairs)",
+          "settled_head_base": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480 (final gated pair; tip after #2844/#2866/#2877/#2878/#2887/#2879/#2884/#2880)",
+          "folds": "two batched folds at clean boundaries per standing policy: a40b33ea0 (fold_1790456504) then 1507d399b (fold_1790457270); post-fold re-diff vs each merge-base = exactly the lane change (6 files, +40/-25)"},
+ "branch": "lane/hillclimb-concurrent-io (settled head 4becda49a54abfbcc33413a6566947064760b378)",
  "commits": ["b56a2b332 (Arc<Value> event payloads)", "b4c89869b (2 missed send sites + test compile)",
-             "d3ac85973 (rustfmt/test helpers)", "ac83e5baf (style; head-exact pair commit)"],
+             "d3ac85973 (rustfmt/test helpers)", "ac83e5baf (style)",
+             "4d8d0e2f3 (fold a40b33ea0)", "4becda49a (fold 1507d399b; final head)"],
  "build": {"sandbox_id": "l0j1fuwrk79pvehuoevwn60f",
            "base_binary_sha256": BASE_SHA,
            "iteration_candidate_binary_sha256": "af49e01c2d1c7ac2fc35a0031f4993962713a9b4c162f977304d65d09f296ac4",
-           "head_exact_candidate_binary_sha256": "0967047cced911d33a49f746d6e1c550d3d527b62457bfba4edcc04fc49b1fa7",
+           "head_exact_candidate_binary_sha256": "0967047cced911d33a49f746d6e1c550d3d527b62457bfba4edcc04fc49b1fa7 (ac83e5baf @ 7064d039 lineage)",
+           "settled_head_base_binary_sha256": "88a5f37edf3f125173f82c4ca9b1505fe3d18e61ea9966140a0f9775f82808a0 (1507d399b)",
+           "settled_head_candidate_binary_sha256": "ab86a7935a446d646ba485781277389a11a1ab61590ab57035842a187c37ab8d (4becda49a)",
            "toolchain": "rustup 1.98.1 on ubuntu:22.04 (glibc 2.35); rustfmt+clippy components installed and exercised (real diffs/lints observed before green)"},
- "gates": {"fmt": "pass (ac83e5baf)",
-           "clippy": "pass --workspace --all-targets -D warnings (ac83e5baf)",
-           "test": "pa-daemon --lib --release: 747 passed / 2 failed, 6 ignored. "
-                   "FAILED-1 acp::compaction_arms::tests::threshold_arm_compacts_and_publishes_the_acp_meta: "
-                   "PRE-EXISTING AT TIP - reproduced on base 7064d039 exact (disclosed). "
-                   "FAILED-2 worker::tests::goal_turn_end_loop_runs_to_completion: ENVIRONMENT - needs "
-                   "packaged kernel runtime (uv + PI_PACKAGE_DIR) not present on the measurement VM "
-                   "(documented requirement, docs/parity-battery.md)."},
+ "gates": {
+   "measurement_vm_pa_daemon_scope_ac83e5baf": "fmt pass; clippy --workspace --all-targets -D warnings "
+       "pass; cargo test --release -p pa-daemon --lib: 747 passed / 2 failed, 6 ignored "
+       "(FAILED-1 acp::compaction_arms threshold meta test: PRE-EXISTING AT TIP - reproduced on base "
+       "7064d039 exact; it PASSED on the gate VM's kernel env - environment-sensitive; FAILED-2 "
+       "worker::tests::goal_turn_end_loop_runs_to_completion: ENVIRONMENT - needs packaged kernel "
+       "runtime per docs/parity-battery.md).",
+   "full_suite_vm_gate_4d8d0e2f3": "fleet_pipeline gate (rust:1-bookworm pooled VM, toolchain 1.98.1): "
+       "fmt GREEN, clippy GREEN, cargo test --workspace --no-fail-fast RED only on "
+       "mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - classified ACTIVE "
+       "KNOWN-RED (rotating daemon-timing flake family, citations auto-attached, NOT a lane red); "
+       "verdict RED_KNOWN_REDS = not merge evidence per the fleet rule.",
+   "full_suite_vm_gate_4becda49a": "gate_1790458149 armed at the settled head; verdict appended to the "
+       "PR thread when it lands (same classification rules)."},
  "measurements": BASE["measurements"],
  "decomposition": {
    "sup_cpu_per_append_fit": "base: a=515us + b=21.2us*N fits N=1/10/50/100 within 4% at both trials; candidate: b drops to ~5.9us*N (clone share ~15us of the 21us per session per append)",
@@ -70,17 +80,30 @@ record = {
    "idle_cpu": "supervisor idle ~0.06-0.13us/s per session at census; no per-session timer storm",
  },
  "claims": {
-   "primary": "supervisor CPU per append_custom_message at N=100 live sessions: "
-              "base 2670.6us (iteration pair; legs 2698/2641/2728/2615) and 2643.8us "
-              "(head-exact pair; legs 2672/2664/2676/2563) -> candidate 995.9us "
-              "(legs 977/1033/1060/915) and 1011.0us (legs 1010/926/1061/1047): "
-              "-62.5%/-63.0% (iteration, append1/append2) and -61.7%/-61.2% (head-exact) "
-              "- same-vm sequential ABBA, B C C B, sha-asserted binaries, all legs disclosed",
+   "primary": "supervisor CPU per append_custom_message at N=100 live sessions "
+              "(same-vm sequential ABBA, B C C B, sha-asserted binaries, all legs disclosed). "
+              "CLEAN-WINDOW pairs: at 7064d039 lineage base 2670.6us (legs 2698/2641/2728/2615) "
+              "-> candidate 995.9us (legs 977/1033/1060/915) = -62.5%, reproduced at ac83e5baf "
+              "2643.8us (legs 2672/2664/2676/2563) -> 1011.0us (legs 1010/926/1061/1047) = -61.7%. "
+              "AT THE SETTLED HEAD (base 1507d399b vs candidate 4becda49a), gated clean-window "
+              "append1 pair (both probe classes healthy at leg start): base 3566.9us (legs "
+              "3289.7/3844.2) -> candidate 1587.2us (legs 1524.7/1649.7) = -55.5%. The base's "
+              "per-append CPU is higher at the newer tip for BOTH binaries (~+35%, consistent "
+              "with larger upstream event payloads); the mechanism delta holds across all "
+              "clean pairs.",
    "secondary_none": "wall/latency: NO CLAIM - append wall and p50/p95 are dominated by "
-                     "the fdatasync barrier + storage regime (see regime below); the "
-                     "re-pair window ran a slower I/O regime (p50 3x the first pair) "
-                     "while the CPU legs stayed in-band, demonstrating the CPU metric's "
-                     "regime independence. N=1 CPU: NO CLAIM (B/C ranges overlap).",
+                     "the fdatasync barrier + storage regime. N=1 CPU: NO CLAIM (B/C "
+                     "ranges overlap at every lineage).",
+   "stability_observation": "under fleet I/O turbulence (fresh+rename probe class at "
+                            "~90ms p50 while the repeat class reads 0.19ms - the "
+                            "time-varying regime class per the fleet correction), the "
+                            "BASE binary's later-phase per-append CPU inflated 2-18x on "
+                            "4 of 4 base N=100 legs across two runs (append2 legs "
+                            "18298/7593/7994/3344us) while the CANDIDATE stayed within "
+                            "985-1650us on all 8 legs ever measured at any lineage; the "
+                            "clone-heavy fan-out is disproportionately fragile under "
+                            "host pressure. Directionally favorable to the candidate but "
+                            "magnitude is environment-dependent - NOT a numeric claim.",
    "projected_implication": "every session event pays the same per-connection cost class; "
                              "turn streaming emits many more events per request than "
                              "append_custom_message, so a daemon hosting many live "
@@ -141,9 +164,13 @@ record = {
    "per-connection event arm serializes from the shared Value. The change mirrors the "
    "worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers "
    "deref back to owned Values so test assertions are unchanged in meaning."),
- "decision": "PAIRED WIN on the mechanism (-62% supervisor CPU per event at N=100, "
-             "reproduced at two commits and two host regimes). Lane recommends PR "
-             "review; no PR opened yet (parent/orchestrator disposition; merge bar "
-             "requires numeric review + BOTH adversarial reviewers on final head).",
+ "decision": "PAIRED WIN on the mechanism (-62% supervisor CPU per event at N=100 in "
+             "clean windows at the 7064d039 lineage, reproduced twice; -55.5% on the "
+             "clean gated pair at the settled head 1507d399b/4becda49a where the base "
+             "itself got ~35% more expensive per event; plus the stability observation "
+             "favoring the candidate under turbulence). Parent disposition: OPEN THE "
+             "PR - opened via fleet_pipeline with the scoped claim. No merge: numeric "
+             "review + BOTH adversarial reviewers on the settled PR head + effective "
+             "conditions + standard dispositions remain the bar.",
 }
 print(json.dumps(record, indent=1, sort_keys=True))

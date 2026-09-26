@@ -21,6 +21,16 @@ def load(run):
     return json.loads((RUNS / run / "result.json").read_text())
 
 
+def load_valid(run):
+    """A leg's metrics if it validated; a marker dict if it crashed."""
+    r = json.loads((RUNS / run / "result.json").read_text())
+    if not r.get("validated"):
+        return {"run": run, "N": r.get("workers"), "validated": False,
+                "binary_sha256": r.get("binary_sha256"),
+                "note": "leg crashed (resume-storm worker-connect flake); excluded from pair means"}
+    return run_metrics(r)
+
+
 def percentile(values, p):
     ordered = sorted(values)
     index = (len(ordered) - 1) * p
@@ -58,11 +68,15 @@ def run_metrics(r):
 
 
 def paired(names_b, names_c):
-    b = [run_metrics(load(name)) for name in names_b]
-    c = [run_metrics(load(name)) for name in names_c]
+    b_all = [load_valid(name) for name in names_b]
+    c_all = [load_valid(name) for name in names_c]
+    b = [row for row in b_all if row.get("validated")]
+    c = [row for row in c_all if row.get("validated")]
     def legs(rows, phase):
         return [row[f"sup_cpu_per_{phase}_us"] for row in rows]
-    out = {"base_runs": b, "candidate_runs": c}
+    out = {"base_runs": b_all, "candidate_runs": c_all,
+           "excluded_legs": [row["run"] for row in b_all + c_all
+                             if not row.get("validated")]}
     for phase in ("append1", "append2"):
         bl, cl = legs(b, phase), legs(c, phase)
         bm, cm = st.mean(bl), st.mean(cl)
@@ -99,6 +113,8 @@ def main():
                          ["confirm2-n1-C-1", "confirm2-n1-C-2"])
     confirm2_n100 = paired(["confirm2-n100-B-0", "confirm2-n100-B-3"],
                            ["confirm2-n100-C-1", "confirm2-n100-C-2"])
+    confirm3_n100 = paired(["confirm3-n100-B-0", "confirm3-n100-B-3"],
+                           ["confirm3-n100-C-1", "confirm3-n100-C-2"])
     regime = []
     for line in (RUNS / "abba-regime-watch.jsonl").read_text().splitlines():
         line = line.strip()
@@ -143,7 +159,8 @@ def main():
             "intermediate_confirm_a40b33ea0_lineage_n1_SUSPECT": confirm_n1,
             "intermediate_confirm_a40b33ea0_lineage_n100_SUSPECT": confirm_n100,
             "final_pair_1507d399b_lineage_n1": confirm2_n1,
-            "final_pair_1507d399b_lineage_n100": confirm2_n100,
+            "final_pair_1507d399b_lineage_n100_SUSPECT_contaminated": confirm2_n100,
+            "final_gated_pair_1507d399b_lineage_n100": confirm3_n100,
         },
         "regime": {
             "fsync_probe": "4KB fdatasync x20 per probe, 20s cadence during ABBA",
