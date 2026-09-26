@@ -55,7 +55,12 @@ class MsgSend(Benchmark):
         app = product.launch(ctx, driver)
         try:
             first_paint(app)
-            app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint)
+            # mid-probe dialogs (codex's per-launch model-migration NUX) are
+            # answered inline: the dismissal time is excluded from the
+            # readiness gap and disclosed per row; the submit metrics start
+            # at the Enter keystroke, after the editor is verified bare
+            app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint,
+                                  dialog_steps=product.dialog_steps)
             app.erase_all(PROBE_TOKEN)
             routing_pre = ctx.get("routing") or product.msg_routing
             prompt = REAL_API_PROMPT if routing_pre == "real-api" else "bench hello"
