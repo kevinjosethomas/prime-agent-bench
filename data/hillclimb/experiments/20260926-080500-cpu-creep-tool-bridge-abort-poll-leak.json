@@ -5,12 +5,14 @@
  "approach": "(1) Substrate repair: small-VM kernel-venv bootstrap root cause = bare-registry uv fallback when no prime-agent-runtime sidecar is visible (private package, not on PyPI; fails instantly, stderr nulled -> looked like a hang); fix = exe-adjacent packaged layout (git archive of the pinned commit: prime-agent-runtime + skills/), daemon bootstrap then ~12s. (2) probe_long_horizon.py read_stat bug fixed (read majflt/cmajflt instead of utime/stime; verified vs rusage; v1 CPU columns invalid, labeled). (3) 45-min baseline + per-thread attribution (wchan + vol deltas). (4) Fix: park the tool-bridge abort watcher on signal.aborted() (commit 53bce8e93 on lane/hillclimb-cpu-creep; fold merge 9cd7bb336 = 60e2e198c + fix). (5) Same-VM sequential ABBA b,c,c,b, 600s windows, sha-asserted swaps, same warm venv (Rust-only diff, sidecar unchanged), settle-OK template, kernel marker cell per slot (one completed tool call = the measured condition). Pair at the CURRENT tip 60e2e198c: base de46fabd... vs cand 13356ca2... (both built on ubuntu:22.04/glibc-2.35; the rust:1-image build 5dfb13b6 requires glibc 2.39 and is unusable on the 4c platform - platform lesson memorized). Historical corroboration: identical result on the pre-fold pinned pair (d3763dca base e7ad6696 vs 53bce8e93 cand 2087cca2).",
  "parity_notes": "pa-core only, 8 insertions/10 deletions in session_engine/tool_bridge.rs. Abort semantics preserved and improved (cancellation latency from <=10ms poll to immediate); an uninterrupted call now parks the watcher on the watch channel (AbortSignal::aborted uses the watch rx; pa-agent's own tests use this idiom). No TUI/daemon/wire changes; no new allocations (fewer steady-state timer ops); session JSONL replay, RLM API, prompts, user-visible behavior untouched. Linux x86_64 measured; aarch64/macOS not measured (no platform-specific code touched).",
  "base": {
-  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b"
+  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b",
+  "revision_final": "7064d039a"
  },
  "branch": "lane/hillclimb-cpu-creep",
  "commits": [
   "53bce8e93",
-  "9cd7bb336"
+  "9cd7bb336",
+  "e11b326a4"
  ],
  "build": {
   "sandbox_id": "csk8g1n5vfcijsavbdx9c2ob",
@@ -33,12 +35,27 @@
     "sha256": "2087cca213ab3d7b45e5bab0c5037569f59101902512b067ae061e3aaefb1e52",
     "revision": "53bce8e93"
    }
+  },
+  "final_head_build": {
+   "pr_head": "e11b326a48a0ea90c908cfe4bcb2d6cbee1d9c2b",
+   "base_pure_tip": "7064d039a",
+   "base_binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+   "base_binary_bytes": 212081960,
+   "cand_binary_sha256": "7662e775098d52d6be6b3cd239f46658d301054f49c06af0433e7b88de545983",
+   "cand_binary_bytes": 212052592,
+   "toolchain": "ubuntu:22.04 (glibc 2.35), rustc 1.98.1",
+   "post_fold_re_diff": "git log 60e2e198c..7064d039 -- crates/pa-core/src/session_engine/tool_bridge.rs = empty (upstream never touched the file); fold hunk byte-identical to 53bce8e93"
   }
  },
  "gates": {
   "fmt": "pass (rc=0 on 9cd7bb336, both rust:1 and ubuntu:22.04 builds; first rust:1 run was red only because the minimal rustup profile lacks rustfmt - component added)",
   "clippy": "pass (rc=0, --workspace --all-targets -D warnings, both builds)",
-  "test": "rc=101: 2 of 32 tests in pa-cli interactive_daemon_e2e fail (tui_refused_submit_restores_the_draft_after_the_round_trip, tui_prompt_stash_restores_a_pasted_image_with_the_draft) - REPRODUCED IDENTICALLY ON PURE BASE 60e2e198c in the same environment (base_e2e_rc=101, same 2 failures), i.e. pre-existing upstream/environment condition on the new tip's backpressure-refusal surface, NOT caused by this fix. Disclosed for operator disposition; never called green."
+  "test": "rc=101: 2 of 32 tests in pa-cli interactive_daemon_e2e fail (tui_refused_submit_restores_the_draft_after_the_round_trip, tui_prompt_stash_restores_a_pasted_image_with_the_draft) - REPRODUCED IDENTICALLY ON PURE BASE 60e2e198c in the same environment (base_e2e_rc=101, same 2 failures), i.e. pre-existing upstream/environment condition on the new tip's backpressure-refusal surface, NOT caused by this fix. Disclosed for operator disposition; never called green.",
+  "final_head_e11b326a4": {
+   "fmt": "pass rc=0",
+   "clippy": "pass rc=0",
+   "test": "rc=101: pa-cli interactive_daemon_e2e flake class - failing SET VARIES RUN-TO-RUN on the same binary (fold run: 3 failed incl refused_submit; pure-base run: 2 failed incl refused_submit; earlier runs: 2 different); PURE BASE 7064d039 reproduces failures (base7064_rc=101, 30 passed/2 failed, same refused_submit + prompt_stash) -> pre-existing upstream/environment flake, NOT from this fix. Disclosed; operator disposition required."
+  }
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -224,6 +241,84 @@
      }
     },
     "notes": "HISTORICAL (d3763dca): the lane's diagnosis run; creep question answered negative."
+   },
+   "cpu.worker_idle_wake_leak_abba_450s_final_head": {
+    "order": [
+     "b1",
+     "c2",
+     "c3",
+     "b4"
+    ],
+    "baseline": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      106.4,
+      106.5
+     ],
+     "worker_cpu_ms_per_450s": [
+      460,
+      510
+     ],
+     "worker_rss_mb": [
+      437.4,
+      394.9
+     ],
+     "tui_thread_wakes_per_s": [
+      185.2,
+      182.4
+     ],
+     "tui_cpu_ms_per_450s": [
+      760,
+      810
+     ],
+     "keystroke_p50_ms": [
+      0.37,
+      0.48
+     ],
+     "keystroke_p95_ms": [
+      0.45,
+      0.55
+     ]
+    },
+    "candidate": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      2.1,
+      2.0
+     ],
+     "worker_cpu_ms_per_450s": [
+      30,
+      30
+     ],
+     "worker_rss_mb": [
+      378.6,
+      417.9
+     ],
+     "tui_thread_wakes_per_s": [
+      183.6,
+      184.3
+     ],
+     "tui_cpu_ms_per_450s": [
+      840,
+      970
+     ],
+     "keystroke_p50_ms": [
+      0.49,
+      0.57
+     ],
+     "keystroke_p95_ms": [
+      0.55,
+      0.6
+     ]
+    },
+    "delta_pct": {
+     "worker_wakes": -98.1,
+     "worker_cpu_median": -93.9
+    },
+    "regression": false,
+    "notes": "FINAL PR-SHA confirmation pair (base 994c5563 = pure 7064d039 vs cand 7662e775 = e11b326a4), 480s horizon/450s windowed, 4/4 ok, fixture sentinel True, one marker cell per slot. Third independent pair confirming identical separation."
    }
   },
   "extra": {
@@ -245,8 +340,8 @@
   ],
   "notes": "New-tip ABBA 4/4 valid: sha-asserted swaps (de46fabd/13356ca2), settle OK, same warm venv (runtime sidecar unchanged between commits), revision pinned per slot, mock serving kernel_script, fixture sentinel True in all slots, host stable (TUI wake metronome 182.6-187.0/s across all slots, loadavg ~0). Historical pair 4/4 valid likewise. Head moved twice more during the pair (6588b19c supervisor split, 7064d039 pa-tui click) - per standing policy the in-flight pair finished untouched; the next single append-only fold is queued at the clean PR boundary with post-fold re-diff of the tool_bridge hunk (disjoint from pa-tui/pa-daemon moves)."
  },
- "outcome": "in-progress (PR open, review pending)",
- "decision": "pending orchestrator numeric review + adversarial reviewers + operator disposition of the disclosed pre-existing e2e red",
+ "outcome": "final-SHA evidence complete; awaiting reviewer verdicts + operator disposition",
+ "decision": "orchestrator numeric review: provisionally accepted (per parent message); both adversarial reviewer verdicts pending on e11b326a4; operator disposition of the disclosed pre-existing e2e flake class pending",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2880",
  "record_path": "data/hillclimb/experiments/20260926-080500-cpu-creep-tool-bridge-abort-poll-leak.json",
  "session": {
