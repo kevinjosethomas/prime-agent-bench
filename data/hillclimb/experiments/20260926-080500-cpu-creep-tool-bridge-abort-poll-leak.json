@@ -245,9 +245,9 @@
   ],
   "notes": "New-tip ABBA 4/4 valid: sha-asserted swaps (de46fabd/13356ca2), settle OK, same warm venv (runtime sidecar unchanged between commits), revision pinned per slot, mock serving kernel_script, fixture sentinel True in all slots, host stable (TUI wake metronome 182.6-187.0/s across all slots, loadavg ~0). Historical pair 4/4 valid likewise. Head moved twice more during the pair (6588b19c supervisor split, 7064d039 pa-tui click) - per standing policy the in-flight pair finished untouched; the next single append-only fold is queued at the clean PR boundary with post-fold re-diff of the tool_bridge hunk (disjoint from pa-tui/pa-daemon moves)."
  },
- "outcome": "in-progress",
+ "outcome": "in-progress (PR open, review pending)",
  "decision": "pending orchestrator numeric review + adversarial reviewers + operator disposition of the disclosed pre-existing e2e red",
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2880",
  "record_path": "data/hillclimb/experiments/20260926-080500-cpu-creep-tool-bridge-abort-poll-leak.json",
  "session": {
   "worker": "perf-cpu-creep-fast",
