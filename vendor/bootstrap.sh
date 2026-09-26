@@ -13,7 +13,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "[bootstrap] apt deps"
 apt-get update -qq
-apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils
+apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils bubblewrap
 
 echo "[bootstrap] node 22 (nodesource)"
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null
@@ -30,7 +30,7 @@ else
 fi
 
 echo "[bootstrap] version checks ($PRODUCTS)"
-RUST=/root/bench/repos/prime-agent-rust/target/release/prime-agent
+RUST=/root/.local/bin/prime-agent-rust
 TS=/root/.local/share/prime-agent/bin/prime-agent
 PI=/root/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
 case ",$PRODUCTS," in

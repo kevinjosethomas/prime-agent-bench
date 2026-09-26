@@ -1,0 +1,1166 @@
+{
+ "children": [
+  {
+   "object": "block",
+   "type": "heading_1",
+   "heading_1": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Benchmark summary"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_ready_ms p50=292.8 (n=10), trials aa=20, w1=10, rank 2, -49.1% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_ready_ms p50=575.6 (n=10), trials aa=20, w1=10, rank 5, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: launch_to_ready_ms p50=310.8 (n=10), trials aa=20, w1=10, rank 4, -46.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: launch_to_ready_ms p50=295.7 (n=10), trials aa=20, w1=10, rank 3, -48.6% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: launch_to_ready_ms p50=241.5 (n=10), trials aa=20, w1=10, rank 1, -58.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified, Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.install_disk"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: installed_bytes p50=206668003 (n=10), trials w1=10, rank 2, +20.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: installed_bytes p50=172192855 (n=10), trials w1=10, rank 1, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: installed_bytes p50=483322595 (n=10), trials w1=10, rank 5, +180.7% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: installed_bytes p50=391253952 (n=10), trials w1=10, rank 3, +127.2% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: installed_bytes p50=462249835 (n=10), trials w1=10, rank 4, +168.4% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified, Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.memory_idle_load"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: rss_settled_mb p50=550.5 (n=10), trials w1=10, rank 1, -51.4% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: rss_settled_mb p50=1131.9 (n=8), trials w1=8, rank 2, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_comparable \u2014 claude has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_comparable \u2014 codex has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_comparable \u2014 pi has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: excluded 2 trials (fixture_not_confirmed=2)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.msg_send"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: submit_to_ack_ms p50=1.4 (n=10), trials w1=10, rank 3, -30.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: submit_to_ack_ms p50=2.0 (n=10), trials w1=10, rank 4, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: submit_to_ack_ms p50=45.4 (n=10), trials w1=10, rank 5, +2170.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: submit_to_ack_ms p50=0.2 (n=10), trials w1=10, rank 1, -90.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: submit_to_ack_ms p50=1.1 (n=10), trials w1=10, rank 2, -45.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified, Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: excluded 1 trials (real_api_regime=1)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.scroll_typing"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: typing_ms_p50 p50=1.0 (n=10), trials w1=10, rank 1"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_comparable \u2014 claude has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_comparable \u2014 codex has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_comparable \u2014 pi has no native session-10mib fixture: its argv ignores resume_fixture, and spec \u00a7F large-session rows require a vendor-native fixture (sentinel + message count equivalence)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: excluded 10 trials (fixture_not_confirmed=1, validation_failed=9)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.warm_start"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_ready_ms p50=276.3 (n=10), trials w1=10, rank 2, -35.4% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_ready_ms p50=427.6 (n=10), trials w1=10, rank 5, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: launch_to_ready_ms p50=310.8 (n=10), trials w1=10, rank 4, -27.3% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: launch_to_ready_ms p50=297.1 (n=10), trials w1=10, rank 3, -30.5% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: launch_to_ready_ms p50=177.9 (n=10), trials w1=10, rank 1, -58.4% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Claude Code=qualified, Codex CLI=qualified, Pi Mono=qualified, Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "daemon.boot"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: spawn_to_accept_ms p50=30.8 (n=10), trials w1=10, rank 1, -72.7% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: spawn_to_accept_ms p50=112.9 (n=10), trials w1=10, rank 2, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 benchmark applies to ['rust', 'ts'] only"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=qualified, Prime Agent TS=qualified"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.agent_view_roundtrip"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: chat_to_agents_ms p50=118.7 (n=10), trials w1=10, rank 2, +71.5% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: chat_to_agents_ms p50=69.2 (n=7), trials w1=7, rank 1, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC section A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: excluded 3 trials (fixture_not_confirmed=3)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "session.cold_open_10mib"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent Rust: launch_to_ready_ms p50=22504.3 (n=10), trials w1=10, rank 2, +3019.1% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: launch_to_ready_ms p50=721.5 (n=7), trials w1=7, rank 1, +0.0% vs ts"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Claude Code: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Codex CLI: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Pi Mono: not_applicable \u2014 session.* benchmarks resume the Prime session fixture; BENCHMARK_SUITE_SPEC \u00a7A scopes them to Prime Agent Rust/TS"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Comparability: Prime Agent Rust=equivalent, Prime Agent TS=equivalent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "Prime Agent TS: excluded 3 trials (fixture_not_confirmed=3)"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "paragraph",
+   "paragraph": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": ""
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "heading_2",
+   "heading_2": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "A/A calibration"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/claude: a=331.6 b=316.2 spread=4.9% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/codex: a=296.6 b=295.4 spread=0.4% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/pi: a=238.1 b=243.9 spread=2.4% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/rust: a=292.5 b=294.7 spread=0.8% valid"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "object": "block",
+   "type": "bulleted_list_item",
+   "bulleted_list_item": {
+    "rich_text": [
+     {
+      "type": "text",
+      "text": {
+       "content": "compare.cold_start/ts: a=589.3 b=592.0 spread=0.5% valid"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

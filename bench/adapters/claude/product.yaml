@@ -1,28 +1,54 @@
-# Claude Code — the complete product config, one file.
 binary: /usr/bin/claude
 revision: npm@latest
 install:
-  installed_paths: [/usr/lib/node_modules/@anthropic-ai]
-  npm_pkg: "@anthropic-ai/claude-code"
-  npm_version: "2.1.281"
+  installed_paths:
+  - /usr/lib/node_modules/@anthropic-ai
+  npm_pkg: '@anthropic-ai/claude-code'
+  npm_version: 2.1.283
 auth_sources:
-  - {src: ~/.claude, excl: [projects, todos, statsig, shell-snapshots], note: authenticated state minus project data}
-  - {src: ~/.claude.json, note: product config with projects stripped}
+- src: ~/.claude
+  excl:
+  - projects
+  - todos
+  - statsig
+  - shell-snapshots
+  note: authenticated state minus project data
+- src: ~/.claude.json
+  note: product config with projects stripped
+- src: ~/.prime/config.json
+  note: Prime API key + team id for the real-api Anthropic-protocol route (Prime Inference)
 first_run_dialogs:
-  - marker: "1. Auto (match terminal)"
-    keys: [enter]
-    intent: "theme picker"
-  - marker: "Do you want to use this API key?"
-    keys: [up, enter]
-    intent: "Yes (the mock provider key)"
-  - marker: "Press Enter to continue"
-    keys: [enter]
-    intent: "security note"
-  - marker: "Is this a project you created or one you trust?"
-    keys: [down, enter]
-    intent: "workspace trust"
+- marker: 1. Auto (match terminal)
+  keys:
+  - enter
+  intent: theme picker
+- marker: Do you want to use this API key?
+  keys:
+  - up
+  - enter
+  intent: Yes (the mock provider key)
+- marker: Press Enter to continue
+  keys:
+  - enter
+  intent: security note
+- marker: Is this a project you created or one you trust?
+  keys:
+  - down
+  - enter
+  intent: workspace trust
 vendor:
-  - {src: /usr/lib/node_modules/@anthropic-ai, dst: usr/lib/node_modules/@anthropic-ai}
-  - {src: /usr/bin/claude, dst: usr/bin/claude}
-  - {src: ~/.claude, dst: root/.claude, exclude: [projects, todos, statsig, shell-snapshots]}
-  - {src: ~/.claude.json, dst: root/.claude.json}
+- src: /usr/lib/node_modules/@anthropic-ai
+  dst: usr/lib/node_modules/@anthropic-ai
+- src: /usr/bin/claude
+  dst: usr/bin/claude
+- src: ~/.claude
+  dst: root/.claude
+  exclude:
+  - projects
+  - todos
+  - statsig
+  - shell-snapshots
+- src: ~/.claude.json
+  dst: root/.claude.json
+- src: ~/.prime/config.json
+  dst: root/.prime/config.json

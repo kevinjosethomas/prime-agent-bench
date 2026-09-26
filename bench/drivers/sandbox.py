@@ -168,7 +168,7 @@ def setup_sandbox(cfg: dict, parallel_config_path, name: str, products: list,
     handle = backend.provision(name, spec)
     handle.note("sandbox setup: provisioned")
     try:
-        deploy_harness(backend, handle, harness_bundle())
+        deploy_harness(backend, handle, harness_bundle(), cfg=cfg)
         handle.note("sandbox setup: harness + vendor deployed, bootstrap ran")
         reference_ms = run_reference(backend, handle)
         handle.note(f"sandbox setup: reference {reference_ms:.0f}ms")

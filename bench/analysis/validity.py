@@ -33,10 +33,13 @@ Captured failure classes it excludes (reason codes):
   Such benchmarks stay unrankable until they record real completion
   evidence in their own scope.
 - ``real_api_regime``: msg_send rows routed through the real API
-  (``msg_routing == "real-api"``) while the benchmark's peers measure the
-  scripted mock; the settle detector fires on any screen growth, so the
-  observed Codex 401 auth-error render certifies as a "settle" —
-  cross-regime values never rank.
+  (``msg_routing == "real-api"``) that were NOT certified: the settle
+  detector of the growth era fired on any screen change, so the observed
+  Codex 401 auth-error render certified as a "settle". A real-api row
+  ranks only with ``real_api_certified`` — the sentinel reply the prompt
+  demanded actually rendered (a uniform real-api campaign sets the
+  per-benchmark ``msg_routing`` override so the compared rows share one
+  regime).
 - ``incomplete_measurement``: a declared completeness metric was falsy
   (e.g. scroll_typing ``typing_ok`` — a dropped key truncates the typing
   sequence).
@@ -174,7 +177,7 @@ def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
         return classify_error(str(row["error"]))
     if row.get("product") in settle_auth:
         return "settle_auth_error"
-    if row.get("msg_routing") == "real-api":
+    if row.get("msg_routing") == "real-api" and not row.get("real_api_certified"):
         return "real_api_regime"
     if meta.get("requires_fixture") and not fixture_confirmed(row):
         return "fixture_not_confirmed"

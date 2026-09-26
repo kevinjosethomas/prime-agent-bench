@@ -14,6 +14,17 @@ from typing import TYPE_CHECKING, TypedDict
 
 from bench.core.env import BenchLayout, make_workdir
 
+
+def copy_tree(src: Path, dst: Path) -> None:
+    """Copy a template dir into a trial dir, skipping special files.
+
+    Sockets/fifos are runtime artifacts, never product state, and copytree
+    raises on them; rsync without --specials skips them by type."""
+    import subprocess
+    dst.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["rsync", "-a", "--no-specials", "--no-devices",
+                    str(src) + "/", str(dst) + "/"], check=True)
+
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers
     from bench.core.harness import HarnessDriver, Session
 
@@ -27,6 +38,7 @@ class TrialContext(TypedDict, total=False):
     tmp: Path
     agent_dir: Path | None
     daemon_socket: Path | None
+    routing: str
 
 
 DialogStep = tuple[str, list[str]]
@@ -158,8 +170,18 @@ class ProductAdapter(ABC):
         return self.layout.homes / self.name / "template"
 
     def new_trial(self, trial: Path) -> TrialContext:
-        """Materialize an isolated trial (template home + fresh work repo)."""
-        shutil.copytree(self.template_dir(), trial / "home", symlinks=True)
+        """Materialize an isolated trial (template home + fresh work repo).
+
+        The trial home is the template's HOME dir (template/home), not the
+        template dir itself: copying the whole template nested a dead
+        home/ + agent/ INSIDE every trial home, so the authed template
+        state (claude/codex homes) never reached the product — trials
+        booted fresh and the prepass had to re-walk onboarding (the
+        captured codex login screen came from exactly this). The copy
+        also skips special files (sockets/fifos): a settle launch can
+        leave runtime sockets inside the template home, and copytree
+        dies on them — runtime junk is never product state."""
+        copy_tree(self.template_dir() / "home", trial / "home")
         work = trial / "work"
         make_workdir(work)
         (trial / "tmp").mkdir(exist_ok=True)
@@ -173,6 +195,13 @@ class ProductAdapter(ABC):
         }
         self.customize_trial(ctx)
         return ctx
+
+    def apply_routing(self, ctx: TrialContext) -> None:
+        """Apply the resolved per-trial routing regime (run_trials calls
+        this right after new_trial, once ``ctx["routing"]`` is known).
+        Routing-aware adapters reconfigure the trial's provider/auth here
+        (default: nothing to do)."""
+        return None
 
     def customize_trial(self, ctx: TrialContext) -> None:
         """Per-trial state overrides (agent dirs, daemon sockets)."""

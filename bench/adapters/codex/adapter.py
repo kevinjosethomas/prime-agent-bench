@@ -18,6 +18,7 @@ only with real auth (Kevin's call) or a codex that accepts the mock
 wire_api (product.yaml flip to ``mock``)."""
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -30,6 +31,20 @@ class CodexProduct(ProductAdapter):
     name = "codex"
     display_name = "Codex CLI"
     needs_prepass = True
+    # codex 0.157's resolved default under ChatGPT auth (session rollouts
+    # record model "gpt-6-sol", model_provider "openai")
+    DEFAULT_MODEL = "openai/gpt-6-sol"
+    # the api-key route's pinned model: the newest one the key actually
+    # serves on /v1/responses (verified live: gpt-5.6-sol replies; the
+    # codex-family models 404 under an API key despite appearing in the
+    # catalog; gpt-6-sol itself is ChatGPT-backend-only). Every key-served
+    # model opens the "Meet GPT-6 ..." migration NUX on each launch, so the
+    # dialog join the walk and the measured probe answers it inline.
+    KEY_MODEL = "gpt-5.6-sol"
+    #: where the real OpenAI API key lives on the node (pi's auth.json
+    #: carries it under the "openai" entry; codex's own vendor payload
+    #: ships the ChatGPT OAuth instead)
+    KEY_SOURCE = Path.home() / ".pi" / "agent" / "auth.json"
     # argv() ignores resume_fixture: no native Prime-JSONL resume; a
     # vendor-native history fixture (spec §F) does not exist yet.
     resume_fixture_capable = False
@@ -61,4 +76,43 @@ class CodexProduct(ProductAdapter):
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
-        return [str(self.binary)]
+        # --no-daemon: codex 0.157's background app-server binds a UNIX
+        # socket under $HOME/.codex/app-server-control/, and the isolated
+        # trial-home paths exceed the kernel's 107-char socket path limit
+        # (node AND sandbox geometry); codex's own error message
+        # recommends this fallback for exactly that case
+        argv = [str(self.binary), "--no-daemon"]
+        if ctx.get("routing") == "real-api":
+            argv += ["-m", self.KEY_MODEL]
+        return argv
+
+    def apply_routing(self, ctx: TrialContext) -> None:
+        """Real-api routing re-auths the trial home with the API key.
+
+        The ChatGPT OAuth cannot survive isolated trial homes: its refresh
+        token is single-use, so the first trial's refresh rotates the token
+        family and every other copy (template included) answers "refresh
+        token was already used" with the login screen — proven live in the
+        sandbox. Codex's own api-key auth mode (its login menu option 3)
+        has no rotation: the key lands in the trial auth.json and every
+        trial authenticates."""
+        if ctx.get("routing") != "real-api":
+            return
+        key = ""
+        try:
+            key = json.loads(self.KEY_SOURCE.read_text()).get("openai", {}).get("key", "")
+        except (OSError, ValueError):
+            pass
+        if not key:
+            raise RuntimeError("codex real-api routing needs the OpenAI API key at "
+                               f"{self.KEY_SOURCE} (openai.key)")
+        auth = {"auth_mode": "apikey", "OPENAI_API_KEY": key}
+        codex_dir = ctx["home"] / ".codex"
+        codex_dir.mkdir(parents=True, exist_ok=True)
+        (codex_dir / "auth.json").write_text(json.dumps(auth, indent=1))
+
+    def model_info(self, ctx: TrialContext) -> str:
+        """The model a real-api submit routes to (evidence per row)."""
+        if ctx.get("routing") == "real-api":
+            return f"openai/{self.KEY_MODEL} (api-key)"
+        return self.DEFAULT_MODEL

@@ -1,0 +1,51 @@
+# Five-product benchmark campaign 2026-09-25 (latest versions, real-api msg_send).
+# Controller-side config: ~/bench tree, campaign results, per-benchmark overrides.
+bench_root: ~/bench-cmp5
+results_dir: ~/bench-cmp5/results-campaign-20260925
+
+product_order: [rust, ts, claude, codex, pi]
+display:
+  rust: Prime Agent Rust
+  ts: Prime Agent TS
+  claude: Claude Code
+  codex: Codex CLI
+  pi: Pi Mono
+
+install:
+  node_runtime_paths: [/usr/lib/node_modules/npm, /usr/bin/node]
+
+driver: pty
+mock:
+  port: 8788
+
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv}
+
+settle:
+  timeout_s: 300.0
+  first_paint_timeout_s: 240.0
+  key_pause_s: 0.7
+  loop_s: 0.8
+  echo_wait_s: 1.2
+
+aa:
+  spread_threshold_pct: 10.0
+
+noop_control:
+  rounds: 30
+
+load_gate:
+  compile_markers: [rustc, cargo, /tsc, esbuild, npm exec, node-gyp, cc1, clang]
+  load_threshold: 0.6
+  max_wait_s: 300.0
+  poll_s: 2.0
+
+benchmarks:
+  # msg_send routes through the live API for EVERY product this campaign:
+  # the regime is uniform across the compared set, and each row still
+  # carries its own regime + sentinel certification for the validity gate
+  compare.msg_send:
+    msg_routing: real-api

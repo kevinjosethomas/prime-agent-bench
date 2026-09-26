@@ -77,6 +77,8 @@ def load_config(path: str | Path | None = None) -> dict:
     expand_toolchain(cfg)
     if cfg.get("results_dir") is None:
         cfg["results_dir"] = str(Path(cfg["bench_root"]).expanduser() / "results")
+    else:
+        cfg["results_dir"] = str(Path(cfg["results_dir"]).expanduser())
     return cfg
 
 
