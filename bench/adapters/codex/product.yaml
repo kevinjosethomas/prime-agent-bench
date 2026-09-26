@@ -17,6 +17,12 @@ auth_sources:
     \ ChatGPT OAuth cannot survive isolated trial homes (single-use refresh tokens\
     \ rotate the family on first refresh)"
 first_run_dialogs:
+- marker: Try new model
+  keys:
+  - down
+  - enter
+  intent: 'the api-key route''s model upsell: keep the pinned model (option 2) so
+    the row measures what it says'
 - marker: 3. Provide your own API key
   keys:
   - '3'

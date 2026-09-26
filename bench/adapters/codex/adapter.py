@@ -34,10 +34,12 @@ class CodexProduct(ProductAdapter):
     # codex 0.157's resolved default under ChatGPT auth (session rollouts
     # record model "gpt-6-sol", model_provider "openai")
     DEFAULT_MODEL = "openai/gpt-6-sol"
-    # the api-key route's pinned model: the newest one the key can serve
-    # (gpt-6-sol is ChatGPT-backend-only; the key's catalog tops out at
-    # gpt-5.6-sol — verified against api.openai.com/v1/models)
-    KEY_MODEL = "gpt-5.6-sol"
+    # the api-key route's pinned model: the newest key-served codex-family
+    # model WITHOUT a retirement NUX (verified live: gpt-5.6-sol/luna both
+    # open with the "Meet GPT-6 ..." migration prompt on every launch;
+    # gpt-5.2-codex boots straight to the editor). gpt-6-sol itself is
+    # ChatGPT-backend-only and never reaches an API-key session.
+    KEY_MODEL = "gpt-5.2-codex"
     #: where the real OpenAI API key lives on the node (pi's auth.json
     #: carries it under the "openai" entry; codex's own vendor payload
     #: ships the ChatGPT OAuth instead)
