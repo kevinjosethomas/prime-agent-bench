@@ -26,8 +26,9 @@ class PrimeAgentTsProduct(PrimeAgentRustProduct):
         return Path.home() / ".local/share/prime-agent/bin/prime-agent"
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
-        argv = [str(self.binary), "--daemon-socket", str(ctx["daemon_socket"]),
-                "--provider", "prime-inference", "--model", "mock-1", "--offline"]
+        argv = [str(self.binary), "--daemon-socket", str(ctx["daemon_socket"])]
+        if ctx.get("routing") != "real-api":
+            argv += ["--provider", "prime-inference", "--model", "mock-1", "--offline"]
         if resume_fixture:
             argv += ["--resume", resume_fixture]
         return argv

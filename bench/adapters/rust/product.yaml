@@ -1,28 +1,33 @@
-# Prime Agent (Rust) — the complete product config, one file.
-# binary: the pinned from-source build. first_run_dialogs: the onboarding
-# walk (config, not code). vendor: what sandbox setup ships for this
-# product. See README.md in this folder for needs/quirks/fix classes.
-binary: ~/bench/repos/prime-agent-rust/target/release/prime-agent
-# Campaign-verified build (audit F10): revision bdf82f4f1 (#2672 fold),
-# 202,707,000 bytes, built 2026-09-24 06:43 UTC, rustc 1.98.1.
-revision: bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad
-binary_sha256: eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1
+binary: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
+revision: 59a9c658d870bfc31dac9a09683d1679d8791011
 needs_kernel_venv: true
 install:
-  installed_paths: [~/bench/repos/prime-agent-rust/target/release/prime-agent]
-  download_bytes: 7843159  # git archive of origin/rust (source distribution)
-  note: from-source cargo --release build; source archive bytes as download
+  installed_paths:
+  - ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
+  - ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
+  download_bytes: 53291156
+  note: continuous rust-branch build (run 36193301325) via install-rust.sh into a campaign-private prefix; artifact tarball bytes as download
 auth_sources:
-  - {src: ~/.prime/config.json, note: PRIME_API_KEY for the trial env}
-  - {src: ~/.prime/agent/auth.json, note: preprovisioned Prime auth}
-  - {src: ~/.prime/agent/settings.json, note: product settings}
+- src: ~/.prime/config.json
+  note: PRIME_API_KEY for the trial env
+- src: ~/.prime/agent/auth.json
+  note: preprovisioned Prime auth
+- src: ~/.prime/agent/settings.json
+  note: product settings (settled provider/model defaults + onboarding state)
 first_run_dialogs:
-  - marker: "Share agent traces with Prime Intellect?"
-    keys: [down, enter]
-    intent: "Not now"
+- marker: Share agent traces with Prime Intellect?
+  keys:
+  - down
+  - enter
+  intent: Not now
 vendor:
-  - {src: ~/bench/repos/prime-agent-rust/target/release/prime-agent, dst: root/bench/repos/prime-agent-rust/target/release/prime-agent}
-  - {src: ~/bench/repos/prime-agent-rust/target/release/prime-agent-runtime, dst: root/bench/repos/prime-agent-rust/target/release/prime-agent-runtime}
-  - {src: ~/.prime/config.json, dst: root/.prime/config.json}
-  - {src: ~/.prime/agent/auth.json, dst: root/.prime/agent/auth.json}
-  - {src: ~/.prime/agent/settings.json, dst: root/.prime/agent/settings.json}
+- src: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
+  dst: root/.local/bin/prime-agent-rust
+- src: ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
+  dst: root/.local/share/prime-agent-rust
+- src: ~/.prime/config.json
+  dst: root/.prime/config.json
+- src: ~/.prime/agent/auth.json
+  dst: root/.prime/agent/auth.json
+- src: ~/.prime/agent/settings.json
+  dst: root/.prime/agent/settings.json

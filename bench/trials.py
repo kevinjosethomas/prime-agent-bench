@@ -151,15 +151,25 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 # + the fixture sentinel, which the scenario verifies per trial
                 record["fixture"] = {"name": benchmark.requires_fixture, **fixture_manifest}
             ctx = prod.new_trial(trial_dir)
+            ctx = prod.new_trial(trial_dir)
+            # the per-benchmark routing regime (mock vs real-api), resolved
+            # before any launch and applied to the trial's provider/auth
+            # state (adapters that route per-trial do it in apply_routing)
+            ctx["routing"] = benchmark.routing_for(reg.cfg, prod)
+            prod.apply_routing(ctx)
             # Session resume writes bookkeeping rows to its input. Give each
             # trial a fresh inode with identical canonical bytes so no later
             # row advertises a stale manifest for a mutated shared corpus.
+            # Manifest-only fixture stubs (no on-disk artifact) keep the
+            # original path: there is nothing to copy or verify.
             trial_fixture = fixture
-            if benchmark.requires_fixture in ("session-10mib", "session-10mib-compacted"):
+            if (benchmark.requires_fixture in ("session-10mib", "session-10mib-compacted")
+                    and fixture and Path(fixture).exists()):
                 trial_fixture = trial_dir / fixture.name
                 shutil.copyfile(fixture, trial_fixture)
                 if sha256_file(trial_fixture) != fixture_manifest["sha256"]:
                     raise RuntimeError(f"{trial_fixture} differs from its manifest before trial")
+            error = None
             error = None
             try:
                 benchmark.setup(prod, ctx, fixture=trial_fixture)

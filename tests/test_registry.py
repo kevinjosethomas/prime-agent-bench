@@ -1,6 +1,8 @@
 """Registry discovery, config precedence, and trial-count resolution."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from bench.core.config import deep_merge, load_config, product_config
 from bench.core.measurement import primary_metric
 from bench.core.registry import discover
@@ -53,9 +55,10 @@ def test_deep_merge_override_wins():
 
 def test_product_config_loads_pinning():
     cfg = product_config("rust")
-    # the campaign-verified build revision (audit F10 pin fix, live product.yaml)
-    assert cfg["revision"] == "bdf82f4f15e7d8c0b5e41bf473e3f5b26a8a41ad"
-    assert cfg["binary_sha256"] == "eaed8f003cfcc78ccabba2490d0062074e3528b77885855fbc25342440a98de1"
+    # the 2026-09-25 campaign pin: the latest continuous rust-branch build
+    # (install-rust.sh, run 36193301325)
+    assert cfg["revision"] == "59a9c658d870bfc31dac9a09683d1679d8791011"
+    assert cfg["binary"].endswith("/bin/prime-agent-rust")
     assert "install" in cfg
 
 
@@ -74,6 +77,21 @@ def test_benchmark_config_overrides_reach_registry_adapters(tmp_path):
     defaults = base.benchmark("session.cold_open_10mib")
     assert defaults.sentinel_timeout_s == 30.0
     assert defaults.ready_timeout_s == 120.0
+
+
+def test_results_dir_expands_home(tmp_path):
+    """A configured results_dir carries ``~``: load_config expands it, so
+    no run ever writes a literal ``./~`` tree relative to the CWD."""
+    import yaml as _yaml
+    from bench.core.config import load_config
+    cfg_file = tmp_path / "campaign.yaml"
+    cfg_file.write_text(_yaml.safe_dump(
+        {"results_dir": "~/bench-results-test", "bench_root": "~/bench"}))
+    cfg = load_config(cfg_file)
+    assert Path(cfg["results_dir"]) == Path.home() / "bench-results-test"
+    # bench_root keeps its configured form; BenchLayout.from_config expands
+    # it at use time
+    assert cfg["bench_root"] == "~/bench"
 
 
 def test_effective_trials_precedence(tmp_path):

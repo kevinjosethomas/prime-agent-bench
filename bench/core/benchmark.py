@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bench.core.product import ProductAdapter, TrialContext
+from bench.core.product import MSG_ROUTING_REGIMES, ProductAdapter, TrialContext
 
 if TYPE_CHECKING:  # pragma: no cover
     from bench.core.harness import HarnessDriver
@@ -49,6 +49,23 @@ class Benchmark(ABC):
     def applicable(self, product_name: str) -> bool:
         """Whether this benchmark applies to the product."""
         return self.applicable_products is None or product_name in self.applicable_products
+
+    def routing_for(self, cfg: dict, product: ProductAdapter) -> str:
+        """How a submitted message routes on this benchmark's trials.
+
+        Resolution: the per-benchmark config override
+        (``benchmarks.<name>.msg_routing``) > the product's own declaration
+        (product.yaml ``msg_routing``). A campaign that measures msg_send
+        through the live API for every product sets the override; the
+        regime is then uniform across the compared set and the rows stay
+        comparable (each row still records its own regime for the gate)."""
+        override = (cfg.get("benchmarks", {}).get(self.name, {}) or {}).get("msg_routing")
+        if override:
+            if override not in MSG_ROUTING_REGIMES:
+                raise ValueError(f"{self.name}: msg_routing override must be one of "
+                                 f"{list(MSG_ROUTING_REGIMES)}, not {override!r}")
+            return str(override)
+        return product.msg_routing
 
     def comparability(self, product: ProductAdapter,
                       fixture: Path | None = None) -> tuple[str, str]:
