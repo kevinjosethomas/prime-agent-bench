@@ -1,0 +1,189 @@
+{
+  "id": "20260926-012800-daemon-boot-config-unsynced-ts-parity",
+  "axis": "startup",
+  "hypothesis": "Rust supervisor-config pre-bind write performs a temp-file fsync that TS does not request; on the measured VM, sync_all accounts for 30.9\u2013103.6ms of a 31\u2013104ms Supervisor::new under slow-flush disk conditions. Remove only that extra sync while keeping atomicity, permissions, pre-bind failure behavior, wire/session semantics.",
+  "approach": "In crates/pa-daemon/src/descriptor.rs, persist_supervisor_config exclusively calls write_file_atomic_unsynced: create temporary file, buffered write+flush, restrict to 0600, atomic rename, and clean temp on failure. All worker descriptor and update-prepare durable writes retain write_file_atomic with sync_all. Supervisor::new still persists before socket bind; no startup work was moved. Unit tests pin replace/0600/temp-cleanup and e2e tests pin persisted contents and fail-before-bind on injected rename error. Post-bind predecessor attempt is REVERTED; see 20260926-005642-daemon-boot-config-persist-off-accept-path.json.",
+  "parity_notes": "TS packages/coding-agent/src/utils/atomic-file.ts:65 fsyncs only if options.fsync is requested, closes descriptor before rename (:66\u201372); TS daemon-supervisor.ts:1739 persists supervisor config without fsync option, :869 invokes it before listen. TS :839/:1712\u201330 DOES read persisted defaultSessionConfig upon construction/restart, while Rust descriptor::load_supervisor_config currently has no callers and Rust payload is defaultSessionDir rather than TS defaultSessionConfig: this pre-existing port gap is NOT a cross-product no-reader claim. Rust Supervisor::new persists before socket bind; failure-before-bind unchanged. Atomic replace, permissions, persisted payload and no-temp postcondition tested. Removing sync_all weakens Rust crash durability (power-loss may lose newest config despite atomic rename); TS has the same no-fsync setting but this is still a deliberate downgrade from previous Rust behavior. Rust currently re-derives session dir rather than recovering it from config; worker descriptor and update-prepare writes retain sync. RLM API/wire/session replay unchanged by this patch. Tested on Linux VM; macOS arm64 behavior not measured here. Windows not shipped in frozen hillclimb.",
+  "base": {
+    "revision": "ec99d94520153baa3651195c0b790b8839f4b682",
+    "note": "Corrected pivot iteration pair base ec99d9452; archival lane folded 1b3fe3791 at bea860606 after numeric discard, NOT built/measured against that latest head."
+  },
+  "branch": "lane/hillclimb-daemon-boot",
+  "commits": [
+    "5114b3893",
+    "759e39be8",
+    "5101641bc",
+    "80169057f",
+    "52f624b78",
+    "bea860606 (archival unmeasured fold)"
+  ],
+  "build": {
+    "sandbox_id": "t9ucwt7mfa9grye2pu1cdclh",
+    "binary_sha256": "ecd3f059dd9977c8edbc4155283534e6b00ea2765ef50f47434c51dc78ea69ea",
+    "binary_bytes": 206799608,
+    "build_revision": "5101641bc (subsequent changes 80169057f/52f624b78 are doc/test-comment only; archival bea860606 unbuilt/unmeasured)",
+    "base_binary_sha256": "4945d4210d3f0696003890d2d52c62d876e16f8e030ab5503cdc3cdc92ffd4e6",
+    "base_binary_bytes": 206735560,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "prior 759e39be8 fmt pass; final archival bea860606 NOT RUN",
+    "clippy": "prior 759e39be8 clippy pass; final archival bea860606 NOT RUN",
+    "test": "prior 759e39be8 six unit + two e2e pass, cargo test --workspace red on agent_family_e2e::family_edges_never_cross_families_end_to_end; clean ec99d9452 base independently red with identical reserved customMessage failure. Final archival bea860606 NOT RUN. No tests weakened."
+  },
+  "measurements": {
+    "method": "same-VM sequential b,c,c,b, 5 daemon.boot trials/arm per phase (n=10 each), pinned distinct release binary SHA and page-warmed each arm, noop calibration per phase; current corrected pivot compared against ec99d9452; no statistically defensible speedup.",
+    "suites": {
+      "daemon.boot": {
+        "baseline": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 5.5,
+          "p95_ms": 644.6,
+          "values_ms": [
+            5.4,
+            5.4,
+            5.4,
+            5.4,
+            5.5,
+            644.6,
+            432.1,
+            5.5,
+            5.5,
+            426.1
+          ]
+        },
+        "candidate": {
+          "trials": 10,
+          "valid": 10,
+          "p50_ms": 5.5,
+          "p95_ms": 436.4,
+          "values_ms": [
+            5.6,
+            5.4,
+            5.4,
+            5.4,
+            5.5,
+            436.4,
+            431.5,
+            5.5,
+            10.5,
+            5.4
+          ]
+        },
+        "delta_pct": 0.0,
+        "regression": false,
+        "protocol": "20/20 validated; first phase base all warm-floor, last phase base 3/5 cold-exec bursts; candidate has 2/10 comparable cold-exec bursts. The p95 values are maxima for 10 trials, not a proven fsync effect.",
+        "spawn_to_hello_ms": {
+          "baseline": {
+            "values": [
+              7.2,
+              6.1,
+              7.1,
+              7.0,
+              6.6,
+              644.8,
+              432.3,
+              6.5,
+              6.7,
+              426.3
+            ],
+            "p50": 7.05,
+            "p95_max_10": 644.8,
+            "valid": 10
+          },
+          "candidate": {
+            "values": [
+              7.0,
+              5.7,
+              5.8,
+              6.3,
+              6.1,
+              436.5,
+              432.7,
+              6.1,
+              10.7,
+              6.2
+            ],
+            "p50": 6.25,
+            "p95_max_10": 436.5,
+            "valid": 10
+          }
+        },
+        "spawn_to_first_create_ms": {
+          "baseline": {
+            "values": [
+              76.8,
+              64.3,
+              77.6,
+              72.2,
+              73.4,
+              2029.0,
+              505.3,
+              86.1,
+              71.0,
+              938.6
+            ],
+            "p50": 77.19999999999999,
+            "p95_max_10": 2029.0,
+            "valid": 10
+          },
+          "candidate": {
+            "values": [
+              471.6,
+              536.4,
+              83.3,
+              74.8,
+              67.2,
+              1321.5,
+              1773.9,
+              62.3,
+              47.5,
+              43.4
+            ],
+            "p50": 79.05,
+            "p95_max_10": 1773.9,
+            "valid": 10
+          }
+        }
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 206735560,
+        "candidate": 206799608,
+        "delta": 64048
+      },
+      "rss_mb": {
+        "baseline": null,
+        "candidate": null,
+        "note": "daemon.boot harness did not capture RSS; previous pivot neighbor pair cold RSS med 112.9\u2192112.2, warm 37.1\u219237.3MB; corrected pair neighbors in progress."
+      },
+      "spawn_to_hello_p50_ms": {
+        "baseline": 7.05,
+        "candidate": 6.25
+      },
+      "calibration_s": {
+        "base_vm_median": null,
+        "cand_vm_median": null,
+        "note": "No cross-VM latency comparison. Per-arm same-VM noop harness floors recorded with each run in source artifacts; previous base/cand VM calibration 1.0399/1.0519s diverged 1.2%. No new calibration for current pair."
+      }
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Early mislabeled A/A pair pinned both arms to candidate via bins-b path bug; excluded from A/B (versions.json detects it).",
+      "Post-bind prior pair measures rejected and reverted mechanism, not this pivot; kept in superseded record."
+    ],
+    "notes": "Corrected pivot same-VM ABBA ec99d9452 base / 5101641bc candidate (payload equal to doc-only 80169057f/52f624b78), 20/20 valid. Accept p50 5.5\u21925.5ms; hello p50 7.05\u21926.25ms; create p50 77.2\u219279.05ms. Baseline accept 644.6/432.1/426.1ms and candidate 436.4/431.5ms cold-exec/page-cache tails; cannot attribute max/p95 difference to fsync. Quiet-disk prior pair acabfc57\u2192759e39be8 also accept p50 5.5\u21925.4ms, hello ~6.85\u21926.55ms (20/20 valid; fsync micro-bench p50 0.1ms max 1.4ms). Under slow-flush profiling sync_all cost p50 ~31ms (30.9\u2013103.6ms) but historical post-bind A/B measures a REJECTED mechanism, not pivot; neither corrected pivot pair demonstrates usable-latency win. Neighbor corrected pair in flight at decision; prior pivot neighbor n=5/arm cold_start 291.78\u2192290.12ms, warm_start 267.57\u2192262.62ms, msg_send ack 1.7\u21921.5ms, cold RSS 112.9\u2192112.2MB and warm RSS 37.1\u219237.3MB. Bench harness versions.json source git revision stale (7152746b...) because staged binary pin points at separate checkout; pinned binary SHA is definitive and asserted per arm. Cross-VM latency not used. macOS arm64 unmeasured; Linux sandbox VM tested. Windows not shipped. Numeric discard arrived before latest-head archival bea860606 VM builds: no unmeasured head claims."
+  },
+  "outcome": "discarded-no-demonstrated-usable-latency-win",
+  "decision": "Orchestrator numeric review DISCARD 2026-09-26 ~01:35 UTC. NO PR; no merge. Adversarial pre-review APPROVE-LEAN was NOT formal final PR approval. No latest-head gate/pair pursued after discard.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-012800-daemon-boot-config-unsynced-ts-parity.json",
+  "session": {
+    "worker": "perf-daemon-boot",
+    "handoff": "/home/ubuntu/hillclimb/model-handoffs/perf-daemon-boot.md"
+  },
+  "timestamp": "2026-09-26T01:35:48.010309+00:00"
+}
