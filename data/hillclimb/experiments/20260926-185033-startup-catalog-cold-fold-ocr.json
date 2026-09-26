@@ -296,7 +296,7 @@
  },
  "outcome": "pr-open",
  "decision": "Orchestrator numeric review of the post-fold pair PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on the final PR SHA and operator disposition of the disclosed red gates (non-applicable benchmark CI 0/0; the registered interactive_daemon_e2e co-scheduling flake with base-red evidence). No merge by this worker.",
- "pr_url": "PENDING",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2879",
  "record_path": "data/hillclimb/experiments/20260926-185033-startup-catalog-cold-fold-ocr.json",
  "session": {
   "worker": "perf-catalog-cold-fast",
