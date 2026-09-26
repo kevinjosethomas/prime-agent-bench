@@ -1,0 +1,493 @@
+{
+  "id": "20260925-232821-install-tree-payload-curation",
+  "axis": "other",
+  "hypothesis": "Every installed archive ships development-only runtime tests/lockfile and repository design/audit docs (~1.06 MB) that the production kernel and user-facing docs never consume.",
+  "approach": "Curate dev-only docs and runtime test/lock entries in both Python payload producers; retain three required user docs. Fix dirty-worktree skill cache leak in assemble_artifacts.py; package_release.py already filters caches. verify_release.py now rejects escaped caches; negative tests cover both producers and poisoned tar. No Rust production changes.",
+  "parity_notes": "Kevin Option C (2026-09-26): development docs/tests/lockfiles are outside install parity; user docs are required. Both producers retain MODEL-SURFACE.md, RUST_QUICKSTART.md, keybindings.md; skills/catalog unchanged after removing generated ignored pyc from dirty checkout. Clean 91eedb5d/bc1b3157 release binaries sha256 90ff703a... each 209121544 bytes; fresh extracted install booted RLM and kernel. Docs/skill aliases and catalog unchanged; Python-side packaging policy platform-independent.",
+  "base": {
+    "revision": "91eedb5d016dcc93d422c6fc596813d9be066fd1"
+  },
+  "branch": "lane/hillclimb-install-tree",
+  "commits": [
+    "5e5af79f5",
+    "99631751b",
+    "1b2de33b5",
+    "90a8a1f9d6659795feed2808b7fc6d9329a3332f",
+    "8307c64033060ea28256718f578de9e3b39cae12",
+    "3845bc49dacc8f8876687b6ff6256b9bdd4b55c3",
+    "e824389848bdfe0198210056fe371d5b4a70f442",
+    "bc1b3157d43b5b73b412f217edef2239fbe188a2"
+  ],
+  "build": {
+    "sandbox_id": "p9m0c2vp95kd947p75mrp4wo",
+    "binary_sha256": "90ff703ad55005bad9c9e3dad1c955db1bbddd0962068dd06955ce220ed3f057",
+    "binary_bytes": 209121544,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "Latest bc1b315 candidate pending; previous e824 candidate fmt PASS",
+    "clippy": "Latest bc1b315 candidate pending; previous e824 candidate Clippy PASS",
+    "test": "Latest bc1b315 workspace full test PENDING; e824 candidate retry in progress after ENOSPC mitigation; prior fb719b13 candidate full test PASS 143 passing targets. Base latest 91eedb family focused pending; previous fa4 base focused 2/2 PASS. Python release 23/23 PASS latest packaging scripts. Historic pure-base 1b3 full suite INCOMPLETE OAuth TUI timeout, not a final red gate."
+  },
+  "measurements": {
+    "method": "Final exact-head 91eedb5d/bc1b3157 clean deterministic archive bytes and same-VM path SHA are primary; historical 1b3 six-leg 90/90 valid tree-pinned but absolute artifacts contaminated, fb719b13 quiet 5-trial B/C 30/30 valid iteration; latest short 5-trial B/C pending before merge.",
+    "suites": {
+      "cold_start": {
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 293.56,
+          "p95_ms": 445.74,
+          "values_ms": [
+            820.1,
+            290.47,
+            288.77,
+            289.93,
+            289.79,
+            445.74,
+            290.42,
+            290.38,
+            289.06,
+            293.56,
+            348.84,
+            295.23,
+            295.56,
+            326.0,
+            298.51
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 291.08,
+          "p95_ms": 421.1,
+          "values_ms": [
+            421.1,
+            296.2,
+            289.32,
+            291.35,
+            290.09,
+            342.99,
+            289.72,
+            290.23,
+            291.38,
+            290.06,
+            975.66,
+            290.86,
+            291.08,
+            290.41,
+            296.06
+          ]
+        },
+        "delta_pct": -0.8448017441068378,
+        "regression": false,
+        "rss_mb": {
+          "baseline": {
+            "p50_mb": 113.8,
+            "values_mb": [
+              114.9,
+              113.8,
+              113.6,
+              113.5,
+              114.2,
+              113.4,
+              115.0,
+              114.2,
+              113.0,
+              114.9,
+              111.7,
+              112.8,
+              113.9,
+              112.3,
+              113.9
+            ]
+          },
+          "candidate": {
+            "p50_mb": 114.2,
+            "values_mb": [
+              114.2,
+              113.7,
+              114.9,
+              114.7,
+              114.7,
+              113.3,
+              114.2,
+              113.3,
+              113.9,
+              116.1,
+              114.2,
+              114.6,
+              112.3,
+              113.5,
+              113.2
+            ]
+          }
+        }
+      },
+      "warm_start": {
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 264.13,
+          "p95_ms": 293.41,
+          "values_ms": [
+            263.56,
+            264.41,
+            263.24,
+            264.13,
+            264.38,
+            263.71,
+            1111.91,
+            263.78,
+            264.02,
+            263.03,
+            281.46,
+            263.47,
+            284.93,
+            267.27,
+            293.41
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 264.24,
+          "p95_ms": 268.24,
+          "values_ms": [
+            263.89,
+            265.56,
+            263.74,
+            264.24,
+            268.24,
+            268.74,
+            263.04,
+            262.79,
+            264.36,
+            263.66,
+            264.57,
+            263.61,
+            264.73,
+            264.82,
+            263.94
+          ]
+        },
+        "delta_pct": 0.041646159088326584,
+        "regression": false,
+        "rss_mb": {
+          "baseline": {
+            "p50_mb": 37.4,
+            "values_mb": [
+              37.5,
+              37.5,
+              37.2,
+              37.3,
+              37.4,
+              37.5,
+              37.4,
+              37.4,
+              37.7,
+              37.5,
+              37.3,
+              37.3,
+              37.1,
+              37.4,
+              37.3
+            ]
+          },
+          "candidate": {
+            "p50_mb": 37.5,
+            "values_mb": [
+              37.6,
+              37.5,
+              37.3,
+              37.6,
+              37.4,
+              37.6,
+              37.7,
+              37.5,
+              37.6,
+              37.4,
+              37.3,
+              37.4,
+              37.5,
+              37.4,
+              37.0
+            ]
+          }
+        }
+      },
+      "msg_send": {
+        "baseline": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 691.7,
+          "p95_ms": 721.0,
+          "values_ms": [
+            690.8,
+            690.2,
+            691.7,
+            667.0,
+            688.8,
+            677.9,
+            693.3,
+            721.0,
+            699.8,
+            691.0,
+            696.0,
+            757.0,
+            691.3,
+            693.2,
+            714.4
+          ]
+        },
+        "candidate": {
+          "trials": 15,
+          "valid": 15,
+          "p50_ms": 690.1,
+          "p95_ms": 692.0,
+          "values_ms": [
+            692.0,
+            676.8,
+            691.1,
+            690.5,
+            691.8,
+            690.7,
+            690.0,
+            690.1,
+            667.5,
+            690.5,
+            689.0,
+            687.8,
+            704.4,
+            672.6,
+            669.5
+          ]
+        },
+        "delta_pct": -0.23131415353476736,
+        "regression": false,
+        "rss_mb": {}
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 209121544,
+        "candidate": 209121544
+      },
+      "nonbinary_payload_file_bytes": {
+        "baseline": 1539522,
+        "candidate": 474529,
+        "delta_bytes": -1064993,
+        "delta_pct": -69.1769
+      },
+      "install_du_bytes": {
+        "baseline": 210837194,
+        "candidate": 209768105,
+        "delta_bytes": -1069089
+      },
+      "tarball_gz_bytes": {
+        "baseline": 54039624,
+        "candidate": 53736425,
+        "delta_bytes": -303199
+      },
+      "members": {
+        "assemble": {
+          "baseline": 127,
+          "candidate": 103
+        },
+        "package_release": {
+          "baseline": 127,
+          "candidate": 103
+        }
+      },
+      "components_file_bytes": {
+        "baseline": {
+          "docs": 608450,
+          "runtime": 724508,
+          "skills": 88235,
+          "bundled_jsons": 97474,
+          "license_readme_pkg": 20855
+        },
+        "candidate": {
+          "docs": 26947,
+          "runtime": 241018,
+          "skills": 88235,
+          "bundled_jsons": 97474,
+          "license_readme_pkg": 20855
+        }
+      },
+      "rss_mb": {
+        "baseline": null,
+        "candidate": null
+      },
+      "removed_members": [
+        "docs/FEATURE_PARITY.md",
+        "docs/PORTING-NOTES.md",
+        "docs/completion-matrix.md",
+        "docs/extensions-runner-design.md",
+        "docs/installer-ci-design.md",
+        "docs/parity-battery.md",
+        "docs/parity-checklist.md",
+        "docs/protocol-breadth-audit.md",
+        "docs/telemetry-design.md",
+        "docs/telemetry-events.md",
+        "docs/tui-keyboard-probe.md",
+        "docs/update-flow-state-machine.md",
+        "docs/windows-readiness.md",
+        "prime-agent-runtime/test/",
+        "prime-agent-runtime/test/test_agent_message_skill.py",
+        "prime-agent-runtime/test/test_bash.py",
+        "prime-agent-runtime/test/test_create_session.py",
+        "prime-agent-runtime/test/test_harness.py",
+        "prime-agent-runtime/test/test_mcp.py",
+        "prime-agent-runtime/test/test_mcp_base.py",
+        "prime-agent-runtime/test/test_repl.py",
+        "prime-agent-runtime/test/test_subagent_registry.py",
+        "prime-agent-runtime/test/test_winjob.py",
+        "prime-agent-runtime/uv.lock"
+      ],
+      "installed_tree_sha256": {
+        "baseline": "19b7e78a12f4e6d07aa3e00a47c28b307d812adc3de8c9ba4a9f74dcbb71a902",
+        "candidate": "10de0644333dbd64b0befbcc85f577196c572951a56ad02a7fb483bf552263b3"
+      },
+      "artifact_evidence": {
+        "base_vm": "p9m0c2vp95kd947p75mrp4wo",
+        "candidate_vm": "p9m0c2vp95kd947p75mrp4wo",
+        "base_archive_sha256": "2554a321476218533c5a3797169be7a5969029c563995572eb5feb319b2def29",
+        "candidate_archive_sha256": "869d8766997b07fdb838f92c5555b51fee08fec7f6aacc8fd5df002786da250a",
+        "source_member_lists": {
+          "base": {
+            "assemble": "candidate VM /root/final-91-base-members.txt"
+          },
+          "cand": {
+            "assemble": "candidate VM /root/final-91-cand-members.txt",
+            "pkgrel": "candidate VM /root/final-91-pkgrel-members.txt"
+          }
+        },
+        "same_vm_binary_control": "candidate VM /root/fb-base-checkout at pure base 91eedb5d and branch bc1b3157 sequential cargo build --release --locked --workspace with same CARGO_TARGET_DIR=/root/fb-matched-target, sha256 90ff703a... and binary 209121544 B identical",
+        "fresh_install_smoke": "Earlier fb719b13/3845bc49d exact clean candidate fresh-install PASS (kernel_boot/rlm_available/spawn=true; staged skill marker); latest 91eedb5d/bc1b3157 pending (run after quiet neighbor to avoid load confound).",
+        "dirty_checkout_negative": "Synthetic repo dirty skills/__pycache__/skill.cpython-311.pyc plus skills/stale.pyc: assembler/archive and package_release staging exclude; poisoned assembled tar fails verify_release with development cache entry; 23 release tests pass."
+      }
+    },
+    "prior_head_quiet_neighbor": {
+      "base_revision": "fb719b1367b09851b848895912208be60c49311c",
+      "candidate_revision": "3845bc49dacc8f8876687b6ff6256b9bdd4b55c3",
+      "tree_sha256": {
+        "baseline": "aa0d21884909579afe4dd023cd226cfd0d65290cf05e72fa4b0b0999b7f13545",
+        "candidate": "39143ca0be85968df11f9912c3e9d8b70b3ccf0f6612e231e063a0aead7f0a78"
+      },
+      "binary_sha256": "706fb4d4c0c64dc00d9dadf8f78651c892839a89fdff01ccaa4566aeaf1b90d8",
+      "pre_calibration_s": [
+        1.0431954659998155,
+        1.0547061999986909,
+        1.0581185619994358
+      ],
+      "post_calibration_s": [
+        1.0630630519990518,
+        1.060492125001474,
+        1.055483706000814
+      ],
+      "suites": {
+        "cold_start": {
+          "b1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 289.43,
+            "values_ms": [
+              289.39,
+              289.15,
+              290.11,
+              289.43,
+              317.73
+            ]
+          },
+          "c1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 288.87,
+            "values_ms": [
+              420.8,
+              288.55,
+              288.67,
+              288.87,
+              293.27
+            ]
+          }
+        },
+        "warm_start": {
+          "b1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 265.16,
+            "values_ms": [
+              307.75,
+              265.16,
+              263.54,
+              279.33,
+              262.1
+            ]
+          },
+          "c1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 266.78,
+            "values_ms": [
+              267.89,
+              266.7,
+              266.78,
+              272.62,
+              263.42
+            ]
+          }
+        },
+        "msg_send": {
+          "b1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 689.2,
+            "values_ms": [
+              666.8,
+              696.1,
+              689.0,
+              691.1,
+              689.2
+            ]
+          },
+          "c1": {
+            "trials": 5,
+            "valid": 5,
+            "p50_ms": 691.4,
+            "values_ms": [
+              689.8,
+              691.4,
+              693.1,
+              665.8,
+              695.9
+            ]
+          }
+        }
+      },
+      "log_archive": "/home/ubuntu/hillclimb/vms/fb-quiet-results.tar.gz",
+      "note": "30/30 qualified, no meaningful neighbor regression. This is clean old-head iteration; latest e824 comparison separately pending."
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Earlier mislabeled ABBA B/C blocks all copied same candidate binary and did not switch installed payload tree: VOID for latency comparisons; original VM results and original script retained as audit artifacts.",
+      "Earlier full-suite false pass was a kernel_python() guard SKIP; corrected fresh-venv isolated family test reproducibly baseline-red.",
+      "Prior-head 1b3fe379/90a8a1f9 payloads contained 13 ignored skills __pycache__/*.pyc in both arms. Their absolute sizes and assembler member counts were inflated; SUPERSEDED by clean fb719b13/3845bc49d archive accounting. Relative prior-head ~1.06 MB delta remains corroborative, but cannot be used as clean payload magnitude.",
+      "Intermediate fb719b13/8307c640 candidate packaging from dirty checkout leaked 13 ignored skills .pyc (+50234 skill file bytes); candidate binary compiled at /root/prime-agent-rust differed from baseline at /root/fb-base-checkout due compile path. Both are excluded. Fixed candidate from clean checkout at same path plus controlled rebuild used.",
+      "First latest-head B/C diagnostic run overlapped full workspace tests and release rebuild on same VM; deliberately terminated, all logs retained, VOID for latency. Quiet final-head B/C is the valid follow-up."
+    ],
+    "notes": "Primary CLEAN deterministic comparison: base 91eedb5d vs candidate bc1b3157, binary sha90ff703a (same path), exact removed 24 archive members, no additions, both producers agree. Historical B,C,C,B,B,C 90/90 trials were valid installed-tree-pinned but from symmetrically cache-polluted prior-head payloads, so their latency results are secondary context only; final-head short neighbor trial is primary neighbor sanity check. Do not claim latency speedup."
+  },
+  "outcome": "final-head deterministic payload reduction PASS, full gate and quiet exact-head neighbor PENDING; reviewable PR may open pending with disclosures",
+  "decision": "Open reviewable PR after quiet neighbor and structured record. Orchestrator numeric final-head verdict and explicit APPROVE from BOTH formal standing adversaries required before any merge. Lane owner does not merge.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260925-232821-install-tree-payload-curation.json",
+  "session": {
+    "worker": "perf-install-tree",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-7ba3b8cf/01a0db50-cf28-733b-897d-d843c865237e.jsonl"
+  },
+  "timestamp": "2026-09-26T02:48:07.868098+00:00"
+}
