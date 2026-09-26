@@ -91,6 +91,14 @@ def main():
                        ["re-pair-n1-C-1", "re-pair-n1-C-2"])
     repair_n100 = paired(["re-pair-n100-B-0", "re-pair-n100-B-3"],
                          ["re-pair-n100-C-1", "re-pair-n100-C-2"])
+    confirm_n1 = paired(["confirm-n1-B-0", "confirm-n1-B-3"],
+                        ["confirm-n1-C-1", "confirm-n1-C-2"])
+    confirm_n100 = paired(["confirm-n100-B-0", "confirm-n100-B-3"],
+                          ["confirm-n100-C-1", "confirm-n100-C-2"])
+    confirm2_n1 = paired(["confirm2-n1-B-0", "confirm2-n1-B-3"],
+                         ["confirm2-n1-C-1", "confirm2-n1-C-2"])
+    confirm2_n100 = paired(["confirm2-n100-B-0", "confirm2-n100-B-3"],
+                           ["confirm2-n100-C-1", "confirm2-n100-C-2"])
     regime = []
     for line in (RUNS / "abba-regime-watch.jsonl").read_text().splitlines():
         line = line.strip()
@@ -132,6 +140,10 @@ def main():
             "abba_pair_n100_iteration_b4c89869b": pair_n100,
             "abba_pair_n1_head_exact_ac83e5baf": repair_n1,
             "abba_pair_n100_head_exact_ac83e5baf": repair_n100,
+            "intermediate_confirm_a40b33ea0_lineage_n1_SUSPECT": confirm_n1,
+            "intermediate_confirm_a40b33ea0_lineage_n100_SUSPECT": confirm_n100,
+            "final_pair_1507d399b_lineage_n1": confirm2_n1,
+            "final_pair_1507d399b_lineage_n100": confirm2_n100,
         },
         "regime": {
             "fsync_probe": "4KB fdatasync x20 per probe, 20s cadence during ABBA",

@@ -26,7 +26,14 @@
   "fmt": "PASS at b99cecedf+e6380768f (cargo fmt --all --check, clean tree, examples stashed; PROCESS NOTE: a first VM rustfmt pass used --edition 2024 and spuriously reformatted 2 unrelated pre-existing files - caught by diffstat review, reverted, redone with the project edition 2021; the patch carries only the 3 intended files)",
   "clippy": "PASS at b99cecedf+e6380768f (cargo clippy --workspace --all-targets -- -D warnings, 0 errors; at the pre-rebase base c33ecdf5b+patch the ONLY clippy error was catalog-cold's pre-existing session_store.rs:2730 default_trait_access, since fixed at their settled head b99cecedf; my three findings (clone_from, slice::from_ref x2) were fixed and are green)",
   "test": "VM run at b99cecedf+e6380768f: pa-daemon --lib info_tests 17/17 GREEN (incl. the new differential matrix), session_store:: 54 passed/0 failed/2 ignored GREEN; workspace full-suite + shards NOT run at this head. WORDING CORRECTION (reviewer #1 finding, accepted): while PR #2882 is STACKED (base branch = lane/hillclimb-catalog-cold), GitHub runs NO rust shard checks on it (rollup verified: only request/loc/Bugbot checks) - the earlier phrasing 'CI at the PR head will run the real shards' was WRONG for the stacked state and is superseded by this note. The real CI (fmt/check+clippy/shards 1-4/test summary) runs only AFTER the retarget to rust, and ALL-GREEN at the retargeted final head is an explicit part of the merge bar (see validity notes + both reviewers' flip conditions). Base-side flake family is documented in catalog-cold's record; my commit touches only the roster fold path.",
-  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass",
+  "ci_at_retargeted_head_9a07c3d9e": {
+   "fmt": "SUCCESS",
+   "check_clippy_workspace": "SUCCESS (the raw_value feature-unification check reviewer #2 required - GREEN)",
+   "shards": "1/4 SUCCESS, 2/4 SUCCESS, 4/4 SUCCESS; 3/4 first run FAILURE = pa-tui bash_bang_headless::a_bang_during_a_streaming_turn_holds_then_flushes (crates/pa-tui/tests/bash_bang_headless.rs:845 'rendered frames in both the pending and flushed regimes') - the KNOWN base-reproducible pa-tui timing flake (same test family the orchestrator noted at catalog-cold's settled head; my commit's surface is pa-daemon session_store only - zero pa-tui files in the diff); failed-shard rerun triggered 21:2xZ (fleet's standard disposition)",
+   "benchmark": "FAILURE - the standing non-applicable TS-harness red (0 builds/0 trials; operator disposition pending; never called pass)",
+   "test_summary": "QUEUED at record-update time"
+  }
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -326,7 +333,89 @@
     "content_census": "all message contents are block ARRAYS (0 plain strings at every tier: 10569/12856/63809); 0 non-string 'text' blocks; content_escaped 7776/7796/40201 lines; content_multibyte 3452/3459/17935; toolResult role lines never guarded (4030/4033/20762); the String fast-path was measured (cand_string_ms=0 - no lines hit it) and DROPPED from the design",
     "why_end_to_end_exceeds_replica": "the replica's per-line Instant overhead inflates the candidate's extract stage relative to the real fold; the ABBA end-to-end is load-bearing"
    },
-   "composition_with_catalog_cold": "catalog-cold's published base (origin/rust 7064d039a) at 1000 = 70.37ms on THEIR VM; their settled head on MY VM = 59.31ms; my candidate continues that file's line: 59.31 -> 44.11ms. Composed class vs their published base ~ -37% (cross-VM, class-level only; NOT a same-VM claim). My lane continues catalog-cold's record file line (same fold, same fixture at 100/1000, same oracle checksums)."
+   "composition_with_catalog_cold": "catalog-cold's published base (origin/rust 7064d039a) at 1000 = 70.37ms on THEIR VM; their settled head on MY VM = 59.31ms; my candidate continues that file's line: 59.31 -> 44.11ms. Composed class vs their published base ~ -37% (cross-VM, class-level only; NOT a same-VM claim). My lane continues catalog-cold's record file line (same fold, same fixture at 100/1000, same oracle checksums).",
+   "iterations": [
+    {
+     "label": "RETARGET ITERATION (post #2879 merge): head-exact pair at the folded head",
+     "events": "PR #2879 MERGED as squash b7502bfad under operator standing authorization; rust tip moved 7064d039a -> 1507d399b (fold batch: #2844 release split 9d9cf2da7, #2866 incident forensics 5dbf6f653, #2878 supervisor split 2/8 c7ca05f10, #2879 squash b7502bfad, #2887 side-question registry a40b33ea0, #2880 tool-abort-watcher 1507d399b, #2884 venv batch 55bd1d63b)",
+     "rebase": "single commit e6380768f rebased append-only onto 1507d399b -> NEW HEAD 9a07c3d9e08f16350751a3efc0fa87c733546009; force-pushed my own unmerged lane branch only (lease asserted old head e6380768f); PR #2882 base retargeted lane/hillclimb-catalog-cold -> rust; PR shows exactly 1 commit, MERGEABLE",
+     "post_fold_rediff": "git diff 1507d399b..9a07c3d9e = the IDENTICAL known 3-file delta (pa-daemon Cargo.toml raw_value 1-line + session_store.rs + session_store_info_tests.rs; 210 insertions / 23 deletions); the fold batch touched NEITHER session_store.rs NOR pa-daemon Cargo.toml (verified: git diff --stat b99cecedf..1507d399b on those paths = empty), so per reviewer #1's rule the upstream-only batch CARRIES the pair; head-exact spot-check pair re-run as ordered",
+     "folded_build": {
+      "sandbox_id": "cfr3ur8rts9pazfcnyhgtmmz",
+      "base_probe_sha256": "ca1f9389b31558e8e732875bdb99aec10e905ab9a3b8fd04146aaecbdc0b6387 (pristine 1507d399b tree, examples untracked on VM)",
+      "cand_probe_sha256": "a993a795509245d58925fda2889d5d150dfebda2dfb639aa7c9d194c37dd463d (1507d399b + patch = 9a07c3d9e content)",
+      "note": "rebuilt probe SHAs disclosed per the release-contract note; #2844's release split does not alter example-probe builds (the split is packaging-side for the shipped pa-daemon binary; the example probe builds as a plain release ELF)"
+     },
+     "pre_pair_probe": "21:12Z: repeat-fsync 8x = 73,35,1,1,34,44,35,1ms (bimodal - recovery signs but still ~35ms mode); fresh-write+sync_all+rename+stat 8x = 37,37,2,36,2,36,39,2ms (same bimodal); fixture read pass (34.5MB) = 5ms HEALTHY -> read-bound pair proceeded per the adopted rule, write classes disclosed",
+     "folded_pair": {
+      "design": "settled BCCBBC (pre-run 1-min loadavg 0.16; sha-asserted per slot; noop calibration; SINGLE-DRIVER lockfile guard adopted this iteration - see incident)",
+      "cold_ms": {
+       "100": {
+        "baseline_p50": 42.239,
+        "candidate_p50": 31.747,
+        "delta_pct": -24.9,
+        "raw_b": [
+         41.295,
+         42.239,
+         42.349
+        ],
+        "raw_c": [
+         31.739,
+         31.747,
+         33.636
+        ]
+       },
+       "1000": {
+        "baseline_p50": 60.368,
+        "candidate_p50": 45.719,
+        "delta_pct": -24.2,
+        "raw_b": [
+         59.318,
+         60.368,
+         91.162
+        ],
+        "raw_c": [
+         45.23,
+         45.719,
+         48.487
+        ]
+       },
+       "4096": {
+        "baseline_p50": 295.97,
+        "candidate_p50": 213.288,
+        "delta_pct": -27.9,
+        "raw_b": [
+         286.787,
+         295.97,
+         320.643
+        ],
+        "raw_c": [
+         212.014,
+         213.288,
+         223.098
+        ]
+       }
+      },
+      "warm_ms": {
+       "100": {
+        "baseline_p50": 0.4945,
+        "candidate_p50": 0.5075
+       },
+       "1000": {
+        "baseline_p50": 4.6795,
+        "candidate_p50": 4.5135
+       },
+       "4096": {
+        "baseline_p50": 24.868,
+        "candidate_p50": 24.9205
+       }
+      },
+      "oracle": "row_sha256 identical across every arm/slot/pass/tier (100: ccc76960..., 1000: 8f41e882..., 4096: 40258404...); legacy checksums 762089/893085/4336641 reproduced",
+      "notes": "absolute values drifted +2..6% vs the pre-fold run at some slots (bimodal write-class regime + one 91ms B transient at 1000; the 4096 tier read 172MB through the bimodal I/O) - the DELTA class is unchanged (-24..-28%) with full separation and interleaved arms; raw preserved (pair-results3-csp.tar.gz)"
+     },
+     "incident_disclosure": "DUPLICATE-DRIVER INCIDENT (boot-floor's class, self-inflicted, caught BEFORE any claim): a bg-job wrapper launched the pair driver late (SDK job lag), I misread it as stuck and invoked the driver DIRECTLY for debugging while the original job's driver was in flight - two concurrent drivers at 21:16:20-33 (loadavg 1.09-1.31, cp/ETXTBSY races possible). ALL data from both runs was DISCARDED (rm -rf pair-results3), the driver now carries a lockfile single-driver guard (mkdir /root/pair-lock, exit 5 if held), and the clean re-run above (75s settle, idle loadavg 0.16) is the load-bearing folded-head pair. Lesson recorded: never debug-invoke a measurement driver directly; the SDK bg runner reports late - check job processes read-only, wait for the notification."
+    }
+   ]
   }
  },
  "validity": {
@@ -343,9 +432,9 @@
  },
  "timestamp": "2026-09-26T19:34:38.475901+00:00",
  "provenance": {
-  "settled_head": "e6380768f41481ba073bf7a37d245f46d54f92fe",
-  "merge_base": "b99cecedf2827200e48611747209a58d416f5337 (catalog-cold's settled PR #2879 head; single commit rebased onto it - append-only, disclosed)",
-  "post_fold_rediff": "git diff b99cecedf..e6380768f = crates/pa-daemon/Cargo.toml (1-line raw_value feature) + crates/pa-daemon/src/session_store.rs (struct borrows + fold_scan_entry guarded arm + message_content_text helper) + crates/pa-daemon/src/session_store_info_tests.rs (differential matrix test) ONLY",
+  "settled_head": "9a07c3d9e08f16350751a3efc0fa87c733546009 (retargeted: e6380768f rebased onto merged rust tip 1507d399b)",
+  "merge_base": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480 (merged origin/rust tip at retarget; PR base = rust)",
+  "post_fold_rediff": "git diff 1507d399b..9a07c3d9e = Cargo.toml + session_store.rs + session_store_info_tests.rs ONLY (verified post-retarget)",
   "vm": "cfr3ur8rts9pazfcnyhgtmmz (own lane VM; sibling catalog-cold's expired VM goeo4olr6p3hjubakouncijh was never touched)"
  }
 }
