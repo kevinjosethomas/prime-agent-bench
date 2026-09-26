@@ -1,0 +1,243 @@
+{
+ "id": "20260926-213000-memory-daemon-rss-trim",
+ "axis": "memory",
+ "lane": "perf-daemon-rss-fast (GLM 5.3 Fast, wave3)",
+ "hypothesis": "The DAEMON (supervisor) process retains freed-but-resident heap after daemon-side session reads/relays because #2872's trims all live in worker-role paths and none in the supervisor: the supervisor relays every routed worker response through a serde_json Value tree (reader from_slice -> DaemonResponse -> response_line -> client write) and the catalog scan folds a parse tree per file line, but never returns the freed pages, so one grown session's CLI-path relay (+71MiB for a 9.47MiB get_messages; +42MiB more for a routed attach) and every grown catalog scan stay at the arena high-water for the daemon's lifetime.",
+ "approach": "(1) BASELINE at tip 7064d039a: TUI-first bench battery with per-proc sidecar (daemon RSS flat 23.5-24.9 across 1/2/5/10MiB + compacted, n=5-10/shape, noise band 1.19MiB); census3 replica (daemon-first TUI: 46.4-51.1 at BOTH +3s and +12s - the anomaly is the launch shape, not deferred reads); daemon-direct wire probes (no TUI) with per-phase daemon+worker RSS/PSS/smaps captures across shapes; throwaway env-gated census instrument (PRIME_DR_CENSUS) for per-frame/per-read in-process attribution. (2) CANDIDATE: mirror #2872's pattern at the two daemon-side phase boundaries - write_line reports serialized bytes + the client write loop drops the tree and trims at >=1MiB; the catalog scan trims at its join (live per-file cache states untouched). +30/-9, supervisor.rs only. (3) PAIRS: same-VM sequential B/C/B/C with sha-asserted atomic binary swaps, fresh-daemon trials, per-arm fsync-regime probes, single-driver guards, calibration pre/mid/post; TUI-first bench no-regression arms; gates at the head. Fold history: 7064d039a -> folded c7ca05f10 (merge 726c1d67b, no conflict) -> folded 1507d399b incl. #2879/#2884/#2880/#2887 (merge ddc4ee946, no conflict; post-fold re-diff vs each merge-base = the 3 hunks intact, supervisor.rs only).",
+ "parity_notes": "Allocator plumbing only - no data, capability, protocol, wire, prompt, or user-visible behavior changes. The trim runs AFTER the client frame is written and its Value tree dropped; wire bytes are identical. Non-glibc/non-Linux builds are no-ops via pa_types::memory_release (cfg linux/gnu): macOS arm64 + non-glibc unchanged; shipped Linux x86_64 glibc2.35+ and aarch64 covered. The TUI's direct worker transport never produces >=1MiB supervisor-routed lines, so the TUI flow is behaviorally untouched (bench arms overlap at ~24MiB daemon). At the folded merge-base the #2878 split's supervisor/clients.rs is committed but not yet declared as a module - the live client loop (and these hunks) remains in supervisor.rs; when the split's later step flips mod clients; on, the write-path hunks re-home to clients.rs (the catalog trim stays with handle_saved_session_list). No manager/window/worker files touched (worker-rss territory); no fold internals touched (catalog-second-parse territory).",
+ "base": {
+  "revision": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480",
+  "note": "final-head merge-base; earlier pairs at 7064d039a and c7ca05f10 (see iterations)"
+ },
+ "branch": "lane/hillclimb-daemon-rss",
+ "head": {
+  "revision": "ddc4ee946 (merge of 1507d399b into the lane; lane delta vs merge-base = the 3-hunk +30/-9 supervisor.rs)"
+ },
+ "build": {
+  "sandbox_id": "xnco32u4ll99qw2znc3hqtxx (ubuntu:22.04 16c/32GB/100GB, glibc 2.35)",
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01); rustup default profile + explicit rustfmt/clippy components",
+  "base_binary_sha256": "3a5d7278d7bcfb1c08536989a686070cc74d92c02f33dea15154cde13632defe",
+  "base_binary_bytes": 213058792,
+  "cand_binary_sha256": "2770240c23ac2e3ad9ad04293bd61a5aff2729fc9d60f9ebdd4678efe41de69e",
+  "cand_binary_bytes": 213247160,
+  "binary_note": "cargo --release --locked -p pa-cli measurement binaries (same recipe both arms); the #2844 split-debuginfo release packaging does not change runtime-loaded sections (the measurement binaries are not packaged installers)",
+  "glibc_max": "GLIBC_2.34 (<= 2.35 shipped platform contract)"
+ },
+ "gates": {
+  "fmt": "pass at the head (FMT_RC=0; rustup components installed, not the minimal-profile false-red class)",
+  "clippy": "pass at the head (CLIPPY_RC=0, --release --workspace --all-targets)",
+  "test": "workspace no-fail-fast at the head: 3 reds, ALL symmetric, NO candidate-only red: (1) acp::compaction_arms threshold_arm_compacts - pre-existing flake: standalone reruns fail on the BASE too (1 pass / 4 fail on base across the session; 0/7 on cand - the in-process ACP test bed never executes the supervisor client-loop hunks; the test's headroom sits ~500 tokens from the faux-provider estimate and the random tempdir path length shifts the serialized context, flipping the arm run-to-run); (2) tool_result_entries_persisted_and_streamed and (3) a_bang_during_a_streaming_turn_holds_then_flushes - pass standalone on BOTH arms (load flakes at RUST_TEST_THREADS=8); the earlier fd_lifecycle supervisor_fd_count red also passed standalone on both arms. GitHub benchmark check = standing non-applicable pre-build red (TS harness), disclosed, never called pass."
+ },
+ "measurements": {
+  "method": "same-vm-sequential, sha-asserted atomic binary swaps, fresh-daemon-per-trial wire probes + bench-harness arms, calibration + per-arm fsync probes",
+  "baseline": {
+   "bench_tui_first_daemon_rss_settled_mb": {
+    "memory_idle_load_stock10_n10": {
+     "p50": 24.41,
+     "min": 23.58,
+     "max": 24.77,
+     "spread": 1.19
+    },
+    "session_cold_open_10mib_n5": {
+     "p50": 24.46,
+     "min": 23.66,
+     "max": 24.87
+    },
+    "cold_open_compacted_n5": {
+     "p50": 24.11
+    },
+    "idle_load_1mib_n5": {
+     "p50": 23.89
+    },
+    "idle_load_2mib_n5": {
+     "p50": 23.77
+    },
+    "idle_load_5mib_n5": {
+     "p50": 24.13
+    },
+    "finding": "FLAT across all sizes/shapes in the TUI-first flow (the TUI uses the direct worker transport; the supervisor never relays big payloads)"
+   },
+   "census3_replica_daemon_first_tui": {
+    "rss_settle3_mb": [
+     46.5,
+     51.14,
+     46.44,
+     46.54,
+     50.61
+    ],
+    "rss_settle12_mb": [
+     46.5,
+     51.14,
+     46.44,
+     46.54,
+     50.61
+    ],
+    "finding": "reproduces the source anomaly; NO growth +3s->+12s: the delta vs bench is the launch shape (private binary pages + model registry), not deferred session reads"
+   },
+   "daemon_direct_phase_probes": {
+    "d10x1_n5": {
+     "boot": 42.91,
+     "after_create": 46.14,
+     "after_get_messages_9.47mib_relay": 117.37,
+     "after_attach_routed": 158.96,
+     "after_catalog_1file": 164.73
+    },
+    "d1x50_n3": {
+     "boot": 43.38,
+     "after_create": 47.05,
+     "after_catalog_50files": 73.02,
+     "after_catalog_repeat": 79.09
+    },
+    "d10cx1_compacted_n5": {
+     "after_get_messages": 47.11,
+     "after_attach": 47.29,
+     "finding": "retained window ~3.2MiB: no relay growth - the residue scales with payload size"
+    },
+    "census_instrument": "per-frame statm notes: a 9.47MiB routed frame costs ~+30MiB inside the reader from_slice and ~+30MiB more at the client-write re-encode; read_session_info ~+300-320KB/file (mostly live cache states)"
+   }
+  },
+  "suites": {
+   "compare.daemon_rss_relay_shape_d10x1_headexact_1507d399b": {
+    "note": "fresh-daemon wire probes: boot -> create/resume -> get_state x3 -> get_messages (9.47MiB wire) -> supervisor-routed attach (9.48MiB) -> catalog scans; daemon RSS after each phase; B/C/B/C, 5 trials/round, 2 rounds/side",
+    "baseline": {
+     "after_get_messages_settled": {
+      "p50": 107.7,
+      "min": 98.98,
+      "max": 118.82,
+      "values": [
+       99.39,
+       105.78,
+       99.95,
+       98.98,
+       102.4,
+       118.82,
+       115.46,
+       107.8,
+       112.4,
+       111.0
+      ]
+     },
+     "after_attach": {
+      "p50": 115.0,
+      "min": 107.96,
+      "max": 156.96
+     },
+     "after_catalog_settled": {
+      "p50": 120.4,
+      "min": 113.42,
+      "max": 162.41
+     }
+    },
+    "candidate": {
+     "after_get_messages_settled": {
+      "p50": 54.4,
+      "min": 49.37,
+      "max": 56.72
+     },
+     "after_attach": {
+      "p50": 55.0,
+      "min": 49.8,
+      "max": 67.46
+     },
+     "after_catalog_settled": {
+      "p50": 60.7,
+      "min": 55.54,
+      "max": 72.91
+     }
+    },
+    "delta_pct_after_get_messages": -49.5,
+    "delta_pct_after_attach": -52.2,
+    "delta_pct_after_catalog": -49.6,
+    "regression": false,
+    "separation": "full: max cand 72.91 (get_messages: 56.72) < min base 98.98",
+    "binaries": {
+     "base_sha256": "3a5d7278d7bcfb1c08536989a686070cc74d92c02f33dea15154cde13632defe",
+     "cand_sha256": "2770240c23ac2e3ad9ad04293bd61a5aff2729fc9d60f9ebdd4678efe41de69e"
+    }
+   },
+   "compare.daemon_rss_catalog_shape_d1x50_headexact_1507d399b": {
+    "note": "50x1MiB catalog files + 1MiB resumed session; the catalog phases dominate",
+    "baseline": {
+     "after_catalog_settled": {
+      "p50": 74.9,
+      "min": 62.43,
+      "max": 79.96
+     },
+     "after_catalog_repeat": {
+      "p50": 81.8,
+      "min": 66.73,
+      "max": 91.99
+     }
+    },
+    "candidate": {
+     "after_catalog_settled": {
+      "p50": 51.3,
+      "min": 50.4,
+      "max": 54.59
+     },
+     "after_catalog_repeat": {
+      "p50": 55.3,
+      "min": 52.06,
+      "max": 59.94
+     }
+    },
+    "delta_pct_after_catalog": -31.5,
+    "regression": false,
+    "separation": "full: max cand 54.59 < min base 62.43; repeat: max cand 59.94 < min base 66.73",
+    "residual_note": "the remaining ~3-5MiB over after_attach is the LIVE per-file scan-cache states (usage entries + search text, #2856-bounded) - not trimmable"
+   },
+   "compare.daemon_rss_tui_bench_no_regression_headexact": {
+    "note": "compare.memory_idle_load stock10 via the bench harness (TUI-first), 3 trials/arm/round x 4 rounds; the TUI never produces >=1MiB supervisor-routed lines",
+    "baseline_daemon_rss_p50": [
+     24.48,
+     23.98
+    ],
+    "candidate_daemon_rss_p50": [
+     23.78,
+     24.24
+    ],
+    "worker_rss_p50_range": {
+     "base": [
+      197.24,
+      198.21
+     ],
+     "cand": [
+      199.54,
+      204.13
+     ]
+    },
+    "verdict": "fully overlapping within the 1.19MiB same-build noise band; all 4 arms green (sentinel+echo validated); NO regression in the TUI flow"
+   },
+   "historical.pre_fold_pairs": {
+    "base_7064d039a_pair": {
+     "d10x1_after_get_messages": "104.3/117.8 -> 50.2/50.0 (-56%), zero overlap",
+     "d10x1_after_catalog": "167.2/130.2 -> 59.4/56.3 (-53%)",
+     "d1x50_after_catalog": "68.6/71.8 -> 53.9/49.5 (-28%)"
+    },
+    "base_c7ca05f10_pair": {
+     "d10x1_after_get_messages": "117.3/104.7 -> 54.0/54.5 full separation",
+     "d1x50_after_catalog": "74.0/67.8 -> 51.5/50.1 full separation"
+    },
+    "labels": "HISTORICAL superseded by the 1507d399b head-exact pair; the class held across all three bases"
+   }
+  },
+  "latency_disclosure": {
+   "relay_shape_d10x1": "get_messages/attach wall p50s overlap across arms at the head (b1 159/160 vs c1 151/162; b2 159/181 vs c2 153/157ms) - the trim cost is NOT resolvable above the trial noise at n=5/round; an earlier degraded-I/O round suggested +3-10ms",
+   "catalog_shape_d1x50": "catalog scan p50 +1-2ms/scan on the candidate (5.3->6.3ms; repeat 5.1->7.1ms) - the malloc_trim walk; small and bounded",
+   "io_regime": "measured through the fleet's degraded-I/O window (my VM 4KB repeat-fsync p50 63ms) and re-measured after recovery (0.29-0.38ms; fresh-write+fsync+rename p50 0.74ms per the spawn-admission correction); the head pair's b2/c2 rounds ran healthy; all latency claims are same-regime paired"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Per-trial fixture prehash asserted (fresh inode copies; the resumed copy grows by bookkeeping rows post-trial as designed). Single-driver guards active per arm; the sha-asserted swap sequence is in the driver logs (SWAPPED_TO lines). The first ABBA (abba, pre-fix) pooled round-1/round-2 into per-arm dirs (round 1 overwritten) - superseded by the per-round-dir reruns (abba2/abba3/abba4). The census instrument build (3792b6bf...) is a THROWAWAY env-gated build (PRIME_DR_CENSUS), never on the lane branch; the VM tree was reset to the tip after each instrument/candidate build. cold_start sidecar has no per-proc rows (the benchmark's rss capture does not bind the patched rss_tree seam) - disclosed. The compaction_arms threshold test's standalone base failures are recorded as the flake's evidence, not measured as a metric."
+ },
+ "outcome": "pair-positive: the supervisor-side trim cuts the daemon's routed-relay retained heap -53% (get_messages 117.4->50.7 pre-fold; head-exact 107.7->54.4) and the catalog-scan residue -28..-32%, full separation at every base, with the TUI flow unchanged and fmt/clippy green; symmetric-flake test disclosure attached",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-213000-memory-daemon-rss-trim.json",
+ "session": {
+  "worker": "perf-daemon-rss-fast",
+  "session_dir": null
+ },
+ "timestamp": "2026-09-26T21:30:00.000000+00:00"
+}
