@@ -5,7 +5,7 @@
   "approach": "Option C: release build keeps line tables and does not strip at link; scripts/release/split_debug.py derives gzip decoder and separate shipped ELF from one immutable linked Cargo image, with objcopy --only-keep-debug then objcopy --strip-debug --remove-section=.debug_gdb_scripts. Linux release and continuous workflows run split before assembly; release promotes gzip decoder as separate per-tag asset (not rolling nightly). assemble_artifacts.py hard-fails decoder-like sidecars inside staged/packed payload; channel manifest rejects decoder references. Assembler binds decoder SHA/build-ID to shipped ELF, promotion verifies exact decoder SHA and installed tar ELF SHA/build-ID, SHA256SUMS and provenance cover the per-tag decoder; rolling nightly checksum lists tarballs only. Option A (strip all) rejected: loses backtrace symbol names. Option B (strip=debuginfo at link) rejected: it preserves function names but omits a same-build decoder, so shipped file:line cannot be restored from an independently linked binary (the .text differed in tested link configurations).",
   "parity_notes": "RLM API/wire/session replay source untouched; all lane changes limited to Cargo.toml release profile, scripts/release, and Linux release/CI workflows. Linux ELF static .symtab/function names and .dynsym are kept; shipped backtraces lose file:line but detached same-image decoder restores them via addr2line. GLIBC release gate still inspects .dynsym. macOS unchanged (line tables kept); dSYM extraction is follow-up, macOS bytes not measured. Linux x64 measurement only; Linux arm64 workflow wired but not measured.",
   "base": {
-    "revision": "bc412c5f7753661f503353595f2f4b0cddb4006a"
+    "revision": "7b86bbc87a4be6a4910bb559741b822b2c029a4f"
   },
   "branch": "lane/hillclimb-binary-size",
   "commits": [
@@ -22,19 +22,30 @@
     "d929c298e",
     "8f2f4fb6b",
     "cf54f5dc8",
-    "e0ac38f0a"
+    "e0ac38f0a",
+    "7e0ab9975",
+    "57fe9592c",
+    "161dfcb9f",
+    "840ab1552",
+    "5e19d8bf2",
+    "1054a9dcf"
   ],
   "build": {
     "sandbox_id": "jyk9va0j321teowwodw204mf",
-    "binary_sha256": "649429c120d758b9d2b1840c3b30aff6804a67489c4f521f0649f1f96ad5adfb",
-    "binary_bytes": 53443112,
-    "build_seconds": 53.42,
+    "binary_sha256": "4a376d4ef3f7e7235226f87eb233905ba787b44c9e8e62746bc8f2f4d9c9f555",
+    "binary_bytes": 53607680,
+    "presplit_sha256": "73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678",
+    "presplit_bytes": 210042112,
+    "decoder_sha256": "8ac8e3014d2c7a1affe6a2d264c46ad11e56e42f486862623c9f5688dfcdc56c",
+    "decoder_bytes": 37096221,
+    "build_id": "c6382fab2fb60506ee1da28a2805846a588e0878",
+    "build_seconds": null,
     "toolchain": "rustup 1.98.1"
   },
   "gates": {
-    "fmt": "PENDING e0ac38f0 exact-head VM local gate running; prior cf54 CI fmt PASS historical",
-    "clippy": "PENDING e0ac38f0 exact-head VM local gate running; prior cf54 CI clippy PASS historical",
-    "test": "PENDING e0ac38f0 exact-head full VM gate running and CI shards pending; no final green claim. Historical 91eedb5d pure base and 84d6ef58 candidate live family_edges both FAIL identically at agent_family_e2e.rs:323 after ~40s; first candidate family rc101 0s INVALID benchmark vendor overwrite, restored Python 3.12/native RLM. Prior 57cacebaa full cargo test workspace green; PR #2844 prior d4eb CI 4/4 shards PASS, historical only. Public benchmark run 36213336231 FAIL setup: TS/main vs Rust PR npm ci missing package-lock, PR 0/0 trials; operator disposition pending."
+    "fmt": "PASS CI at exact final head 1054a9dcf; VM local cargo fmt --all -- --check rc0 at exact head",
+    "clippy": "PASS CI workspace clippy at 1054a9dcf; VM local cargo clippy --workspace --all-targets --locked -D warnings rc0 at exact head",
+    "test": "PASS: CI 4/4 Rust test shards + test summary at exact final head 1054a9dcf (incl. fold's new stop_escalation_e2e + prompt_history_nav_headless); VM local cargo test --workspace --locked rc0 at exact head. One documented flake: tui_prompt_stash_restores_a_pasted_image_with_the_draft failed once in a local full run at 840ab1552, passed isolated at 9afc61d1c and 5e19d8bf2, CI never failed it. Public 'benchmark' check (run 36221783028 at 1054a9dcf) = NON-APPLICABLE pre-build red: TS/main harness npm ci EUSAGE missing package-lock, PR 0 builds/0 trials, 42 unavailable; operator disposition pending, never called pass."
   },
   "measurements": {
     "method": "same-vm-sequential",
@@ -1004,6 +1015,573 @@
           "exit_code": 1,
           "expected_error": "decoder-like sidecar(s) in the release payload"
         }
+      },
+      "strict_fail_closed_161dfcb9f": {
+        "commit": "161dfcb9fe459826d9a9a70aa5066a30d6e290de",
+        "pushed_at": "2026-09-26T04:42Z",
+        "content": "strict fail-closed Linux packer routes: make package builds+splits and requires paired --binary+--decoder; explicit --binary REQUIRES --decoder; rejects DWARF-carrying shipped ELF; decoder_facts validates GNU build-id; fail_if_decoder_in_tree/archive; NO public bypass flag (orchestrator rejected --allow-unverified-binary); negatives on REAL tiny GCC -g ELF fixtures via split_debug.py (not scripts)",
+        "files": [
+          "Makefile",
+          "docs/PORTING-NOTES.md",
+          "scripts/package_release.py",
+          "scripts/release/assemble_artifacts.py",
+          "scripts/release/split_debug.py",
+          "scripts/release/test_catalog_assets.py"
+        ],
+        "proof_vm": "jyk9va0j321teowwodw204mf (clean checkout at exact SHA)",
+        "unit_gates": "24 tests OK (scripts.release.test_catalog_assets 23 + test_decoder_manifest 1)",
+        "make_package": "rc0; tar 127 members ZERO decoder members; extracted ELF sha == staged == shipped 649429c120d758b9d2b1845c3b30aff6804a67489c4f521f0649f1f96ad5adfb; installed ELF has ZERO .debug_* sections; binaries.json exactly one linux-x64 row (no decoder reference), SHA256SUMS one row",
+        "decoder_identity": "GNU build ID 45fe00594a4c92f5d4a7774fe6a97cb6a217a38c matches shipped ELF + decoder (readelf on .debug file prints a benign 'unable to find program interpreter name' note, build ID still read)",
+        "addr2line_roundtrip": "symbol pa_agent::validation::validate_tool_arguments at 0xb1e2a0: shipped ??:?, decoder crates/pa-agent/src/validation.rs:26",
+        "glibc": "max GLIBC_2.34 <= 2.35 on shipped ELF; installed --version 0.1.0",
+        "negatives": {
+          "missing_decoder": "rc1 'Linux --binary requires --decoder from split_debug.py'",
+          "raw_dwarf_elf": "rc1 'Linux shipped binary still has DWARF'",
+          "wrong_build_id_sidecar": "rc1 'decoder build ID does not match shipped ELF' (sidecar from a different real ELF split)",
+          "flagless_assembler": "rc1 'Linux release requires explicit --binary shipped ELF and --decoder from split_debug.py'",
+          "artifacts": "no .tar.gz left by any negative"
+        },
+        "positive_direct_packer": "rc0 with explicit pair; staged ELF sha == shipped 649429c1...; NOTE: two make package runs can differ in tar bytes (package_release write_tar does not pin directory mtimes) - content sha assertion is the standard; the CI channel artifact route (assemble_artifacts.pack_tarball, mtime=0 pinned) IS deterministic",
+        "release_dry_run": "rc0 end-to-end: glibc-gate 2.34, verify_decoders promotion PASS (installed ELF 649429c1 / decoder 33fed663 / build-id 45fe0059), verify_release payload+checksums+manifest+catalog(46 models,43 tuples,73 services)+livecheck all OK; dist manifest binaries 1 (alias-named tar, no decoder row) + decoders 1 separate, decoder row in SHA256SUMS",
+        "shipped_bytes_note": "shipped/decoder shas identical to e0ac-era proof because e0ac..161dfcb9f changed only packaging scripts (no Rust code): deterministic rebuild reproduces the same linked ELF"
+      },
+      "e2e_test_pairing_fixes": {
+        "problem": "CI at 840ab1552 exposed 2 REAL reds from the strict fail-closed change (not upstream): pa-cli packaged_layout_e2e 'packaging_dry_run_produces_artifact' (packer without --decoder) and pa-core release_channel_manifest 'assembled_archives_carry_the_platform_alias_the_reader_demands' (assembler without pair, shell-script fixture ELF)",
+        "fix": "both e2e tests stage tiny REAL GCC -g ELF fixtures split through split_debug.py (the scripts/release/test_catalog_assets.py fixture pattern); test-only diff; the pa-cli fixture answers --version like a real build so the packer's version pin passes",
+        "commits": "72f159f44 -> d6a35505e (E0283 tuple annotation) -> 9afc61d1c (clippy doc_markden + cargo-fmt use-order) -> 5e19d8bf2 (fixture --version) - three amends on my own lane head, each push force-with-lease verified remote == my previous head; CI at 5e19d8bf2 fmt/clippy/4x shards ALL PASS",
+        "proof": "VM reruns of both tests rc0 at every iterate; final head battery both rc0"
+      },
+      "pinned_neighbor_d5cd4b132_840ab1552": {
+        "design": "b,c,c,b x 5 trials x 4 benchmarks (cold_start,msg_send,scroll_typing,memory_idle_load), same-VM sequential, sha-asserted atomic binary swaps, noop control between slots; bench harness with manifest-only fixture stubs (same mechanics for BOTH arms)",
+        "vm": "cnlfji2mtjkpqu0zbq0hmxkw",
+        "base": {
+          "revision": "d5cd4b13221ad2a4d240aa152f0672c2ba38ebd5",
+          "sha256": "bf81671044fce90d5e64664ed50cb7833aa7e279c2b85bbc7ae87e522430bdfc",
+          "bytes": 210103576,
+          "image": "presplit unstripped release ELF"
+        },
+        "candidate": {
+          "revision": "840ab1552a3efef28bb2b8fa7abec34f9e560058",
+          "shipped_sha256": "0f394b9094b0c959a6fe7a5c2d17cb6a56267bb2362cdf22e99e50cff5576718",
+          "bytes": 53734256,
+          "image": "shipped split ELF",
+          "presplit_sha256": "bf81671044fce90d5e64664ed50cb7833aa7e279c2b85bbc7ae87e522430bdfc",
+          "presplit_bytes": 210103576
+        },
+        "controlled_pair": "presplit ELF byte-identical in both arms (same Rust code, same release profile); ONLY objcopy strip differs => any delta is attributable to stripping alone",
+        "delta_bytes_pct": -74.427,
+        "slots": {
+          "final-head-01-b": "2026-09-26T05:09:15Z",
+          "final-head-02-c": "05:17:48Z",
+          "final-head-03-c": "05:26:15Z",
+          "final-head-04-b": "05:34:51Z",
+          "end": "05:43:22Z (NEIGHBOR_DONE)"
+        },
+        "trials": "80/80 valid (20 per benchmark), err=False all",
+        "noop_control": {
+          "n": 30,
+          "p50_ms": 0.075,
+          "p95_ms": 0.096
+        },
+        "pooled": {
+          "cold_start.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 314.86,
+              "p50": 368.24,
+              "max": 451.2
+            },
+            "C": {
+              "n": 10,
+              "min": 315.7,
+              "p50": 321.26,
+              "max": 361.49
+            }
+          },
+          "cold_start.launch_to_first_paint_ms": {
+            "B": {
+              "n": 10,
+              "min": 57.5,
+              "p50": 96.5,
+              "max": 188.6
+            },
+            "C": {
+              "n": 10,
+              "min": 57.5,
+              "p50": 58.35,
+              "max": 84.6
+            }
+          },
+          "cold_start.erase_ms": {
+            "B": {
+              "n": 10,
+              "min": 9126.01,
+              "p50": 9202.35,
+              "max": 11347.32
+            },
+            "C": {
+              "n": 10,
+              "min": 9125.85,
+              "p50": 9150.45,
+              "max": 11320.3
+            }
+          },
+          "msg_send.submit_to_ack_ms": {
+            "B": {
+              "n": 10,
+              "min": 1.3,
+              "p50": 3.2,
+              "max": 47.4
+            },
+            "C": {
+              "n": 10,
+              "min": 1.3,
+              "p50": 6.65,
+              "max": 44.3
+            },
+            "note": "first-PTY-output chunk, BIMODAL on both arms (known mislabeled metric); per-slot p50s b1 3.6 c1 6.9 c2 6.4 b2 2.3; uninterpretable, guard only"
+          },
+          "msg_send.submit_to_settle_ms": {
+            "B": {
+              "n": 10,
+              "min": 671.0,
+              "p50": 689.8,
+              "max": 714.4
+            },
+            "C": {
+              "n": 10,
+              "min": 667.3,
+              "p50": 694.6,
+              "max": 733.3
+            },
+            "note": "per-slot p50s 689.2/696.8/692.6/692.0 - tight parity, +0.7% pooled"
+          },
+          "scroll.typing_ms": {
+            "B": {
+              "n": 10,
+              "min": 0.96,
+              "p50": 1.08,
+              "max": 1.23
+            },
+            "C": {
+              "n": 10,
+              "min": 0.43,
+              "p50": 1.04,
+              "max": 1.15
+            }
+          },
+          "scroll.scroll_pgup_ms": {
+            "B": {
+              "n": 10,
+              "min": 2.7,
+              "p50": 2.7,
+              "max": 2.9
+            },
+            "C": {
+              "n": 10,
+              "min": 2.7,
+              "p50": 2.7,
+              "max": 3.0
+            }
+          },
+          "scroll.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 21644.29,
+              "p50": 22395.01,
+              "max": 23277.84
+            },
+            "C": {
+              "n": 10,
+              "min": 21636.32,
+              "p50": 22356.22,
+              "max": 23520.52
+            }
+          },
+          "memory_idle_load.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 21418.18,
+              "p50": 22577.72,
+              "max": 23086.23
+            },
+            "C": {
+              "n": 10,
+              "min": 21144.59,
+              "p50": 22459.6,
+              "max": 23767.78
+            }
+          },
+          "memory_idle_load.rss_settled_mb": {
+            "B": {
+              "n": 10,
+              "min": 479.3,
+              "p50": 533.7,
+              "max": 579.1
+            },
+            "C": {
+              "n": 10,
+              "min": 507.2,
+              "p50": 538.4,
+              "max": 609.7
+            },
+            "per_slot_p50s": {
+              "b1": 536.9,
+              "c1": 537.5,
+              "c2": 557.3,
+              "b2": 506.8
+            },
+            "note": "pooled +0.9% but slot-position non-monotonic (last slot lowest); .debug_* sections are not PT_LOAD so strip cannot add resident memory; drift, no causal claim"
+          }
+        },
+        "conclusion": "NO REGRESSION from stripping: startup/typing/scroll/big-fixture-ready all at parity or favor C (b slots carried the high outliers); settle times tight parity; RSS delta within slot drift. Raw archive: hillclimb/final-head-neighbor-results.tar.gz + driver log binary-size-final-head-neighbor.driver.log",
+        "label": "PINNED-PAIR evidence for d5cd4b132/840ab1552 exactly; mechanism (strip-only) transfers to later folds but this campaign did NOT measure 1054a9dcf bytes"
+      },
+      "final_head_neighbor_1054a9dcf": {
+        "design": "b,c,c,b x 5 trials x 4 benchmarks (cold_start,msg_send,scroll_typing,memory_idle_load), same-VM sequential, sha-asserted atomic swaps, noop control; bench harness manifest-only fixture stubs (same mechanics BOTH arms)",
+        "vm": "cnlfji2mtjkpqu0zbq0hmxkw",
+        "base": {
+          "revision": "1054a9dcf73ae4da8a652e30d001c428e0705a50",
+          "sha256": "73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678",
+          "bytes": 210042112,
+          "image": "presplit unstripped release ELF; byte-identical to PURE 7b86bbc87 build (asserted)"
+        },
+        "candidate": {
+          "revision": "1054a9dcf73ae4da8a652e30d001c428e0705a50",
+          "shipped_sha256": "4a376d4ef3f7e7235226f87eb233905ba787b44c9e8e62746bc8f2f4d9c9f555",
+          "bytes": 53607680,
+          "image": "shipped split ELF from the SAME linked image (build-id c6382fab...)"
+        },
+        "strip_only": "SAME-COMMIT pair at the exact final PR head; presplit byte-identical by construction (one linked image split); shipped -74.489%",
+        "slots": {
+          "final2-01-b": "2026-09-26T05:57:17Z",
+          "final2-02-c": "06:05:54Z",
+          "final2-03-c": "06:14:24Z",
+          "final2-04-b": "06:22:52Z",
+          "end": "06:31:05Z (NEIGHBOR2_DONE; 4/4 rc0)"
+        },
+        "trials": "80/80 valid (20 per benchmark), err=False all",
+        "noop_control": {
+          "n": 30,
+          "p50_ms": 0.06,
+          "p95_ms": 0.088
+        },
+        "pooled": {
+          "cold_start.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 314.91,
+              "p50": 315.43,
+              "max": 345.82
+            },
+            "C": {
+              "n": 10,
+              "min": 314.83,
+              "p50": 343.31,
+              "max": 472.08
+            },
+            "per_slot_p50s": {
+              "b1": 315.71,
+              "c1": 343.55,
+              "c2": 343.08,
+              "b2": 315.27
+            },
+            "note": "mins identical across ALL slots both arms (314.83-345.8 band); c-slot medians +28ms with one 472/418 outlier each; the pinned d5cd/840a campaign showed the OPPOSITE slot pattern (b1 376 vs c 323/319) - slot-phase drift flips sign across identical-design campaigns, no arm-consistent delta"
+          },
+          "cold_start.launch_to_first_paint_ms": {
+            "B": {
+              "n": 10,
+              "min": 57.3,
+              "p50": 57.95,
+              "max": 84.7
+            },
+            "C": {
+              "n": 10,
+              "min": 58.1,
+              "p50": 60.4,
+              "max": 114.6
+            }
+          },
+          "msg_send.submit_to_ack_ms": {
+            "B": {
+              "n": 10,
+              "min": 1.5,
+              "p50": 3.5,
+              "max": 45.5
+            },
+            "C": {
+              "n": 10,
+              "min": 1.6,
+              "p50": 1.9,
+              "max": 46.1
+            },
+            "note": "bimodal first-PTY-chunk both arms, uninterpretable, guard only"
+          },
+          "msg_send.submit_to_settle_ms": {
+            "B": {
+              "n": 10,
+              "min": 666.1,
+              "p50": 689.05,
+              "max": 736.8
+            },
+            "C": {
+              "n": 10,
+              "min": 668.6,
+              "p50": 691.8,
+              "max": 751.5
+            },
+            "note": "parity +0.4%"
+          },
+          "scroll.typing_ms": {
+            "B": {
+              "n": 10,
+              "min": 0.41,
+              "p50": 1.1,
+              "max": 1.33
+            },
+            "C": {
+              "n": 10,
+              "min": 0.96,
+              "p50": 1.08,
+              "max": 1.33
+            }
+          },
+          "scroll.scroll_pgup_ms": {
+            "B": {
+              "n": 10,
+              "min": 2.7,
+              "p50": 2.8,
+              "max": 3.1
+            },
+            "C": {
+              "n": 10,
+              "min": 2.7,
+              "p50": 2.7,
+              "max": 2.8
+            }
+          },
+          "scroll.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 20681.15,
+              "p50": 21383.67,
+              "max": 25717.41
+            },
+            "C": {
+              "n": 10,
+              "min": 20785.34,
+              "p50": 21020.29,
+              "max": 21280.01
+            }
+          },
+          "memory_idle_load.launch_to_ready_ms": {
+            "B": {
+              "n": 10,
+              "min": 20947.42,
+              "p50": 21434.41,
+              "max": 26862.68
+            },
+            "C": {
+              "n": 10,
+              "min": 20744.42,
+              "p50": 21275.08,
+              "max": 21767.3
+            }
+          },
+          "memory_idle_load.rss_settled_mb": {
+            "B": {
+              "n": 10,
+              "min": 477.0,
+              "p50": 539.2,
+              "max": 576.2
+            },
+            "C": {
+              "n": 10,
+              "min": 489.8,
+              "p50": 532.4,
+              "max": 628.5
+            },
+            "per_slot_p50s": {
+              "b1": 526.3,
+              "c1": 532.5,
+              "c2": 532.2,
+              "b2": 555.2
+            },
+            "note": "C pooled -1.3%; interleaved slots within +/-60MB trial noise; .debug_* not PT_LOAD"
+          }
+        },
+        "conclusion": "NO REGRESSION at the exact final PR head 1054a9dcf: settle/typing/scroll/big-fixture-ready parity, RSS parity-or-lower; cold-start mins identical with slot-phase drift that flips sign across the two same-design campaigns; no causal improvement claim",
+        "archives": "hillclimb/final-head2-neighbor-results.tar.gz + binary-size-final-head2-neighbor.driver.log"
+      },
+      "historical_b0af_38db_six_slot": {
+        "label": "HISTORICAL corroboration only (bf21-era head; missing e0ac-fold TUI changes and 7e0/57fe/161df packaging fixes); NOT final-head evidence",
+        "vm": "cnlfji2mtjkpqu0zbq0hmxkw",
+        "base": {
+          "revision": "b0afcdbe1df5d591e1ccb1f64f511564b16cb993",
+          "sha256": "0ce55e438471e6a2e4c20c90a3bae04d38a4ddfeba5dcbfd21df207f36c24473"
+        },
+        "candidate": {
+          "revision": "38dbd975e7a3f2fdbdb07e3ffc096b96925a61fc",
+          "sha256": "4db1eba07a29c18d6a6177babcfa3e81f0dc0a3bd7b05bbf93f004c8d55923ac",
+          "image": "shipped split 53,369,792B; presplit unstripped 209,233,736B"
+        },
+        "design": "b,c,c,b,b,c x 5 trials x 4 benchmarks; QUICK_DONE 2026-09-26T05:03:57Z; 6/6 slots rc0; 120/120 trials err=False; noop p50 0.081ms",
+        "pooled": {
+          "cold_start.launch_to_ready_ms": {
+            "B": {
+              "n": 15,
+              "min": 313.9,
+              "p50": 326.06,
+              "max": 733.93
+            },
+            "C": {
+              "n": 15,
+              "min": 314.82,
+              "p50": 367.51,
+              "max": 599.63
+            },
+            "note": "mins equal; slot-02-c outliers drove pooled +12.6%; per-slot p50s b1 314.7 c1 406.5 c2 357.9 b2 352.3 b3 326.1 c3 345.4 interleaved"
+          },
+          "msg_send.submit_to_ack_ms": {
+            "B": {
+              "n": 15,
+              "min": 1.2,
+              "p50": 7.2,
+              "max": 59.7
+            },
+            "C": {
+              "n": 15,
+              "min": 1.2,
+              "p50": 1.5,
+              "max": 43.3
+            },
+            "note": "bimodal first-PTY-chunk both arms, uninterpretable"
+          },
+          "msg_send.submit_to_settle_ms": {
+            "B": {
+              "n": 15,
+              "min": 667.4,
+              "p50": 714.2,
+              "max": 737.6
+            },
+            "C": {
+              "n": 15,
+              "min": 668.6,
+              "p50": 690.3,
+              "max": 732.3
+            }
+          },
+          "scroll.typing_ms": {
+            "B": {
+              "n": 15,
+              "min": 1.01,
+              "p50": 1.08,
+              "max": 1.24
+            },
+            "C": {
+              "n": 15,
+              "min": 1.0,
+              "p50": 1.08,
+              "max": 1.46
+            }
+          },
+          "scroll.scroll_pgup_ms": {
+            "B": {
+              "n": 15,
+              "min": 2.6,
+              "p50": 2.7,
+              "max": 2.9
+            },
+            "C": {
+              "n": 15,
+              "min": 2.6,
+              "p50": 2.7,
+              "max": 4.7
+            }
+          },
+          "scroll.launch_to_ready_ms": {
+            "B": {
+              "n": 15,
+              "min": 20918.11,
+              "p50": 21158.46,
+              "max": 23106.45
+            },
+            "C": {
+              "n": 15,
+              "min": 20842.53,
+              "p50": 21127.01,
+              "max": 21959.35
+            }
+          },
+          "memory_idle_load.launch_to_ready_ms": {
+            "B": {
+              "n": 15,
+              "min": 20925.78,
+              "p50": 21069.21,
+              "max": 21491.17
+            },
+            "C": {
+              "n": 15,
+              "min": 20886.57,
+              "p50": 21099.86,
+              "max": 24634.93
+            }
+          },
+          "memory_idle_load.rss_settled_mb": {
+            "B": {
+              "n": 15,
+              "min": 477.6,
+              "p50": 517.3,
+              "max": 575.3
+            },
+            "C": {
+              "n": 15,
+              "min": 484.6,
+              "p50": 551.0,
+              "max": 609.1
+            },
+            "per_slot_p50s": {
+              "b1": 528.9,
+              "c1": 523.4,
+              "c2": 532.6,
+              "b2": 527.9,
+              "b3": 486.1,
+              "c3": 575.7
+            },
+            "note": "pooled +6.5% but non-monotonic by slot position with +/-60MB per-trial spread; drift not strip"
+          }
+        },
+        "archives": "hillclimb/final-quick-results/final-quick-results.tar.gz + binary-size-final-quick.driver.log"
+      },
+      "byte_stability_table": {
+        "pairs": [
+          {
+            "pair": "e0ac38f0a-era vs 161dfcb9f",
+            "presplit": "byte-identical (no Rust code change 161dfcb9f vs e0ac)",
+            "shipped": "649429c120d758b9d2b1840c3b30aff6804a67489c4f521f0649f1f96ad5adfb",
+            "decoder": "33fed663a3731885c5554a96c2a639ce7564771a38f4508a8423cc89bbac0454"
+          },
+          {
+            "pair": "d5cd4b132 (pure upstream) vs 840ab1552 (lane head)",
+            "presplit": "bf81671044fce90d5e64664ed50cb7833aa7e279c2b85bbc7ae87e522430bdfc IDENTICAL both",
+            "shipped": "0f394b9094b0c959a6fe7a5c2d17cb6a56267bb2362cdf22e99e50cff5576718",
+            "bytes": [
+              210103576,
+              53734256
+            ]
+          },
+          {
+            "pair": "7b86bbc87 (pure upstream) vs 1054a9dcf (final lane head)",
+            "presplit": "73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678 IDENTICAL both (no-op rebuild)",
+            "shipped": "4a376d4ef3f7e7235226f87eb233905ba787b44c9e8e62746bc8f2f4d9c9f555",
+            "bytes": [
+              210042112,
+              53607680
+            ],
+            "decoder": "8ac8e3014d2c7a1affe6a2d264c46ad11e56e42f486862623c9f5688dfcdc56c"
+          }
+        ],
+        "note": "lane branch carries NO Rust src changes vs the folded upstream base at every pair; deterministic builds reproduce identical presplit ELF; strip-only design holds at every head"
       }
     }
   },
@@ -1012,15 +1590,15 @@
       "Cross-VM latency comparisons invalid: calibration medians differ 22.3%",
       "Prior-head and bf21a7cc9 ABBA pairs cannot be PR evidence after origin/rust advanced; preserve as iteration evidence."
     ],
-    "notes": "Final-head same-VM sequential short B,C,C,B pair pending after decoder-integrity patch. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3–18.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; historical long B,C,C,B,B,C ×5 campaign on dedicated VM ongoing; short latest-head B,C,C,B neighbor pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B×5 cold/msg plus fresh RSS pending on gate VM. PR #2844 open for REVIEW ONLY on base bc412c5f/candidate e0ac38f0; next upstream f3ae85c0 queued batch fold; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B×5 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims. Decoder-binding patch validated ONLY with toy GCC fixture: immutable Cargo input allowed 2x deterministic split; assembler produced manifest decoders SHA/build-ID + SHA256SUMS; promotion matched tar-installed ELF SHA/build-ID; missing/extra/wrong/forged-SHA sidecar rejected. Real bc412c5f/e0ac38f0 ELF/image GLIBC/file:line/fresh isolated install VERIFIED; current f3ae upstream Cost-cell change awaits fold and exact-head recheck. Public benchmark run 36213336231 FAIL before PR build/trial (npm ci EUSAGE missing package-lock on Rust PR), 0/0; not performance verdict, operator/CI disposition pending."
+    "notes": "Final-head same-VM sequential short B,C,C,B pair pending after decoder-integrity patch. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3\u201318.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; historical long B,C,C,B,B,C \u00d75 campaign on dedicated VM ongoing; short latest-head B,C,C,B neighbor pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B\u00d75 cold/msg plus fresh RSS pending on gate VM. PR #2844 open for REVIEW ONLY on base bc412c5f/candidate e0ac38f0; next upstream f3ae85c0 queued batch fold; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B\u00d75 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims. Decoder-binding patch validated ONLY with toy GCC fixture: immutable Cargo input allowed 2x deterministic split; assembler produced manifest decoders SHA/build-ID + SHA256SUMS; promotion matched tar-installed ELF SHA/build-ID; missing/extra/wrong/forged-SHA sidecar rejected. Real bc412c5f/e0ac38f0 ELF/image GLIBC/file:line/fresh isolated install VERIFIED; current f3ae upstream Cost-cell change awaits fold and exact-head recheck. Public benchmark run 36213336231 FAIL before PR build/trial (npm ci EUSAGE missing package-lock on Rust PR), 0/0; not performance verdict, operator/CI disposition pending. FINAL-HEAD UPDATE 2026-09-26: strip-only same-commit neighbor pair EXECUTED at exact final head 1054a9dcf (b,c,c,b x5, 80/80 valid, noop p50 0.06ms) with NO REGRESSION; earlier pinned d5cd/840a neighbor (80/80 valid) and 6-slot b0af/38db campaign (120/120) are banked with HISTORICAL labels. Cold-start slot-phase drift flips sign between the two same-design strip-only campaigns (d5cd/840a: c faster; 1054a9dcf: b faster) - mins identical in all slots both arms (314.8-315.7ms), so no arm-attributable cold-start delta is claimed in either direction. RSS deltas within slot drift; .debug_* sections are not PT_LOAD so strip cannot add resident memory. msg_send 'ack' stays the known bimodal first-PTY-chunk metric - guard only. make package tar bytes can differ across runs (package_release write_tar does not pin directory mtimes); the content sha (extracted ELF == shipped) is the asserted standard and the CI channel artifact route (assemble_artifacts.pack_tarball mtime=0) is deterministic. Three amend force-with-lease pushes on the worker-owned lane head during the e2e-test fix iteration are disclosed in extra.e2e_test_pairing_fixes."
   },
-  "outcome": "in-progress",
-  "decision": "PR #2844 OPEN FOR REVIEW ONLY. Exact bc412c5f/e0ac38f0 Linux x64 deterministic Option C + isolated fresh install proven; upstream f3ae85c0 adds unrelated TUI Cost semantics and queued batch fold, so bc412 proof will be historical for final merge. e0ac local fmt/clippy/full/family gate in flight; short same-VM B,C,C,B numeric neighbor PENDING. Historical 91eedb5d/84d6ef58 40/40-valid B,C,C,B, no causal speedup due first-output bimodality; symmetric historical family RED. Public benchmark 36213336231 setup FAIL npm ci missing lockfile with 0/0 Rust trials, operator/CI disposition pending. No merge until latest same-SHA gates, numeric operator verdict, and two formal adversarial APPROVE.",
+  "outcome": "final-head-evidence-complete-at-1054a9dcf; review-requested",
+  "decision": "PR #2844 OPEN FOR REVIEW at final head 1054a9dcf. Strict fail-closed routes (161dfcb9f) closed the BLOCK hole; real x64 make package/direct-packer/release-dry-run proofs executed AT the final head with all negatives rejecting; presplit byte-identity vs pure upstream 7b86bbc87 asserted; strip-only same-commit B,C,C,B x5 neighbor at the exact final head: NO REGRESSION (80/80 valid); CI fmt+clippy+4/4 shards+summary PASS at the final head; public 'benchmark' check = NON-APPLICABLE pre-build red (0/0) - operator disposition pending, never called pass. MERGE HOLD (unchanged): orchestrator numeric review of exact final-head evidence + EXPLICIT APPROVE from BOTH adversarial reviewers on the FINAL PR SHA + operator disposition of disclosed red gates (public benchmark non-applicability; ARM64 scope). ARM64: Linux aarch64 in release matrix, NO real ARM artifact proof - requires real ARM split/assemble/promotion proof or explicit operator (Kevin) ruling before any APPROVE; synthetic fixtures do not satisfy. Worker never merges.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2844",
   "record_path": "data/hillclimb/experiments/20260926-025700-binary-size-option-c-split-debug.json",
   "session": {
-    "worker": "perf-binary-size",
-    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9f2f54c1/01a0db50-5da1-720b-8429-3ada49bd8bf5.jsonl"
+    "worker": "perf-binary-size-fast",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-733e18c5/01a0dbfa-85ba-77aa-a7b9-8baff05244e2.jsonl"
   },
-  "timestamp": "2026-09-26T02:57:11.478963+00:00"
+  "timestamp": "2026-09-26T06:40:00Z"
 }
