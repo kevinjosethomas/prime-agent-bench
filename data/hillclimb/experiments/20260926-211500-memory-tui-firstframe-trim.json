@@ -1,0 +1,345 @@
+{
+ "id": "20260926-211500-memory-tui-firstframe-trim",
+ "axis": "memory",
+ "hypothesis": "The TUI process's RSS on a resumed large session (124MB p50 at 10MiB canonical, 396MB at 40MiB, tip 7064d039) is dominated NOT by retained chat data but by (a) the first-frame render churn of the rebuilt transcript's visible window, left in glibc arenas for the process lifetime (the #2872 attach-fold trim runs BEFORE the first frame), and (b) a duplicate copy of every settled assistant message's rendered rows held by the per-entry markdown block cache (md_caches), which exists for streaming replays but is dead weight for settled/resumed messages; additionally scroll walks retain span-fragmented rendered rows for every visited entry forever. Returning the first frame's freed heap + storing settled messages' rows once should cut the TUI process RSS materially with byte-identical rendering.",
+ "approach": "Two pa-tui edits. (1) session_ui.rs: attach fold arms a one-shot trim_after_frame; interactive.rs consumes it right after the terminal draw gate paints the first frame following the transcript rebuild and calls pa_types::memory_release::trim_freed_heap() (the same call #2872 added at the fold; the render churn happens after it). (2) view.rs render_entry Assistant arm: a still-streaming message keeps the per-entry MarkdownBlockCache (its settled blocks replay per frame); a settled message renders with a throwaway cache and drops any stored copy (rendered rows live once, in the entry layout; any later re-render rebuilds identical rows from the message's own text). Census evidence chain: SIGUSR1-style kick-file census probe build (lane/hillclimb-tui-memory-probe @ be68c20cc/4eee5512f, never ships) walked AgentView state: at 10MiB ready the pad entry held 36,412 layout lines (4.17MB content) + md cache duplicate (key 4.10MB + 36,410 lines) while heights never cache in sparse mode; pre-trim-kick census measured 42MB reclaimable at 10MiB / 132MB at 40MiB ready and post-trim heap ~= census live data; scroll walk (2600 PageUps) added +71.7MB heap = live span-fragmented rows (604k spans for 50k lines) retained after return-to-tail (NOT addressed by this PR; follow-up candidate).",
+ "parity_notes": "Rendered bytes preserved by construction and by oracle: the throwaway-cache render is the same code path as the cache-miss render (deterministic from the message's own text); pa-tui-replay --frame 120x40 --color dumps on the canonical 10MiB and 40MiB fixtures are BYTE-IDENTICAL base-vs-cand (sha256 48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841 and 75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d, both sides, 4840 bytes each). No wire, schema, prompt, or behavior change: the trim is allocator plumbing (#2872's own helper, non-glibc no-op), the md-cache skip changes only where rendered rows are stored. Interaction parity from the ABBA: resume sentinel time, input echo latency, scroll top-walk time (53.3s both sides), back-walk key count (2750 both sides - identical transcript geometry), and screen evidence (sentinel/task0) are unchanged. The exit-flush inline scrollback write (streaming lane handoff) is untouched; headless render path skips the trim (frame pipelines unchanged).",
+ "base": {
+  "revision": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480"
+ },
+ "branch": "lane/hillclimb-tui-memory",
+ "commits": [
+  "95d208dfc052e2fb6e820949ea8340b4f1e53414 (lane commit; folded under merges to lane head 59d4524462e349a8cc83273c443903bb3e84c500)"
+ ],
+ "build": {
+  "sandbox_id": "icyplr2n3neymwnqw5i7vyh9 (main, ABBA+oracle) + bp7yd0dsp19tt949m0sekz1f (gate)",
+  "binary_sha256": {
+   "base_1507d399b": "3a5d7278d7bcfb1c08536989a686070cc74d92c02f33dea15154cde13632defe",
+   "cand_59d452446": "5534a79cb33207f059539d27614d1cf96736e31fbe55fceb2e6c672a0143a9f1",
+   "prior_pair_base_c7ca05f10": "db197f7260ad77b28daad472259141ee102c8056a446a8229b06a545631cb4d6",
+   "prior_pair_cand_671fe4c60": "9bb2dfc503aa15f5520fa591ab35a19fa90bfcbd72138469b1f9f33970a2026e",
+   "first_pair_base_7064d039": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+   "first_pair_cand_95d208d": "724723035d0fcbdf02c74e6e4de60f2cfa991aa59967341547aaa3f112cea2c8"
+  },
+  "binary_bytes": {
+   "base_1507d399b": 213058792,
+   "cand_59d452446": 213383216
+  },
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (final head 59d452446: rc 0)",
+  "clippy": "pass (rc 0, -D warnings)",
+  "test": "RED with SYMMETRIC env/ timing flakes at final head: workspace @RUST_TEST_THREADS=4 -> tui_refused_submit_restores_the_draft_after_the_round_trip FAILED; repeated: base 1507d399b standalone 0/3 PASS + serialized-full-suite FAILED (31/1), cand standalone 1/3 PASS + serialized-full-suite PASSED (32/32) => symmetric timing flake, NOT candidate-only; earlier heads: goal_turn_end_loop env-red without uv (PASSES with uv), oauth dead-callback rotating env flake (passes standalone+rerun), npm package tests env-red without node (pass with node). All real pa-tui/TUI headless suites GREEN."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "tui_rss_phase_probe_10mib_ready_final_head": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 122.35,
+     "values_rss_mb": [
+      123.7,
+      121.0,
+      124.8,
+      120.5
+     ],
+     "p50_heap_mb": 57.45
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 70.65,
+     "values_rss_mb": [
+      70.7,
+      70.2,
+      70.6,
+      75.9
+     ],
+     "p50_heap_mb": 32.25
+    },
+    "delta_pct": -42.2,
+    "regression": false,
+    "separation": "full: max cand 75.9 < min base 120.5"
+   },
+   "tui_rss_phase_probe_40mib_ready_final_head": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 394.95,
+     "values_rss_mb": [
+      393.9,
+      391.0,
+      396.0,
+      397.0
+     ],
+     "p50_heap_mb": 191.2
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 212.85,
+     "values_rss_mb": [
+      199.6,
+      200.3,
+      225.4,
+      226.5
+     ],
+     "p50_heap_mb": 144.15
+    },
+    "delta_pct": -46.1,
+    "regression": false,
+    "separation": "full: max cand 226.5 < min base 391.0",
+    "note": "cand passes 3-4 (225-226MB, heap 167MB) drifted with late-run VM state; passes 1-2 = 199.6/200.3 (heap 120.6) match the prior-head pair exactly"
+   },
+   "tui_rss_phase_probe_10mib_postwalk_idle_final_head": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 194.1,
+     "values_rss_mb": [
+      195.4,
+      192.8,
+      196.7,
+      192.4
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_rss_mb": 136.2,
+     "values_rss_mb": [
+      136.7,
+      135.9,
+      136.5,
+      130.8
+     ]
+    },
+    "delta_pct": -29.8,
+    "regression": false,
+    "separation": "full: max cand 136.7 < min base 192.4",
+    "note": "after 2600-key PageUp walk + return-to-tail + 20s idle; remaining +65MB vs cand-ready is the span-fragmented entry-layout scroll retention, NOT bounded by this PR (follow-up candidate, census-documented)"
+   },
+   "prior_pair_generations_10mib_ready": {
+    "pair_base_7064d039_vs_cand_95d208dfc": {
+     "base_p50": 124.25,
+     "cand_p50": 71.15,
+     "delta_pct": -42.7
+    },
+    "pair_base_c7ca05f10_vs_cand_671fe4c60": {
+     "base_p50": 118.75,
+     "cand_p50": 70.85,
+     "delta_pct": -40.4
+    }
+   },
+   "prior_pair_generations_40mib_ready": {
+    "pair_base_7064d039_vs_cand_95d208dfc": {
+     "base_p50": 396.45,
+     "cand_p50": 200.55,
+     "delta_pct": -49.4
+    },
+    "pair_base_c7ca05f10_vs_cand_671fe4c60": {
+     "base_p50": 391.2,
+     "cand_p50": 200.5,
+     "delta_pct": -48.8
+    }
+   }
+  },
+  "extra": {
+   "calibration_s_30m_loop": {
+    "final_head_pre": 1.372,
+    "final_head_post": 1.216,
+    "prior_heads": [
+     1.201,
+     1.202,
+     1.281,
+     1.259
+    ]
+   },
+   "fixture_prehash_per_trial": "fresh copy per trial; 10MiB canonical dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda asserted pre-trial; resumed sessions append bookkeeping rows (post bytes differ, never claimed identical)",
+   "styled_frame_oracle": {
+    "tool": "pa-tui-replay --frame 120x40 --color",
+    "10mib": {
+     "bytes": 4840,
+     "sha256_both_sides": "48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841",
+     "identical": true
+    },
+    "40mib": {
+     "bytes": 4840,
+     "sha256_both_sides": "75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d",
+     "identical": true
+    },
+    "final_head": {
+     "10mib": {
+      "identical": true,
+      "sha256_both_sides": "48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841",
+      "bytes": 4840
+     },
+     "40mib": {
+      "identical": true,
+      "sha256_both_sides": "75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d",
+      "bytes": 4840
+     },
+     "note": "identical shas at ALL THREE head generations - frame bytes stable across #2844/#2866/#2878/#2879/#2880/#2884/#2887 folds"
+    }
+   },
+   "latency_parity": {
+    "sentinel_s_10mib": {
+     "base": [
+      1.44,
+      1.25,
+      1.04,
+      1.24
+     ],
+     "cand": [
+      1.03,
+      1.25,
+      1.25,
+      1.24
+     ]
+    },
+    "echo_ms_10mib": {
+     "base": [
+      1.29,
+      1.91,
+      1.4,
+      2.28
+     ],
+     "cand": [
+      1.22,
+      1.44,
+      1.25,
+      1.33
+     ]
+    },
+    "top_walk_s_10mib": {
+     "base": [
+      53.37,
+      53.33,
+      53.33,
+      53.31
+     ],
+     "cand": [
+      53.33,
+      53.54,
+      53.33,
+      53.31
+     ]
+    },
+    "back_walk_keys_10mib": {
+     "base": [
+      2750
+     ],
+     "cand": [
+      2750
+     ]
+    },
+    "sentinel_s_40mib": {
+     "base": [
+      3.35,
+      3.36,
+      3.33,
+      3.35
+     ],
+     "cand": [
+      3.36,
+      3.37,
+      3.61,
+      3.56
+     ]
+    },
+    "note": "timing legs are within-pair symmetric parity checks only; absolute wall values carry the fleet I/O regime (see validity)"
+   },
+   "census_probe": {
+    "branch": "lane/hillclimb-tui-memory-probe (be68c20cc, 4eee5512f; PROBE-ONLY, never ships)",
+    "ready_10mib_live": {
+     "chat_content_mb": 7.38,
+     "pad_entry_layout_lines": 36412,
+     "pad_layout_content_mb": 4.17,
+     "md_cache_duplicate_key_mb": 4.1,
+     "md_cache_duplicate_lines": 36410,
+     "heights_cached": 0
+    },
+    "trim_kick_ready_10mib": {
+     "rss_before": 124.1,
+     "rss_after_trim": 82.1,
+     "reclaimed_mb": 42.0
+    },
+    "trim_kick_ready_40mib": {
+     "rss_before": 394.8,
+     "rss_after_trim": 262.8,
+     "reclaimed_mb": 132.0
+    },
+    "walk_2600keys_10mib": {
+     "layout_slots_added": 5427,
+     "layout_lines_added": 50025,
+     "layout_spans_added": 604519,
+     "md_spans_added": 175337,
+     "heap_growth_mb": 71.7,
+     "retained_after_tail": true
+    }
+   },
+   "baseline_matrix_stock_60e2e198c": {
+    "note": "HISTORICAL baseline at the pre-fold tip (pre-#2865); 3 trials/size",
+    "fresh": {
+     "ready_rss_mb": [
+      25.7,
+      25.8,
+      25.7
+     ],
+     "heap": 2.9,
+     "anon": 2.4
+    },
+    "2mib": {
+     "ready_rss_mb": [
+      47.1,
+      48.4,
+      45.8
+     ],
+     "top_rss_mb": [
+      67.5,
+      65.9,
+      65.9
+     ],
+     "retained": true
+    },
+    "10mib": {
+     "ready_rss_mb": [
+      123.9,
+      123.6,
+      127.4
+     ],
+     "walk2600_rss_mb": [
+      195.6,
+      195.3,
+      199.2
+     ],
+     "retained": true
+    },
+    "40mib": {
+     "ready_rss_mb": [
+      380.4,
+      384.5,
+      394.7
+     ],
+     "walk_in_pad_sea_no_growth": true
+    }
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (/root/bin-base, /root/bin-cand regenerated per head), per-trial fresh fixture copy with canonical prehash assert (10MiB dadaecfc..., 40MiB 85be402f...; resumed sessions append bookkeeping rows - post bytes differ, never claimed identical), pre/post calibration per pass set. Evidence repeated at THREE successive upstream heads (7064d039, c7ca05f10, 1507d399b) with consistent deltas and full B/C separation at every head. FLEET I/O REGIME DISCLOSURE: during the ABBA windows the repeat-fsync probe read 36-43ms on the measurement VM (fleet-degraded regime class per boot-floor warning), while the product-write-class probe (fresh file + fsync + rename + stat) read 0.02-0.06ms (healthy, per spawn-admission's corrected probe class); primary claims are RSS/PSS/census-byte measures (deterministic, calibration-stable); timing legs are within-pair parity checks only. Baseline matrix trials t2/t3 at the pre-fold tip 60e2e198c used fixtures that had accumulated a few bookkeeping rows from t1 (pre-fresh-copy discipline); effect bounded at sub-0.1MB, superseded by the fresh-copy ABBA pairs. Census numbers come from a PROBE build (lane/hillclimb-tui-memory-probe, never ships): its RSS values are PROBE-labeled and never used as product baselines."
+ },
+ "outcome": "candidate-ready",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-211500-memory-tui-firstframe-trim.json",
+ "session": {
+  "worker": "perf-tui-memory-fast (GLM 5.3 Fast)",
+  "session_dir": "hillclimb wave-2 tui-memory"
+ },
+ "timestamp": "2026-09-26T22:05:05.835703+00:00"
+}
