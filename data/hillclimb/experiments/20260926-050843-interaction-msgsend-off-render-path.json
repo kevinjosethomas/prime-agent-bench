@@ -1,0 +1,152 @@
+{
+  "id": "20260926-050843-interaction-msgsend-off-render-path",
+  "axis": "interaction",
+  "hypothesis": "compare.msg_send submit_to_ack_ms is gated by the TUI submit's daemon round trip on the key/render path (Enter -> first output ~35ms fresh-measure, TS ~1.2ms); TS onSubmit resolves agentConnection.prompt off the render path (async handler, editor clears before the await), so the port must queue the submit and fold the outcome back to reach TS-class latency.",
+  "approach": "pa-tui session_ui.rs + interactive.rs: send_prompt queues a PromptOrder on an ordered unbounded channel; one long-lived prompt_submit_worker drains FIFO with a single in-flight request (wire order = submit order, TS single-threaded event-loop parity); PromptSubmitNote outcomes fold back through the run loop's select arm into apply_prompt_outcome (same admission bookkeeping + error ladder as the inline await: one-rebind+replay via attach_session(&durable, DockFold::FirstFrame), timeout note, direct-sent note, refusal -> error row + retain_rejected_draft); submit-time completion watermark (turn_ends_seen/expected_turn_end, Kevin-authored on the lane) keeps a late ACK from re-arming an already-settled turn (fixed an 84x live-runs slowdown 30.08s->0.36s); park the closed headless ui_rx arm once headless_done (the gdb root cause of the outlived-submit e2e hang: closed receiver + active turn + no deadline hot-spins the select); WaitIdle barrier + headless exit gate + busy guards (/update, /nightly, /reload) read prompt_submits_in_flight/work_in_flight.",
+  "parity_notes": "TS citations: interactive-mode.ts:5150 (onSubmit async), :5164 (generation bump), :5687 (editor clears before await), :5714-5718 (await agentConnection.prompt, queueIfBusy: true), :5720-5743 (rejection ladder + retainSubmittedDraft), :4806-4821 (retainSubmittedDraft). Wire envelope unchanged (DaemonCommand::Prompt incl. rlm_notice_nonce; queue_if_busy: true); session JSONL written by the daemon, unchanged (e2e ordering tests assert on it). Terminal mode untouched (headless_done is headless-driver-only). DISCLOSED frame-sequence difference (adversarial audit pending): under a >400ms ACK stall (observed once under 16-way battery load; isolated rerun PASS; pure-base battery PASS same test), the bang card can mount before the ACK outcome arms the loader, so the pending-regime frame lacks the loader row (bash_bang_headless a_bang_during_a_streaming_turn_holds_then_flushes, panicked at :851 'the working loader row'); TS's bang path (interactive-mode.ts:5582-5644) checks isBashRunning + side-question state ONLY - no isStreaming/inputSubmissionsPending gate - and TS's isStreaming is event-driven (:3263, :3350), so TS would also run the bang while the prompt await pends; the old blocking submit guaranteed the frame order, the backgrounded one does not under pathological ACK latency.",
+  "base": {
+    "revision": "bbb886dd88fa33365214e5d101659b519d890153"
+  },
+  "branch": "lane/hillclimb-msgsend",
+  "commits": [
+    "c7ba643eed2ea09c94a59baaecb79077f0f44618",
+    "baafe0e04c2869d083477776c8348d83a4980ced",
+    "e7e40c30e4abff8a775361678f16ccd1f2cc642d",
+    "312098c8a482a2a2fe32810918743b3f14a039eb",
+    "9a34fe14e",
+    "10f3385e6",
+    "1f63e7860",
+    "76fdbb8cf",
+    "36fbc0819",
+    "81ea95430",
+    "a50b4dda0",
+    "c48779273",
+    "8f2150c8f"
+  ],
+  "build": {
+    "sandbox_id": "lbavzw3lgdcdjxvnalikzvwz",
+    "binary_sha256": "e7e57bd927e81722cd4028b65611d1a7f5267e81ef32b1abf3551db06c5ebfaa",
+    "binary_bytes": null,
+    "build_seconds": 110,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "pass (c7ba643ee)",
+    "clippy": "pass (-D warnings, RC=0, c7ba643ee)",
+    "test": "cand battery on c7ba643ee: 152/153 binaries ok; the one failure = pa-ai oauth openai_codex unit test a_dead_callback_falls_to_the_prompt_without_a_paste_surface (LOAD FLAKE: pa-ai is byte-identical between the base tip and the cand head - empty diff; the same test PASSED on the pure-base battery under the same 16-way load; upstream itself hardened this area's EADDRINUSE flake in #2867). bang frame-sequence difference: intermittently reproducible under load - FAILED in 2 of 3 candidate full-battery runs (both on e7e40c30e; the mechanism code is identical on c7ba643ee), PASSED in the third (c7ba643ee battery), isolated PASS 3.38s, pure-base PASS under the same load - real, load-sensitive frame-sequence difference vs the Rust base, justified by the TS citation (bang path gates only isBashRunning + side-question pane; no isStreaming/pending-submits gate; isStreaming is event-driven); hardening stays OFF (it would make the port stricter than TS). All 4 lane e2e tests PASS in every battery (FIFO order, outlived-switch staleness, refused-submit ladder, park regression). pure-base battery on bbb886dd8: 153/153 PASS, 0 failures, same command/env. The R2 warm rerun's unrelated pa-daemon flake (tool_result_entries_persisted_and_streamed, totalMessages 3 vs 4) also disclosed: R1 pass same binary, pure-base pass, zero lane pa-daemon diff. agents_view_search red: did not reproduce on any head since the fold - historical, closed."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.msg_send": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 1.8,
+          "p95_ms": 2.1,
+          "values_ms": [
+            2.1,
+            1.8,
+            1.5,
+            1.8,
+            1.9
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 0.2,
+          "p95_ms": 0.4,
+          "values_ms": [
+            0.3,
+            0.2,
+            0.2,
+            0.4,
+            0.2
+          ]
+        },
+        "delta_pct": -88.9,
+        "regression": false,
+        "metric": "submit_to_ack_ms (first PTY output chunk after Enter; NOT daemon ack)",
+        "settle_baseline": {
+          "p50_ms": 689.2,
+          "values_ms": [
+            691.7,
+            664.7,
+            690.0,
+            666.8,
+            689.2
+          ]
+        },
+        "settle_candidate": {
+          "p50_ms": 689.3,
+          "values_ms": [
+            689.3,
+            665.2,
+            689.0,
+            689.7,
+            690.5
+          ]
+        },
+        "settle_delta_pct": 0.0,
+        "order": "b,c,c,b,b,c,c,b,b,c (trial-level alternation, binary swapped between invocations, both sha256s recorded per run via harness versions.json)"
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 209951624,
+        "candidate": 210848448
+      },
+      "calibration_s": {
+        "min": 1.033,
+        "max": 1.074,
+        "n": 20,
+        "note": "before/after each round; drift within ~4%"
+      },
+      "noop_control_p50_ms": {
+        "values": [
+          0.071,
+          0.057,
+          0.065,
+          0.054,
+          0.079,
+          0.064,
+          0.065,
+          0.07,
+          0.063,
+          0.076
+        ]
+      },
+      "cross_head_consistency_pair": {
+        "base_revision": "d5cd4b13221ad2a4d240aa152f0672c2ba38ebd5",
+        "base_binary_sha256": "bf81671044fce90d5e64664ed50cb7833aa7e279c2b85bbc7ae87e522430bdfc",
+        "cand_revision": "e7e40c30e4abff8a775361678f16ccd1f2cc642d",
+        "cand_binary_sha256": "4af05e2670b3e3e847c671ff40539cab9bcac45ace43ef39ce8f887a9e911f3f",
+        "ack_p50_ms": {
+          "base": 2.3,
+          "cand": 0.2,
+          "delta_pct": -91.3
+        },
+        "settle_p50_ms": {
+          "base": 692.5,
+          "cand": 689.6,
+          "delta_pct": -0.4
+        },
+        "validated": "10/10"
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "FINAL-HEAD PAIR (primary): bbb886dd8 base (binary 29e5209e7ca330c5a9425e79266664c828605173c3d09626030f77882dd47dc0, 209951624B) vs c7ba643ee cand (binary e7e57bd927e81722cd4028b65611d1a7f5267e81ef32b1abf3551db06c5ebfaa) on lbavzw3, trial-level alternation b,c,c,b,b,c,c,b,b,c, binary swap between invocations, per-run sha256 via harness versions.json, base binary independently built on sibling VM xcde4o16 (identical sha, reproducible cross-check). CROSS-HEAD CONSISTENCY PAIR (d5cd4b132 head, same method/machine): base bf816710 vs cand e7e40c30e (4af05e26): ack p50 2.3->0.2ms (-91.3%), settle 692.5->689.6ms (-0.4%), 10/10 validated. b1 ack 7.5ms (d5cd4b132 pair) = base arm first trial after binary swap (cache warmup), valid + disclosed. Calibration drift within ~4% across both pairs (final-head pair: 1.033-1.074s over 20 samples); noop-control floors 0.054-0.079ms; load gate quiet; comparability qualified on all 20 trials across both pairs. Old-head iteration evidence (pre-park-fix fa217dc, w2-msgsend-abba-01..10, ack 2.1->0.2ms): superseded by the two pairs above; 84x live-runs watermark fix measured 30.08s->0.36s in the iteration."
+  },
+  "outcome": "in-progress",
+  "decision": "orchestrator numeric review ACCEPTED on the d5cd4b132 pair; final-head pair delivered (ack -88.9%, settle +0.0%); pending BOTH adversarial reviewers' explicit APPROVE on the final PR SHA + operator disposition of the disclosed load-sensitive bang frame-sequence difference and the pa-ai oauth / pa-daemon stats load flakes",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-050843-interaction-msgsend-off-render-path.json",
+  "session": {
+    "worker": "perf-msgsend-fast",
+    "session_dir": "~/.prime/agent/sessions/01a0dbfa-934d-77c5-a4bd-3b8f3e93a99c.jsonl"
+  },
+  "timestamp": "2026-09-26T05:08:43Z"
+}
