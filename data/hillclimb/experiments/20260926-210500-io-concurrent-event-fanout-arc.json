@@ -1219,6 +1219,13 @@
   "method": "same-vm-sequential ABBA (B C C B per N) + baseline curve"
  },
  "parity_notes": "Frozen surfaces untouched: session JSONL bytes, durability (1 fdatasync/append unchanged), wire frames, routing decisions, ring capacity, recv order. The session_semantics_digest is identical between base and candidate at every N (4195cad0 @ N=1, 85607aee @ N=100) and all 24 runs validate every oracle (structure, custom-row semantics, resume prefix preservation, fixture semantics). Internal-only change: the broadcast carries (ClientRouting, Arc<Value>) and the per-connection event arm serializes from the shared Value. The change mirrors the worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers deref back to owned Values so test assertions are unchanged in meaning.",
+ "pr": {
+  "base": "rust @ 1507d399b54f2ffe65cda22ed7a9c86fee6a1480",
+  "head_sha": "4becda49a54abfbcc33413a6566947064760b378",
+  "number": 2896,
+  "opened": "2026-09-26T22:17Z via fleet_pipeline pr_1790461039",
+  "url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2896"
+ },
  "regime": {
   "calibration": "fixed 32MB sha256 work: min 0.017s across all 24 runs; single-sample max spikes to 0.021-0.036s in 4 runs (I/O-window turbulence); CPU legs unaffected (B legs stable 2563-2728us across both windows).",
   "first_pair": "N=1 legs: repeat-class p50 0.19-0.21ms (healthy); N=100 legs: repeat-class p50 13-52ms - partly self-induced (100 concurrent fdatasync-per-append sessions saturate the shared storage: the concurrent-append latency mechanism itself)",
