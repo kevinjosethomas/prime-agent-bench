@@ -33,7 +33,12 @@ class PiMonoProduct(ProductAdapter):
     def version_info(self) -> dict:
         from bench.core.env import sha256_file
         v = subprocess.run(["node", str(self.cli_path), "--version"], capture_output=True, text=True, timeout=90)
-        pkg = json.loads((self.cli_path.parent / "package.json").read_text())
+        # the bundle layout (dist/bundle/cli.js) has no adjacent package.json;
+        # the package.json lives at the package root (dist/../package.json)
+        pkg_json = self.cli_path.parent / "package.json"
+        if not pkg_json.exists():
+            pkg_json = self.cli_path.parent.parent.parent / "package.json"
+        pkg = json.loads(pkg_json.read_text()) if pkg_json.exists() else {}
         return {"version": v.stdout.strip() or pkg["version"],
                 "revision": self.product_cfg.get("revision", self.default_revision),
                 "binary": f"node {self.cli_path}",

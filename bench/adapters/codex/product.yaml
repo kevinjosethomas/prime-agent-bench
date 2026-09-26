@@ -12,6 +12,10 @@ auth_sources:
   - tmp
   - .tmp
   note: full device state; copied ChatGPT tokens do NOT authenticate a copied home
+- src: ~/.pi/agent/auth.json
+  note: "the OpenAI API key (openai.key) for the real-api api-key route \u2014 the\
+    \ ChatGPT OAuth cannot survive isolated trial homes (single-use refresh tokens\
+    \ rotate the family on first refresh)"
 first_run_dialogs:
 - marker: 3. Provide your own API key
   keys:
@@ -40,3 +44,5 @@ vendor:
   exclude:
   - tmp
   - .tmp
+- src: ~/.pi/agent/auth.json
+  dst: root/.pi/agent/auth.json
