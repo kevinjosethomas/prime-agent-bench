@@ -207,13 +207,13 @@
   "excluded": [],
   "notes": "60/60 trials valid, zero errors, zero precondition fails. r1 pair (base d09fb8f9d vs cand 270b593b2, VM qe2f86njdtddb63qxdp0ilkk, 04:19-04:47Z) is HISTORICAL: superseded by tip churn; its VM died at max runtime BEFORE its full gate log could be saved (its gate tail showed agents_view_search_e2e + pa-core --lib failing at the old candidate; neither reproduces at the new tip; its fmt/clippy were never verified) - r2 redid everything. Sandbox max-runtime death is the r1 VM lesson: r2 VM created with 12h cap."
  },
- "outcome": "CONFIRMED at both c7ca05f10/890729100 (full pair) and e40db3a16/78d3ea798 (head-exact spot-check); PR #2893: reviewer-1 EXPLICIT APPROVE at 78d3ea798, reviewer-2 flip requested after completing its two carry-rule items; awaiting operator dispositions; no merge",
- "decision": "pending orchestrator",
+ "outcome": "MERGED - PR #2893 squash-merged as 13b4f307c on origin/rust (perf(pa-tui): handoff exits break the run loop this iteration - chat->agents 119ms -> 67ms), 2026-09-26 under the standing autonomous-merge authorization: orchestrator numeric review ACCEPTED + both adversarial reviewers EXPLICIT SHA-bound APPROVEs at 78d3ea798 + standing-class red-gate dispositions (benchmark non-applicability + a_bang_streaming_flush_capture_race + acp_daemon_attached_goal_update_meta_co_scheduling registrations)",
+ "decision": "MERGED 13b4f307c",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2893",
  "record_path": "data/hillclimb/experiments/20260926-211702-interaction-chat-to-agents-handoff-exit.json",
  "session": {
   "worker": "perf-chat-to-agents-fast",
   "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9034d7f2/01a0dbfa-9559-73b6-b529-a6760090cd19.jsonl"
  },
- "timestamp": "2026-09-26T21:55:00Z"
+ "timestamp": "2026-09-26T22:05:00Z"
 }
