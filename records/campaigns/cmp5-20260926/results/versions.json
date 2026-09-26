@@ -1,0 +1,37 @@
+{
+ "_meta": {
+  "campaign": "cmp5-20260926"
+ },
+ "rust": {
+  "version": "0.1.0-continuous.59a9c658d870bfc31dac9a09683d1679d8791011",
+  "revision": "59a9c658d870bfc31dac9a09683d1679d8791011",
+  "binary": "/root/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust",
+  "payload": "/root/bench-cmp5/pa-rust-prefix/share/prime-agent-rust/prime-agent",
+  "binary_sha256": "6f10ea7a56749bf5d11786b30c2d39bf81e6cc5819798e5d0a647ddca8a0c370",
+  "binary_bytes": 204860672
+ },
+ "ts": {
+  "version": "0.9.6",
+  "revision": "official-0.9.6",
+  "binary": "/root/.local/share/prime-agent/bin/prime-agent",
+  "payload": "/root/.local/share/prime-agent/bin/prime-agent",
+  "binary_sha256": "69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb",
+  "binary_bytes": 163595464
+ },
+ "claude": {
+  "version": "2.1.283 (Claude Code)",
+  "revision": "npm@latest",
+  "binary": "/usr/bin/claude",
+  "binary_sha256": "1859583ce32920595c61ef868bee52e1b1594f7486db209935e01f1e5e804ae2"
+ },
+ "codex": {
+  "version": "codex-cli 0.157.1",
+  "revision": "npm@latest",
+  "binary": "/usr/bin/codex",
+  "binary_sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+  "auth_limited": true
+ },
+ "pi": {
+  "error": "[Errno 2] No such file or directory: '/root/bench-cmp5/repos/pi-mono/packages/coding-agent/dist/bundle/package.json'"
+ }
+}
