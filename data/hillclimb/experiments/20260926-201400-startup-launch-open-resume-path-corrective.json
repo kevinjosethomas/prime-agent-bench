@@ -1,0 +1,85 @@
+{
+ "id": "20260926-201400-startup-launch-open-resume-path-corrective",
+ "axis": "startup",
+ "hypothesis": "CORRECTIVE SUPERSEDE of 20260926-191200-startup-launch-open-decompose: (1) the 'pass 2' full-file read+parse on the BENCH launch path was misattributed \u2014 it is persisted_rlm_max_depth (agent_engine.rs:1693 read_to_string + parse_session_entries, via configure_rlm_identity at create.rs:487, running on EVERY create with a session path), NOT saved_session_context (which the bench mock launch NEVER exercises: the harness passes --provider/--model -> create payload carries model -> flagged_model=true -> restore_session_model skipped, create.rs:41/:187); credit to perf-cold-open-residual-fast's instrument ledger (their record c0752f8; their clean span: p50 34.5ms on the stock 10MiB fixture, ~50-60ms est. at this fixture's 11,923 rows \u2014 my strace ~320ms span was ~2.6-5x strace-inflated). (2) saved_session_context (agent_engine.rs:1726, SessionFile::open FULL parse of every row to read the saved model+thinking) runs ONLY on the no-flags resume path + worker replacement flows \u2014 the real user resume case. (3) New evidence: the no-flags RESUME-PATH baseline at the same pin (6588b19cf), same VM, same fixture, 5/5 valid trials with hardened gates.",
+ "approach": "Resume-path driver: same agent-view v2 launch contract + (a) ctx[routing]=real-api so argv carries NO --provider/--model (the create payload has no model -> flagged_model=false -> restore_session_model_at runs saved_session_context); (b) the fixture's saved leaf model z-ai/glm-5.3 added to the trial's mock models.json so the restore's readiness wait resolves instantly offline (no network on the measured span); (c) readiness anchored on the EDITOR DOCK mount (the bare '>' prompt row) instead of first non-blank frame, because the one-time telemetry notice (stderr, ~3ms) is the first non-blank frame on this shape and the PTY kernel echo false-positives the typed-echo gate while the TUI is still booting; (d) hardened validity gates: fixture post-bytes MUST differ (session opened), daemon+worker MUST be sighted, first-replay must render, ready > 150ms. Debug trail (pilot probes + one traced pilot): the v1/v2 legs of this shape were INVALID (driver killed the TUI mid-boot at ~15ms on a kernel-echo false positive; the one-time notice fsync is slow on this VM (~40-100ms) but completes); two manual probes also accidentally appended to the SOURCE fixture (restored both times from the pristine local copy; per-trial copies are immune).",
+ "parity_notes": "No product change. Privacy unchanged (hashes/counts only). The resume-path leg's launch shape is the real user resume path (no provider/model flags); the measured span sends no prompt (no API traffic); the model resolves from the trial's models.json.",
+ "base": {
+  "revision": "6588b19cf4cd69e2f0f9a54ae1c0e7e85b08a374"
+ },
+ "branch": "hillclimb (bench repo)",
+ "build": {
+  "sandbox_id": "hnxa1yesjkglj31j60mub5wy",
+  "toolchain": "rustup 1.98.1",
+  "binary_note": "same pinned build as the decomposition record"
+ },
+ "gates": {
+  "fmt": "n/a",
+  "clippy": "n/a",
+  "test": "n/a",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated, hardened validity gates (see approach)",
+  "resume_path_no_flags_real_fixture": {
+   "trials": 5,
+   "valid": 5,
+   "launch_to_dock_ms": {
+    "p50": 781.7,
+    "values": [
+     713.8,
+     763.5,
+     819.7,
+     887.1,
+     781.7
+    ]
+   },
+   "launch_to_ready_ms": {
+    "p50": 790.86,
+    "values": [
+     723.92,
+     773.47,
+     860.87,
+     900.16,
+     790.86
+    ]
+   },
+   "t_daemon_sighting_ms": [
+    8.4,
+    49.1,
+    47.7,
+    10.5,
+    10.7
+   ],
+   "t_worker_sighting_ms": [
+    35.6,
+    80.2,
+    105.4,
+    178.9,
+    115.1
+   ],
+   "fixture_post_bytes": "12987928 in 5/5 (session opened; +158 bookkeeping bytes as in the mock legs)",
+   "cpu_at_ready_p50": {
+    "tui_s": 0.09,
+    "daemon_s": 0.04,
+    "worker_s": 0.55,
+    "other_s": 0.05,
+    "tree_rss_mb": 243.2
+   },
+   "reading": "the no-flags resume path is ~220ms SLOWER ready (790.9 vs 569.9 p50) than the bench mock launch at the same fixture/VM/pin, and the worker's CPU at ready roughly doubles (0.55s vs 0.29-0.30s): the resume path pays restore_session_model_at's saved_session_context FULL parse (my candidate's target) on top of the mock launch's file work, plus the one-time telemetry-notice settings write (fsync ~40-100ms on this VM, first-launch-only artifact \u2014 a prepass would remove it from steady-state measurement; kept here so the leg matches a real FIRST resume)."
+  },
+  "revised_candidate_expectation": "saved_session_context's full parse is the biggest KNOWN single item in the ~220ms resume-vs-mock delta; the paired ABBA will measure the exact share \u2014 cold-open-residual's clean instrument puts the SAME-SHAPE full parse (persisted_rlm_max_depth, same size) at ~50-60ms at this fixture, so the honest expectation for my hunk on the resume-path leg is a ~50-170ms ready reduction, to be measured; the mock-launch legs should show ~no delta (restore skipped) and will be labeled as such, not claimed."
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "v1/v2 resume-path legs (10 rows) INVALID: kernel-echo false positive + notice-as-first-paint; superseded by the hardened v4 leg (5/5 valid). The bench mock-launch legs of the decomposition record stand unchanged (they never claimed saved_session_context). Source fixture restored twice after manual probes appended to it (sha verified 835c4473... post-restore)."
+ },
+ "outcome": "measured - CORRECTIVE SUPERSEDE + resume-path baseline",
+ "decision": "The launch-open candidate (saved_session_context windowed-first) is RE-SCOPED to the real resume path + worker replacement flows; its ABBA legs are the resume-path shape (no flags; mock-resolved model) with the mock-launch legs as ~no-delta controls. Sequence: attach-path head -> worker-rss head -> my one-function re-base (saved_session_context + differential oracle test; persisted_rlm_max_depth belongs to cold-open-residual, no hunk overlap). cold-open-residual's clean ledger anchors the same-shape parse cost at ~50-60ms; my earlier ~150-170ms estimate was strace-inflated and is WITHDRAWN.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-201400-startup-launch-open-resume-path-corrective.json",
+ "session": {
+  "worker": "perf-launch-open-fast"
+ },
+ "timestamp": "2026-09-26T20:14:00+00:00"
+}
