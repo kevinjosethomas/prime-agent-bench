@@ -335,7 +335,7 @@
  },
  "outcome": "pr-open-review-in-progress",
  "decision": "Orchestrator numeric review of the settled-head paired evidence PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on the final PR SHA and operator disposition of the disclosed red gates (non-applicable benchmark CI 0/0; the base-side interactive_daemon_e2e co-scheduling flake family documented in catalog-cold's record). raw_value dependency-feature sign-off requested from reviewers. No merge by this worker.",
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2882",
  "record_path": "data/hillclimb/experiments/20260926-193438-startup-catalog-second-parse-content-borrow.json",
  "session": {
   "worker": "perf-catalog-second-parse-fast",
