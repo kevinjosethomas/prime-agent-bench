@@ -1,0 +1,1999 @@
+{
+  "id": "20260926-022016-binary-size-fat-lto-one-codegen-inconclusive",
+  "axis": "binary-size",
+  "hypothesis": "Fat LTO and one release codegen unit can reduce the install binary and compressed download beyond shipped thin LTO and four units without harmful startup/runtime regression.",
+  "approach": "Change only workspace Cargo.toml release lto thin\u2192fat and codegen-units 4\u21921; preserve debug=line-tables-only and strip=false. First unstripped original-head pair and page-warmed same-VM B,C,C,B correction. No Option C post-link decoder matrix after parent discard decision.",
+  "parity_notes": "No Rust logic, features, session replay/API/wire/system-prompt content, or tool definitions changed. Linux x86_64 build and --version worked. macOS arm64 compilation and full test gates not run; parity is not claimed verified. Binary-size Option C separate lane not modified.",
+  "base": {
+    "revision": "1b3fe3791dd412330885746c07aef4bfd4628159"
+  },
+  "branch": "lane/hillclimb-size-lto",
+  "commits": [
+    "28cfe0f2469b6c5d2be0d0ddefae05bb8f98eee9",
+    "fccc31701e02b97f04d0790622b71993c3b0a6c1"
+  ],
+  "build": {
+    "sandbox_id": "rhjuo94e6j9u9pxtsjmzpuwc",
+    "binary_sha256": "9e8fb617a7abc75b21422825f9cd5c23897b956fbcead107ffee8223d8191c21",
+    "binary_bytes": 160035056,
+    "build_seconds": 276.368,
+    "toolchain": "rustup 1.98.1",
+    "baseline": {
+      "binary_sha256": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98",
+      "binary_bytes": 208907976,
+      "build_seconds": 164.867,
+      "cargo_reported_build_seconds": 112
+    },
+    "candidate_cargo_reported_build_seconds": 275,
+    "source_note": "Both builds original base 1b3fe379 on same VM. Candidate branch later append-only-folded b0afcdbe, but folded revision was NOT built or benchmarked; no current-head claim. Build wall times include command overhead.",
+    "gzip_n_9_bytes": {
+      "baseline": 53663528,
+      "candidate": 43947000,
+      "delta_pct": -18.10639061971475
+    }
+  },
+  "gates": {
+    "fmt": "not-run",
+    "clippy": "not-run",
+    "test": "not-run; candidate discarded before PR gates"
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.cold_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 315.63,
+          "p95_ms": 320.054,
+          "values_ms": [
+            320.96,
+            316.43,
+            315.3,
+            315.63,
+            315.55
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 514.08,
+          "p95_ms": 615.532,
+          "values_ms": [
+            635.73,
+            514.08,
+            534.74,
+            511.01,
+            399.77
+          ]
+        },
+        "delta_pct": 62.87425149700601,
+        "regression": null
+      },
+      "compare.warm_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 326.67,
+          "p95_ms": 335.344,
+          "values_ms": [
+            331.68,
+            336.26,
+            326.67,
+            263.31,
+            299.83
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 497.62,
+          "p95_ms": 568.63,
+          "values_ms": [
+            579.12,
+            526.67,
+            497.62,
+            431.48,
+            449.79
+          ]
+        },
+        "delta_pct": 52.33109866225853,
+        "regression": null
+      },
+      "compare.msg_send": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 38.5,
+          "p95_ms": 49.0,
+          "values_ms": [
+            38.5,
+            2.2,
+            48.2,
+            1.6,
+            49.2
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 2.0,
+          "p95_ms": 49.099999999999994,
+          "values_ms": [
+            1.6,
+            1.9,
+            60.7,
+            2.7,
+            2.0
+          ]
+        },
+        "delta_pct": -94.8051948051948,
+        "regression": null
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 208907976,
+        "candidate": 160035056
+      },
+      "gzip_n_9_bytes": {
+        "baseline": 53663528,
+        "candidate": 43947000
+      },
+      "rss_mb": {
+        "baseline": null,
+        "candidate": null
+      },
+      "calibrated_bccb": {
+        "compare.cold_start": {
+          "wave_order": [
+            "B1",
+            "C1",
+            "C2",
+            "B2"
+          ],
+          "wave_rows": {
+            "B1": [
+              {
+                "schema_version": 1,
+                "run_id": "281f24e3-98a7-423e-a852-988c0a9f49ef",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388548.4423265,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 268.0,
+                  "launch_to_ready_ms": 708.17,
+                  "input_ready_gap_ms": 440.17,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17607.27,
+                  "pty_bytes": 9880,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4619,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 112.5,
+                    "pss_mb": 76.0,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.15,
+                  "loadavg_after": 0.11
+                },
+                "validated": true,
+                "duration_s": 21.24
+              },
+              {
+                "schema_version": 1,
+                "run_id": "281f24e3-98a7-423e-a852-988c0a9f49ef",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388569.6832345,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 83.2,
+                  "launch_to_ready_ms": 534.87,
+                  "input_ready_gap_ms": 451.64,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17586.53,
+                  "pty_bytes": 9924,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4663,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 112.4,
+                    "pss_mb": 76.2,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.11,
+                  "loadavg_after": 0.07
+                },
+                "validated": true,
+                "duration_s": 21.04
+              },
+              {
+                "schema_version": 1,
+                "run_id": "281f24e3-98a7-423e-a852-988c0a9f49ef",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388590.7249055,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 84.3,
+                  "launch_to_ready_ms": 341.34,
+                  "input_ready_gap_ms": 257.08,
+                  "dropped_probes": 4,
+                  "erase_ok": true,
+                  "erase_ms": 9152.72,
+                  "pty_bytes": 6064,
+                  "frame_bursts": 28,
+                  "burst_bytes": [
+                    1165,
+                    2771,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 5,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 112.9,
+                    "pss_mb": 76.8,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.07,
+                  "loadavg_after": 0.2
+                },
+                "validated": true,
+                "duration_s": 12.41
+              }
+            ],
+            "C1": [
+              {
+                "schema_version": 1,
+                "run_id": "ac262c78-4cb7-4a95-8c1b-1775d5af6ddb",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388694.9062648,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 239.5,
+                  "launch_to_ready_ms": 696.7,
+                  "input_ready_gap_ms": 457.15,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17576.22,
+                  "pty_bytes": 9968,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4707,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 96.3,
+                    "pss_mb": 69.4,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.04,
+                  "loadavg_after": 0.03
+                },
+                "validated": true,
+                "duration_s": 21.2
+              },
+              {
+                "schema_version": 1,
+                "run_id": "ac262c78-4cb7-4a95-8c1b-1775d5af6ddb",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388716.1049387,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 83.0,
+                  "launch_to_ready_ms": 401.16,
+                  "input_ready_gap_ms": 318.21,
+                  "dropped_probes": 6,
+                  "erase_ok": true,
+                  "erase_ms": 13376.16,
+                  "pty_bytes": 8016,
+                  "frame_bursts": 40,
+                  "burst_bytes": [
+                    1165,
+                    3739,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 7,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 96.7,
+                    "pss_mb": 70.0,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.03,
+                  "loadavg_after": 0.02
+                },
+                "validated": true,
+                "duration_s": 16.7
+              },
+              {
+                "schema_version": 1,
+                "run_id": "ac262c78-4cb7-4a95-8c1b-1775d5af6ddb",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388732.803103,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 83.5,
+                  "launch_to_ready_ms": 341.62,
+                  "input_ready_gap_ms": 258.07,
+                  "dropped_probes": 4,
+                  "erase_ok": true,
+                  "erase_ms": 9149.75,
+                  "pty_bytes": 6107,
+                  "frame_bursts": 28,
+                  "burst_bytes": [
+                    1165,
+                    2814,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 5,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 95.8,
+                    "pss_mb": 69.3,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.02,
+                  "loadavg_after": 0.02
+                },
+                "validated": true,
+                "duration_s": 12.41
+              }
+            ],
+            "C2": [
+              {
+                "schema_version": 1,
+                "run_id": "7a64f8f7-74a7-47ca-ae48-cb44d7e45223",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388846.2851264,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 214.0,
+                  "launch_to_ready_ms": 472.32,
+                  "input_ready_gap_ms": 258.35,
+                  "dropped_probes": 4,
+                  "erase_ok": true,
+                  "erase_ms": 9141.14,
+                  "pty_bytes": 6064,
+                  "frame_bursts": 28,
+                  "burst_bytes": [
+                    1165,
+                    2771,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 5,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 95.5,
+                    "pss_mb": 68.9,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.02,
+                  "loadavg_after": 0.01
+                },
+                "validated": true,
+                "duration_s": 12.54
+              },
+              {
+                "schema_version": 1,
+                "run_id": "7a64f8f7-74a7-47ca-ae48-cb44d7e45223",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388858.823894,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 83.9,
+                  "launch_to_ready_ms": 512.2,
+                  "input_ready_gap_ms": 428.31,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17561.38,
+                  "pty_bytes": 9880,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4619,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 97.3,
+                    "pss_mb": 70.6,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.01,
+                  "loadavg_after": 0.09
+                },
+                "validated": true,
+                "duration_s": 20.99
+              },
+              {
+                "schema_version": 1,
+                "run_id": "7a64f8f7-74a7-47ca-ae48-cb44d7e45223",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388879.8176413,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 83.1,
+                  "launch_to_ready_ms": 513.53,
+                  "input_ready_gap_ms": 430.45,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17597.84,
+                  "pty_bytes": 9924,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4663,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 95.2,
+                    "pss_mb": 68.0,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.09,
+                  "loadavg_after": 0.14
+                },
+                "validated": true,
+                "duration_s": 21.03
+              }
+            ],
+            "B2": [
+              {
+                "schema_version": 1,
+                "run_id": "64e6c217-cb3a-4b05-ac28-3b18564967d0",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790389006.250884,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 163.8,
+                  "launch_to_ready_ms": 583.92,
+                  "input_ready_gap_ms": 420.08,
+                  "dropped_probes": 7,
+                  "erase_ok": true,
+                  "erase_ms": 15478.55,
+                  "pty_bytes": 8926,
+                  "frame_bursts": 46,
+                  "burst_bytes": [
+                    1165,
+                    4157,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 8,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 111.3,
+                    "pss_mb": 76.3,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.14,
+                  "loadavg_after": 0.24
+                },
+                "validated": true,
+                "duration_s": 18.99
+              },
+              {
+                "schema_version": 1,
+                "run_id": "64e6c217-cb3a-4b05-ac28-3b18564967d0",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790389025.2393153,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 84.9,
+                  "launch_to_ready_ms": 460.47,
+                  "input_ready_gap_ms": 375.6,
+                  "dropped_probes": 7,
+                  "erase_ok": true,
+                  "erase_ms": 15451.64,
+                  "pty_bytes": 8926,
+                  "frame_bursts": 46,
+                  "burst_bytes": [
+                    1165,
+                    4157,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 8,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 112.3,
+                    "pss_mb": 76.3,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.24,
+                  "loadavg_after": 0.25
+                },
+                "validated": true,
+                "duration_s": 18.83
+              },
+              {
+                "schema_version": 1,
+                "run_id": "64e6c217-cb3a-4b05-ac28-3b18564967d0",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.cold_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790389044.072529,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 84.2,
+                  "launch_to_ready_ms": 484.7,
+                  "input_ready_gap_ms": 400.55,
+                  "dropped_probes": 7,
+                  "erase_ok": true,
+                  "erase_ms": 15447.63,
+                  "pty_bytes": 8926,
+                  "frame_bursts": 46,
+                  "burst_bytes": [
+                    1165,
+                    4157,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ]
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 8,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 112.4,
+                    "pss_mb": 76.9,
+                    "nproc": 4
+                  },
+                  "loadavg_before": 0.25,
+                  "loadavg_after": 0.19
+                },
+                "validated": true,
+                "duration_s": 18.85
+              }
+            ]
+          },
+          "wave_summaries": {
+            "B1": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 534.87,
+              "p95_ms": 690.8399999999999,
+              "values_ms": [
+                708.17,
+                534.87,
+                341.34
+              ]
+            },
+            "C1": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 401.16,
+              "p95_ms": 667.1460000000001,
+              "values_ms": [
+                696.7,
+                401.16,
+                341.62
+              ]
+            },
+            "C2": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 512.2,
+              "p95_ms": 513.3969999999999,
+              "values_ms": [
+                472.32,
+                512.2,
+                513.53
+              ]
+            },
+            "B2": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 484.7,
+              "p95_ms": 573.9979999999999,
+              "values_ms": [
+                583.92,
+                460.47,
+                484.7
+              ]
+            }
+          },
+          "pooled_baseline": {
+            "trials": 6,
+            "valid": 6,
+            "p50_ms": 509.78499999999997,
+            "p95_ms": 677.1075,
+            "values_ms": [
+              708.17,
+              534.87,
+              341.34,
+              583.92,
+              460.47,
+              484.7
+            ]
+          },
+          "pooled_candidate": {
+            "trials": 6,
+            "valid": 6,
+            "p50_ms": 492.26,
+            "p95_ms": 650.9075,
+            "values_ms": [
+              696.7,
+              401.16,
+              341.62,
+              472.32,
+              512.2,
+              513.53
+            ]
+          },
+          "pooled_delta_pct": -3.437723746285193,
+          "versions_sha256": {
+            "B1": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98",
+            "C1": "9e8fb617a7abc75b21422825f9cd5c23897b956fbcead107ffee8223d8191c21",
+            "C2": "9e8fb617a7abc75b21422825f9cd5c23897b956fbcead107ffee8223d8191c21",
+            "B2": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98"
+          }
+        },
+        "compare.warm_start": {
+          "wave_order": [
+            "B1",
+            "C1",
+            "C2",
+            "B2"
+          ],
+          "wave_rows": {
+            "B1": [
+              {
+                "schema_version": 1,
+                "run_id": "0df91ee1-c3a6-44e8-bb3c-fc8447061b22",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388603.1394348,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 66.2
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.5,
+                  "launch_to_ready_ms": 555.84,
+                  "input_ready_gap_ms": 550.31,
+                  "dropped_probes": 10,
+                  "erase_ok": true,
+                  "erase_ms": 21826.29,
+                  "pty_bytes": 11832,
+                  "frame_bursts": 65,
+                  "burst_bytes": [
+                    1165,
+                    5543,
+                    82,
+                    44,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 11,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.5,
+                    "pss_mb": 27.4,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.2,
+                  "loadavg_after": 0.13
+                },
+                "validated": true,
+                "duration_s": 25.37
+              },
+              {
+                "schema_version": 1,
+                "run_id": "0df91ee1-c3a6-44e8-bb3c-fc8447061b22",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388628.5080328,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 122.1
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.9,
+                  "launch_to_ready_ms": 522.14,
+                  "input_ready_gap_ms": 516.24,
+                  "dropped_probes": 9,
+                  "erase_ok": true,
+                  "erase_ms": 19706.51,
+                  "pty_bytes": 10922,
+                  "frame_bursts": 59,
+                  "burst_bytes": [
+                    1165,
+                    5125,
+                    44,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 10,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.6,
+                    "pss_mb": 27.1,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.13,
+                  "loadavg_after": 0.09
+                },
+                "validated": true,
+                "duration_s": 23.27
+              },
+              {
+                "schema_version": 1,
+                "run_id": "0df91ee1-c3a6-44e8-bb3c-fc8447061b22",
+                "run": {
+                  "label": "20260926-020856",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B1",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388651.779387,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 126.9
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 6.0,
+                  "launch_to_ready_ms": 463.66,
+                  "input_ready_gap_ms": 457.64,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17592.22,
+                  "pty_bytes": 9968,
+                  "frame_bursts": 53,
+                  "burst_bytes": [
+                    1165,
+                    4663,
+                    44,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.6,
+                    "pss_mb": 27.5,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.08,
+                  "loadavg_after": 0.07
+                },
+                "validated": true,
+                "duration_s": 21.1
+              }
+            ],
+            "C1": [
+              {
+                "schema_version": 1,
+                "run_id": "77dbff14-847c-45d2-ba1a-01bcfb477f83",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388745.2149923,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 137.3
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.9,
+                  "launch_to_ready_ms": 629.86,
+                  "input_ready_gap_ms": 623.96,
+                  "dropped_probes": 12,
+                  "erase_ok": true,
+                  "erase_ms": 26029.6,
+                  "pty_bytes": 13740,
+                  "frame_bursts": 76,
+                  "burst_bytes": [
+                    1165,
+                    6467,
+                    126,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 13,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.2,
+                    "pss_mb": 24.1,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.02,
+                  "loadavg_after": 0.06
+                },
+                "validated": true,
+                "duration_s": 29.72
+              },
+              {
+                "schema_version": 1,
+                "run_id": "77dbff14-847c-45d2-ba1a-01bcfb477f83",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388774.9323022,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 66.3
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.3,
+                  "launch_to_ready_ms": 513.36,
+                  "input_ready_gap_ms": 508.11,
+                  "dropped_probes": 9,
+                  "erase_ok": true,
+                  "erase_ms": 19713.01,
+                  "pty_bytes": 10878,
+                  "frame_bursts": 58,
+                  "burst_bytes": [
+                    1165,
+                    5081,
+                    126,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 10,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.8,
+                    "pss_mb": 24.8,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.06,
+                  "loadavg_after": 0.04
+                },
+                "validated": true,
+                "duration_s": 23.21
+              },
+              {
+                "schema_version": 1,
+                "run_id": "77dbff14-847c-45d2-ba1a-01bcfb477f83",
+                "run": {
+                  "label": "20260926-021122",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C1",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388798.1456053,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 116.8
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.0,
+                  "launch_to_ready_ms": 500.25,
+                  "input_ready_gap_ms": 495.29,
+                  "dropped_probes": 9,
+                  "erase_ok": true,
+                  "erase_ms": 19679.51,
+                  "pty_bytes": 10922,
+                  "frame_bursts": 58,
+                  "burst_bytes": [
+                    1165,
+                    5125,
+                    126,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 10,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.0,
+                    "pss_mb": 24.4,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.04,
+                  "loadavg_after": 0.03
+                },
+                "validated": true,
+                "duration_s": 23.21
+              }
+            ],
+            "C2": [
+              {
+                "schema_version": 1,
+                "run_id": "2cd56a88-cac2-4909-a0fd-d5e4538945a4",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790388900.8496282,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 116.9
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 4.9,
+                  "launch_to_ready_ms": 548.69,
+                  "input_ready_gap_ms": 543.77,
+                  "dropped_probes": 10,
+                  "erase_ok": true,
+                  "erase_ms": 21793.85,
+                  "pty_bytes": 11832,
+                  "frame_bursts": 65,
+                  "burst_bytes": [
+                    1165,
+                    5543,
+                    82,
+                    44,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 11,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.2,
+                    "pss_mb": 24.3,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.14,
+                  "loadavg_after": 0.2
+                },
+                "validated": true,
+                "duration_s": 25.38
+              },
+              {
+                "schema_version": 1,
+                "run_id": "2cd56a88-cac2-4909-a0fd-d5e4538945a4",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790388926.229157,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 116.9
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.3,
+                  "launch_to_ready_ms": 569.91,
+                  "input_ready_gap_ms": 564.66,
+                  "dropped_probes": 10,
+                  "erase_ok": true,
+                  "erase_ms": 21764.59,
+                  "pty_bytes": 11832,
+                  "frame_bursts": 64,
+                  "burst_bytes": [
+                    1165,
+                    5543,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82,
+                    126
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 11,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.3,
+                    "pss_mb": 24.2,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.19,
+                  "loadavg_after": 0.13
+                },
+                "validated": true,
+                "duration_s": 25.37
+              },
+              {
+                "schema_version": 1,
+                "run_id": "2cd56a88-cac2-4909-a0fd-d5e4538945a4",
+                "run": {
+                  "label": "20260926-021354",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-C2",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790388951.600526,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 117.5
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.5,
+                  "launch_to_ready_ms": 537.79,
+                  "input_ready_gap_ms": 532.33,
+                  "dropped_probes": 10,
+                  "erase_ok": true,
+                  "erase_ms": 21823.35,
+                  "pty_bytes": 11832,
+                  "frame_bursts": 65,
+                  "burst_bytes": [
+                    1165,
+                    5543,
+                    82,
+                    44,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 11,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 32.4,
+                    "pss_mb": 24.3,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.12,
+                  "loadavg_after": 0.23
+                },
+                "validated": true,
+                "duration_s": 25.4
+              }
+            ],
+            "B2": [
+              {
+                "schema_version": 1,
+                "run_id": "969cd6e4-7a61-41ba-bfb9-c9675940713c",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 0,
+                "round": 0,
+                "abba_position": 0,
+                "wall_ts": 1790389062.9274254,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 127.6
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.8,
+                  "launch_to_ready_ms": 460.34,
+                  "input_ready_gap_ms": 454.57,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17575.35,
+                  "pty_bytes": 10012,
+                  "frame_bursts": 54,
+                  "burst_bytes": [
+                    1165,
+                    4619,
+                    88,
+                    82,
+                    44,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.2,
+                    "pss_mb": 27.0,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.18,
+                  "loadavg_after": 0.19
+                },
+                "validated": true,
+                "duration_s": 21.08
+              },
+              {
+                "schema_version": 1,
+                "run_id": "969cd6e4-7a61-41ba-bfb9-c9675940713c",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 1,
+                "round": 1,
+                "abba_position": 0,
+                "wall_ts": 1790389084.010347,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 132.0
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 5.9,
+                  "launch_to_ready_ms": 492.1,
+                  "input_ready_gap_ms": 486.22,
+                  "dropped_probes": 9,
+                  "erase_ok": true,
+                  "erase_ms": 19678.19,
+                  "pty_bytes": 10878,
+                  "frame_bursts": 58,
+                  "burst_bytes": [
+                    1165,
+                    5081,
+                    126,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 10,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.0,
+                    "pss_mb": 26.6,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.19,
+                  "loadavg_after": 0.21
+                },
+                "validated": true,
+                "duration_s": 23.22
+              },
+              {
+                "schema_version": 1,
+                "run_id": "969cd6e4-7a61-41ba-bfb9-c9675940713c",
+                "run": {
+                  "label": "20260926-021634",
+                  "harness": {
+                    "git_rev": "unknown",
+                    "dirty": true
+                  }
+                },
+                "benchmark": "compare.warm_start",
+                "product": "rust",
+                "phase": "size-lto-pair-B2",
+                "trial": 2,
+                "round": 2,
+                "abba_position": 0,
+                "wall_ts": 1790389107.2327027,
+                "driver": "pty",
+                "comparability": "qualified",
+                "env_gate": {
+                  "waited_for": null,
+                  "busy_now": null
+                },
+                "daemon": {
+                  "prewarmed_boot_ms": 121.9
+                },
+                "metrics": {
+                  "launch_to_first_paint_ms": 7.0,
+                  "launch_to_ready_ms": 460.92,
+                  "input_ready_gap_ms": 453.94,
+                  "dropped_probes": 8,
+                  "erase_ok": true,
+                  "erase_ms": 17564.38,
+                  "pty_bytes": 9968,
+                  "frame_bursts": 52,
+                  "burst_bytes": [
+                    1165,
+                    4663,
+                    126,
+                    82,
+                    82,
+                    82,
+                    82,
+                    82
+                  ],
+                  "warm_mode": "resident_daemon"
+                },
+                "probe": {
+                  "grid_ms": 50.0,
+                  "input_buffered": true,
+                  "quantized_ms": 0.0,
+                  "sends": 9,
+                  "dialog_ms": 0.0
+                },
+                "validation": {
+                  "echoed": true,
+                  "erased": true
+                },
+                "resource": {
+                  "rss_settled": {
+                    "rss_mb": 37.2,
+                    "pss_mb": 27.0,
+                    "nproc": 1
+                  },
+                  "loadavg_before": 0.2,
+                  "loadavg_after": 0.23
+                },
+                "validated": true,
+                "duration_s": 21.07
+              }
+            ]
+          },
+          "wave_summaries": {
+            "B1": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 522.14,
+              "p95_ms": 552.47,
+              "values_ms": [
+                555.84,
+                522.14,
+                463.66
+              ]
+            },
+            "C1": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 513.36,
+              "p95_ms": 618.21,
+              "values_ms": [
+                629.86,
+                513.36,
+                500.25
+              ]
+            },
+            "C2": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 548.69,
+              "p95_ms": 567.788,
+              "values_ms": [
+                548.69,
+                569.91,
+                537.79
+              ]
+            },
+            "B2": {
+              "trials": 3,
+              "valid": 3,
+              "p50_ms": 460.92,
+              "p95_ms": 488.982,
+              "values_ms": [
+                460.34,
+                492.1,
+                460.92
+              ]
+            }
+          },
+          "pooled_baseline": {
+            "trials": 6,
+            "valid": 6,
+            "p50_ms": 477.88,
+            "p95_ms": 547.415,
+            "values_ms": [
+              555.84,
+              522.14,
+              463.66,
+              460.34,
+              492.1,
+              460.92
+            ]
+          },
+          "pooled_candidate": {
+            "trials": 6,
+            "valid": 6,
+            "p50_ms": 543.24,
+            "p95_ms": 614.8725,
+            "values_ms": [
+              629.86,
+              513.36,
+              500.25,
+              548.69,
+              569.91,
+              537.79
+            ]
+          },
+          "pooled_delta_pct": 13.677073742362111,
+          "versions_sha256": {
+            "B1": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98",
+            "C1": "9e8fb617a7abc75b21422825f9cd5c23897b956fbcead107ffee8223d8191c21",
+            "C2": "9e8fb617a7abc75b21422825f9cd5c23897b956fbcead107ffee8223d8191c21",
+            "B2": "49d5abf577e0ce77b9b7f3f4c2ba8c503791e26353a193323a464e2341f8dd98"
+          }
+        }
+      },
+      "raw_artifacts": [
+        "/home/ubuntu/hillclimb/results-size-lto-profile-B.tar.gz",
+        "/home/ubuntu/hillclimb/results-size-lto-iteration-C.tar.gz",
+        "/home/ubuntu/hillclimb/results-size-lto-quick-bccb.tar.gz"
+      ]
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "Initial 5-trial B then C unpaired timing was confounded by VM/bench state drift. Corrective B,C,C,B sequence ran same VM with SHA assert and page-warm cat each wave, 3 trials per wave; load gates passed, all 12/12 valid per suite. First paint after swap spikes (B1 268ms,C1 239.5ms,C2 214ms,B2 163.8ms); later 83\u201385ms. Baseline startup medians moved substantially between waves; candidate warm pooled +13.7% while baseline warm wave medians drift 61ms. Safety not demonstrated. compare.install_disk static vendor downloaded bytes 53,291,156 not build-specific and not used as artifact metric. Trial versions.json carries stale product revision 7152746b despite correct asserted binary sha256; actual source revisions given in base/branch."
+  },
+  "outcome": "discarded",
+  "decision": "Parent numeric discard approval 2026-09-26 ~02:19 UTC: cold timing attribution reversed in calibrated B,C,C,B; warm regression risk unresolved; candidate overlaps pending binary-size Option C Cargo.toml hunk. No PR, no merge.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-022016-binary-size-fat-lto-one-codegen-inconclusive.json",
+  "session": {
+    "worker": "perf-size-lto-sol",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-256c5bc1/01a0db62-0068-76cb-80b5-e63dc2602e9e.jsonl"
+  },
+  "timestamp": "2026-09-26T02:20:16.656338+00:00"
+}
