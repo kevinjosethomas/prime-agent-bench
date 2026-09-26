@@ -1,0 +1,789 @@
+{
+ "id": "20260926-194204-startup-venv-boot-skill-batch",
+ "axis": "startup",
+ "hypothesis": "The fresh-install kernel venv bootstrap is dominated by the per-skill uv invocations: sync_python_skills installs every missing Python skill with its own `uv pip install --editable` child process, and each call pays a process plus PEP 517 build-backend startup for a metadata-only editable install.",
+ "approach": "Baseline first, phase-split via a PATH uv wrapper (each uv invocation logged t0/t1/rc/args) + .bootstrap-version marker mtime + pre/mid/post CPU calibration on a fresh install tree (assemble_artifacts.py, fixture catalog) at the pure tip; cold vs warm uv cache; standalone uv attribution. Candidate: batch every missing skill into ONE `uv pip install --editable ...` invocation in crates/pa-core/src/kernel/bootstrap/venv.rs sync_python_skills; on batch failure fall back to the per-skill loop (identical per-skill warnings, one broken skill never blocks the rest). Two unit tests with a fake uv (batch success skips installed skills; broken-skill fallback).",
+ "parity_notes": "Venv identity contract unchanged: hash_runtime_source still hashes pyproject.toml + src/rlm only; the version file records the same schema/skills (marker content byte-identical vs base modulo the harness install-tree path prefix, runtime identity + snapshot + extra_uv_args equal); #2857 runtime-ready probe memoization unaffected (its key inputs unchanged). Failure path preserves today's per-skill warnings exactly (no new user-visible text). The unchanged boot path measured as noop-control. Wire/output parity: kernel receipt + KERNEL_BOOT_OK both arms; venv tree byte-size identical; uv call shape change (12 -> 4) is the intended change. Install bytes +96,816 binary / +60,012 tarball-gz (+0.046% binary) at the folded head. Linux x86_64 measured; macOS arm64 unmeasured.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "lane/hillclimb-venv-boot",
+ "commits": [
+  "78dccecfbcd9c9e46b754761a58be3294413bafd",
+  "096c7696f85c9e07de79ee67f12c522b15f965bd",
+  "e7cbf5d83 (test fixes, interim)",
+  "02e722676dc242b82884cabac108ce3c236bd968",
+  "12d32fc59694afb31b7b6b415e2ef799d39dd201 (merge of folded base 7064d039)"
+ ],
+ "build": {
+  "sandbox_id": "f9vqiubhy60hw5rpnefuh5zb",
+  "binary_sha256_base": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_sha256_candidate": "a5c39285c717181808d6cefd0c88e2fd03157f58fd588e8af2f4108e4b7d3fbe",
+  "binary_bytes_base": 212081960,
+  "binary_bytes_candidate": 212178776,
+  "toolchain": "rustup 1.98.1",
+  "uv_version": "0.12.19"
+ },
+ "gates": {
+  "fmt": "pass (12d32fc59, cargo fmt --all --check, full workspace)",
+  "clippy": "pass (12d32fc59, cargo clippy --workspace --all-targets -D warnings)",
+  "test": "DISPOSED: scoped pa-core gate GREEN at 02e722676 (fmt+clippy+test). Full-workspace gate at 12d32fc59 RED twice, both on pre-existing base-tip flakes, none from the lane delta: (1) a_bang_during_a_streaming_turn_holds_then_flushes (pa-tui) red in both runs AND in a pure-base 7064d039 full gate AND 3/8 red isolated on pure base (8-run same-arm triage) - upstream loader-row race, the test's own comment documents it; (2) parent_child_agent_message_round_trip_end_to_end (pa-daemon e2e) red once under full-suite parallel load only, 16/16 GREEN isolated (8 runs per arm on base and candidate). Pure-base full gate 7064d039 also RED: the same pa-tui test + auto-classified KNOWN-RED tool_result_entries_persisted_and_streamed (#2727 rotating family). The base tip is gate-red on its own; the lane adds no new red. pa-tui a_bang needs a known_reds registration (operator disposition). Public TS benchmark CI = standing non-applicable RED (npm ci EUSAGE, 0/0)."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "fresh_install_session_warm_cache_bootstrap_span": {
+    "baseline": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 2893.1,
+     "p95_ms": 3085.8,
+     "values_ms": [
+      2197.2,
+      2989.5,
+      2815.7,
+      2805.7,
+      2970.4,
+      2987.5,
+      3085.8,
+      2668.4
+     ]
+    },
+    "candidate": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 1019.9,
+     "p95_ms": 1176.8,
+     "values_ms": [
+      677.8,
+      954.3,
+      1096.6,
+      990.3,
+      1176.8,
+      1052.9,
+      889.2,
+      1049.5
+     ]
+    },
+    "delta_pct": -64.75,
+    "regression": false
+   },
+   "fresh_install_session_warm_cache_wall": {
+    "baseline": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 3256.7,
+     "p95_ms": 3389.2,
+     "values_ms": [
+      3008.3,
+      3318.4,
+      3094.4,
+      3283.1,
+      3230.3,
+      3289.8,
+      3389.2,
+      2938.5
+     ]
+    },
+    "candidate": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 1301.5,
+     "p95_ms": 1535.5,
+     "values_ms": [
+      993.1,
+      1237.0,
+      1399.8,
+      1266.6,
+      1535.5,
+      1336.4,
+      1252.6,
+      1377.0
+     ]
+    },
+    "delta_pct": -60.04,
+    "regression": false
+   },
+   "fresh_install_session_cold_cache_bootstrap_span": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 4499.3,
+     "p95_ms": 4643.9,
+     "values_ms": [
+      4423.0,
+      4575.6,
+      4643.9,
+      4255.6
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 2490.7,
+     "p95_ms": 2952.1,
+     "values_ms": [
+      2075.7,
+      2514.1,
+      2467.2,
+      2952.1
+     ]
+    },
+    "delta_pct": -44.64,
+    "regression": false
+   },
+   "fresh_install_session_cold_cache_wall": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 4804.4,
+     "p95_ms": 4969.2,
+     "values_ms": [
+      4727.8,
+      4880.9,
+      4969.2,
+      4564.3
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 2808.1,
+     "p95_ms": 3557.4,
+     "values_ms": [
+      2401.4,
+      2820.8,
+      2795.4,
+      3557.4
+     ]
+    },
+    "delta_pct": -41.55,
+    "regression": false
+   },
+   "installer_boot_warm_cache_span_noop_control": {
+    "baseline": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 525.2,
+     "p95_ms": 544.7,
+     "values_ms": [
+      528.1,
+      494.5,
+      522.2,
+      544.7
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "valid": 4,
+     "p50_ms": 519.2,
+     "p95_ms": 560.8,
+     "values_ms": [
+      533.7,
+      504.8,
+      503.6,
+      560.8
+     ]
+    },
+    "delta_pct": -1.12,
+    "regression": false
+   },
+   "skills_install_phase_warm": {
+    "baseline": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 2262.1,
+     "values_ms": [
+      1817.6,
+      2346.8,
+      2223.2,
+      2216.5,
+      2325.8,
+      2301.0,
+      2366.6,
+      2028.8
+     ]
+    },
+    "candidate": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 425.9,
+     "values_ms": [
+      287.0,
+      419.9,
+      450.9,
+      424.0,
+      499.8,
+      454.6,
+      385.7,
+      427.8
+     ]
+    },
+    "delta_pct": -81.17
+   },
+   "iteration_pair_60e2e198c_session_warm_span": {
+    "baseline": {
+     "trials": 10,
+     "valid": 10,
+     "p50_ms": 2514.3,
+     "p95_ms": 2632.8,
+     "values_ms": [
+      2300.9,
+      2489.3,
+      2539.3,
+      2483.7,
+      2622.5,
+      2422.6,
+      2416.0,
+      2632.8,
+      2626.6,
+      2562.0
+     ]
+    },
+    "candidate": {
+     "trials": 10,
+     "valid": 10,
+     "p50_ms": 949.9,
+     "p95_ms": 1027.9,
+     "values_ms": [
+      788.5,
+      743.4,
+      958.4,
+      953.5,
+      1027.9,
+      934.8,
+      951.6,
+      902.5,
+      971.3,
+      948.1
+     ]
+    },
+    "delta_pct": -62.22,
+    "regression": false
+   },
+   "iteration_pair_60e2e198c_session_cold_span": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 4463.9,
+     "p95_ms": 4724.0,
+     "values_ms": [
+      4521.8,
+      3702.1,
+      4471.5,
+      4724.0,
+      4456.2,
+      4327.2
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 2798.7,
+     "p95_ms": 2897.4,
+     "values_ms": [
+      2768.4,
+      2814.4,
+      2783.0,
+      2897.4,
+      2581.9,
+      2863.6
+     ]
+    },
+    "delta_pct": -37.3,
+    "regression": false
+   }
+  },
+  "extra": {
+   "baseline_phase_split_p50_ms": {
+    "session_all_warm": {
+     "wall_ms": {
+      "trials": 10,
+      "p50_ms": 2803.7,
+      "p95_ms": 4307.0,
+      "values_ms": [
+       3377.3,
+       3503.0,
+       4307.0,
+       2917.3,
+       2603.0,
+       2599.3,
+       2725.1,
+       2882.3,
+       2614.1,
+       2312.0
+      ]
+     },
+     "span_ms": {
+      "trials": 10,
+      "p50_ms": 2424.5,
+      "p95_ms": 3104.1,
+      "values_ms": [
+       2830.0,
+       3104.1,
+       2826.5,
+       2505.5,
+       2308.3,
+       2315.7,
+       2427.0,
+       2422.0,
+       2297.2,
+       2050.2
+      ]
+     },
+     "python_install_ms": {
+      "trials": 10,
+      "p50_ms": 58.1,
+      "p95_ms": 215.2,
+      "values_ms": [
+       51.6,
+       215.2,
+       40.4,
+       85.4,
+       29.1,
+       29.3,
+       73.2,
+       30.2,
+       64.7,
+       73.1
+      ]
+     },
+     "venv_create_ms": {
+      "trials": 10,
+      "p50_ms": 62.3,
+      "p95_ms": 83.2,
+      "values_ms": [
+       67.6,
+       79.0,
+       83.2,
+       77.3,
+       56.8,
+       60.0,
+       64.7,
+       60.0,
+       56.5,
+       42.7
+      ]
+     },
+     "runtime_extras_install_ms": {
+      "trials": 10,
+      "p50_ms": 343.2,
+      "p95_ms": 471.6,
+      "values_ms": [
+       356.9,
+       402.8,
+       471.6,
+       335.5,
+       313.4,
+       349.5,
+       350.5,
+       337.0,
+       319.6,
+       240.3
+      ]
+     },
+     "skills_total_ms": {
+      "trials": 10,
+      "p50_ms": 1953.6,
+      "p95_ms": 2386.2,
+      "values_ms": [
+       2336.8,
+       2386.2,
+       2212.6,
+       1994.7,
+       1894.2,
+       1866.6,
+       1926.6,
+       1980.5,
+       1844.6,
+       1682.9
+      ]
+     }
+    },
+    "session_all_cold": {
+     "wall_ms": {
+      "trials": 6,
+      "p50_ms": 4676.2,
+      "p95_ms": 4836.5,
+      "values_ms": [
+       4821.0,
+       4381.1,
+       4684.3,
+       3914.6,
+       4668.2,
+       4836.5
+      ]
+     },
+     "span_ms": {
+      "trials": 6,
+      "p50_ms": 4277.1,
+      "p95_ms": 4494.8,
+      "values_ms": [
+       4480.6,
+       3906.3,
+       4245.2,
+       3568.2,
+       4308.9,
+       4494.8
+      ]
+     },
+     "python_install_ms": {
+      "trials": 6,
+      "p50_ms": 638.9,
+      "p95_ms": 1112.1,
+      "values_ms": [
+       1112.1,
+       554.1,
+       499.0,
+       408.6,
+       723.6,
+       1062.8
+      ]
+     },
+     "venv_create_ms": {
+      "trials": 6,
+      "p50_ms": 308.2,
+      "p95_ms": 336.0,
+      "values_ms": [
+       293.2,
+       327.8,
+       256.1,
+       173.0,
+       336.0,
+       323.3
+      ]
+     },
+     "runtime_extras_install_ms": {
+      "trials": 6,
+      "p50_ms": 1132.2,
+      "p95_ms": 1240.3,
+      "values_ms": [
+       1087.4,
+       1112.6,
+       1240.3,
+       1006.7,
+       1161.4,
+       1151.9
+      ]
+     },
+     "skills_total_ms": {
+      "trials": 6,
+      "p50_ms": 1970.2,
+      "p95_ms": 2232.5,
+      "values_ms": [
+       1975.3,
+       1899.2,
+       2232.5,
+       1965.2,
+       2073.9,
+       1941.2
+      ]
+     }
+    },
+    "boot_warm": {
+     "wall_ms": {
+      "trials": 6,
+      "p50_ms": 544.0,
+      "p95_ms": 815.7,
+      "values_ms": [
+       448.5,
+       815.7,
+       496.6,
+       577.2,
+       510.8,
+       602.8
+      ]
+     },
+     "span_ms": {
+      "trials": 6,
+      "p50_ms": 536.3,
+      "p95_ms": 806.8,
+      "values_ms": [
+       441.8,
+       806.8,
+       489.0,
+       567.7,
+       504.9,
+       594.5
+      ]
+     },
+     "python_install_ms": {
+      "trials": 6,
+      "p50_ms": 72.1,
+      "p95_ms": 367.8,
+      "values_ms": [
+       31.1,
+       367.8,
+       72.3,
+       85.4,
+       71.9,
+       71.8
+      ]
+     },
+     "venv_create_ms": {
+      "trials": 6,
+      "p50_ms": 65.0,
+      "p95_ms": 91.2,
+      "values_ms": [
+       65.3,
+       81.6,
+       62.6,
+       51.1,
+       64.8,
+       91.2
+      ]
+     },
+     "runtime_extras_install_ms": {
+      "trials": 6,
+      "p50_ms": 361.6,
+      "p95_ms": 431.5,
+      "values_ms": [
+       344.2,
+       357.9,
+       353.0,
+       431.1,
+       365.4,
+       431.5
+      ]
+     }
+    },
+    "boot_cold": {
+     "wall_ms": {
+      "trials": 6,
+      "p50_ms": 2266.5,
+      "p95_ms": 2566.8,
+      "values_ms": [
+       2233.3,
+       2420.9,
+       2566.8,
+       2199.1,
+       1954.5,
+       2299.8
+      ]
+     },
+     "span_ms": {
+      "trials": 6,
+      "p50_ms": 2259.5,
+      "p95_ms": 2561.5,
+      "values_ms": [
+       2227.9,
+       2414.2,
+       2561.5,
+       2190.5,
+       1949.1,
+       2291.1
+      ]
+     },
+     "python_install_ms": {
+      "trials": 6,
+      "p50_ms": 859.2,
+      "p95_ms": 1137.0,
+      "values_ms": [
+       701.2,
+       954.9,
+       1137.0,
+       763.5,
+       539.1,
+       1054.5
+      ]
+     },
+     "venv_create_ms": {
+      "trials": 6,
+      "p50_ms": 313.2,
+      "p95_ms": 348.2,
+      "values_ms": [
+       348.2,
+       326.2,
+       300.2,
+       330.0,
+       286.5,
+       280.1
+      ]
+     },
+     "runtime_extras_install_ms": {
+      "trials": 6,
+      "p50_ms": 1121.1,
+      "p95_ms": 1176.2,
+      "values_ms": [
+       1176.2,
+       1131.3,
+       1121.5,
+       1097.7,
+       1120.7,
+       957.2
+      ]
+     }
+    },
+    "session_all_warm_offline_uv": {
+     "wall_ms": {
+      "trials": 6,
+      "p50_ms": 3106.8,
+      "p95_ms": 3734.8,
+      "values_ms": [
+       3281.3,
+       2936.2,
+       3081.4,
+       3734.8,
+       3054.2,
+       3132.1
+      ]
+     },
+     "span_ms": {
+      "trials": 6,
+      "p50_ms": 2695.6,
+      "p95_ms": 2888.9,
+      "values_ms": [
+       2888.9,
+       2558.5,
+       2741.2,
+       2728.6,
+       2508.7,
+       2662.6
+      ]
+     },
+     "python_install_ms": {
+      "trials": 6,
+      "p50_ms": 43.5,
+      "p95_ms": 112.1,
+      "values_ms": [
+       112.1,
+       31.2,
+       30.8,
+       86.5,
+       42.6,
+       44.5
+      ]
+     },
+     "venv_create_ms": {
+      "trials": 6,
+      "p50_ms": 64.7,
+      "p95_ms": 75.1,
+      "values_ms": [
+       75.1,
+       60.9,
+       62.2,
+       66.5,
+       62.9,
+       73.4
+      ]
+     },
+     "runtime_extras_install_ms": {
+      "trials": 6,
+      "p50_ms": 384.9,
+      "p95_ms": 423.8,
+      "values_ms": [
+       423.8,
+       387.7,
+       360.9,
+       366.2,
+       382.0,
+       401.3
+      ]
+     },
+     "skills_total_ms": {
+      "trials": 6,
+      "p50_ms": 2157.7,
+      "p95_ms": 2271.8,
+      "values_ms": [
+       2255.9,
+       2065.6,
+       2271.8,
+       2189.8,
+       2006.0,
+       2125.5
+      ]
+     }
+    }
+   },
+   "baseline_skill_tail_after_boot_p50_ms": {
+    "trials": 6,
+    "skills_tail_span_ms": [
+     1921.7,
+     2080.7,
+     2094.4,
+     2095.3,
+     2138.5,
+     2184.0
+    ],
+    "skills_phase_ms": [
+     1910.8,
+     2071.6,
+     2085.7,
+     2085.9,
+     2130.0,
+     2169.8
+    ]
+   },
+   "uv_attribution_standalone": {
+    "label": "standalone uv invocations (NOT the Rust path; same uv binary, same warm seed, fresh venvs; runtime+dill+12 extras installed first, mirroring the bootstrap precondition)",
+    "serial9_total_s": 1.8543,
+    "serial9_per_skill_s": [
+     0.2252,
+     0.1876,
+     0.231,
+     0.1871,
+     0.1944,
+     0.1854,
+     0.1958,
+     0.2146,
+     0.2332
+    ],
+    "batched9_s": 0.3646,
+    "batched9_import_all_rc": 0,
+    "batch_with_broken_s": 0.1577,
+    "fallback_serial9_after_failed_batch_s": 1.8791,
+    "runtime_pre_install_s": 0.3197
+   },
+   "vm_id": "f9vqiubhy60hw5rpnefuh5zb",
+   "vm_a_terminated": "aeasxlx4d0ch8c89dut7j4av exceeded 8h sandbox runtime cap (overnight pause); all scripts persisted on orchestrator, no data lost",
+   "duplicate_sandbox_created_deleted": "pnnx25oicl3itljoqit5tz1d",
+   "measurement_notes": "uv wrapper adds one bash process per uv call (~3-5ms, identical on both arms); sandbox datacenter network under-represents user cold-download time (python 25MB + wheels): cold download phases (python_install 639ms p50, runtime_extras 1132ms p50 here) are environment-specific; the install-tree lane's historical ~12s smoke was a different VM/region and is NOT reproduced here; structural ratios (skills phase dominant local cost) are machine-independent. Marker mtime granularity bounds the marker-write overhead at 0-4ms.",
+   "calibration": "CPU busy-loop pre/mid/post per trial; ab2 battery calib loop_s min 0.060 max 0.066; ab1 battery 0.060-0.109 (one outlier, interleaved ABBA)",
+   "tui_flake_triage": {
+    "a_bang_during_a_streaming_turn_holds_then_flushes": {
+     "isolated_runs_base_7064d039": {
+      "green": 5,
+      "red": 3
+     },
+     "isolated_runs_cand_12d32fc59": {
+      "green": 3,
+      "red": 5
+     },
+     "pure_base_full_gate_7064d039": "RED on this test",
+     "gate_runs_cand": "RED in both full-gate runs",
+     "disposition": "pre-existing upstream flake at base tip; no mechanism from the pa-core kernel venv change"
+    },
+    "parent_child_agent_message_round_trip_end_to_end": {
+     "isolated_runs_base": {
+      "green": 8,
+      "red": 0
+     },
+     "isolated_runs_cand": {
+      "green": 8,
+      "red": 0
+     },
+     "gate_runs_cand": "red once (run 2) under full-suite parallel load",
+     "disposition": "load-induced rotating flake; green 16/16 isolated on both arms"
+    },
+    "tool_result_entries_persisted_and_streamed": "KNOWN-RED auto-classified in the pure-base run (#2727 rotating family, expires 2026-09-27); did not occur in the candidate gate runs"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [
+   "Two early warm pilot trials (p0-session_all_warm-01/02) INVALID: shutil.copytree without symlinks=True flattened uv's cpython-3.11 symlink into a directory, uv python install failed rc=2, and the -p session still exited 0 (kernel never ran) - validity now asserts kernel receipt + uv rcs + marker presence.",
+   "trial_boot_then_session collection bug: the boot-arm marker was re-collected after the session rewrote it, so 'boot_span_s' in those 6 rows is polluted (2.7-3.0s); boot wall and session phases are valid; fixed in the ABBA harness by separate collection.",
+   "The ~12s fresh-bootstrap figure from install-tree smokes is NOT reproduced on this VM (datacenter network); all deltas are same-VM paired, absolute cold numbers are environment-specific."
+  ],
+  "notes": "44/44 valid iteration pairs (60e2e198c vs 02e722676) and 32/32 valid final-head pairs (7064d039 vs 12d32fc59), all sha-asserted via symlink swap with per-trial binary sha check; ABBA order A,B,B,A; distributions do not overlap on the changed path; noop-control (boot_warm) shows parity (-1.1% span). Parity oracles: venv_bytes identical (290459505 both arms), marker content identical modulo harness tree prefix, runtime identity equal, kernel receipt + KERNEL_BOOT_OK on every session trial both arms."
+ },
+ "outcome": "in-progress",
+ "decision": "Open PR for review only after full-gate disposition of the unrelated pa-tui flake; orchestrator numeric review + BOTH adversarial reviewers + operator disposition required before any merge; lane owner never merges.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-194204-startup-venv-boot-skill-batch.json",
+ "session": {
+  "worker": "perf-venv-boot-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-c3e3d7cf/01a0dc70-c6ce-71de-826e-b055f430254c.jsonl"
+ },
+ "timestamp": "2026-09-26T19:00:19.830215+00:00"
+}
