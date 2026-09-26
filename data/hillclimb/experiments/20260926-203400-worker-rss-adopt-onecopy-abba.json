@@ -1,0 +1,305 @@
+{
+ "id": "20260926-203400-worker-rss-adopt-onecopy-abba",
+ "axis": "memory",
+ "hypothesis": "Adopting the retained window ONE-COPY (SessionManager::adopt_window moves the walk's typed trees in, drops the raw JSONL duplicate) removes the census-pinned B/C1/C2 redundant retained copies from the loaded worker without changing the served context (active_context from file_entries + the same settings overlay), cutting worker RSS on the 10MiB canonical fixture by the measured wire-equivalent size (~20 MiB of the ~167 MiB post-#2872 worker).",
+ "approach": "pa-core only: WindowedSessionStore::take_retained (entries+raw move; detached flag; append_entry gates the fold+push; context() asserts non-detached; ensure_full_history re-arms), SessionManager::adopt_window by move, active_context from file_entries + window settings overlay (same gate), test constructor routed through adopt_window. Oracles: adopted-context byte parity vs un-adopted window (cold+warm), detached-window lookups + should_panic context, live-appends-with-in-window-attribution vs full-reopen byte parity; 76/76 pa-core session tests green incl. existing byte-parity tests now riding the adopt path. Same-VM sequential ABBA (6 alternating passes B,C,B,C,C,B; sha-asserted atomic binary swaps; per-trial fixture prehash; per-proc smaps sidecars; pre/mid/post calibration).",
+ "parity_notes": "No wire, prompt, replay/JSONL, compaction-content, or user-visible behavior changes: the served context is byte-proven identical (unit oracles) and attach snapshots still come from the daemon store (untouched). Known-disclosed: the folded attach-path head carries their session_store/summary hunks (identical pa-daemon dir); clippy default-trait one-liner landed on their branch (ea7ec52d4) and my fold keeps theirs. msg_send neighbor shows a BASE-side environmental flake (typing dropped, 3/5 err base vs 0/5 cand) at this tip on this VM class - NOT lane-caused, cand strictly better; disclosed for operator disposition.",
+ "base": {
+  "revision": "rust 7064d039a + attach-path 88465f102 (abba base branch 2c7da81ae; the lane's pre-change content)"
+ },
+ "branch": "lane/hillclimb-worker-rss",
+ "commits": [
+  "7ed9fb4a3 (mechanism)",
+  "ce064d1c5 (test compile fixes)",
+  "fc3d267e8 (test corrections)",
+  "ebf95822d (clippy test lints)",
+  "4175eb674 (fold attach-path head 88465f102)"
+ ],
+ "build": {
+  "sandbox_id": "peedgvd2cxsq68ltudehky8v",
+  "base_binary_sha256": "74d7cd42f1380758b4f169fdfd0efdc0a2755353eddd05a20eee090c7afe805f",
+  "base_binary_bytes": 212252968,
+  "cand_binary_sha256": "c78a355e7380f68beb4d341a281e10677398ad83b663b683bdffeaf84a199881",
+  "cand_binary_bytes": 212180464,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (cargo fmt --all --check at 4175eb674)",
+  "clippy": "pass (-D warnings, after two test-lint fixes)",
+  "test": "pa-core session:: 76/76 green incl. 3 new oracles; full workspace RUST_TEST_THREADS=4: pa-cli interactive_daemon_e2e tui_prompt_stash_restores_a_pasted_image_with_the_draft failed once under parallel load, PASSED in isolation (known image-stash flake family, not lane-caused); rest green"
+ },
+ "measurements": {
+  "method": "same-vm-sequential-abba",
+  "calibration_s_30m_loop": {
+   "pre": [
+    1.2754,
+    1.2677,
+    1.2798
+   ],
+   "mid": [
+    1.2018,
+    1.1878,
+    1.196
+   ],
+   "post": [
+    1.3495,
+    1.2735,
+    1.2699
+   ]
+  },
+  "suites": {
+   "compare.memory_idle_load.10mib.tree_rss": {
+    "base": {
+     "trials": 39,
+     "valid": 39,
+     "p50_rss_mb": 344.2,
+     "min_rss_mb": 310.9,
+     "max_rss_mb": 362.4,
+     "values_rss_mb": [
+      345.7,
+      362.4,
+      348.2,
+      347.1,
+      337.2,
+      343.3,
+      340.3,
+      347.7,
+      338.7,
+      343.6,
+      345.7,
+      349.8,
+      346.0,
+      345.8,
+      356.2,
+      340.0,
+      342.7,
+      348.8,
+      352.9,
+      358.5,
+      355.8,
+      346.6,
+      310.9,
+      331.4,
+      338.7,
+      341.7,
+      340.4,
+      348.7,
+      330.8,
+      340.1,
+      337.5,
+      342.6,
+      338.3,
+      348.8,
+      347.4,
+      339.7,
+      344.2,
+      354.5,
+      342.9
+     ]
+    },
+    "cand": {
+     "trials": 30,
+     "valid": 30,
+     "p50_rss_mb": 324.7,
+     "min_rss_mb": 305.5,
+     "max_rss_mb": 338.9,
+     "values_rss_mb": [
+      314.5,
+      327.2,
+      321.7,
+      305.5,
+      318.9,
+      326.8,
+      323.5,
+      321.8,
+      323.2,
+      320.5,
+      333.2,
+      335.1,
+      325.4,
+      324.0,
+      329.3,
+      332.2,
+      327.4,
+      320.2,
+      325.9,
+      329.5,
+      330.3,
+      325.3,
+      324.1,
+      338.9,
+      314.2,
+      308.4,
+      328.0,
+      327.8,
+      316.8,
+      318.6
+     ]
+    },
+    "delta_pct": -5.7,
+    "pass_medians": {
+     "base": [
+      344.6,
+      345.8,
+      341.0
+     ],
+     "cand": [
+      321.8,
+      328.4,
+      324.7
+     ]
+    },
+    "separation": "PASS-MEDIAN FULL: max cand pass-median 328.4 < min base pass-median 341.0; 6/6 adjacent pass pairs monotone in the right direction. TRIAL-LEVEL NOT FULL: tails overlap (base low 310.9/331.4 pass-6; cand high 338.9 pass-5)",
+    "note": "base n=39 includes 9 valid rows from a killed-restart overlap in pass 3 (same base binary, same fixture; disclosed)"
+   },
+   "worker_per_proc_rss.smaps": {
+    "base": {
+     "trials": 19,
+     "p50": 169.3,
+     "min": 139.48,
+     "max": 177.63,
+     "values": [
+      173.91,
+      176.84,
+      169.28,
+      161.43,
+      169.36,
+      169.34,
+      162.56,
+      165.68,
+      175.32,
+      167.32,
+      177.63,
+      169.32,
+      139.48,
+      163.27,
+      169.42,
+      160.41,
+      162.05,
+      171.13,
+      162.92
+     ]
+    },
+    "cand": {
+     "trials": 20,
+     "p50": 147.5,
+     "min": 137.27,
+     "max": 162.93,
+     "values": [
+      152.66,
+      155.11,
+      147.46,
+      146.61,
+      148.34,
+      152.89,
+      147.04,
+      140.55,
+      147.55,
+      149.98,
+      153.16,
+      147.38,
+      142.53,
+      162.93,
+      145.93,
+      140.86,
+      146.18,
+      149.92,
+      147.95,
+      137.27
+     ]
+    },
+    "delta_mb": 21.8,
+    "parity": "TUI (~124), daemon (~24), kernel (~30.3) identical both sides - the whole delta is the worker",
+    "note": "clean per-suite sidecar dirs, passes 3-6"
+   },
+   "session.cold_open_10mib.tree_rss": {
+    "base": {
+     "trials": 15,
+     "p50": 347.4,
+     "min": 338.6,
+     "max": 363.8
+    },
+    "cand": {
+     "trials": 15,
+     "p50": 326.5,
+     "min": 287.0,
+     "max": 331.7
+    },
+    "separation": "trial-level full: max cand 331.7 < min base 338.6",
+    "ready_ms": {
+     "base_p50": 2672,
+     "cand_p50": 2543
+    }
+   },
+   "session.cold_open_10mib_compacted.tree_rss": {
+    "base": {
+     "trials": 15,
+     "p50": 115.8,
+     "min": 115.2,
+     "max": 117.0
+    },
+    "cand": {
+     "trials": 15,
+     "p50": 115.2,
+     "min": 113.9,
+     "max": 118.0
+    },
+    "parity": "overlapping - compacted sessions are unchanged (the retained window is tiny)",
+    "ready_ms": {
+     "base_p50": 2392,
+     "cand_p50": 1976
+    }
+   },
+   "compare.scroll_typing.tree_rss": {
+    "base": {
+     "trials": 15,
+     "p50": 346.1,
+     "min": 334.1,
+     "max": 362.9
+    },
+    "cand": {
+     "trials": 10,
+     "p50": 322.2,
+     "min": 294.7,
+     "max": 331.5
+    },
+    "separation": "trial-level full: max cand 331.5 < min base 334.1",
+    "ready_ms": {
+     "base_p50": 2712,
+     "cand_p50": 1740
+    },
+    "note": "cand n=10: pass-2 scroll rows lost to the first-run kill (disclosed); passes 4-5 complete"
+   },
+   "compare.msg_send.clean_table_pair": {
+    "base": {
+     "trials": 5,
+     "ok": 2,
+     "err": 3,
+     "errors": [
+      "TimeoutError: prompt typing dropped at key 11/11",
+      "...key 5/11"
+     ]
+    },
+    "cand": {
+     "trials": 5,
+     "ok": 5,
+     "err": 0
+    },
+    "note": "BASE-side environmental typing flake at this tip on this VM class; cand strictly better; the earlier aborted run showed the same 4/5-vs-4/5 symmetric failures with leaked trees - disclosed for operator disposition"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All valid rows sentinel+echo application-level validated with per-trial fixture prehash (canonical dadaecfc) and fresh inodes. Binary swaps sha-asserted per pass. Calibration drift pre->post ~5% (1.275->1.30 median) - pass-paired ABBA ordering absorbs it (every adjacent pair shows the same direction). The killed first attempt overlapped 9 valid base rows into pass 3's file (same binary/fixture; kept, disclosed). The no-claim bar (full separation) is met at PASS-MEDIAN level and at TRIAL level on cold_open and scroll_typing, NOT at trial level on the pooled primary suite."
+ },
+ "outcome": "candidate-positive: worker RSS -20 MiB p50 on the 10MiB canonical fixture (167.6->147.6, -12% worker; tree -19.5 p50, -5.7%), attribution exact (worker-only by per-proc), ready times consistently faster (the removed load-path clone), compacted parity, 6/6 ABBA pairs monotone; trial-level full separation holds on cold_open and scroll_typing but not the pooled primary suite",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-203400-worker-rss-adopt-onecopy-abba.json",
+ "session": {
+  "worker": "perf-worker-rss-fast",
+  "session_dir": "worker-rss lane"
+ },
+ "timestamp": "2026-09-26T20:34:00.000000+00:00"
+}
