@@ -1,0 +1,193 @@
+{
+ "id": "20260926-202000-startup-boot-floor-probe-grids",
+ "axis": "startup",
+ "hypothesis": "Two 25ms connect-probe grids on the cold-open path (the TUI's daemon-startup poll in ensure_daemon_running_with and the supervisor's worker-socket poll WORKER_CONNECT_BACKOFF_MS) each quantize a socket that appears in 1-40ms by 0-25ms of pure wait (mean ~12.5ms); tightening both to 5ms removes ~20-25ms mean from every cold open (base for the boot-floor ledger: small-fixture paint p50 330.5ms at 7064d039a, record 20260926-194800).",
+ "approach": "Two constants only (lane/hillclimb-boot-floor, commit e83ad122e, parent 7064d039a): (1) crates/pa-cli/src/interactive_mode.rs - the ensure_daemon_running_with probe-loop sleep 25ms -> DAEMON_PROBE_INTERVAL_MS=5 (new named const); (2) crates/pa-daemon/src/supervisor/launch_budget.rs - WORKER_CONNECT_BACKOFF_MS 25 -> 5 (unix). Timing-only: probes, 30s budgets, auth floor, and all error paths unchanged; wire and user-visible behavior identical. Same-VM trial-interleaved ABBA (base 7064d039a binary sha 994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892 vs cand e83ad122e sha 54aab92ffaf8fc34330bde97b305a39523f1f50fe0eb35176f469657c4647882, sha-asserted slot swaps, quiet gates, per-trial fixture hashes, the boot-floor watcher contract (socket-appearance + sighting + 5ms CPU grid)) on VM eh2maoxblls1ugh3tp97d0u4: round 1 block-interleaved (5+5 x2 small, 3+3 x2 real), round 2 trial-interleaved (16 pairs small, 6 pairs real), plus a paired filtered-strace net leg for the supervisor grid.",
+ "parity_notes": "No schema/wire/prompt changes; no session-content changes; the boot_reap census and the supervisor-config fsync are untouched. DELIBERATE TS DIVERGENCE, flagged for adversarial review: TS ensureDaemonRunning and TS connectWorker poll at 25ms; this PR tightens both Rust polls to 5ms as a perf-port divergence (the reviewers must rule whether the timing divergence is acceptable, per the boot-floor brief).",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "lane/hillclimb-boot-floor",
+ "commits": [
+  "e83ad122e6b39328e88569cf9ccb9c892bb5a1f4"
+ ],
+ "build": {
+  "sandbox_id": "eh2maoxblls1ugh3tp97d0u4",
+  "toolchain": "rustup 1.98.1",
+  "base_binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "cand_binary_sha256": "54aab92ffaf8fc34330bde97b305a39523f1f50fe0eb35176f469657c4647882",
+  "deterministic_note": "both shas reproduced identically built independently on VM eh2maoxblls1ugh3tp97d0u4 and VM epl826hc65qhw8aghpq9ckfz"
+ },
+ "gates": {
+  "fmt": "pass (fleet gate_1790452969_677818 at e83ad122e: FMT_RC=0)",
+  "clippy": "pass (CLIPPY_RC=0, -D warnings)",
+  "test": "IN FLIGHT at record time (full-suite gate at e83ad122e gate_1790452969_677818; fold-head 374d47cde gate_1790453593_677818 also running - merge-bar evidence is the fold-head gate)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, trial-interleaved B/C pairs, sha-asserted atomic slot swaps, quiet gates (loadavg<0.6), per-trial fixture prehash==source sha, sentinel+echo+erase validated every leg",
+  "direct_grid_span_suite": {
+   "definition": "bind->worker-spawn span (t_worker_sighting - t_dsock_create): daemon-bind -> create-reaches-supervisor. Contains the TUI probe-grid overshoot + census (~1-3ms) + hello + create RTs. FSYNC-FREE (the degraded-I/O regime cannot touch it). Raw watcher values, no strace.",
+   "small_fixture_pooled": {
+    "baseline": {
+     "n": 26,
+     "mean_ms": 15.4,
+     "p50_ms": 15.4,
+     "max_ms": 32.9,
+     "values_ms": [
+      4.3,
+      4.4,
+      5.1,
+      7.0,
+      8.9,
+      9.2,
+      16.5,
+      19.3,
+      28.7,
+      32.9,
+      5.0,
+      6.4,
+      10.0,
+      10.9,
+      11.3,
+      13.7,
+      15.2,
+      15.7,
+      15.8,
+      16.2,
+      19.5,
+      21.1,
+      21.9,
+      25.0,
+      27.1,
+      29.8
+     ]
+    },
+    "candidate": {
+     "n": 26,
+     "mean_ms": 7.4,
+     "p50_ms": 7.5,
+     "max_ms": 14.7,
+     "values_ms": [
+      2.5,
+      4.2,
+      5.8,
+      6.4,
+      6.9,
+      8.0,
+      8.0,
+      8.2,
+      8.7,
+      9.5,
+      4.2,
+      4.3,
+      4.7,
+      4.9,
+      5.2,
+      5.5,
+      5.6,
+      6.6,
+      8.1,
+      8.2,
+      9.2,
+      9.3,
+      9.4,
+      10.0,
+      13.1,
+      14.7
+     ]
+    },
+    "reading": "baseline is quantized on the 25ms grid (overshoots to 32.9); candidate caps at 14.7 = the 5ms grid + fixed RT costs. TUI-grid saving: mean -8.0ms, tail -18ms, worst -23ms"
+   },
+   "real_fixture_pooled": {
+    "baseline": {
+     "n": 12,
+     "mean_ms": 14.0,
+     "p50_ms": 8.9,
+     "max_ms": 37.7,
+     "values_ms": [
+      4.3,
+      4.7,
+      5.2,
+      8.9,
+      13.2,
+      14.5,
+      8.3,
+      8.3,
+      9.0,
+      22.8,
+      30.8,
+      37.7
+     ]
+    },
+    "candidate": {
+     "n": 12,
+     "mean_ms": 7.7,
+     "p50_ms": 7.6,
+     "max_ms": 11.9,
+     "values_ms": [
+      5.4,
+      5.7,
+      5.9,
+      7.4,
+      8.1,
+      11.9,
+      5.5,
+      7.2,
+      7.7,
+      8.3,
+      9.0,
+      10.2
+     ]
+    },
+    "reading": "same structure on the real 12.99MB fixture: mean -6.3ms, tail -26ms"
+   }
+  },
+  "end_to_end_paint_ready": {
+   "status": "INCONCLUSIVE-PENDING-ENVIRONMENT (nulls below)",
+   "round2_trial_interleaved_small_paint": {
+    "baseline_p50_ms": 514.0,
+    "candidate_p50_ms": 520.3,
+    "paired_deltas_ms": [
+     -110.5,
+     -91.9,
+     -74.9,
+     -73.8,
+     -63.5,
+     -61.4,
+     -13.1,
+     -11.1,
+     4.3,
+     9.1,
+     14.8,
+     34.7,
+     73.7,
+     89.9,
+     93.3,
+     111.9
+    ],
+    "mean_paired_delta_ms": -4.3,
+    "note": "collected in VM1's degraded-I/O regime (see validity): the daemon-boot supervisor-config fsync swung dsock p50 to ~205ms (healthy: 47ms) and the paired deltas swing +/-110ms - the ~20-25ms expected effect is NOT resolvable; NOT claimed"
+   },
+   "environment_probe": "4KB write+fsync probe: healthy window 0.2-1ms; degraded: VM1 80-83ms sustained, VM2 230-240ms sustained (12/12). The daemon boot pays one fsync (Supervisor::new persist_supervisor_config); dsock (daemon-bind sighting) 45-50ms healthy -> 220-470ms degraded.",
+   "supervisor_grid_direct_pair": {
+    "status": "PENDING-NOISE-BOUND",
+    "note": "the paired filtered-strace net leg (worker-bind -> supervisor-connect span) ran but the spans were noise-bound in the degraded regime (netB 62.7-69.1 vs netC 48.7-97.1, n=3 each) - mechanism identical to the TUI grid (same 25->5ms quantization on a socket that appears in 1-3ms per the ledger), direct pair to complete at the final head in a healthy window"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [
+   "VM2 round-3 legs (173 rows, 87 B + 86 C): TAINTED - a duplicated driver instance raced the sha-asserted binary swap (two run-abba3.sh instances interleaved legs; a leg could run with the other instance's binary in the slot). Disclosed and excluded. The single sanity leg from before the duplication (5 trials, base binary, healthy window: dsock 48.7-50.6, paint 272.5-330, grid spans 9.2-23.5) is valid and consistent with round 1+2."
+  ],
+  "notes": "Round 1 + round 2 (VM1) were single-driver runs with per-leg sha assertions - VALID; their grid spans are the record's direct evidence. Both rounds' end-to-end paint/ready are noise-bound by the degraded-I/O regime (dsock variance +/-200ms) - the host-drift rule voids attribution, so no end-to-end claim is made. The fsync degradation is environmental (both lane VMs + the pool hosts serve the whole fleet); it does NOT touch the direct grid-span suite (fsync-free). Binary determinism verified across two independent VM builds (identical shas)."
+ },
+ "outcome": "measured - direct grid-span evidence complete; end-to-end pair pending environment recovery",
+ "decision": "The two 25ms probe grids are real pure-wait costs on every cold open, measured directly and fsync-free: TUI grid mean -8.0ms/small (tail -18ms), real mean -6.3ms (tail -26ms) on the bind->create span; the candidate caps the distribution exactly as the 5ms grid predicts (values + raw arrays in measurements). The supervisor grid hunk is the same mechanism (25ms poll on a socket that binds 1-3ms after fork per the ledger) with its direct paired measurement still noise-bound - PENDING. The end-to-end paint/ready pair is INCONCLUSIVE in the current degraded-I/O regime and is NOT claimed; it must complete at the FINAL HEAD in a healthy window before any merge disposition (the fold to c7ca05f10 is done: lane head 374d47cde, post-fold re-diff vs the new merge-base = exactly the 2-file/2-constant change). TS-PARITY QUESTION FOR THE REVIEWERS: both intervals mirror TS (ensureDaemonRunning, connectWorker backoff); this is a deliberate timing-only divergence, wire and behavior identical. Next: fold-head full gate (gate_1790453593_677818, running), final-head pair when the infra I/O recovers (fsync probe <1ms), then the record supersedes with the end-to-end numbers.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-202000-startup-boot-floor-probe-grids.json",
+ "session": {
+  "worker": "perf-boot-floor-fast"
+ },
+ "timestamp": "2026-09-26T20:20:00+00:00"
+}
