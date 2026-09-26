@@ -1047,8 +1047,8 @@
   "notes": "Same-VM sequential ABBA; sha256-asserted atomic binary swaps; per-trial canonical fixture restore (bench integrity fix e6980d5) with identical prehash and fresh inode; env_gate recorded per trial (a self-inflicted 300s compile-marker stall from a waiter cmdline was found and fixed mid-run: affected trials only sat longer at the gate, never measured concurrently); stock suite is an adversarial long-unbroken-token wrap stress case, NOT a representative large-session resume benchmark; compacted suite is the representative neighbor and stays neutral."
  },
  "outcome": "measured",
- "decision": "PR with pinned same-commit evidence: -96.16% (26.0x) at d5cd4b132/9068febb7 (10/10 valid per side), reproduced -96.01% at bbb886dd8/31d5d38ab (6/6) and -96.08% at c9365d6ba/c6d74719 (6/6); compacted neighbor neutral in all three; styled first-frame byte-identical; gates disclosed (1 upstream pa-daemon worker-kill red reproduced on pure upstream, not lane-caused; rotating known-reds cited). Merge bar: orchestrator numeric review + both adversarial reviewers on the FINAL PR SHA + operator red-gate disposition - NOT to be merged by this worker.",
- "pr_url": null,
+ "decision": "PR #2870 OPEN with pinned same-commit evidence: -96.16% (26.0x) at d5cd4b132/9068febb7 (10/10 valid per side), reproduced -96.01% at bbb886dd8/31d5d38ab (6/6) and -96.08% at c9365d6ba/c6d74719 (6/6); compacted neighbor neutral in all three; styled first-frame byte-identical; gates disclosed (1 upstream pa-daemon worker-kill red reproduced on pure upstream, not lane-caused; rotating known-reds cited). Merge bar: orchestrator numeric review + both adversarial reviewers on the FINAL PR SHA + operator red-gate disposition - NOT to be merged by this worker.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2870",
  "record_path": "data/hillclimb/experiments/20260926-060449-interaction-replay-wrap-onepass.json",
  "session": {
   "worker": "perf-replay-wrap-fast (glm-5.3-fast reboot)",
