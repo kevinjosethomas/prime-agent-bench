@@ -1,0 +1,414 @@
+{
+  "id": "20260926-025743-cpu-idle-tick-park",
+  "axis": "cpu",
+  "hypothesis": "A 50-ms idle TUI select tick wakes the process tree unnecessarily when no consumer needs the cadence; deadline parking should reduce idle CPU/wakeups without changing user-visible timing.",
+  "approach": "Park idle tick until pending autocomplete/selection needs 50ms, bash activity needs its 2s refresh, or a toast expires. Added deadline predicates/consumer unit tests in pa-tui interactive.rs, session_ui.rs, toast/mod.rs, toast/tests.rs; no daemon/worker code changed.",
+  "parity_notes": "Autocomplete still wakes after <=50ms when pending; selection auto-scroll retains its 150ms hold + 50ms tick; bash activity refresh remains 2s; toast expiry wakes at TTL; Ctrl+C exit hint and spinner retain render_deadline. Wire/API/session replay and macOS/Linux contracts unchanged in source; only Linux x86_64 measured, macOS arm64 not measured. No test weakening. Head after measurement advanced through baa7b323, so this pair is historical iteration, not current-head PR evidence.",
+  "base": {
+    "revision": "b0afcdbe1df5d591e1ccb1f64f511564b16cb993"
+  },
+  "branch": "lane/hillclimb-idle-cpu",
+  "commits": [
+    "d4ab78e5b",
+    "02b988013",
+    "bc5e72763",
+    "707d03525",
+    "d4d98ba05",
+    "8cd5d881f",
+    "3583ca16f2a1912de44c8d222c69ccc3dab53cda"
+  ],
+  "build": {
+    "sandbox_id": "pp7mg0n80dbjl1fn3esq12vt",
+    "binary_sha256": "ac413f55f8c103a878f7856235804869775122d22284de647b2787d3be497200",
+    "binary_bytes": 209236936,
+    "baseline_binary_sha256": "0ce55e438471e6a2e4c20c90a3bae04d38a4ddfeba5dcbfd21df207f36c24473",
+    "baseline_binary_bytes": 209233736,
+    "binary_delta_bytes": 3200,
+    "build_seconds": null,
+    "toolchain": "cargo --release --locked --workspace on Linux x86_64 VM"
+  },
+  "gates": {
+    "fmt": "pass on 3583ca16f",
+    "clippy": "pass on 3583ca16f",
+    "test": "fail: full workspace 4 targets red. On exact b0afcdbe base and 3583ca16f candidate under corrected PI_PACKAGE_DIR, abort_kernel_cell and turn_boundary_kernel pass/pass, agent_family family_edges fail/fail with missing parent broadcast receipt, registration_refusal pass/pass isolated; repaired idle_tick_deadline unit test passes. Full-run red not relabeled green. #2828 later stabilized family test; NOT regated on latest upstream because lane discarded."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.memory_idle_load": {
+        "baseline": {
+          "trials": 2,
+          "valid": 2,
+          "p50_ms": null,
+          "p95_ms": null,
+          "values_ms": null,
+          "values_rss_mb": [
+            498.5,
+            517.3
+          ],
+          "median_rss_mb": 507.9,
+          "values_pss_mb": [
+            462.2,
+            481.7
+          ],
+          "median_pss_mb": 471.95
+        },
+        "candidate": {
+          "trials": 2,
+          "valid": 2,
+          "p50_ms": null,
+          "p95_ms": null,
+          "values_ms": null,
+          "values_rss_mb": [
+            562.9,
+            552.1
+          ],
+          "median_rss_mb": 557.5,
+          "values_pss_mb": [
+            526.1,
+            516.0
+          ],
+          "median_pss_mb": 521.05
+        },
+        "delta_pct": 9.77,
+        "regression": true,
+        "order": "B,C,C,B",
+        "corrected_fixture_legs": [
+          {
+            "order": 0,
+            "role": "base",
+            "actual_pre": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base0-00/fixture-copy.jsonl",
+              "bytes": 10485760,
+              "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+            },
+            "mounted_at_sample": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base0-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "744a79980c6924a3451520b3e41542d8f2285d1b34d814aaba2ac8c6464282e2"
+            },
+            "actual_post": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base0-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "744a79980c6924a3451520b3e41542d8f2285d1b34d814aaba2ac8c6464282e2"
+            },
+            "validated": true,
+            "sentinel": true,
+            "loaded": true,
+            "rss_mb": 498.5,
+            "pss_mb": 462.2,
+            "nproc": 4,
+            "processes": [
+              {
+                "role": "ui",
+                "name": "prime-agent",
+                "age_s": 152.179,
+                "rss_mb": 161.86,
+                "pss_mb": 151.8
+              },
+              {
+                "role": "daemon",
+                "name": "prime-agent",
+                "age_s": 152.169,
+                "rss_mb": 24.11,
+                "pss_mb": 12.46
+              },
+              {
+                "role": "worker",
+                "name": "prime-agent",
+                "age_s": 152.013,
+                "rss_mb": 282.27,
+                "pss_mb": 269.67
+              },
+              {
+                "role": "kernel",
+                "name": "python",
+                "age_s": 151.593,
+                "rss_mb": 30.27,
+                "pss_mb": 28.26
+              }
+            ]
+          },
+          {
+            "order": 1,
+            "role": "cand",
+            "actual_pre": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand1-00/fixture-copy.jsonl",
+              "bytes": 10485760,
+              "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+            },
+            "mounted_at_sample": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand1-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "7878711d8c1be4422dd2600d374dbed892971ef3deb60c52e92adf851cec3acd"
+            },
+            "actual_post": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand1-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "7878711d8c1be4422dd2600d374dbed892971ef3deb60c52e92adf851cec3acd"
+            },
+            "validated": true,
+            "sentinel": true,
+            "loaded": true,
+            "rss_mb": 562.9,
+            "pss_mb": 526.1,
+            "nproc": 4,
+            "processes": [
+              {
+                "role": "ui",
+                "name": "prime-agent",
+                "age_s": 157.878,
+                "rss_mb": 162.01,
+                "pss_mb": 151.76
+              },
+              {
+                "role": "daemon",
+                "name": "prime-agent",
+                "age_s": 157.879,
+                "rss_mb": 24.66,
+                "pss_mb": 12.82
+              },
+              {
+                "role": "worker",
+                "name": "prime-agent",
+                "age_s": 157.666,
+                "rss_mb": 345.77,
+                "pss_mb": 333.15
+              },
+              {
+                "role": "kernel",
+                "name": "python",
+                "age_s": 157.088,
+                "rss_mb": 30.5,
+                "pss_mb": 28.42
+              }
+            ]
+          },
+          {
+            "order": 2,
+            "role": "cand",
+            "actual_pre": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand2-00/fixture-copy.jsonl",
+              "bytes": 10485760,
+              "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+            },
+            "mounted_at_sample": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand2-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "c6af758550d0b02be8317fd2e92e7c410f3ce144c41e6bdebab758b00331a6d0"
+            },
+            "actual_post": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-cand2-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "c6af758550d0b02be8317fd2e92e7c410f3ce144c41e6bdebab758b00331a6d0"
+            },
+            "validated": true,
+            "sentinel": true,
+            "loaded": true,
+            "rss_mb": 552.1,
+            "pss_mb": 516.0,
+            "nproc": 4,
+            "processes": [
+              {
+                "role": "ui",
+                "name": "prime-agent",
+                "age_s": 158.077,
+                "rss_mb": 163.46,
+                "pss_mb": 153.58
+              },
+              {
+                "role": "daemon",
+                "name": "prime-agent",
+                "age_s": 158.077,
+                "rss_mb": 24.26,
+                "pss_mb": 12.56
+              },
+              {
+                "role": "worker",
+                "name": "prime-agent",
+                "age_s": 157.865,
+                "rss_mb": 334.16,
+                "pss_mb": 321.64
+              },
+              {
+                "role": "kernel",
+                "name": "python",
+                "age_s": 157.415,
+                "rss_mb": 30.21,
+                "pss_mb": 28.19
+              }
+            ]
+          },
+          {
+            "order": 3,
+            "role": "base",
+            "actual_pre": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base3-00/fixture-copy.jsonl",
+              "bytes": 10485760,
+              "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+            },
+            "mounted_at_sample": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base3-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "a1badd59425352a22ae41bab09f3dceb87f118806554eb1f869a0dea107637f8"
+            },
+            "actual_post": {
+              "path": "/root/bench-root/homes/rust/trials/compare_memory_idle_load-final-idle-rss-corrected-base3-00/fixture-copy.jsonl",
+              "bytes": 10486294,
+              "sha256": "a1badd59425352a22ae41bab09f3dceb87f118806554eb1f869a0dea107637f8"
+            },
+            "validated": true,
+            "sentinel": true,
+            "loaded": true,
+            "rss_mb": 517.3,
+            "pss_mb": 481.7,
+            "nproc": 4,
+            "processes": [
+              {
+                "role": "ui",
+                "name": "prime-agent",
+                "age_s": 165.172,
+                "rss_mb": 161.89,
+                "pss_mb": 152.01
+              },
+              {
+                "role": "daemon",
+                "name": "prime-agent",
+                "age_s": 165.153,
+                "rss_mb": 24.09,
+                "pss_mb": 12.58
+              },
+              {
+                "role": "worker",
+                "name": "prime-agent",
+                "age_s": 164.936,
+                "rss_mb": 301.02,
+                "pss_mb": 288.82
+              },
+              {
+                "role": "kernel",
+                "name": "python",
+                "age_s": 164.367,
+                "rss_mb": 30.3,
+                "pss_mb": 28.27
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "extra": {
+      "idle_tree_wakeups_per_s": {
+        "baseline": [
+          20.1,
+          20.1,
+          20.2,
+          20.1,
+          20.1
+        ],
+        "candidate": [
+          1.2,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "medians": [
+          20.1,
+          1.0
+        ]
+      },
+      "idle_tree_cpu_ms_per_10s": {
+        "baseline": [
+          40.0,
+          20.0,
+          20.0,
+          30.0,
+          20.0
+        ],
+        "candidate": [
+          10.0,
+          20.0,
+          20.0,
+          10.0,
+          0.0
+        ],
+        "medians": [
+          20.0,
+          10.0
+        ]
+      },
+      "keypress_to_render_p95_ms": {
+        "baseline": [
+          0.43,
+          0.47,
+          0.6,
+          0.44,
+          0.36
+        ],
+        "candidate": [
+          0.45,
+          0.53,
+          0.36,
+          0.43,
+          0.46
+        ],
+        "medians": [
+          0.44,
+          0.45
+        ]
+      },
+      "calibration_seconds": [
+        1.0490137910001067,
+        1.0740417519991752,
+        1.0747687299990503
+      ],
+      "binary_bytes": {
+        "baseline": 209233736,
+        "candidate": 209236936
+      },
+      "rss_mb": {
+        "baseline": 507.9,
+        "candidate": 557.5
+      },
+      "pss_mb": {
+        "baseline": 471.95,
+        "candidate": 521.05
+      },
+      "worker_rss_mb": {
+        "baseline": 291.645,
+        "candidate": 339.965
+      }
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Initial full-suite gate was red; corrected-env isolation explains two package-root failures but original remains red.",
+      "2/10 old-head four-suite arms B0/C1: shared mutable fixture; manifest hash/size stale at actual sample, not strict comparable RSS.",
+      "Earlier 3/4 RSS-only B0/C1/C2 with shared mutable fixture: canonical manifest stale, actual per-leg input differed.",
+      "Old-head suite terminated cleanly at arm boundary after B0/C1 (2/10); never call it full ABBA."
+    ],
+    "notes": "10/10 probe legs valid (five/role), binary identity via pinned checkout and sha256, not stale embedded version revision 7152746. Corrected loaded-RSS B,C,C,B 4/4 validated, same VM, canonical per-trial copies actual_pre 10,485,760 bytes SHA dadaecfc…; original transcript has 7,391 rows/10MiB sentinel. Product appends dynamic session_state state to each private mounted copy: all actual sample/post files 10,486,294 bytes (+534); hashes differ due dynamic IDs/timestamps and are recorded per leg, so post files are NOT byte-identical. Trial directories were removed by harness; appended suffix text was not archived, thus exact normalized row count/type cannot be independently checked here; session_store append_session_state implementation and equal suffix bytes support interpretation, not proof. Four processes, worker ages about 152-165s, same 3s settle; PSS and worker RSS shift with tree RSS. Mechanism of worker increase unknown: pa-tui-only diff does not prove worker allocation cause. Linux-only measurement; base b0afcdbe and candidate 3583ca16f became outdated when origin/rust advanced; no final-head pair or PR by operator-approved discard.",
+    "raw_logs": {
+      "vm_gate": "/home/ubuntu/hillclimb/vms/final-head-gate-idle.log",
+      "vm_isolation": "/home/ubuntu/hillclimb/vms/final-idle-isolation.log",
+      "partial_suite": "/home/ubuntu/hillclimb/vms/final-head-idle-abba.log",
+      "corrected_rss": "/home/ubuntu/hillclimb/vms/rss-corrected-idle.log",
+      "probe_archive": "/home/ubuntu/hillclimb/vms/idle-evidence-probes.tar.gz",
+      "corrected_archive": "/home/ubuntu/hillclimb/vms/idle-evidence-corrected.tar.gz"
+    },
+    "raw_archive_sha256": {
+      "probes": "03a14f087d476a2351870598b701cade7078437221f75dc8ff26e48f508d585c",
+      "corrected": "c3b12c581e61622b6643dda4e6833c3e0bdc9c8a82a01fa2b542b9b8fea06e36"
+    }
+  },
+  "outcome": "discarded",
+  "decision": "Operator approved discard: median corrected loaded RSS +49.6 MiB/+9.77% and PSS +49.1 MiB, reverse-order neighbor remains +34.8 MiB versus returning base. Idle wakeups 20.1→1.0/s and tree CPU 20→10 ms/10s cannot justify ~10% memory cost. Do not fold latest origin/rust, open PR, or merge.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-025743-cpu-idle-tick-park.json",
+  "session": {
+    "worker": "perf-idle-cpu",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-d5cb3a6f/01a0db50-7ba0-7342-a3e6-5cee41b075a9.jsonl"
+  },
+  "timestamp": "2026-09-26T02:57:43.757692+00:00"
+}
