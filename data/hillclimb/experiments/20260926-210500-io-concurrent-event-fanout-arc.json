@@ -1231,5 +1231,16 @@
   "first_pair": "N=1 legs: repeat-class p50 0.19-0.21ms (healthy); N=100 legs: repeat-class p50 13-52ms - partly self-induced (100 concurrent fdatasync-per-append sessions saturate the shared storage: the concurrent-append latency mechanism itself)",
   "probe_correction": "per fleet correction, the 4KB repeat-fdatasync probe does not sample the fresh-write+sync_all+rename class; both classes were probed (scripts/dual_probe.py output in re-pair-regime.jsonl / abba-regime-watch.jsonl)",
   "re_pair": "repeat-class p50 0.17ms at probe time but product append p50 3x the first pair - the product's durability class (fdatasync on a growing file under 100-way concurrency) samples neither probe class cleanly; latency legs are DIAGNOSTIC-ONLY everywhere in this record"
+ },
+ "review": {
+  "reviewer_1_parity_adversary_fast": {
+   "verdict": "REQUESTED (delivered with full CI state)"
+  },
+  "reviewer_2_parity_adversary_2_fast": {
+   "conditions": "SHA-bound (head movement voids); stale-base fold + full re-gate on combined tree before any merge with re-bind at the folded head; operator dispositions (benchmark non-applicability + mcp_login known-red registration); needs reviewer #1 APPROVE on same SHA + operator red-gate disposition",
+   "github_ci_at_head": "FULLY GREEN (fmt, check+clippy, test shards 1-4, test summary, Bugbot, Macroscope; only red = standing non-applicable TS benchmark, operator disposition)",
+   "sha": "4becda49a54abfbcc33413a6566947064760b378",
+   "verdict": "EXPLICIT APPROVE (effective 2026-09-26)"
+  }
  }
 }
