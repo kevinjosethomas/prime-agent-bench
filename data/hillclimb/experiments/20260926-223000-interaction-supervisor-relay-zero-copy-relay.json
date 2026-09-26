@@ -2720,14 +2720,14 @@
   ],
   "notes": "single-driver guards verified before every launch (pgrep before relaunch; orphaned workers cleaned after every kill); the byte-parity evidence is I/O-independent and was taken from the straddle window's dumps (bytes are bytes); probe defect in baseline run1 (hello unpack) fixed before run2 - recorded in the decomposition record; the legacy attach label is VOID as a path distinction (supervisor forces slim) - corroborates only"
  },
- "outcome": "final-head evidence complete at folded head 5dc812aa8; awaiting both adversarial reviewers + operator disposition; NO MERGE by lane",
+ "outcome": "MERGED",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2897",
  "record_path": "data/hillclimb/experiments/20260926-223000-interaction-supervisor-relay-zero-copy-relay.json",
  "prior_record": "20260926-193000-interaction-supervisor-relay-decompose (baseline + phase decomposition + splice oracle; bench hillclimb 2c4cd12)",
  "session": {
   "worker": "perf-supervisor-relay-fast"
  },
- "timestamp": "2026-09-26T23:12:00+00:00",
+ "timestamp": "2026-09-26T23:35:00+00:00",
  "fold": {
   "merge_commit": "5dc812aa8e156cd3b6d2878195d1027be785717f",
   "merge_base": "c12bed5a12dfaf170cc6ee9ea54705bd926d12fc (origin/rust at fold time)",
@@ -5517,5 +5517,11 @@
    "internal_protocol_ruling": "three-condition test passed (atomic same-binary endpoints; public client wire byte-proven unchanged; direct/chunked/rebound keep the typed path)"
   },
   "merge_gate_remainder": "operator dispositions (benchmark non-applicability; a_bang registered-family base-repro red; goal_turn_end_loop env-gate); NO MERGE by lane"
+ },
+ "merged": {
+  "squash_sha": "4c4caaa6b (full: 4c4caaa6b7cdbece22afbff2497e7d507941a806)",
+  "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2897",
+  "merged_under": "the standing autonomous-merge authorization (orchestrator numeric review ACCEPTED + both adversarial reviewers' EXPLICIT APPROVE on the final head 5dc812aa8, effective on the shard-3 completion; dispositions = the registered classes)",
+  "lane_note": "the squash carries the lane commits 7a26af5f5 + 034d905dd + the fold 5dc812aa8; the branch commits are not in the merged history (squash) - the record + the PR body carry the full chain"
  }
 }
