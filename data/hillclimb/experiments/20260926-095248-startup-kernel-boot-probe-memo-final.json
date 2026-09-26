@@ -176,13 +176,18 @@
     ],
     "notes": "Exact-head pair at the settle-fold head: candidate 9d1f472d569199751369f6df24fb26c98a661935 (one batched fold of origin/rust f37144ffa8dd57faa7e733766926e323b2eb5419 plus the live-witness count fix) vs base f37144ffa8dd57faa7e733766926e323b2eb5419. All 24 ABBA rows valid (6 per side per suite); every leg sha-asserts its staged binary before running. The candidate cold rows include two leg-lead trials (~116-121 ms) that pay the real runtime+dill probes on memo miss; the other four are memo hits (~40-41 ms). Base has no memo, so every base row pays its single runtime probe (~86-91 ms). Capability witnesses at this head: custom no-dill kernel-only cells PASS on base AND candidate (CUSTOM_KERNEL_NO_SNAPSHOT_OK both, ns-probe shas c37f55f95a13f93a8e4de61a5932129638545d42082901103afb107ebf9f876a / 239b78fb2df8cb0f4a986733f5b7a448ff7bdedbcfb62bb8ca3a9fdfaa0ad454); managed dill removal: candidate repairs heal-before-start (cold ensure 1148.4 ms including the venv rebuild, restore 125.0 ms, restart 45.1 ms, dill restored) while base fails at snapshot time ('Error: snapshot missing'), and the candidate repair restores venv health again (RC=0). Live-gated memo witness PASS with corrected counts after the test-history fix: the d14 separate-dill design was counted in the hermetic tests (f97f073bc) but the live #[ignore] witness kept pre-d14 counts and was found red on 2026-09-26 (CI never runs ignored tests); fixed at eeef36f6e (counts 2/2/3/5/7 with the rlm-uninstall short-circuit) and re-run green at 9d1f472d5. macOS unmeasured. Measurement VM provisioned fresh (16 CPU/32 GB) after the prior VM cohort hit sandbox TTL; all gates and measurement for this record ran on this one VM with results archived off-VM immediately."
   },
-  "outcome": "in-progress",
-  "decision": "Review-only PR #2857 at final head 9d1f472d569199751369f6df24fb26c98a661935. Orchestrator numeric review of exact-head paired evidence: ACCEPTED (the pre-fold replicate pair). Formal adversarial verdicts from BOTH reviewers (parity-adversary-fast, parity-adversary-2-fast) on this SHA pending; parity-adversary-fast pre-approved the mechanism and will convert without re-review given byte-identical mechanism files (venv.rs/startup.rs/provisioner.rs unchanged by the pa-daemon/pa-tui-only folds). Operator disposition of the non-applicable TS benchmark red pending. Do not merge.",
+  "outcome": "merged",
+  "decision": "MERGED 2026-09-26T17:58:34Z: squash commit d3e6b7282853b2e4423a09d45ca8600b606a0c1a on origin/rust (#2857, 'perf: memoize kernel venv runtime-ready probe (managed path; custom override keeps the direct probe)'). Merge gate history: orchestrator numeric review of the exact final-head pair ACCEPTED; BOTH formal adversarial reviewers (parity-adversary-fast, parity-adversary-2-fast) gave EXPLICIT APPROVE at 9d1f472d569199751369f6df24fb26c98a661935; operator (Kevin) disposition of the disclosed reds (non-applicable TS benchmark 0/0 wrong-adapter FAILURE; VM-suite environmental startup-race flake disclosure with preserved logs) closed the gate; merged by operator decision.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2857",
   "record_path": "data/hillclimb/experiments/20260926-095248-startup-kernel-boot-probe-memo-final.json",
   "session": {
     "worker": "perf-kernel-boot",
     "session_dir": "/root/bench-root/homes/rust/trials (VM-local; raw logs archived under /home/ubuntu/hillclimb/kb9d1-results on the orchestrator box)"
   },
-  "timestamp": "2026-09-26T09:52:48.041577+00:00"
+  "timestamp": "2026-09-26T09:52:48.041577+00:00",
+  "merge": {
+    "merged_at": "2026-09-26T17:58:34Z",
+    "squash_commit": "d3e6b7282853b2e4423a09d45ca8600b606a0c1a",
+    "pr": 2857
+  }
 }
