@@ -1,0 +1,174 @@
+{
+ "id": "20260926-000658-measurement-validity-cold-open-fixture-artifact",
+ "axis": "measurement-validity",
+ "hypothesis": "session.cold_open_10mib (~25.2s launch_to_ready on the 10MiB fixture, ~90ms first paint) may measure the wrong user path: the synthetic fixture (session_size.py/corpus.py) has NO compaction row, so Prime Agent Rust's windowed-resume open (pa-core/src/session/window.rs WindowedSessionStore::open via pa-daemon SessionFile::open_windowed at worker.rs:2229) never finds a firstKeptEntryId boundary, retains every row, and full-parses the whole file; real sessions that hit a compaction boundary open near-instantly (user report: parse-from-end-to-most-recent-compaction makes session opens fast). Suite may measure the no-compaction worst case, not common large-session resume.",
+ "approach": "Read-path audit + 3-fixture measurement on ONE VM (same binary, sequential, load-gated, 5 trials each): (a) stock 10MiB fixture (no compaction), (b) new compacted-boundary variant (session-10mib-compacted: same corpus generator/seed + one byte-plausible compaction row whose firstKeptEntryId pins a ~102KiB retained window; bulk pad in the discarded prefix; sentinel rides the retained tail), (c) a REAL session snapshot from the orchestrator box (2.89MiB, 2343 rows, v3 header, chain intact, ZERO compaction entries). Ready contract identical across all three (typed-echo probe after first paint; tail sentinel proof).",
+ "parity_notes": "No product code changed. Harness additions only: bench/adapters/fixtures/session_size.py gains build_session_compacted + SessionSizeCompactedFixture (generator session-size-compacted/1, own sha256 manifest; stock generator/bytes untouched - stock fixture sha256 re-verified identical after the edit); bench/adapters/benchmarks/session_open_compacted.py adds session.cold_open_10mib_compacted as a SessionColdOpen subclass (same measure(), same driver/ready contract; existing suite semantics unchanged). Measurement honesty: the compacted fixture changes only the session-open read path exercised (a byte-plausible boundary row the real product writes via compact_session.rs compaction_entry_for); it does not remove any measured work - the same launch, daemon boot, resume, transcript render, typed-echo ready, and sentinel proof are measured on identical corpus bytes.",
+ "base": {
+  "revision": "3940a1f23a52d8db0cc480ffb27fe75927139de8"
+ },
+ "branch": "hillclimb (bench repo; no product lane branch - audit only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ei70x1q2q21ing940crob3aw",
+  "binary_sha256": "206696dbe770120a763f3d81e6c35da3bab9c29631a5aa1ac99d8038396039b2",
+  "binary_bytes": 207023688,
+  "build_seconds": 106,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed); harness registration verified: python3 -m bench.cli list shows session.cold_open_10mib_compacted + session-10mib-compacted"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "session.cold_open_10mib": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 21393.2,
+     "p95_ms": 21839.3,
+     "values_ms": [
+      21839.3,
+      21325.4,
+      21406.0,
+      21393.2,
+      21293.2
+     ]
+    },
+    "candidate": null,
+    "note": "stock fixture (no compaction row) at base 3940a1f2 on the audit VM; p50 launch_to_first_paint 58.1ms; p50 launch_to_sentinel 21395.7ms (all 5 sentinel+echo validated)"
+   },
+   "session.cold_open_10mib_compacted": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 318.2,
+     "p95_ms": 321.3,
+     "values_ms": [
+      321.3,
+      318.1,
+      318.9,
+      317.0,
+      318.2
+     ]
+    },
+    "candidate": null,
+    "note": "NEW suite, first reference numbers at base 3940a1f2; fixture = compacted-boundary variant, retained window 105047B (~102.6KiB, 142 entries incl. boundary row); p50 paint 58.4ms"
+   }
+  },
+  "extra": {
+   "three_fixture_table_p50": {
+    "a_stock_10mib_no_compaction": {
+     "launch_to_ready_ms": 21393.2,
+     "launch_to_first_paint_ms": 58.1,
+     "launch_to_sentinel_ms": 21395.7,
+     "retained_msgs": 7259,
+     "file_bytes": 10485760
+    },
+    "b_compacted_10mib_102kib_window": {
+     "launch_to_ready_ms": 318.2,
+     "launch_to_first_paint_ms": 58.4,
+     "launch_to_sentinel_ms": 320.9,
+     "retained_msgs": 135,
+     "file_bytes": 10485760
+    },
+    "c_real_session_2.89mib_no_compaction": {
+     "launch_to_ready_ms": 389.6,
+     "launch_to_first_paint_ms": 58.2,
+     "launch_to_sentinel_ms": 392.5,
+     "retained_msgs": 1406,
+     "file_bytes": 3030750,
+     "provenance": "snapshot of live session 01a0dad3-baf1-752c-8e3f-0f5a130d05b3.jsonl (prefix copy, sha256 44f79c3b2219ccca3f5ae5bb376abfe729bca4ae4e8f224aef414b2731e1ae90, 2343 rows, 0 compaction entries, header v3, chain verified intact)"
+    },
+    "d_compacted_10mib_405kib_window": {
+     "launch_to_ready_ms": 321.4,
+     "trials": 3,
+     "retained_msgs": 519,
+     "file_bytes": 10485760,
+     "note": "scaling point: retained-window budget tail_kib=400 (scratch variant, not a committed fixture)"
+    }
+   },
+   "open_phase_decomposition_ms": {
+    "stock_10mib": {
+     "open_windowed": 96.6,
+     "windowed": true,
+     "entries": 7397,
+     "restored_settings": 46.0,
+     "ctx_msgs": 7259,
+     "full_open": 25.6
+    },
+    "compacted_10mib_t100": {
+     "open_windowed": 1.7,
+     "windowed": true,
+     "entries": 142,
+     "restored_settings": 0.7,
+     "ctx_msgs": 135,
+     "full_open": 30.0
+    },
+    "compacted_10mib_t400": {
+     "open_windowed": 46.7,
+     "windowed": true,
+     "entries": 519,
+     "restored_settings": 6.5,
+     "ctx_msgs": 519,
+     "full_open": 41.4
+    },
+    "real_session_2.89mib": {
+     "open_windowed": 32.5,
+     "windowed": true,
+     "entries": 2342,
+     "restored_settings": 15.2,
+     "ctx_msgs": 1406,
+     "full_open": 6.8
+    },
+    "method": "VM-scratch example binary (visibility-only patch on the VM clone; never committed) timing SessionFile::open_windowed / restored_settings / SessionFile::open per file"
+   },
+   "scaling_net_resume_cost": {
+    "note": "net = p50 launch_to_ready minus p50 first_paint; retained-message-count scaling of the resume pipeline",
+    "points": [
+     {
+      "retained_msgs": 135,
+      "net_ms": 259.8
+     },
+     {
+      "retained_msgs": 519,
+      "net_ms": 263.0
+     },
+     {
+      "retained_msgs": 1406,
+      "net_ms": 331.4
+     },
+     {
+      "retained_msgs": 7259,
+      "net_ms": 21335.1
+     }
+    ]
+   },
+   "vm_calibration_s": {
+    "values": [
+     1.0535,
+     1.0639,
+     1.0715
+    ],
+    "median": 1.0639,
+    "note": "single VM: no cross-VM divergence to report (methodology addendum item 3)"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All four measurements: ONE VM (ei70x1q2q21ing940crob3aw, 16c/32GB), SAME pinned binary 3940a1f2 (sha256 206696db...), sequential, load-gated, 5 trials each (3 for the t400 scaling point), identical ready contract (typed-echo probe after first paint + tail sentinel proof; every trial validated sentinel+echo+erase). Calibration median 1.064s (3x python sum loop). (c) used per-trial copies (fresh inode, original file never modified); (a)/(b) measured through the canonical suites, which append creation-prefix rows to the fixture per trial (+1278B after 5 stock trials) - pre-existing harness behavior; the window sidecar written each trial goes stale on the next append, so every trial re-scans cold (trials homogeneous: stock spread 21293-21839ms, compacted 317-321ms). Harness wart found: SessionSizeFixture.ensure() returns the stale manifest without re-validating the file hash once trials have appended rows, so repeated campaigns on the same bench root resume a mutated fixture under the original sha256 evidence - latent reproducibility wart, negligible numeric impact (~256B/trial). Product-version cosmetic: version_info reports the product.yaml revision pin (7152746b), not the actual binary commit (3940a1f2, binary_sha256 is the true provenance). My committed fixture had a bug on first deploy (ensure() returned the generate() Path instead of the manifest dict) - fixed before commit; VM harness re-synced and both suites re-ran clean after the fix."
+ },
+ "outcome": "measured",
+ "decision": "VERDICT: hypothesis CONFIRMED with a mechanism twist. (1) The stock session.cold_open_10mib measures the no-compaction path: adding ONE byte-plausible compaction boundary row to the SAME 10MiB corpus drops p50 launch_to_ready 21393.2ms -> 318.2ms (67x). The stock 25.2s campaign baseline (7152746b) and 21.4s here are the no-boundary full-retention resume, not the common post-compaction resume (~0.32s, faster than a fresh-session cold start baseline 341.5ms). (2) TWIST: the dominant 21s is NOT the JSONL parse - a VM-scratch example shows SessionFile::open_windowed on the no-boundary 10MiB fixture costs 96.6ms (full parse 25.6ms, context build 46ms). The 21s lives in the retained-transcript resume pipeline (daemon replay + TUI transcript build/render) whose cost explodes superlinearly with retained message count: 135 msgs -> 0.26s net, 519 -> 0.26s, 1406 -> 0.33s, 7259 -> 21.3s (~n^2.5 between 1.4k and 7.3k). The compaction boundary fixes it by shrinking retained rows 7259 -> 135. (3) Real-device answer: a no-compaction large session is NOT slow at the file-open layer (windowed reverse scan + full-retention parse of 10MiB = ~97ms; real 2.89MiB/1406-msg no-compaction session opens end-to-end in 0.39s). It BECOMES slow only when thousands of messages stay retained (>= ~2-7k), which auto-compaction at the context limit should normally prevent (real sessions on the orchestrator box never exceed ~1.4k retained msgs without compaction). (4) RE-RANK RECOMMENDATION: the session-open optimization lane should be re-ranked/re-scoped - parse-side work buys <=100ms; the common large-session resume is already ~0.32s; the remaining real optimization target is the superlinear retained-transcript replay/render pipeline for the pre-first-compaction / compaction-disabled large session, and any lane optimizing it should be measured against the new compacted suite (common path) AND the stock suite (worst case), never the stock number alone.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-000658-measurement-validity-cold-open-fixture-artifact.json",
+ "session": {
+  "worker": "perf-open-audit",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1f7c3c0d/01a0dae4-ae11-75a3-af74-f1bff64acac0.jsonl"
+ },
+ "timestamp": "2026-09-26T00:06:58.857339+00:00"
+}

@@ -1,0 +1,83 @@
+{
+ "id": "20260926-000658-startup-cold-open-compacted-suite",
+ "axis": "startup",
+ "hypothesis": "A session.cold_open_10mib_compacted suite (same driver/ready contract as session.cold_open_10mib, fixture = a byte-plausible compaction-boundary variant of the same deterministic 10MiB corpus) should measure the COMMON large-session resume path (post-compaction) that the stock no-boundary suite cannot see: near-instant open.",
+ "approach": "Harness additions only (no product change): bench/adapters/fixtures/session_size.py adds build_session_compacted + SessionSizeCompactedFixture (registry name session-10mib-compacted, generator session-size-compacted/1, own sha256 manifest; same corpus generator/seed/exact-size discipline as the stock builder; one compaction row appended at the end whose firstKeptEntryId pins a ~102.6KiB retained window; bulk pad row in the discarded prefix; visible sentinel rides the retained tail) and bench/adapters/benchmarks/session_open_compacted.py adds session.cold_open_10mib_compacted as a SessionColdOpen subclass (inherited measure(): same launch, first-paint, typed-echo ready, tail-sentinel proof, erase, RSS, burst evidence). Registered: python3 -m bench.cli list shows both. 5 reference trials at base 3940a1f2 on the audit VM.",
+ "parity_notes": "Measurement honesty: the compacted fixture changes only which read path the product exercises (a compaction row the real product writes via pa-core compact_session.rs compaction_entry_for - field-for-field matched to a captured live row: summary, firstKeptEntryId, tokensBefore, details, fromHook, usage). No measured work is removed: same launch, daemon boot, resume, render, typed-echo ready, sentinel proof on identical corpus bytes. The stock suite's semantics are untouched (stock fixture sha256 re-verified byte-identical after the harness edit: dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda).",
+ "base": {
+  "revision": "3940a1f23a52d8db0cc480ffb27fe75927139de8"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ei70x1q2q21ing940crob3aw",
+  "binary_sha256": "206696dbe770120a763f3d81e6c35da3bab9c29631a5aa1ac99d8038396039b2",
+  "binary_bytes": 207023688,
+  "build_seconds": 106,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed); registration gate: bench.cli list resolves session.cold_open_10mib_compacted + session-10mib-compacted; fixture determinism gate: VM-built fixture sha256 97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8 == local build (byte-identical across hosts)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "session.cold_open_10mib_compacted": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 318.2,
+     "p95_ms": 321.3,
+     "values_ms": [
+      321.3,
+      318.1,
+      318.9,
+      317.0,
+      318.2
+     ]
+    },
+    "candidate": null,
+    "extra": {
+     "p50_launch_to_first_paint_ms": 58.4,
+     "p50_launch_to_sentinel_ms": 320.9,
+     "fixture": {
+      "bytes": 10485760,
+      "sha256": "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8",
+      "rows": 10984,
+      "retained_bytes": 105047,
+      "first_kept_entry_id": "00002a61"
+     },
+     "reference_context": {
+      "stock_suite_same_vm_p50_ms": 21393.2,
+      "fresh_session_cold_start_baseline_p50_ms": 341.5
+     }
+    }
+   }
+  },
+  "extra": {
+   "vm_calibration_s": {
+    "values": [
+     1.0535,
+     1.0639,
+     1.0715
+    ],
+    "median": 1.0639
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "First reference numbers for the new suite (audit-VM, base 3940a1f2, sequential, load-gated, 5/5 trials validated sentinel+echo+erase). These are reference numbers for future candidate pairs, not a candidate delta (no candidate binary). The stock suite on the same VM/binary: p50 21393.2ms - the 67x gap between the suites on the SAME corpus isolates the no-boundary vs boundary resume path (see the paired audit record 20260926-000658-measurement-validity-cold-open-fixture-artifact)."
+ },
+ "outcome": "measured",
+ "decision": "Reference recorded; suite committed for future session-open lanes to measure the common (post-compaction) resume path alongside the stock worst-case suite.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-000658-startup-cold-open-compacted-suite.json",
+ "session": {
+  "worker": "perf-open-audit",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1f7c3c0d/01a0dae4-ae11-75a3-af74-f1bff64acac0.jsonl"
+ },
+ "timestamp": "2026-09-26T00:06:58.857339+00:00"
+}
