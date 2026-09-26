@@ -1,0 +1,86 @@
+{
+  "id": "20260926-014000-measurement-validity-replay-render-correction",
+  "axis": "measurement-validity",
+  "hypothesis": "Prior audit inferred a ~n^2.5 retained-message-count resume cost from four confounded fixture points. The stock fixture has a uniquely pathological long unbroken assistant text token.",
+  "approach": "Split cold resume into daemon create, daemon attach, TUI attach parse/reconstruct and first render; profile hot frame; independently probe large real no-compaction session and 50MiB capped toolResult fixture. Correct prior audit without deleting original measurements.",
+  "parity_notes": "No product changes in this audit; every probe uses the same resume/attach protocol and exact frozen session bytes. The compacted benchmark remains valid as a common-path control, but the speed gap does not establish message-count causality.",
+  "base": {
+    "revision": "d3763dca2cb84d5dc90dd973420ce648fb4266bb"
+  },
+  "branch": "hillclimb (bench repo; correction only)",
+  "commits": [],
+  "build": {
+    "sandbox_id": "bmxeyxz112wjq2g5wn7o82k0",
+    "binary_sha256": "e7ad6696ee587a6d75d69a5237671a6e5e886b621b8f6c4cfa31c62f86fc9ff0",
+    "binary_bytes": 206694480,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "n/a (audit)",
+    "clippy": "n/a (audit)",
+    "test": "n/a (audit)"
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {},
+    "extra": {
+      "split_stock_10mib_ms": {
+        "daemon_create_range": [
+          439,
+          562
+        ],
+        "daemon_attach_range": [
+          214,
+          226
+        ],
+        "attach_wire_bytes": 9654232,
+        "attach_messages": 7390,
+        "tui_attach_parse": 22.6,
+        "tui_reconstruct": 9.8,
+        "tui_view_build": 1.2,
+        "tui_first_render_frame": 30151.9,
+        "subsequent_frame": 0.1
+      },
+      "probe_first_render_frame_ms": {
+        "stock_10mib_unbroken_pad_token": 30151.9,
+        "huge_tool_results_50mib": 13.7,
+        "real_uncompacted_session_2717_attach_messages": 4.7
+      },
+      "fixture_bytes": {
+        "stock": 10485760,
+        "huge_tool_results": 52428800,
+        "real": 5323023
+      },
+      "fixture_sha256": {
+        "stock": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda",
+        "huge_tool_results": "7efba8b16302c3492167f575fa2eeecafb32a7aa790f9d3596593ce8b8b3952",
+        "real": "7f3b4a8a26026d327bf9490119ad36e81d5b936be17fb0a62751df3962b187cb"
+      },
+      "vm_calibration_s": {
+        "values": [
+          1.07643948,
+          1.046830855,
+          1.073660785
+        ],
+        "median": 1.073660785
+      }
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Initial failed daemon attach probes (wire=132B, attach_messages=0) and create failures; only successful create+attach probes support split.",
+      "Prior 2.89MiB real-session snapshot is NOT interchangeable with newer 5.32MB/2717-message snapshot."
+    ],
+    "notes": "The old audit retained count points (135,519,1406,7259) vary text shape as well as count. perf DWARF profile placed 92% of 30s frame in pa_tui::width::str_width ASCII scanning inside markdown.rs wrap_spans_into; each emitted row re-measured and cloned the remaining ~4.3MB single-word text tail. 50x ~1MiB toolResult blobs are benign in the TUI because tool cards cap display; bytes are not sufficient for slowdown. Session parser/window remains sub-100ms from original audit. Stock suite is an adversarial monoword wrap stress case, not a representative large-session resume benchmark."
+  },
+  "outcome": "measured",
+  "decision": "RETRACTION: prior audit decision\u2019s ~n^2.5 retained-message-count conclusion and >=2-7k threshold are FALSE. Compaction removes the 4.3MB unbroken text token, explaining the stock/compacted gap; counts merely co-vary. Keep the prior raw measurement values and mark its interpretation superseded. The compacted suite remains representative; watch it for regression while fixing wrap complexity under the stock stress case.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-014000-measurement-validity-replay-render-correction.json",
+  "session": {
+    "worker": "perf-open-audit successor GPT-6 Sol",
+    "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-293d5f71/01a0db55-23b7-7190-912c-6c3959f2a85b.jsonl"
+  },
+  "timestamp": "2026-09-26T01:39:37.718832+00:00"
+}

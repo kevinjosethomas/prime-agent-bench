@@ -170,5 +170,10 @@
   "worker": "perf-open-audit",
   "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1f7c3c0d/01a0dae4-ae11-75a3-af74-f1bff64acac0.jsonl"
  },
- "timestamp": "2026-09-26T00:06:58.857339+00:00"
+ "timestamp": "2026-09-26T00:06:58.857339+00:00",
+ "correction": {
+  "superseded_by": "data/hillclimb/experiments/20260926-014000-measurement-validity-replay-render-correction.json",
+  "status": "RETRACTED interpretation; original measurements preserved",
+  "note": "The ~n^2.5 retained-message-count conclusion and >=2-7k threshold in decision/scaling_net_resume_cost are FALSE causal claims. The 10MiB stock fixture has a single ~4.3MB unbroken text token; its first TUI frame spends ~30s in quadratic markdown wrapping. A real no-compaction 2717-message session renders in 4.7ms; a 50MiB toolResult-heavy fixture renders in 13.7ms because tool cards cap results. Compaction removes the stock monoword; retained count is confounded, not the cause. See superseding record."
+ }
 }
