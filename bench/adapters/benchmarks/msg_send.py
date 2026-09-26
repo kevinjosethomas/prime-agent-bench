@@ -62,9 +62,34 @@ class MsgSend(Benchmark):
             app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint,
                                   dialog_steps=product.dialog_steps)
             app.erase_all(PROBE_TOKEN)
+            # bounded dialog dismissal after the probe: a product can
+            # surface a first-run dialog AFTER readiness (codex's model
+            # migration NUX lands with the model-metadata fetch) — it
+            # would swallow the typed prompt, so clear it before typing;
+            # dialog time precedes the Enter keystroke, which is where
+            # every published metric starts
+            steps = product.dialog_steps or []
+            for _ in range(4):
+                text = " ".join(app.screen_text().split())
+                pending = [m for m, _k in steps if m in text]
+                if not pending:
+                    break
+                for _m, keys in steps:
+                    if _m in text:
+                        for k in keys:
+                            app.send(k)
+                            time.sleep(0.4)
+                        break
             routing_pre = ctx.get("routing") or product.msg_routing
             prompt = REAL_API_PROMPT if routing_pre == "real-api" else "bench hello"
-            app.type_token(prompt, per_key_timeout=2.0, inter_key_pause=0.02)
+            typed = app.type_token(prompt, per_key_timeout=2.0, inter_key_pause=0.02)
+            if not typed[1]:
+                # a swallowed or dropped key means the prompt never reached
+                # the editor (a dialog raced the typing, or the editor died)
+                # — that is failed evidence, never a speed measurement
+                raise TimeoutError(
+                    f"prompt typing dropped at key {len(typed[0])}/{len(prompt)} "
+                    "(a dialog raced the typing or the editor went dead)")
             t_enter = app.send("\r")
             # ack = first output after Enter (driver primitive: exact chunk
             # timestamp on the PTY driver, first frame change otherwise)
