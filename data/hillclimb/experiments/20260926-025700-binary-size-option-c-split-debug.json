@@ -2,10 +2,10 @@
   "id": "20260926-025700-binary-size-option-c-split-debug",
   "axis": "binary-size",
   "hypothesis": "Linux release install footprint is dominated by line-table DWARF in the linked ELF; separate decoder and strip debug sections of the SAME linked image to reduce delivered bytes while keeping function names and offline file:line recovery.",
-  "approach": "Option C: release build keeps line tables and does not strip at link; scripts/release/split_debug.py runs objcopy --only-keep-debug then objcopy --strip-debug --remove-section=.debug_gdb_scripts on one linked image. Linux release and continuous workflows run split before assembly; release promotes gzip decoder as separate asset. assemble_artifacts.py hard-fails decoder-like sidecars inside staged/packed payload; channel manifest rejects decoder references. Option A (strip all) rejected: loses backtrace symbol names. Option B (strip=debuginfo at link) rejected: it preserves function names but omits a same-build decoder, so shipped file:line cannot be restored from an independently linked binary (the .text differed in tested link configurations).",
+  "approach": "Option C: release build keeps line tables and does not strip at link; scripts/release/split_debug.py derives gzip decoder and separate shipped ELF from one immutable linked Cargo image, with objcopy --only-keep-debug then objcopy --strip-debug --remove-section=.debug_gdb_scripts. Linux release and continuous workflows run split before assembly; release promotes gzip decoder as separate per-tag asset (not rolling nightly). assemble_artifacts.py hard-fails decoder-like sidecars inside staged/packed payload; channel manifest rejects decoder references. Assembler binds decoder SHA/build-ID to shipped ELF, promotion verifies exact decoder SHA and installed tar ELF SHA/build-ID, SHA256SUMS and provenance cover the per-tag decoder; rolling nightly checksum lists tarballs only. Option A (strip all) rejected: loses backtrace symbol names. Option B (strip=debuginfo at link) rejected: it preserves function names but omits a same-build decoder, so shipped file:line cannot be restored from an independently linked binary (the .text differed in tested link configurations).",
   "parity_notes": "RLM API/wire/session replay source untouched; all lane changes limited to Cargo.toml release profile, scripts/release, and Linux release/CI workflows. Linux ELF static .symtab/function names and .dynsym are kept; shipped backtraces lose file:line but detached same-image decoder restores them via addr2line. GLIBC release gate still inspects .dynsym. macOS unchanged (line tables kept); dSYM extraction is follow-up, macOS bytes not measured. Linux x64 measurement only; Linux arm64 workflow wired but not measured.",
   "base": {
-    "revision": "baa7b323a89eda31452fe6c2bf3c111c484c8328"
+    "revision": "3e9d11527518bfc0619988085d28e302a6b65f20"
   },
   "branch": "lane/hillclimb-binary-size",
   "commits": [
@@ -18,7 +18,9 @@
     "38dbd975e",
     "57cacebaa",
     "84d6ef58d",
-    "d4ebdeb39"
+    "d4ebdeb39",
+    "d929c298e",
+    "8f2f4fb6b"
   ],
   "build": {
     "sandbox_id": "jyk9va0j321teowwodw204mf",
@@ -28,9 +30,9 @@
     "toolchain": "rustup 1.98.1"
   },
   "gates": {
-    "fmt": "PENDING d4ebdeb39 exact head; historical 84d6ef58 cargo fmt pass",
-    "clippy": "PENDING d4ebdeb39 exact head; historical 84d6ef58 clippy pass",
-    "test": "PENDING d4ebdeb39 exact head/full. Historical on 91eedb5d pure base and 84d6ef58 candidate live family_edges both FAIL identically at agent_family_e2e.rs:323 after ~40s; first candidate family rc101 0s INVALID from bench bundle venv overwrite, restored Python 3.12/native runtime. Prior 57cacebaa on fb719b13 full cargo test --workspace --locked GREEN rc0 live family 2/2, historical only. No full test run on latest d4ebdeb39; no green claim."
+    "fmt": "PENDING 8f2f4fb6 exact head; historical 84d6ef58 cargo fmt pass; PR #2844 prior d4eb CI fmt PASS, not final",
+    "clippy": "PENDING 8f2f4fb6 exact head; historical 84d6ef58 clippy pass; PR #2844 prior d4eb CI clippy PASS, not final",
+    "test": "PENDING 8f2f4fb6 exact head/full. Historical on 91eedb5d pure base and 84d6ef58 candidate live family_edges both FAIL identically at agent_family_e2e.rs:323 after ~40s; first candidate family rc101 0s INVALID from bench bundle venv overwrite, restored Python 3.12/native runtime. Prior 57cacebaa on fb719b13 full cargo test --workspace --locked GREEN rc0 live family 2/2, historical only. PR #2844 prior d4eb CI test shards 4/4 PASS; current head CI ongoing. No full local test run on 8f2f4fb6; no green claim. Public benchmark 36213336231 FAIL: TS/main vs Rust PR npm ci missing package-lock, PR 0/0 trials, setup non-applicable; operator disposition pending."
   },
   "measurements": {
     "method": "same-vm-sequential",
@@ -729,15 +731,18 @@
         "status": "in progress async; historical head"
       },
       "pending_latest_fold": {
-        "base_revision": "baa7b323a89eda31452fe6c2bf3c111c484c8328",
-        "candidate_revision": "d4ebdeb3983710facbf4cd1eb2af0eb740f80d3d",
+        "base_revision": "3e9d11527518bfc0619988085d28e302a6b65f20",
+        "candidate_revision": "8f2f4fb6b2ea2614fd96a082f2c8938a05d1f1b6",
+        "upstream_next": "2a698b27bef7f44a8e5815763e09e0f61c9fe630 (disjoint; batch fold at quiet boundary)",
         "new_upstream_files": [
           "crates/pa-tui/src/view.rs",
           "crates/pa-tui/tests/slash_menu_panel_headless.rs",
-          "docs/FEATURE_PARITY.md"
+          "docs/FEATURE_PARITY.md",
+          "crates/pa-tui/src/agents_view_state.rs",
+          "crates/pa-tui/tests/chat_detail_persist_headless.rs"
         ],
         "overlap_with_option_c_release_files": false,
-        "status": "not built/measured yet; previous exact-head pair underway on 91eedb5d / 84d6ef58"
+        "status": "latest image not built/measured yet; prior 91eedb5d / 84d6ef58 B,C,C,B pair ongoing; Option C decoder-integrity patch 8f2f toy fixture validated only"
       },
       "historical_91eedb5d_bytes": {
         "base_revision": "91eedb5d016dcc93d422c6fc596813d9be066fd1",
@@ -775,11 +780,11 @@
       "Cross-VM latency comparisons invalid: calibration medians differ 22.3%",
       "Prior-head and bf21a7cc9 ABBA pairs cannot be PR evidence after origin/rust advanced; preserve as iteration evidence."
     ],
-    "notes": "Final-head same-VM sequential ABBA pending. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3–18.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; final-head quick B,C,C,B,B,C ×5 neighbor trial sequence on dedicated VM pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B×5 cold/msg plus fresh RSS pending on gate VM. PR opened for REVIEW ONLY on latest base baa7b323/candidate d4ebdeb39; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B×5 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims."
+    "notes": "Final-head same-VM sequential short B,C,C,B pair pending after decoder-integrity patch. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3–18.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; historical long B,C,C,B,B,C ×5 campaign on dedicated VM ongoing; short latest-head B,C,C,B neighbor pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B×5 cold/msg plus fresh RSS pending on gate VM. PR #2844 open for REVIEW ONLY on base 3e9d1152/candidate 8f2f4fb6, next upstream 2a698b27 queued batch fold; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B×5 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims. Decoder-binding patch validated ONLY with toy GCC fixture: immutable Cargo input allowed 2x deterministic split; assembler produced manifest decoders SHA/build-ID + SHA256SUMS; promotion matched tar-installed ELF SHA/build-ID; missing/extra/wrong/forged-SHA sidecar rejected. Real Rust ELF image, cold+warm build, GLIBC, file:line and fresh install PENDING. Public benchmark run 36213336231 FAIL before PR build/trial (npm ci EUSAGE missing package-lock on Rust PR), 0/0; not performance verdict, operator/CI disposition pending."
   },
   "outcome": "in-progress",
-  "decision": "Reviewable PR authorized before final-head short neighbor completes. Current final-head baa7b323/d4ebdeb39 deterministic/bench/gates PENDING; no merge. Historical 91eedb5d/84d6ef58 Linux x64 Option C deterministic proof; prior 57cacebaa full workspace green; 91eedb5d exact-head family symmetric red; 91eed short pair in flight. Assess 91eed pair and recheck current-head before merge; operator numeric verdict and two formal adversarial APPROVE required.",
-  "pr_url": null,
+  "decision": "PR #2844 open for REVIEW ONLY on base 3e9d1152/candidate 8f2f4fb6; origin/rust 2a698b27 queued batched fold. Exact current-head real ELF bytes/decoder/provenance/fresh install/GLIBC, same-VM short B,C,C,B numeric check, local full test/family and current CI PENDING. Historical 91eedb5d/84d6ef58 Linux x64 deterministic proof and symmetric family RED; prior 57cacebaa full workspace GREEN; prior d4eb CI four test shards/fmt/clippy PASS, historical. Public benchmark 36213336231 setup FAIL npm ci missing lockfile with 0/0 Rust trials, operator/CI disposition pending. Decoder binding patch toy fixture pass only. No merge until numeric operator verdict and two formal adversarial APPROVE on final SHA.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2844",
   "record_path": "data/hillclimb/experiments/20260926-025700-binary-size-option-c-split-debug.json",
   "session": {
     "worker": "perf-binary-size",
