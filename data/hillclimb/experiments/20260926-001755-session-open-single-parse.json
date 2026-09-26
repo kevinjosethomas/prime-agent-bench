@@ -1,0 +1,210 @@
+{
+  "id": "20260926-001755-session-open-single-parse",
+  "axis": "startup",
+  "hypothesis": "session.cold_open_10mib launch_to_ready_ms (~21-25s p50 on a 10MiB session) is dominated by redundant full-content parsing on the daemon load path: the window walk pays an Envelope pass plus a Value+tagged-flatten Content double-buffer per retained line, SessionFile::open_windowed re-parses every retained row as SessionEntry through another flatten Content buffer, and the retained-ids index re-parses every raw row a second time.",
+  "approach": "Three focused changes on the load path (lane lane/hillclimb-session-open, base 7152746b): (1) pa-types/src/session.rs - FileEntry::deserialize gains a single-pass fast path for `message` rows (the bulk of a large session): it builds the entry field-by-field from the already-parsed JSON map (user/assistant/toolResult roles, thinking/text/toolCall/textSignature/image blocks) with one clone per payload into its final owner, instead of the tagged mirror's Value->Content->struct double buffering; any shape the fast path does not unambiguously recognize falls through to the original KnownFileEntry mirror, so acceptance and every rest catch-all stay identical. (2) pa-daemon/src/session_store.rs - SessionEntry deserialization becomes a single-pass map visitor (envelope fields straight from the stream, catch-all collected in source order) instead of the derived flatten that buffered every row through a second content generation. (3) open_windowed collects the retained ids from the parse the loop already runs, deleting a second full parse of every retained row. Parity tests added: fast-path-vs-mirror corpus (message_fast_path_matches_tagged_mirror), round-trips, single-pass visitor shape test.",
+  "parity_notes": "No session byte changes: every JSONL line still parses and replays (thinking blocks, tool calls, tool results, custom rows, unknown kinds degrade to Unknown verbatim); the fast path is strictly conservative (falls back to the unmodified tagged mirror on ANY ambiguity), the single-pass SessionEntry visitor differs from the derive only by being last-wins on duplicate envelope keys (derive rejected them; more accepting, closer to TS JSON.parse - documented in code and flagged by adversarial pre-review, fixed in commit 4f3d4c018); retained_ids is the same set, branch() semantics unchanged; Serialize paths untouched; no wire/protocol/tool/system-prompt changes; no tests weakened or deleted (tests added). Adversarial pre-review verdict: CLEAN on parity.",
+  "base": {
+    "revision": "7152746b99f6767843bb40b4674a23a5a501fdc0"
+  },
+  "branch": "lane/hillclimb-session-open",
+  "commits": [
+    "5e16efb97",
+    "4313df9d6",
+    "6846250d1",
+    "1c979cc50",
+    "1947aa8ce",
+    "4f3d4c018"
+  ],
+  "build": {
+    "sandbox_id": "avfkuzjdylbwzw2u56jonax9 (candidate), zfi4pgr8gokbyh0df94o9txl (baseline)",
+    "binary_sha256": "candidate 10562c7ff7381df504ac2a302b46915a5e2fbebce7feec464a08bc45786cdccf; baseline fed929fefd3e3e6a9946e150e683926e953578df262ce0aafeb39362e7656a17",
+    "binary_bytes": 206662752,
+    "build_seconds": 129,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "pass",
+    "clippy": "pass",
+    "test": "pass with documented exceptions: full workspace test run - pa-cli agents_view_search_e2e flake failed once in the full-suite run, passed 3/3 on isolated re-run on the candidate tree AND 1/1 on the base tree (pre-existing flake, not mechanism-related); 6 pa-core packages::tests failed IDENTICALLY on base @7152746b9 in this VM environment (no git identity configured -> first git-flow test panic poisons the shared ENV_MUTEX -> the 5 npm tests cascade-fail with PoisonError) - pre-existing environmental failure, verified on both trees, not mechanism-related; all other 823 pa-core lib tests + all other suite binaries passed."
+  },
+  "measurements": {
+    "method": "parallel-sandboxes (cross-VM pair; ITERATION evidence only - NOT PR evidence per the fleet-wide A/A methodology addendum)",
+    "suites": {
+      "session.cold_open_10mib": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 24674.6,
+          "p95_ms": 25460.1,
+          "values_ms": [
+            25460.1,
+            24185.0,
+            24674.6,
+            27888.6,
+            23948.3
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 24854.2,
+          "p95_ms": 44534.1,
+          "values_ms": [
+            24854.2,
+            22820.1,
+            23196.5,
+            44534.1,
+            46876.0
+          ]
+        },
+        "delta_pct": 0.7,
+        "regression": false
+      },
+      "compare.scroll_typing": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 24410.3,
+          "p95_ms": 24798.1,
+          "values_ms": [
+            54197.6,
+            24410.3,
+            24189.0,
+            23762.0,
+            24798.1
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22794.7,
+          "p95_ms": 22840.6,
+          "values_ms": [
+            23457.7,
+            22840.6,
+            22619.5,
+            22794.7,
+            22790.9
+          ]
+        },
+        "delta_pct": -6.6,
+        "regression": false
+      },
+      "compare.memory_idle_load": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 23983.8,
+          "p95_ms": 24048.1,
+          "values_ms": [
+            23983.8,
+            23137.2,
+            23496.8,
+            24048.1,
+            24956.7
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22604.1,
+          "p95_ms": 22878.8,
+          "values_ms": [
+            22878.8,
+            22604.1,
+            23527.6,
+            22567.0,
+            22576.8
+          ]
+        },
+        "delta_pct": -5.8,
+        "regression": false
+      },
+      "compare.cold_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 572.2,
+          "p95_ms": 585.5,
+          "values_ms": [
+            585.5,
+            541.5,
+            664.7,
+            566.8,
+            572.2
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 2670.4,
+          "p95_ms": 2704.8,
+          "values_ms": [
+            2704.8,
+            2517.1,
+            2670.4,
+            2491.4,
+            2916.8
+          ]
+        },
+        "delta_pct": 366.7,
+        "regression": true
+      },
+      "compare.warm_start": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 590.6,
+          "p95_ms": 777.7,
+          "values_ms": [
+            834.2,
+            447.0,
+            590.6,
+            777.7,
+            473.4
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 2901.6,
+          "p95_ms": 2995.0,
+          "values_ms": [
+            2901.6,
+            2708.6,
+            2995.0,
+            2278.5,
+            3470.6
+          ]
+        },
+        "delta_pct": 391.3,
+        "regression": true
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 206444496,
+        "candidate": 206662752
+      },
+      "rss_mb": {
+        "baseline": 506.3,
+        "candidate": 530.5
+      }
+    },
+    "honest_interpretation": "This cross-VM pair is CONFOUNDED and backs no conclusion. The apparent deltas sit inside the measured cross-VM 5x A/A factor: within the SAME pair, the candidate VM shows -6.6%/-5.8% on the 10MiB suites while showing +366.7%/+391.3% on compare.cold_start/compare.warm_start (pure process starts, no session load) in the same window - a self-contradictory pattern only a VM/host factor can produce (host oversubscription, cand VM hit hardest in the later suites). Additionally, cand cold_open trials 3-4 (44.5s/46.9s vs 22.8-24.9s for its other trials) coincide with this worker's own probe execs (duration_s 275.8/288.1, probe sends 107) - probe-perturbed. The dead-end verdict therefore rests on the open-audit decomposition, not this pair: the JSONL parse (windowed reverse scan + full parse of the 10MiB fixture) costs ~97ms of the ~21-25s ready path; the real cost is the retained-transcript resume pipeline, superlinear in retained message count (135 msgs=0.26s, 1406=0.33s, 7259=21.3s). The ~2.5x reduction in per-line parse tree-generations is real but lands on a ~100ms slice."
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "All 50 trials (5 suites x 5 trials x 2 VMs) err=False and sentinel/echo/erased valid. Per-VM calibration (3x python3 busy-loop, median): base VM 1.0736s, cand VM 1.0553s (1.7% divergence - the VMs calibrate equal at rest). BUT during the suite window the cand VM's process-start metrics ran ~5x base (cold_start 2.7s vs 0.57s p50) - transient host oversubscription, matching perf-binary-size's decisive A/A finding (same binary, 0.31s vs 1.6s cold-start across VMs). Cross-VM pairs are iteration evidence only; PR evidence requires same-vm-sequential ABBA, which was NOT run (discarded before PR per orchestrator decision - no mechanism gain to justify it)."
+  },
+  "outcome": "discarded",
+  "decision": "DISCARDED as a PR. Orchestrator verdict (open-audit decomposition): parse-side optimization is negligible vs the replay pipeline - the JSONL parse costs ~97ms of the ~21-25s cold-open ready time, while the retained-transcript resume pipeline is superlinear in retained message count (135=0.26s, 1406=0.33s, 7259=21.3s). The pair-1 cross-VM comparison cannot contradict this: its apparent deltas (cold_open +0.7% with cand outliers, scroll -6.6%, memory -5.8%) sit within the measured cross-VM 5x VM factor (proven in-pair by the same-binary 5x cold_start/warm_start divergence), and cand cold_open trials 3-4 were probe-perturbed. The mechanism itself (single-pass parses, 3 commits on lane/hillclimb-session-open) is parity-clean and gate-clean and stays available for a future axis where parse cost actually dominates (e.g. pure file-open paths, traces, exports, foreign-file scans). The lane will not be PR'd; worker re-scoped to the retained-transcript replay pipeline (daemon-vs-TUI split) per the new top-priority axis.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-001755-session-open-single-parse.json",
+  "session": {
+    "worker": "perf-session-open",
+    "session_dir": "~/.prime/agent/sessions/01a0dabd-3a17-75e2-ad30-c27d1ff4ce6a.jsonl"
+  },
+  "timestamp": "2026-09-26T00:17:55.920517Z"
+}
