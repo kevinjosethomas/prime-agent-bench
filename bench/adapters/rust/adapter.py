@@ -13,7 +13,7 @@ from pathlib import Path
 
 from bench.core.env import (NODE_HOME_AUTH_PRIME, copy_prime_auth,
                             global_caches, scrubbed_env, write_models_json)
-from bench.core.product import ProductAdapter, TrialContext
+from bench.core.product import ProductAdapter, TrialContext, copy_tree
 from bench.core.process import sweep_trial
 
 
@@ -81,21 +81,46 @@ class PrimeAgentRustProduct(ProductAdapter):
         if cfg.exists():
             shutil.copy(cfg, prime / "config.json")
 
+    # the pinned live route (real-api trials): the product's canonical
+    # provider with its headline default model — NOT the live node
+    # settings (other sessions on the node flip their default model
+    # mid-campaign; the benchmark needs one deterministic answer)
+    REAL_PROVIDER = "prime-inference"
+    REAL_MODEL = "openai/gpt-6-sol"
+    REAL_THINKING = "high"
+
     def customize_trial(self, ctx: TrialContext) -> None:
         ctx["agent_dir"] = ctx["trial_dir"] / "agent"
-        shutil.copytree(self.template_dir() / "agent", ctx["agent_dir"])
+        copy_tree(self.template_dir() / "agent", ctx["agent_dir"])
         ctx["daemon_socket"] = ctx["trial_dir"] / "d.sock"
-        if ctx.get("routing") == "real-api":
-            # live routing: the product's own provider config — the settled
-            # settings.json (provider/model/onboarding state of a user who
-            # already set the product up) with the mock models.json removed
-            # (it would pin traffic to the offline mock provider)
-            settings = NODE_HOME_AUTH_PRIME / "agent" / "settings.json"
-            if settings.exists():
-                shutil.copy(settings, ctx["agent_dir"] / "settings.json")
-            (ctx["agent_dir"] / "models.json").unlink(missing_ok=True)
-        else:
+        if ctx.get("routing") != "real-api":
             write_models_json(ctx["agent_dir"], self.mock_base_url() + "/v1")
+
+    def apply_routing(self, ctx: TrialContext) -> None:
+        """Live routing: the product's own provider config. The mock
+        models.json must go (it would pin traffic to the offline mock) and
+        a settled settings.json lands in its place: the onboarding state of
+        a user who already set the product up, with the campaign's pinned
+        provider/model/thinking (deterministic across the campaign)."""
+        if ctx.get("routing") != "real-api":
+            return
+        (ctx["agent_dir"] / "models.json").unlink(missing_ok=True)
+        settings: dict = {}
+        src = NODE_HOME_AUTH_PRIME / "agent" / "settings.json"
+        try:
+            settings = json.loads(src.read_text())
+        except (OSError, ValueError):
+            settings = {}
+        settings.update({"defaultProvider": self.REAL_PROVIDER,
+                        "defaultModel": self.REAL_MODEL,
+                        "defaultThinkingLevel": self.REAL_THINKING,
+                        "onboardingShown": True,
+                        # the live node settings carry other sessions' model
+                        # allowlists; the daemon blocks any model outside
+                        # them (no fallback), so the pinned model must be
+                        # allowed — one entry, exactly the pinned route
+                        "allowedModels": [f"{self.REAL_PROVIDER}/{self.REAL_MODEL}"]})
+        (ctx["agent_dir"] / "settings.json").write_text(json.dumps(settings, indent=1))
 
     def env(self, ctx: TrialContext) -> dict:
         cfg = {}
@@ -103,11 +128,16 @@ class PrimeAgentRustProduct(ProductAdapter):
             cfg = json.loads((NODE_HOME_AUTH_PRIME / "config.json").read_text())
         except Exception:
             pass
+        team_id = str(cfg.get("team_id") or "")
         extra = {
             "HOME": str(ctx["home"]),
             "TMPDIR": str(ctx["tmp"]),
             "PRIME_AGENT_CODING_AGENT_DIR": str(ctx["agent_dir"]),
             "PRIME_API_KEY": cfg.get("api_key", "sk-bench-missing"),
+            # billing: the env-provided key bills the personal balance
+            # (empty) unless the request carries the team id; the product
+            # honors this env override (real-api trials need team billing)
+            "PRIME_TEAM_ID": team_id,
         }
         extra.update(global_caches(self.name, self.layout))
         return scrubbed_env(extra)
@@ -124,13 +154,7 @@ class PrimeAgentRustProduct(ProductAdapter):
 
     def model_info(self, ctx: TrialContext) -> str:
         """The model a real-api submit routes to (evidence per row)."""
-        try:
-            settings = json.loads((ctx.get("agent_dir") / "settings.json").read_text())
-            provider = settings.get("defaultProvider") or "prime-inference"
-            model = settings.get("defaultModel") or "unknown"
-            return f"{provider}/{model}"
-        except (OSError, ValueError):
-            return "unknown"
+        return f"{self.REAL_PROVIDER}/{self.REAL_MODEL}"
 
     def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
         return [str(self.binary), "--mode", "daemon",

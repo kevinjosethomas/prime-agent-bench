@@ -13,7 +13,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "[bootstrap] apt deps"
 apt-get update -qq
-apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils
+apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils bubblewrap
 
 echo "[bootstrap] node 22 (nodesource)"
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null

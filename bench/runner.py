@@ -28,8 +28,12 @@ from bench.trials import effective_trials, run_trials
 
 
 def rsync_dir(src: Path, dst: Path) -> None:
-    """Mirror src/ into dst/ (rsync -a)."""
-    subprocess.run(["rsync", "-a", str(src) + "/", str(dst) + "/"], check=True)
+    """Mirror src/ into dst/ (rsync -a, runtime specials excluded).
+
+    A settle launch can leave sockets/fifos behind (codex's app-server
+    daemon-updater.sock); they are runtime junk, never template state."""
+    subprocess.run(["rsync", "-a", "--no-specials", "--no-devices",
+                    str(src) + "/", str(dst) + "/"], check=True)
 
 
 def mock_script_path(cfg: dict) -> Path:

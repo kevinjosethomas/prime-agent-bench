@@ -23,8 +23,16 @@ from bench.drivers.mock_state import DEFAULT_REPLY
 #: text that can certify a live-inference settle
 REAL_API_SENTINEL = "BENCH-OK-7f3d9a"
 
-#: the real-api submit prompt: live inference, one fixed reply token
-REAL_API_PROMPT = "Reply with exactly BENCH-OK-7f3d9a and nothing else."
+#: words only the TYPED prompt carries: a transcript re-render of the
+#: user's message contains them, the bare-token reply never does
+PROMPT_STEM_WORDS = ("Reply", "nothing else")
+
+#: the real-api submit prompt. The sentinel is split structurally (never
+#: contiguous in the typed text): a post-ack transcript re-render of the
+#: prompt can never match the contiguous reply token, and the detector
+#: additionally refuses lines that carry the prompt's stem words.
+REAL_API_PROMPT = ("Reply with only this token and nothing else: BENCH-OK- "
+                   "followed immediately by 7f3d9a. No other text.")
 
 
 class MsgSend(Benchmark):
@@ -99,9 +107,9 @@ class MsgSend(Benchmark):
                 # the prompt itself: it demands one fixed sentinel token, so
                 # the settle detector matches exactly that token — screen
                 # growth alone (the captured Codex 401 error render) never
-                # certifies. The sentinel is a NEW rendered line: the typed
-                # prompt carries the token too, so the line set at ack time
-                # is the baseline a reply line must not come from.
+                # certifies. A certifying line must be NEW (not present at
+                # ack time) and must not carry the prompt's stem words: a
+                # transcript re-render of the typed prompt is not a reply.
                 t_settle = None
                 stable_since = None
                 baseline = {ln.strip() for ln in app.screen_text().splitlines()
@@ -113,6 +121,7 @@ class MsgSend(Benchmark):
                     lines = [ln.strip() for ln in app.screen_text().splitlines()
                              if ln.strip()]
                     fresh = any(REAL_API_SENTINEL in ln and ln not in baseline
+                                and not any(w in ln for w in PROMPT_STEM_WORDS)
                                 for ln in lines)
                     if fresh:
                         if h == last_hash:

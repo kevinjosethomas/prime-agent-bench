@@ -64,7 +64,12 @@ class CodexProduct(ProductAdapter):
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
-        return [str(self.binary)]
+        # --no-daemon: codex 0.157's background app-server binds a UNIX
+        # socket under $HOME/.codex/app-server-control/, and the isolated
+        # trial-home paths exceed the kernel's 107-char socket path limit
+        # (node AND sandbox geometry); codex's own error message
+        # recommends this fallback for exactly that case
+        return [str(self.binary), "--no-daemon"]
 
     def model_info(self, ctx: TrialContext) -> str:
         """The model a real-api submit routes to (evidence per row)."""

@@ -46,14 +46,23 @@ class PiMonoProduct(ProductAdapter):
     REAL_MODEL = "gpt-6-sol"
 
     def prepare_template(self, tpl: Path) -> None:
+        # pi's trial home carries no dotdir state: its agent dir (auth +
+        # provider config) is materialized per-trial by customize_trial
+        # from template/agent, so the template home is just declared
+        (tpl / "home").mkdir(parents=True, exist_ok=True)
         write_models_json(tpl / "agent", f"http://127.0.0.1:{self.mock_port}/v1")
-        # pi's own credentials (openai + openai-codex OAuth in pi's
-        # auth.json format): the live-route trials read them; mock trials
-        # take the provider config from models.json instead
+        # pi's own credentials in pi's auth.json format. Only the
+        # openai-codex OAuth rides: pi's WS retry fallback sends other
+        # entries' api keys to the ChatGPT backend, which rejects them
+        # (the observed invalid-key render), and the campaign's live route
+        # is exactly that provider. Mock trials take their provider config
+        # from models.json instead.
         auth = Path.home() / ".pi" / "agent" / "auth.json"
         if auth.exists():
+            data = json.loads(auth.read_text())
+            keep = {k: v for k, v in data.items() if k == self.REAL_PROVIDER}
             (tpl / "agent").mkdir(parents=True, exist_ok=True)
-            (tpl / "agent" / "auth.json").write_bytes(auth.read_bytes())
+            (tpl / "agent" / "auth.json").write_text(json.dumps(keep, indent=1))
         else:
             copy_prime_auth(tpl / "agent")
 
