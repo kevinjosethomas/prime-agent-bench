@@ -1069,6 +1069,23 @@
     "independent scoped-gate rerun both-sides-green (737/0) at c9365d6ba and c6d74719"
    ],
    "received_at": "2026-09-26T06:4xZ"
-  }
+  },
+  "parity_adversary_2_fast": {
+   "verdict": "APPROVE (explicit, SHA-bound)",
+   "sha": "c6d747190f5943a8bafaf52ede33c12dbf200259",
+   "conditions": [
+    "head movement voids the verdict (fresh verdict on new SHA)",
+    "operator disposition remains separate for benchmark-check non-applicability + kill_cancels flake disclosure",
+    "merge requires orchestrator numeric review (ACCEPTED) + reviewer #1 EXPLICIT APPROVE on same SHA (received) + operator red-gate disposition"
+   ],
+   "notable_independent_checks": [
+    "head/diff identity: c6d747190f = merge(31d5d38ab, c9365d6ba); lane diff = pa-tui/markdown.rs +273/-5 only",
+    "independent scoped pa-daemon gate rerun on the measurement VM: PURE UPSTREAM c9365d6ba 737/0 (kill_cancels OK) AND PR HEAD c6d747190f 737/0 - quiet-side runs green, completing the load-flake classification",
+    "exact-head CI check-runs pulled independently: fmt, clippy, 4/4 shards, test summary, Bugbot, Macroscope ALL SUCCESS; benchmark = standing non-applicable",
+    "record raw arrays parsed and matched against every claimed number"
+   ],
+   "received_at": "2026-09-26T06:5xZ"
+  },
+  "merge_bar_state": "orchestrator numeric review ACCEPTED; BOTH adversarial reviewers EXPLICIT APPROVE on c6d747190f; REMAINING: operator red-gate disposition (never this lane's act)"
  }
 }
