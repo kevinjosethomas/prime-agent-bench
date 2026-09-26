@@ -1015,5 +1015,6 @@
  "session": {
   "worker": "perf-supervisor-relay-fast"
  },
- "timestamp": "2026-09-26T19:30:00+00:00"
+ "timestamp": "2026-09-26T19:30:00+00:00",
+ "merged_followup": "the candidate built on this decomposition shipped as PR #2897, MERGED as squash 4c4caaa6b7cdbece22afbff2497e7d507941a806 (zero-copy relay for routed responses)"
 }
