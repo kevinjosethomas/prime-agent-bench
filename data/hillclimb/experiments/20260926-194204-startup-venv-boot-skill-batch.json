@@ -5,7 +5,7 @@
  "approach": "Baseline first, phase-split via a PATH uv wrapper (each uv invocation logged t0/t1/rc/args) + .bootstrap-version marker mtime + pre/mid/post CPU calibration on a fresh install tree (assemble_artifacts.py, fixture catalog) at the pure tip; cold vs warm uv cache; standalone uv attribution. Candidate: batch every missing skill into ONE `uv pip install --editable ...` invocation in crates/pa-core/src/kernel/bootstrap/venv.rs sync_python_skills; on batch failure fall back to the per-skill loop (identical per-skill warnings, one broken skill never blocks the rest). Two unit tests with a fake uv (batch success skips installed skills; broken-skill fallback).",
  "parity_notes": "Venv identity contract unchanged: hash_runtime_source still hashes pyproject.toml + src/rlm only; the version file records the same schema/skills (marker content byte-identical vs base modulo the harness install-tree path prefix, runtime identity + snapshot + extra_uv_args equal); #2857 runtime-ready probe memoization unaffected (its key inputs unchanged). Failure path preserves today's per-skill warnings exactly (no new user-visible text). The unchanged boot path measured as noop-control. Wire/output parity: kernel receipt + KERNEL_BOOT_OK both arms; venv tree byte-size identical; uv call shape change (12 -> 4) is the intended change. Install bytes +96,816 binary / +60,012 tarball-gz (+0.046% binary) at the folded head. Linux x86_64 measured; macOS arm64 unmeasured.",
  "base": {
-  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+  "revision": "9d9cf2da75961c6501be465ba72f24cfd9562b66 (settled-head merge-base, #2844 Option C); earlier pairs at 60e2e198c and 7064d039"
  },
  "branch": "lane/hillclimb-venv-boot",
  "commits": [
@@ -13,7 +13,8 @@
   "096c7696f85c9e07de79ee67f12c522b15f965bd",
   "e7cbf5d83 (test fixes, interim)",
   "02e722676dc242b82884cabac108ce3c236bd968",
-  "12d32fc59694afb31b7b6b415e2ef799d39dd201 (merge of folded base 7064d039)"
+  "12d32fc59694afb31b7b6b415e2ef799d39dd201 (merge of folded base 7064d039)",
+  "23764d5eeb9b8ee460d650881d57f939b2b9eb87 (SETTLED FINAL HEAD: merge of 9d9cf2da7 / #2844 Option C)"
  ],
  "build": {
   "sandbox_id": "f9vqiubhy60hw5rpnefuh5zb",
@@ -25,9 +26,9 @@
   "uv_version": "0.12.19"
  },
  "gates": {
-  "fmt": "pass (12d32fc59, cargo fmt --all --check, full workspace)",
-  "clippy": "pass (12d32fc59, cargo clippy --workspace --all-targets -D warnings)",
-  "test": "DISPOSED: scoped pa-core gate GREEN at 02e722676 (fmt+clippy+test). Full-workspace gate at 12d32fc59 RED twice, both on pre-existing base-tip flakes, none from the lane delta: (1) a_bang_during_a_streaming_turn_holds_then_flushes (pa-tui) red in both runs AND in a pure-base 7064d039 full gate AND 3/8 red isolated on pure base (8-run same-arm triage) - upstream loader-row race, the test's own comment documents it; (2) parent_child_agent_message_round_trip_end_to_end (pa-daemon e2e) red once under full-suite parallel load only, 16/16 GREEN isolated (8 runs per arm on base and candidate). Pure-base full gate 7064d039 also RED: the same pa-tui test + auto-classified KNOWN-RED tool_result_entries_persisted_and_streamed (#2727 rotating family). The base tip is gate-red on its own; the lane adds no new red. pa-tui a_bang needs a known_reds registration (operator disposition). Public TS benchmark CI = standing non-applicable RED (npm ci EUSAGE, 0/0)."
+  "fmt": "pass (23764d5ee, cargo fmt --all --check, full workspace; GitHub fmt PASS)",
+  "clippy": "pass (23764d5ee, cargo clippy --workspace --all-targets -D warnings; GitHub check+clippy PASS)",
+  "test": "GREEN at the settled head: lane-side full-suite VM gate GREEN (fmt 0, clippy 0, test 0, zero failures; run gate_1790452249_600324, pool VM ykp6mbwtdtz17w58tayfa0yw). GitHub PR checks at 23764d5ee: test shards 1-4 ALL PASS + test summary PASS + loc/request/Bugbot PASS; only red = the standing non-applicable TS benchmark (npm ci EUSAGE, 0/0 trials), awaiting operator disposition, never called pass. Historical gate reds at 12d32fc59 disposed as pre-existing base-tip flakes (pa-tui a_bang red on pure base + 3/8 isolated; parent_child 16/16 green isolated; #2727 known-red in pure-base run) - see validity notes."
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -292,6 +293,39 @@
     },
     "delta_pct": -37.3,
     "regression": false
+   },
+   "settled_head_spotcheck_session_warm_span": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 2354.0,
+     "p95_ms": 2354.0,
+     "values_ms": [
+      2659,
+      2695,
+      2734,
+      2762,
+      3065,
+      3113
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 965.0,
+     "p95_ms": 965.0,
+     "values_ms": [
+      1188,
+      1411,
+      1531,
+      1566,
+      1662,
+      1682
+     ]
+    },
+    "delta_pct": -59.0,
+    "regression": false,
+    "note": "values_ms are WALL ms in this suite; span p50s: base 2354ms, cand 965ms; non-overlapping; Option C shipped (debug-stripped) ELFs; uv calls 12->4; skills phase 1808->457ms; boot control n=2 +3.5% (-1.1% over the 32-trial battery)"
    }
   },
   "extra": {
@@ -766,6 +800,26 @@
      "disposition": "load-induced rotating flake; green 16/16 isolated on both arms"
     },
     "tool_result_entries_persisted_and_streamed": "KNOWN-RED auto-classified in the pure-base run (#2727 rotating family, expires 2026-09-27); did not occur in the candidate gate runs"
+   },
+   "option_c_byte_deltas_settled_head": {
+    "shipped_elf_bytes": {
+     "baseline": 54076408,
+     "candidate": 54058464,
+     "delta_bytes": -17944,
+     "delta_pct": -0.033
+    },
+    "install_tree_bytes": {
+     "baseline": 54929755,
+     "candidate": 54911811,
+     "delta_bytes": -17944
+    },
+    "tarball_gz_bytes": {
+     "baseline": 18349889,
+     "candidate": 18373641,
+     "delta_bytes": 23752,
+     "delta_pct": 0.13
+    },
+    "note": "Option C: shipped = debug-stripped ELF (split_debug.py), decoder is a separate asset never in the install payload. Pre-#2844 unstripped pair delta was +96,816 B binary / +0.046%."
    }
   }
  },
@@ -775,7 +829,7 @@
    "trial_boot_then_session collection bug: the boot-arm marker was re-collected after the session rewrote it, so 'boot_span_s' in those 6 rows is polluted (2.7-3.0s); boot wall and session phases are valid; fixed in the ABBA harness by separate collection.",
    "The ~12s fresh-bootstrap figure from install-tree smokes is NOT reproduced on this VM (datacenter network); all deltas are same-VM paired, absolute cold numbers are environment-specific."
   ],
-  "notes": "44/44 valid iteration pairs (60e2e198c vs 02e722676) and 32/32 valid final-head pairs (7064d039 vs 12d32fc59), all sha-asserted via symlink swap with per-trial binary sha check; ABBA order A,B,B,A; distributions do not overlap on the changed path; noop-control (boot_warm) shows parity (-1.1% span). Parity oracles: venv_bytes identical (290459505 both arms), marker content identical modulo harness tree prefix, runtime identity equal, kernel receipt + KERNEL_BOOT_OK on every session trial both arms."
+  "notes": "44/44 valid iteration pairs (60e2e198c vs 02e722676) and 32/32 valid final-head pairs (7064d039 vs 12d32fc59), all sha-asserted via symlink swap with per-trial binary sha check; ABBA order A,B,B,A; distributions do not overlap on the changed path; noop-control (boot_warm) shows parity (-1.1% span). Parity oracles: venv_bytes identical (290459505 both arms), marker content identical modulo harness tree prefix, runtime identity equal, kernel receipt + KERNEL_BOOT_OK on every session trial both arms. Settled-head spot-check 16/16 valid (ab3 tag). Option C repack correction: an intermediate 'base' tree was accidentally built at 5dbf6f653 (origin/rust had moved past the merge-base); DISCARDED and rebuilt pinned at the exact merge-base 9d9cf2da7 before any spot-check trial ran - no measurement used the wrong tree. venv_bytes medians at the spot-check: 290459485 (A) vs 290459505 (B), 7e-8 difference; byte-identity rests on the earlier identical-median runs plus marker/runtime-identity oracles."
  },
  "outcome": "PR open for review only (never merged by lane owner); final-head paired evidence + full gate red disposition disclosed",
  "decision": "Awaiting orchestrator numeric review + explicit APPROVE from BOTH formal adversarial reviewers (parity-adversary-fast, parity-advisary-2-fast) on the final PR head 12d32fc59 + operator disposition of the disclosed base-tip gate reds (pa-tui a_bang flake needs known_reds registration; parent_child green 16/16 isolated). No merge by the lane.",
