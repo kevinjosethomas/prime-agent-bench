@@ -1,0 +1,257 @@
+{
+ "id": "20260926-080500-cpu-creep-tool-bridge-abort-poll-leak",
+ "axis": "cpu",
+ "hypothesis": "4-vCPU long-horizon resident profile: (a) sustained CPU/RSS creep suspicion over 45min idle-with-keystrokes; (b) baseline attribution identified a per-completed-tool-call 10ms abort-poll task leak in the worker (pa-core tool_bridge.rs: the watcher loops on signal.is_aborted() every 10ms and only exits on abort; the run signal is never aborted on normal completion) - the fix parks the watcher on the watch channel, which should cut the worker idle wake rate from ~106/s to single digits with no RSS cost.",
+ "approach": "(1) Substrate repair: small-VM kernel-venv bootstrap root cause = bare-registry uv fallback when no prime-agent-runtime sidecar is visible (private package, not on PyPI; fails instantly, stderr nulled -> looked like a hang); fix = exe-adjacent packaged layout (git archive of the pinned commit: prime-agent-runtime + skills/), daemon bootstrap then ~12s. (2) probe_long_horizon.py read_stat bug fixed (read majflt/cmajflt instead of utime/stime; verified vs rusage; v1 CPU columns invalid, labeled). (3) 45-min baseline + per-thread attribution (wchan + vol deltas). (4) Fix: park the tool-bridge abort watcher on signal.aborted() (commit 53bce8e93 on lane/hillclimb-cpu-creep; fold merge 9cd7bb336 = 60e2e198c + fix). (5) Same-VM sequential ABBA b,c,c,b, 600s windows, sha-asserted swaps, same warm venv (Rust-only diff, sidecar unchanged), settle-OK template, kernel marker cell per slot (one completed tool call = the measured condition). Pair at the CURRENT tip 60e2e198c: base de46fabd... vs cand 13356ca2... (both built on ubuntu:22.04/glibc-2.35; the rust:1-image build 5dfb13b6 requires glibc 2.39 and is unusable on the 4c platform - platform lesson memorized). Historical corroboration: identical result on the pre-fold pinned pair (d3763dca base e7ad6696 vs 53bce8e93 cand 2087cca2).",
+ "parity_notes": "pa-core only, 8 insertions/10 deletions in session_engine/tool_bridge.rs. Abort semantics preserved and improved (cancellation latency from <=10ms poll to immediate); an uninterrupted call now parks the watcher on the watch channel (AbortSignal::aborted uses the watch rx; pa-agent's own tests use this idiom). No TUI/daemon/wire changes; no new allocations (fewer steady-state timer ops); session JSONL replay, RLM API, prompts, user-visible behavior untouched. Linux x86_64 measured; aarch64/macOS not measured (no platform-specific code touched).",
+ "base": {
+  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b"
+ },
+ "branch": "lane/hillclimb-cpu-creep",
+ "commits": [
+  "53bce8e93",
+  "9cd7bb336"
+ ],
+ "build": {
+  "sandbox_id": "csk8g1n5vfcijsavbdx9c2ob",
+  "build_seconds": null,
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01), cargo --release --locked --workspace, ubuntu:22.04 16c VM (glibc 2.35)",
+  "baseline_binary_sha256": "de46fabd68a5e86a7e502be75457dc08cdd21ccce84a25aa0855f8a3bac18d0f",
+  "baseline_binary_bytes": 211977400,
+  "binary_sha256": "13356ca2105a29d7d4d370c271ff2e133c40753a93e03fd6df1e36b713d592b2",
+  "binary_bytes": 211947560,
+  "other_builds": {
+   "rust1_image_fold_build": {
+    "sha256": "5dfb13b6b955c3e8acf5aee8ff439593bc90613bc1c50b23b7ce9fec4ce9bc35",
+    "note": "glibc 2.39; gates-only use, cannot run on the 4c ubuntu:22.04 measurement VM"
+   },
+   "historical_prefold_base": {
+    "sha256": "e7ad6696ee587a6d75d69a5237671a6e5e886b621b8f6c4cfa31c62f86fc9ff0",
+    "revision": "d3763dca"
+   },
+   "historical_prefold_cand": {
+    "sha256": "2087cca213ab3d7b45e5bab0c5037569f59101902512b067ae061e3aaefb1e52",
+    "revision": "53bce8e93"
+   }
+  }
+ },
+ "gates": {
+  "fmt": "pass (rc=0 on 9cd7bb336, both rust:1 and ubuntu:22.04 builds; first rust:1 run was red only because the minimal rustup profile lacks rustfmt - component added)",
+  "clippy": "pass (rc=0, --workspace --all-targets -D warnings, both builds)",
+  "test": "rc=101: 2 of 32 tests in pa-cli interactive_daemon_e2e fail (tui_refused_submit_restores_the_draft_after_the_round_trip, tui_prompt_stash_restores_a_pasted_image_with_the_draft) - REPRODUCED IDENTICALLY ON PURE BASE 60e2e198c in the same environment (base_e2e_rc=101, same 2 failures), i.e. pre-existing upstream/environment condition on the new tip's backpressure-refusal surface, NOT caused by this fix. Disclosed for operator disposition; never called green."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "cpu.worker_idle_wake_leak_abba_570s_newtip": {
+    "order": [
+     "b1",
+     "c2",
+     "c3",
+     "b4"
+    ],
+    "baseline": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      106.4,
+      106.5
+     ],
+     "worker_cpu_ms_per_570s": [
+      700,
+      600
+     ],
+     "worker_rss_mb": [
+      422.9,
+      433.8
+     ],
+     "tui_thread_wakes_per_s": [
+      182.6,
+      185.8
+     ],
+     "tui_cpu_ms_per_570s": [
+      1180,
+      980
+     ],
+     "keystroke_p50_ms": [
+      0.4,
+      0.43
+     ],
+     "keystroke_p95_ms": [
+      0.58,
+      0.57
+     ]
+    },
+    "candidate": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      2.0,
+      2.1
+     ],
+     "worker_cpu_ms_per_570s": [
+      40,
+      60
+     ],
+     "worker_rss_mb": [
+      414.6,
+      410.7
+     ],
+     "tui_thread_wakes_per_s": [
+      185.7,
+      187.0
+     ],
+     "tui_cpu_ms_per_570s": [
+      1210,
+      1010
+     ],
+     "keystroke_p50_ms": [
+      0.42,
+      0.53
+     ],
+     "keystroke_p95_ms": [
+      0.62,
+      0.57
+     ]
+    },
+    "delta_pct": {
+     "worker_wakes": -98.1,
+     "worker_cpu_median": -91.4
+    },
+    "regression": false,
+    "notes": "all 4 slots ok, fixture sentinel True, kernel marker cell ran (one completed tool call). Worker wake rate is a metronome (base 106.4/106.5, cand 2.0/2.1). Worker RSS legs overlap both directions (no regression; cand slightly lower). TUI wake rate identical across roles: the fix is worker-side only. RSS first-vs-last differs by 4-12KB (probe fixture bookkeeping pages), no growth trend."
+   },
+   "cpu.worker_idle_wake_leak_abba_570s_historical": {
+    "order": [
+     "b1",
+     "c2",
+     "c3",
+     "b4"
+    ],
+    "baseline": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      106.5,
+      106.5
+     ],
+     "worker_cpu_ms_per_570s": [
+      490,
+      590
+     ],
+     "worker_rss_mb": [
+      501.9,
+      501.0
+     ],
+     "tui_thread_wakes_per_s": [
+      183.0,
+      182.0
+     ],
+     "keystroke_p50_ms": [
+      0.51,
+      0.41
+     ]
+    },
+    "candidate": {
+     "trials": 2,
+     "valid": 2,
+     "worker_thread_wakes_per_s": [
+      2.0,
+      2.1
+     ],
+     "worker_cpu_ms_per_570s": [
+      30,
+      40
+     ],
+     "worker_rss_mb": [
+      518.2,
+      480.3
+     ],
+     "tui_thread_wakes_per_s": [
+      183.6,
+      181.9
+     ],
+     "keystroke_p50_ms": [
+      0.42,
+      0.47
+     ]
+    },
+    "delta_pct": {
+     "worker_wakes": -98.1,
+     "worker_cpu_median": -93.5
+    },
+    "regression": false,
+    "notes": "HISTORICAL: pre-fold pinned pair (d3763dca e7ad6696 vs 53bce8e93 2087cca2), same protocol; superseded by the new-tip pair above; consistent result."
+   },
+   "cpu.long_horizon_idle_45min_baseline": {
+    "baseline": {
+     "trials": 1,
+     "valid": 1,
+     "windowed_s": 2670,
+     "samples": 89,
+     "key_probes": 44,
+     "tree_total_cpu_ms": 9730.0,
+     "tree_cpu_pct_of_one_core": 0.36,
+     "tree_cpu_pct_of_4_cores": 0.09,
+     "per_class": {
+      "tui": {
+       "cpu_ms": 5810,
+       "pct_one_core": 0.22,
+       "rss_mb": 160
+      },
+      "worker": {
+       "cpu_ms": 3470,
+       "pct_one_core": 0.13,
+       "rss_mb": 505
+      },
+      "kernel_python": {
+       "cpu_ms": 310,
+       "pct_one_core": 0.01,
+       "rss_mb": 31
+      },
+      "daemon": {
+       "cpu_ms": 140,
+       "pct_one_core": 0.005,
+       "rss_mb": 23
+      }
+     },
+     "creep": "REFUTED: per-150s bucket tree CPU declines 850ms->350-450ms; first-half 129.1 vs second-half 90.0 ms/30s; loadavg1 0.24->0.0; RSS byte-stable",
+     "keystroke_ms": {
+      "n": 44,
+      "p50": 0.52,
+      "p95": 0.7,
+      "max": 0.8
+     }
+    },
+    "notes": "HISTORICAL (d3763dca): the lane's diagnosis run; creep question answered negative."
+   }
+  },
+  "extra": {
+   "thread_attribution_idle": {
+    "tui": "20.1/s 50ms select tick (discarded idle-cpu lane's territory, NOT touched) + 99.4/s crossterm input poll (pa-tui/src/input.rs POLL_TIMEOUT_MS=10, by design, ep_poll) + ~62-65/s tokio",
+    "worker": "104.6/s leaked abort-poll + 2.0/s residual",
+    "daemon": "2.6/s",
+    "kernel_python": "1.5/s (hrtimer_nanosleep + anon_pipe_read)"
+   },
+   "leak_mechanism": "pa-core/src/session_engine/tool_bridge.rs ToolDefinitionBridge::execute spawns per tool call: loop { if signal.is_aborted() { abort.cancel(); break } sleep(10ms) }. pa-agent run_with_lifecycle never aborts the run signal on normal completion, so every normally-completed tool call leaves a permanent 10ms polling task in the worker. Measured at N=1 completed tool call: worker tokio thread 104.4-104.6/s constant for the full 45min horizon (and 106.4-106.5/s in the 600s windows). The leak scales structurally with completed tool calls (one spawned loop per call); N>1 scaling not re-measured after the first measurement VM hit max runtime (leak-curve slots lost, both ok=False - disclosed).",
+   "fix_scope": "commit 53bce8e93: watcher parks on signal.aborted().await (watch channel; zero wakes when never aborted, immediate cancel on abort).",
+   "claim_scope": "wakeup leak per completed tool call in the session worker: ~104.6 -> ~2.0 voluntary wakeups/s and worker CPU ~-91.4% at idle, no RSS tradeoff, TUI/daemon untouched (verified identical TUI wake rates across roles).",
+   "bootstrap_finding_provenance": "kernel-venv 'stall' was an instant silent uv failure (bare 'prime-agent-runtime' registry name, private pkg). Workaround: exe-adjacent packaged layout from git archive of the pinned commit (sidecar sha256 407c81e6a31f5c105d2a1f0833f5eb5b3f9320a12f336fe433d3b0c4a4e023c2 at d3763dca, byte-identical at 60e2e198c). Daemon's own bootstrap then completes in ~12s; NOT a product hang; preserved as a reproducible-deployment finding, not masked."
+  }
+ },
+ "validity": {
+  "excluded": [
+   "lh-base.json v1 CPU columns (probe read majflt/cmajflt instead of utime/stime; fixed; wakeups/RSS/keypress of v1 remain valid)"
+  ],
+  "notes": "New-tip ABBA 4/4 valid: sha-asserted swaps (de46fabd/13356ca2), settle OK, same warm venv (runtime sidecar unchanged between commits), revision pinned per slot, mock serving kernel_script, fixture sentinel True in all slots, host stable (TUI wake metronome 182.6-187.0/s across all slots, loadavg ~0). Historical pair 4/4 valid likewise. Head moved twice more during the pair (6588b19c supervisor split, 7064d039 pa-tui click) - per standing policy the in-flight pair finished untouched; the next single append-only fold is queued at the clean PR boundary with post-fold re-diff of the tool_bridge hunk (disjoint from pa-tui/pa-daemon moves)."
+ },
+ "outcome": "in-progress",
+ "decision": "pending orchestrator numeric review + adversarial reviewers + operator disposition of the disclosed pre-existing e2e red",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-080500-cpu-creep-tool-bridge-abort-poll-leak.json",
+ "session": {
+  "worker": "perf-cpu-creep-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-4a8026c2/01a0dbfa-9765-7056-bdee-71fd400775b5.jsonl"
+ },
+ "timestamp": "2026-09-26T08:05:00Z"
+}
