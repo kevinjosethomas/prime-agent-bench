@@ -1,0 +1,789 @@
+{
+  "id": "20260926-025700-binary-size-option-c-split-debug",
+  "axis": "binary-size",
+  "hypothesis": "Linux release install footprint is dominated by line-table DWARF in the linked ELF; separate decoder and strip debug sections of the SAME linked image to reduce delivered bytes while keeping function names and offline file:line recovery.",
+  "approach": "Option C: release build keeps line tables and does not strip at link; scripts/release/split_debug.py runs objcopy --only-keep-debug then objcopy --strip-debug --remove-section=.debug_gdb_scripts on one linked image. Linux release and continuous workflows run split before assembly; release promotes gzip decoder as separate asset. assemble_artifacts.py hard-fails decoder-like sidecars inside staged/packed payload; channel manifest rejects decoder references. Option A (strip all) rejected: loses backtrace symbol names. Option B (strip=debuginfo at link) rejected: it preserves function names but omits a same-build decoder, so shipped file:line cannot be restored from an independently linked binary (the .text differed in tested link configurations).",
+  "parity_notes": "RLM API/wire/session replay source untouched; all lane changes limited to Cargo.toml release profile, scripts/release, and Linux release/CI workflows. Linux ELF static .symtab/function names and .dynsym are kept; shipped backtraces lose file:line but detached same-image decoder restores them via addr2line. GLIBC release gate still inspects .dynsym. macOS unchanged (line tables kept); dSYM extraction is follow-up, macOS bytes not measured. Linux x64 measurement only; Linux arm64 workflow wired but not measured.",
+  "base": {
+    "revision": "baa7b323a89eda31452fe6c2bf3c111c484c8328"
+  },
+  "branch": "lane/hillclimb-binary-size",
+  "commits": [
+    "5da1c83a3",
+    "d7ab2e4d5",
+    "c36c1916d",
+    "2c89cb919",
+    "2568261b3",
+    "51227615f",
+    "38dbd975e",
+    "57cacebaa",
+    "84d6ef58d",
+    "d4ebdeb39"
+  ],
+  "build": {
+    "sandbox_id": "jyk9va0j321teowwodw204mf",
+    "binary_sha256": null,
+    "binary_bytes": null,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "PENDING d4ebdeb39 exact head; historical 84d6ef58 cargo fmt pass",
+    "clippy": "PENDING d4ebdeb39 exact head; historical 84d6ef58 clippy pass",
+    "test": "PENDING d4ebdeb39 exact head/full. Historical on 91eedb5d pure base and 84d6ef58 candidate live family_edges both FAIL identically at agent_family_e2e.rs:323 after ~40s; first candidate family rc101 0s INVALID from bench bundle venv overwrite, restored Python 3.12/native runtime. Prior 57cacebaa on fb719b13 full cargo test --workspace --locked GREEN rc0 live family 2/2, historical only. No full test run on latest d4ebdeb39; no green claim."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {},
+    "extra": {
+      "deterministic_bytes_at_bf21a7cc9": {
+        "pre_split_binary": 206871272,
+        "shipped_binary": 52940544,
+        "shipped_delta_pct": -74.409,
+        "pre_split_gzip": 53582685,
+        "shipped_gzip": 17942838,
+        "decoder_gzip": 36538663,
+        "packaged_tarball": 18233872,
+        "decoder_tar_members": 0,
+        "pre_split_sha256": "f35516fe117b3553fe06031ba9686be0eef789c133b9c140e84a5fd9250de700",
+        "shipped_sha256": "f3103beebd241d8256499b1332f123e95979b67f7720700a1d6d192a330e8ee8",
+        "decoder_sha256": "6a47dc2a368e895c2697b61de965fff0ff4ff02240a01bb0877de439f8385c34"
+      },
+      "calibration_s": {
+        "base_vm_median": 1.2739,
+        "cand_vm_median": 1.0421,
+        "divergence_pct": 22.3
+      },
+      "same_vm_abba": null,
+      "roundtrip_bf21a7cc9": [
+        {
+          "address": "0x2694840",
+          "symbol": "signal_hook_registry::register",
+          "file_line": "signal-hook-registry-1.4.8/src/lib.rs:574"
+        },
+        {
+          "address": "0x26e2850",
+          "symbol": "zmij::write::<f64>",
+          "file_line": "zmij-1.0.23/src/lib.rs:1509"
+        },
+        {
+          "address": "0x0a2c510",
+          "symbol": "data_encoding::encode_mut",
+          "file_line": "data-encoding-2.11.1/src/lib.rs:390"
+        }
+      ],
+      "guard_demo_bf21a7cc9": {
+        "decoy": "skills/prime-agent-0.1.0-linux-x64.debug.gz",
+        "exit_code": 1,
+        "error": "decoder-like sidecar(s) in the release payload (split-debug assets are separate release assets, never install payload)"
+      },
+      "baseline_red_ab_logs": "===RUN_A_PURE_BASE===\nd3763dca2cb84d5dc90dd973420ce648fb4266bb\ne1552fb2fe0b50587484e9913e0722106120cdf19ce2ba6786c04961d268ef4f  \ntarget/debug/deps/agent_family_e2e-e71453f2090c9684.d\n   Compiling pa-types v0.1.0 (/root/prime-agent-rust/crates/pa-types)\n   Compiling pa-agent v0.1.0 (/root/prime-agent-rust/crates/pa-agent)\n   Compiling pa-telemetry v0.1.0 (/root/prime-agent-rust/crates/pa-telemetry)\n   Compiling pa-ai v0.1.0 (/root/prime-agent-rust/crates/pa-ai)\n   Compiling pa-models v0.1.0 (/root/prime-agent-rust/crates/pa-models)\n   Compiling pa-core v0.1.0 (/root/prime-agent-rust/crates/pa-core)\n   Compiling pa-daemon v0.1.0 (/root/prime-agent-rust/crates/pa-daemon)\n    Finished `test` profile  target(s) in 34.38s\n     Running tests/agent_family_e2e.rs \n(target/debug/deps/agent_family_e2e-4a9891a1c1ac7486)\n\nrunning 1 test\ntest family_edges_never_cross_families_end_to_end ... FAILED\n\nfailures:\n\n---- family_edges_never_cross_families_end_to_end stdout ----\n\nthread 'family_edges_never_cross_families_end_to_end' (26211) panicked at \ncrates/pa-daemon/tests/agent_family_e2e.rs:303:9:\nrecord parent-broadcast.json never appeared or never parsed in \n/tmp/.tmpEfsuBa/receipts: existing: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    family_edges_never_cross_families_end_to_end\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; \nfinished in 31.91s\n\nerror: test failed, to rerun pass `-p pa-daemon --test agent_family_e2e`\nRUN_A_STATUS=101\ne1552fb2fe0b50587484e9913e0722106120cdf19ce2ba6786c04961d268ef4f  \ntarget/debug/deps/agent_family_e2e-e71453f2090c9684.d\n===RUN_B_FOLDED_CANDIDATE===\n8170859b288e1fa001072ab162ca49530dd96cfb\n    Finished `test` profile  target(s) in 0.07s\n     Running tests/agent_family_e2e.rs \n(target/debug/deps/agent_family_e2e-4a9891a1c1ac7486)\n\nrunning 1 test\ntest family_edges_never_cross_families_end_to_end ... FAILED\n\nfailures:\n\n---- family_edges_never_cross_families_end_to_end stdout ----\n\nthread 'family_edges_never_cross_families_end_to_end' (26536) panicked at \ncrates/pa-daemon/tests/agent_family_e2e.rs:303:9:\nrecord parent-broadcast.json never appeared or never parsed in \n/tmp/.tmpU4oe7z/receipts: existing: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    family_edges_never_cross_families_end_to_end\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; \nfinished in 33.15s\n\nerror: test failed, to rerun pass `-p pa-daemon --test agent_family_e2e`\nRUN_B_STATUS=101\ne1552fb2fe0b50587484e9913e0722106120cdf19ce2ba6786c04961d268ef4f  \ntarget/debug/deps/agent_family_e2e-e71453f2090c9684.d\n\n\n",
+      "prior_head_iteration_abba": {
+        "base_revision": "d3763dca era",
+        "baseline_sha256": "e7ad6696ee587a6d75d69a5237671a6e5e886b621b8f6c4cfa31c62f86fc9ff0",
+        "shipped_sha256": "3deeba34cd338edb686a715bd36d17ac1905eb5f71c4debb2a07f0dbd60e3a06",
+        "sandbox_id": "g0jtikpsvnkc21jjyhvt79pr",
+        "archive": "/home/ubuntu/hillclimb/results-iteration-abba.tar.gz",
+        "order": [
+          "b1",
+          "c1",
+          "c2",
+          "b2"
+        ],
+        "trials_each_suite_per_block": 5,
+        "suites": {
+          "compare.cold_start": {
+            "baseline": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 292.54,
+              "p95_ms": 472.11,
+              "values_ms": [
+                289.11,
+                289.23,
+                290.02,
+                290.11,
+                292.25,
+                292.83,
+                294.65,
+                298.28,
+                298.42,
+                472.11
+              ]
+            },
+            "candidate": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 291.87,
+              "p95_ms": 315.94,
+              "values_ms": [
+                289.08,
+                289.51,
+                289.54,
+                289.76,
+                291.53,
+                292.21,
+                292.53,
+                294.9,
+                298.17,
+                315.94
+              ]
+            },
+            "delta_pct": -0.23,
+            "regression": false,
+            "baseline_rss_mb": [
+              111.6,
+              112.3,
+              112.0,
+              112.0,
+              111.1,
+              111.9,
+              112.7,
+              113.3,
+              112.4,
+              112.2
+            ],
+            "candidate_rss_mb": [
+              113.2,
+              113.0,
+              111.8,
+              111.0,
+              113.2,
+              112.7,
+              112.7,
+              111.5,
+              111.9,
+              113.1
+            ],
+            "baseline_probe_grid_ms": [
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ],
+            "candidate_probe_grid_ms": [
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ]
+          },
+          "compare.msg_send": {
+            "baseline": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 1.95,
+              "p95_ms": 2.7,
+              "values_ms": [
+                1.4,
+                1.6,
+                1.7,
+                1.9,
+                1.9,
+                2.0,
+                2.2,
+                2.4,
+                2.6,
+                2.7
+              ]
+            },
+            "candidate": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 4.15,
+              "p95_ms": 18.8,
+              "values_ms": [
+                1.4,
+                1.6,
+                1.6,
+                1.9,
+                2.0,
+                6.3,
+                10.5,
+                11.7,
+                13.1,
+                18.8
+              ]
+            },
+            "delta_pct": 112.82,
+            "regression": true,
+            "baseline_rss_mb": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "candidate_rss_mb": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "baseline_probe_grid_ms": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "candidate_probe_grid_ms": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          "compare.scroll_typing": {
+            "baseline": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 1.105,
+              "p95_ms": 1.59,
+              "values_ms": [
+                0.44,
+                1.07,
+                1.07,
+                1.08,
+                1.09,
+                1.12,
+                1.14,
+                1.19,
+                1.34,
+                1.59
+              ]
+            },
+            "candidate": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 1.1,
+              "p95_ms": 1.3,
+              "values_ms": [
+                0.46,
+                1.08,
+                1.08,
+                1.08,
+                1.08,
+                1.12,
+                1.13,
+                1.16,
+                1.18,
+                1.3
+              ]
+            },
+            "delta_pct": -0.45,
+            "regression": false,
+            "baseline_rss_mb": [
+              501.3,
+              488.8,
+              557.2,
+              535.2,
+              535.6,
+              508.4,
+              564.2,
+              528.6,
+              499.5,
+              486.2
+            ],
+            "candidate_rss_mb": [
+              528.3,
+              537.2,
+              570.9,
+              556.8,
+              486.5,
+              618.5,
+              527.0,
+              566.3,
+              527.6,
+              509.1
+            ],
+            "baseline_probe_grid_ms": [
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0
+            ],
+            "candidate_probe_grid_ms": [
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0,
+              500.0
+            ]
+          },
+          "compare.warm_start": {
+            "baseline": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 263.605,
+              "p95_ms": 275.65,
+              "values_ms": [
+                262.06,
+                262.71,
+                263.13,
+                263.22,
+                263.58,
+                263.63,
+                266.73,
+                268.82,
+                271.45,
+                275.65
+              ]
+            },
+            "candidate": {
+              "trials": 10,
+              "valid": 10,
+              "p50_ms": 263.85,
+              "p95_ms": 274.61,
+              "values_ms": [
+                261.89,
+                262.02,
+                263.57,
+                263.63,
+                263.8,
+                263.9,
+                264.59,
+                265.5,
+                265.59,
+                274.61
+              ]
+            },
+            "delta_pct": 0.09,
+            "regression": true,
+            "baseline_rss_mb": [
+              37.2,
+              37.2,
+              37.3,
+              36.8,
+              37.4,
+              37.1,
+              37.4,
+              37.4,
+              37.4,
+              37.0
+            ],
+            "candidate_rss_mb": [
+              37.3,
+              36.8,
+              37.3,
+              37.2,
+              37.1,
+              37.2,
+              36.9,
+              37.5,
+              37.5,
+              37.4
+            ],
+            "baseline_probe_grid_ms": [
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ],
+            "candidate_probe_grid_ms": [
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ]
+          }
+        },
+        "validation_errors": [],
+        "block_details": {
+          "w3-abba-b1": {
+            "compare.cold_start": {
+              "trial_values_ms": [
+                292.25,
+                292.83,
+                298.28,
+                289.23,
+                290.02
+              ],
+              "p50_ms": 292.25,
+              "rss_mb": [
+                111.6,
+                112.3,
+                112.0,
+                112.0,
+                111.1
+              ],
+              "rss_p50_mb": 112.0
+            },
+            "compare.warm_start": {
+              "trial_values_ms": [
+                263.63,
+                266.73,
+                263.58,
+                275.65,
+                263.13
+              ],
+              "p50_ms": 263.63,
+              "rss_mb": [
+                37.2,
+                37.2,
+                37.3,
+                36.8,
+                37.4
+              ],
+              "rss_p50_mb": 37.2
+            },
+            "compare.msg_send": {
+              "trial_values_ms": [
+                1.4,
+                2.7,
+                2.4,
+                1.9,
+                1.6
+              ],
+              "p50_ms": 1.9,
+              "rss_mb": [],
+              "rss_p50_mb": null
+            },
+            "compare.scroll_typing": {
+              "trial_values_ms": [
+                1.09,
+                1.19,
+                1.14,
+                1.07,
+                0.44
+              ],
+              "p50_ms": 1.09,
+              "rss_mb": [
+                501.3,
+                488.8,
+                557.2,
+                535.2,
+                535.6
+              ],
+              "rss_p50_mb": 535.2
+            }
+          },
+          "w3-abba-b2": {
+            "compare.cold_start": {
+              "trial_values_ms": [
+                472.11,
+                298.42,
+                289.11,
+                294.65,
+                290.11
+              ],
+              "p50_ms": 294.65,
+              "rss_mb": [
+                111.9,
+                112.7,
+                113.3,
+                112.4,
+                112.2
+              ],
+              "rss_p50_mb": 112.4
+            },
+            "compare.warm_start": {
+              "trial_values_ms": [
+                271.45,
+                262.71,
+                268.82,
+                263.22,
+                262.06
+              ],
+              "p50_ms": 263.22,
+              "rss_mb": [
+                37.1,
+                37.4,
+                37.4,
+                37.4,
+                37.0
+              ],
+              "rss_p50_mb": 37.4
+            },
+            "compare.msg_send": {
+              "trial_values_ms": [
+                2.0,
+                1.9,
+                2.6,
+                2.2,
+                1.7
+              ],
+              "p50_ms": 2.0,
+              "rss_mb": [],
+              "rss_p50_mb": null
+            },
+            "compare.scroll_typing": {
+              "trial_values_ms": [
+                1.07,
+                1.59,
+                1.34,
+                1.12,
+                1.08
+              ],
+              "p50_ms": 1.12,
+              "rss_mb": [
+                508.4,
+                564.2,
+                528.6,
+                499.5,
+                486.2
+              ],
+              "rss_p50_mb": 508.4
+            }
+          },
+          "w3-abba-c1": {
+            "compare.cold_start": {
+              "trial_values_ms": [
+                315.94,
+                289.54,
+                294.9,
+                291.53,
+                289.76
+              ],
+              "p50_ms": 291.53,
+              "rss_mb": [
+                113.2,
+                113.0,
+                111.8,
+                111.0,
+                113.2
+              ],
+              "rss_p50_mb": 113.0
+            },
+            "compare.warm_start": {
+              "trial_values_ms": [
+                264.59,
+                263.9,
+                263.57,
+                274.61,
+                265.5
+              ],
+              "p50_ms": 264.59,
+              "rss_mb": [
+                37.3,
+                36.8,
+                37.3,
+                37.2,
+                37.1
+              ],
+              "rss_p50_mb": 37.2
+            },
+            "compare.msg_send": {
+              "trial_values_ms": [
+                11.7,
+                10.5,
+                18.8,
+                6.3,
+                1.6
+              ],
+              "p50_ms": 10.5,
+              "rss_mb": [],
+              "rss_p50_mb": null
+            },
+            "compare.scroll_typing": {
+              "trial_values_ms": [
+                0.46,
+                1.3,
+                1.08,
+                1.08,
+                1.12
+              ],
+              "p50_ms": 1.08,
+              "rss_mb": [
+                528.3,
+                537.2,
+                570.9,
+                556.8,
+                486.5
+              ],
+              "rss_p50_mb": 537.2
+            }
+          },
+          "w3-abba-c2": {
+            "compare.cold_start": {
+              "trial_values_ms": [
+                298.17,
+                289.51,
+                289.08,
+                292.53,
+                292.21
+              ],
+              "p50_ms": 292.21,
+              "rss_mb": [
+                112.7,
+                112.7,
+                111.5,
+                111.9,
+                113.1
+              ],
+              "rss_p50_mb": 112.7
+            },
+            "compare.warm_start": {
+              "trial_values_ms": [
+                265.59,
+                262.02,
+                263.8,
+                263.63,
+                261.89
+              ],
+              "p50_ms": 263.63,
+              "rss_mb": [
+                37.2,
+                36.9,
+                37.5,
+                37.5,
+                37.4
+              ],
+              "rss_p50_mb": 37.4
+            },
+            "compare.msg_send": {
+              "trial_values_ms": [
+                1.4,
+                2.0,
+                13.1,
+                1.6,
+                1.9
+              ],
+              "p50_ms": 1.9,
+              "rss_mb": [],
+              "rss_p50_mb": null
+            },
+            "compare.scroll_typing": {
+              "trial_values_ms": [
+                1.08,
+                1.16,
+                1.13,
+                1.18,
+                1.08
+              ],
+              "p50_ms": 1.13,
+              "rss_mb": [
+                618.5,
+                527.0,
+                566.3,
+                527.6,
+                509.1
+              ],
+              "rss_p50_mb": 527.6
+            }
+          }
+        }
+      },
+      "deterministic_final_head": null,
+      "previous_final_head_b0afcdbe": {
+        "base_sha": "0ce55e438471e6a2e4c20c90a3bae04d38a4ddfeba5dcbfd21df207f36c24473",
+        "cand_sha": "4db1eba07a29c18d6a6177babcfa3e81f0dc0a3bd7b05bbf93f004c8d55923ac",
+        "long_campaign_vm": "cnlfji2mtjkpqu0zbq0hmxkw",
+        "status": "in progress async; historical head"
+      },
+      "pending_latest_fold": {
+        "base_revision": "baa7b323a89eda31452fe6c2bf3c111c484c8328",
+        "candidate_revision": "d4ebdeb3983710facbf4cd1eb2af0eb740f80d3d",
+        "new_upstream_files": [
+          "crates/pa-tui/src/view.rs",
+          "crates/pa-tui/tests/slash_menu_panel_headless.rs",
+          "docs/FEATURE_PARITY.md"
+        ],
+        "overlap_with_option_c_release_files": false,
+        "status": "not built/measured yet; previous exact-head pair underway on 91eedb5d / 84d6ef58"
+      },
+      "historical_91eedb5d_bytes": {
+        "base_revision": "91eedb5d016dcc93d422c6fc596813d9be066fd1",
+        "candidate_revision": "84d6ef58d0c600a69abe34351ae675cfc8e69889",
+        "presplit_base_bytes": 209120280,
+        "presplit_candidate_bytes": 209120280,
+        "presplit_sha256": "b04bc26ca328a0b48421d381b9030cb40fa3392590ea573ede80e90587a79c39",
+        "shipped_elf_bytes": 53416360,
+        "shipped_elf_sha256": "8614f41d92ca7621851d71a1ccb442dfb44422f6aa4cf40d6eebc8771bd0691a",
+        "reduction_pct": -74.4566,
+        "decoder_gzip_bytes": 36907535,
+        "decoder_sha256": "458c6ee93cd3353a0d4197c3898c8f13be6a16adb20856e47fe19d89537c9d89",
+        "release_tarball_bytes": 18541778,
+        "release_tarball_sha256": "9f719532afb335a08d6c3ae5de3c56803cb4ce26f4ec673f366f492cf3770241",
+        "decoder_tar_members": 0,
+        "roundtrip": [
+          {
+            "address": "0xb1da60",
+            "symbol": "pa_agent::validation::validate_tool_arguments",
+            "decoder_file_line": "crates/pa-agent/src/validation.rs:26",
+            "shipped_file_line": "??:?"
+          }
+        ],
+        "glibc_max": "GLIBC_2.34",
+        "negative_guard": {
+          "decoy": "prime-agent-runtime/leak.debug.gz",
+          "exit_code": 1,
+          "expected_error": "decoder-like sidecar(s) in the release payload"
+        }
+      }
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Cross-VM latency comparisons invalid: calibration medians differ 22.3%",
+      "Prior-head and bf21a7cc9 ABBA pairs cannot be PR evidence after origin/rust advanced; preserve as iteration evidence."
+    ],
+    "notes": "Final-head same-VM sequential ABBA pending. Probe grid backs off 50ms to 500ms after 1s; cold launch_to_ready is quantized and sensitive to host noise. Deterministic bytes, not latency, carry the claim. No fabricated missing measurements. A/B full captured VM stdout included in extra. Baseline-red A/B appendix is the full command-captured output; cargo command piped through tail -30 per run, so it includes causal failure, statuses, same test executable path but not entire raw process stream. Do not claim identical executable sha from .d dependency file. Prior-head iteration msg_send p50 +112.82% with 5 candidate outliers (6.3–18.8ms); final-head ABBA must scrutinize rather than claim no regression. Prior-head msg_send per-block p50s: b1 1.9ms, c1 10.5ms, c2 1.9ms, b2 2.0ms; pooled +112.82% is driven by c1 transient, while c2 has one 13.1ms outlier. Scroll RSS block p50s b1 535.2, c1 537.2, c2 527.6, b2 508.4MB: temporal drift confounds pooled +14.25MB. No causal conclusion pending final-head pair. Latest-base fold 38dbd975 on b0afcdbe, no overlap in Cargo.toml/workflows/release scripts between base advances and Option C; final-head quick B,C,C,B,B,C ×5 neighbor trial sequence on dedicated VM pending. Latest exact base 91eedb5d, candidate 84d6ef58; full suite at prior folded head 57cacebaa GREEN but current head family executed RED on BOTH base and lane, exact full suite NOT run. Focused 4-slot B,C,C,B×5 cold/msg plus fresh RSS pending on gate VM. PR opened for REVIEW ONLY on latest base baa7b323/candidate d4ebdeb39; deterministic Option C proof 91eedb5d/84d6ef58 historical, latest exact head pending. 91eed B,C,C,B×5 short pair active, and older b0afcdbe 6-slot long campaign asynchronous. No merge/green claims."
+  },
+  "outcome": "in-progress",
+  "decision": "Reviewable PR authorized before final-head short neighbor completes. Current final-head baa7b323/d4ebdeb39 deterministic/bench/gates PENDING; no merge. Historical 91eedb5d/84d6ef58 Linux x64 Option C deterministic proof; prior 57cacebaa full workspace green; 91eedb5d exact-head family symmetric red; 91eed short pair in flight. Assess 91eed pair and recheck current-head before merge; operator numeric verdict and two formal adversarial APPROVE required.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-025700-binary-size-option-c-split-debug.json",
+  "session": {
+    "worker": "perf-binary-size",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9f2f54c1/01a0db50-5da1-720b-8429-3ada49bd8bf5.jsonl"
+  },
+  "timestamp": "2026-09-26T02:57:11.478963+00:00"
+}
