@@ -1,0 +1,332 @@
+{
+ "id": "20260926-060500-startup-many-sessions-cache-lru-final",
+ "axis": "startup",
+ "hypothesis": "Repeated many-session roster scans spend O(N^2) time rewriting a Vec<PathBuf> recency LRU per cached file (1000 warm ~57ms, 4096 ~1s); a bounded BTreeMap+reverse-map recency index removes the quadratic term with identical rows/eviction/caps.",
+ "approach": "pa-daemon session_store.rs SessionInfoScanCache: order Vec<PathBuf> -> BTreeMap<u64,PathBuf> + reverse HashMap<PathBuf,u64> + next_ordinal; identical read_session_info rich fold, eviction-oldest via first_key_value, 4096-state/usage caps unchanged; tests for touch/replacement/removal/ordinal-rollover and >4096 zero-usage eviction. Successor of record 20260926-034002 (superseded there); this is the FINAL-SHA evidence record.",
+ "parity_notes": "Only in-memory cache recency implementation; no JSONL parse, row fields, family attach, session-memory, wire/API/system prompt, replay, or platform behavior changes. Adversarial source review (parity-adversary-2-fast): exact-LRU fix also removes an old stale-front-copy-after-re-store (old code could evict a re-stored state earlier than true LRU) - advisory cache only, no user-visible semantics change; u64::MAX rollover rebuild correctly ordered and tested.",
+ "base": {
+  "revision": "c9365d6ba44100d6ec6bef7bbaee52d2c15a819d"
+ },
+ "branch": "lane/hillclimb-many-sessions",
+ "commits": [
+  "89cbbf32a",
+  "e9bba3a01",
+  "6c0af8c63",
+  "28093cca8",
+  "21513e520",
+  "9171ac1a6",
+  "512e736f5",
+  "0083136b4",
+  "554c8e08d"
+ ],
+ "build": {
+  "sandbox_id": "hh9epmjxh06hdpyp1en7actn",
+  "toolchain": "rustup 1.98.1",
+  "base_binary_sha256": "207de275e0537555baf4515d01ac04e79c28cdeb4cab4b613b6d4ca35902411a",
+  "base_binary_bytes": 209833112,
+  "candidate_binary_sha256": "1790beaf7d8bb3bd815b70baab0e086489cb571056b442d6528cd24a46892d2a",
+  "candidate_binary_bytes": 210615312,
+  "probe_base_sha256": "57c0dc827eaf6ce422db8538a47e00d231b2e3776bf7fe4a8758d6a455cee62b",
+  "probe_cand_sha256": "66e961342605bd917cf9fdc5d8326a424f798b620d2ca137a9a801ba0a1d38c7",
+  "probe_note": "probe shas changed vs the d5cd4b132/512e736f5 pair: pa-daemon lib picked up #2853 kill-stop/escalation (disjoint from session_store recency); candidate full binary +782,200 bytes vs base at this head (thin-LTO layout variance; not a size claim - binary-size is a separate axis)"
+ },
+ "gates": {
+  "fmt": "PASS (fleet_gate full @ 554c8e08d rc0; also PASS at 512e736f5 and 0083136b4)",
+  "clippy": "PASS (fleet_gate full @ 554c8e08d rc0; also PASS at 512e736f5 and 0083136b4)",
+  "test": "fleet_gate full @ 554c8e08d rc101 on TWO flake members: (1) mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - KNOWN-RED auto-attached (registered daemon-timing family, unexpired citation); (2) tui_attach_to_idle_session_renders_without_input - connection-refused supervisor-socket race in interactive_daemon_e2e under full-workspace co-scheduling; SOLO-GREEN at BOTH c9365d6ba (3.90s) and 554c8e08d (3.02s); CI-GREEN at the same head; sibling idle-repaint + historical prompt-stash tests passed in the same gate run. GitHub CI at 554c8e08d FULLY GREEN: fmt+clippy+4/4 shards+test summary+Bugbot (stop_escalation_e2e and prompt_history_nav_headless both green in shards).",
+  "flake_classification": "5 full-suite VM gate runs across 3 folded heads produced 5 DISTINCT rotating failures (oauth dead-callback Elapsed-timeout, supervisor tool_result stats race, worker abort/kill parked-queue x2, mcp_login worker_begin_login [registered], tui_attach connection-refused), each green in the other runs and on CI; ALL 6 suspect tests SOLO-GREEN at both their base and head (worker abort_and_send_queued_with_only_follow_ups, worker kill_cancels_a_mid_provider_wait, worker abort_and_send_queued_delivers_the_parked_queue_at_the_boundary, supervisor tool_result_entries_persisted_and_streamed, oauth a_dead_callback_falls_to_the_prompt, tui_attach_to_idle_session_renders_without_input). Not candidate-caused (session_store recency disjoint from every failed path); not base-deterministic. Registry citations: mcp_login_worker_begin_login_gating (auto-attached), tool_result_entries_persisted_and_streamed (same-test-new-mode disclosed: stats 3-vs-4 assert vs documented WORKER_NOT_CONNECTED), tui_prompt_stash (historical baa7 red, now green in every gate run).",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "catalog.100.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 52.612,
+     "values_ms": [
+      53.351,
+      52.612,
+      52.545
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 52.222,
+     "values_ms": [
+      52.335,
+      52.222,
+      51.975
+     ]
+    },
+    "delta_pct": -0.7,
+    "regression": false
+   },
+   "catalog.100.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.893,
+     "values_ms": [
+      0.9165,
+      0.893,
+      0.887
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.466,
+     "values_ms": [
+      0.4635,
+      0.468,
+      0.466
+     ]
+    },
+    "delta_pct": -47.8,
+    "regression": false
+   },
+   "catalog.1000.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 96.887,
+     "values_ms": [
+      97.552,
+      96.887,
+      96.847
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 70.134,
+     "values_ms": [
+      70.948,
+      69.431,
+      70.134
+     ]
+    },
+    "delta_pct": -27.6,
+    "regression": false
+   },
+   "catalog.1000.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 57.559,
+     "values_ms": [
+      57.559,
+      57.635,
+      56.871
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 4.1215,
+     "values_ms": [
+      4.1215,
+      4.0815,
+      4.127
+     ]
+    },
+    "delta_pct": -92.8,
+    "regression": false
+   },
+   "catalog.4096.cold_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 836.269,
+     "values_ms": [
+      837.167,
+      836.269,
+      834.172
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 338.666,
+     "values_ms": [
+      337.157,
+      338.666,
+      341.622
+     ]
+    },
+    "delta_pct": -59.5,
+    "regression": false
+   },
+   "catalog.4096.warm_ms": {
+    "baseline": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 1031.2315,
+     "values_ms": [
+      1031.2315,
+      1037.3055,
+      1017.9805
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 19.7925,
+     "values_ms": [
+      19.622,
+      19.7925,
+      20.1125
+     ]
+    },
+    "delta_pct": -98.1,
+    "regression": false
+   },
+   "compare.cold_start.launch_to_ready": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 290.0,
+     "values_ms": [
+      367.09,
+      290.15,
+      288.9,
+      289.96,
+      289.61
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 290.1,
+     "values_ms": [
+      892.1,
+      289.7,
+      290.0,
+      290.1,
+      291.6
+     ]
+    },
+    "delta_pct": 0.03,
+    "regression": null
+   },
+   "compare.cold_start.first_paint": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 31.8,
+     "values_ms": [
+      109.2,
+      31.8,
+      31.4,
+      32.1,
+      31.6
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 31.8,
+     "values_ms": [
+      633.4,
+      31.7,
+      31.8,
+      32.5,
+      31.5
+     ]
+    },
+    "delta_pct": 0.0,
+    "regression": null,
+    "note": "trial-0 elevation on each leg is the post-swap first launch; both legs settle to the identical ~31.8ms rung; input_ready_gap uniform ~258ms both sides, input_buffered=true and quantized_ms=0 in all 10 rows"
+   },
+   "session.agent_view_roundtrip.chat_to_agents": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 119.3,
+     "values_ms": [
+      118.8,
+      119.4,
+      119.4,
+      118.9,
+      119.3
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 119.2,
+     "values_ms": [
+      119.2,
+      124.9,
+      118.8,
+      119.2,
+      119.0
+     ]
+    },
+    "delta_pct": -0.1,
+    "regression": null
+   },
+   "session.agent_view_roundtrip.agents_to_tail": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 20442.8,
+     "values_ms": [
+      20444,
+      20443,
+      20440,
+      20420,
+      20481
+     ]
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 20424.6,
+     "values_ms": [
+      20425,
+      20509,
+      20448,
+      20374,
+      20377
+     ]
+    },
+    "delta_pct": -0.1,
+    "regression": null
+   }
+  },
+  "extra": {
+   "binary_bytes": {
+    "baseline": 209833112,
+    "candidate": 210615312
+   },
+   "peak_rss_kib": {
+    "1000": {
+     "baseline": 11864,
+     "candidate": 12116
+    },
+    "4096": {
+     "baseline": 45172,
+     "candidate": 46140
+    }
+   },
+   "rss_note": "+252 KiB/1000, +968 KiB/4096 - same class as the accepted structured-review overhead (prior +352/+928 on 91eedb5)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "FINAL-SHA pair c9365d6ba/554c8e08d, same 16-vCPU VM, sequential, SHA-asserted per slot/swap, ARM_COMMIT_MAP.json sidecars per phase (harness versions.json revision label is a stale settle pin - arms distinguished by binary_sha256, mapping recorded here and in sidecars). Catalog: BCCBBC 18/18 slots x 7 passes, 1 cold + 6 warm per slot; equal rows+checksums per tier (100=762089, 1000=893085, 4096=4336641), same checksums as every prior head; fixture audit at session start: 1000-tier 1000/1000 manifest-clean, 100-tier 1 manifest-stale row (VM bytes == shipped tarball 39fca708; manifest row predates a live-session compaction), 4096 = byte-exact copies (stress only, repeated ids intentional). Launch-to-ready: final-head 5+5 shows ABSOLUTE parity (C med 290.1 vs B 290.0ms, both legs on the same ~290ms rung, gaps uniform ~258ms, input_buffered=true quantized_ms=0 all rows). Prior 15+15 at d5cd4b132/512e736f5 established the metric is a per-trial input-accept race: fast-mode counts B 6/15 vs C 5/15, each side's cross-leg medians span 2.7-3.1x (B 1479.5-4021.1, C 1336.8-4136.9), pooled median delta +931.5ms within the base's own cross-leg spread, first-paint parity - verdict: NO attributable startup regression; metric dominated by environment race; no win claimed. UI roundtrip final head: exact parity (chat->agents 119.2/119.3ms; agents_to_tail -0.1%), 10/10 roundtrip_ok - roster/row oracles intact through the upstream agents-view/search/rows and prompt Down/history-recall folds (f6 pair bbb886dd8/0083136b4 re-verified the input path: same parity). Warm absolutes are per-head/per-probe-build (2a6 cand 4.03ms, d5cd4b132/512e736f5 cand 6.11ms, c9365d6ba/554c8e08d cand 4.12ms vs base 57.56ms); the durable claim is the delta class (~-93% warm at 1000), not any single absolute. RSS +252KiB/1000 +968KiB/4096 (accepted class). No exclusions; no host-drift voids in the final-head window (loadavg before every trial <0.6)."
+ },
+ "outcome": "final-evidence-complete",
+ "decision": "Orchestrator numeric review of this final-head pair PENDING; merge bar additionally requires BOTH formal adversarial reviewers' explicit APPROVE on 554c8e08d and operator disposition of the disclosed red gates (benchmark CI non-applicable RED 0/0; VM-gate rotating flake members). No merge by this worker.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2856",
+ "record_path": "data/hillclimb/experiments/20260926-060500-startup-many-sessions-cache-lru-final.json",
+ "session": {
+  "worker": "perf-many-sessions-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-0e51fb52/01a0dbfa-8963-7278-beaf-27eb1e91067d.jsonl"
+ },
+ "timestamp": "2026-09-26T06:02:06.038456+00:00"
+}
