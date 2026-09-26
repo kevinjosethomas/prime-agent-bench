@@ -189,8 +189,8 @@
     "excluded": [],
     "notes": "FINAL SETTLED-HEAD PAIR (primary, at PR head 868b011bf): 3f6b462b4 base (binary 73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678, 210042112B) vs 868b011bf cand (binary c058ae8a98345486a338a8d3ce00c62539b60a1b8bedb487e433d156a3c5219a, 210079800B), same-vm-sequential on fresh VM c0mlslybuimtxv6cfwl9y5cm, trial-level alternation b,c,c,b,b,c,c,b,b,c, binary swap between invocations, per-run sha256 via harness versions.json, base binary independently built on sibling VM ylftvppnywmds02u82w90qlg. THREE-PAIR CONSISTENCY (same method): d5cd4b132 head pair: ack p50 2.3->0.2ms (-91.3%), settle -0.4%; bbb886dd8 head pair: ack 1.8->0.2ms (-88.9%), settle +0.0%; 3f6b462b4 head pair: ack 4.5->0.2ms (-95.6%), settle -0.4%. The improvement holds across three head folds; settle always at parity. All 30 trials across the three pairs validated (ack+settle true, comparability qualified). The settled-head pair ran after a bench-harness repair on the fresh VM (the bundle lacks configs/sandbox.yaml - recreated; the pinned binary needed +x after the failed first attempt): the first ABBA attempt failed all rounds with FileNotFoundError before any trial ran (zero trials, zero contamination); the repair + settle+warm preceded the successful 10-round run. Calibration 1.033-1.074s across all samples; noop-control floors 0.049-0.079ms; load gate quiet; b1 warmup behavior consistent across pairs (disclosed where applicable). || FOURTH PAIR (head-exact at the final PR head 457c939ee, f37144ff base): same method/machine (cand VM), b,c,c,b,b,c,c,b,b,c, sha-asserted swaps (base c539d0a9 / cand 8c8d102f), 10/10 validated; ack p50 1.5->0.2ms (-86.7%), settle p50 689.2->690.8ms (+0.2%). FOUR-PAIR TABLE: d5cd4b132 -91.3%; bbb886dd8 -88.9%; 3f6b462b4 -95.6%; f37144ff/457c939ee -86.7% (settle parity every time; cand arm uniform 0.2ms p50 in ALL FOUR pairs)."
   },
-  "outcome": "in-progress",
-  "decision": "ALL REVIEW ITEMS RESOLVED pending the double flip: fourth (head-exact) pair delivered with raw arrays; fmt-gate supersede pushed (a869130) per reviewer #2's exact ruling; test-change ruled LEGITIMATE by reviewer #2 (assertion arms byte-identical) and ACCEPT by reviewer #1; reviewer #1 APPROVE effective upon this pair landing consistent; reviewer #2 BLOCK convertible with both items now landed. Merge bar remains: both reviewers' explicit verdicts on 457c939ee + operator dispositions (bang frame-sequence item, benchmark non-applicability, VM-battery flake classes). NO MERGE by this worker.",
+  "outcome": "merged",
+  "decision": "MERGED as 794d23b8868fc16a1f2f2cdc3990efaed39146c1 (squash, PR #2868, head 457c939ee): the operator disposition cleared the disclosed items after both reviewers' explicit APPROVEs on the frozen head. Four pairs (d5cd4b132 -91.3%, bbb886dd8 -88.9%, 3f6b462b4/868b011bf -95.6%, f37144ff/457c939ee -86.7% ack p50, settle parity every pair, 40/40 trials valid, candidate arm uniform 0.2ms p50 at four heads) + CI all real gates green + the honest barrier-fix/fmt-supersede/flake-disclosure chain.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2868",
   "record_path": "data/hillclimb/experiments/20260926-050843-interaction-msgsend-off-render-path.json",
   "session": {
@@ -198,5 +198,11 @@
     "session_dir": "~/.prime/agent/sessions/01a0dbfa-934d-77c5-a4bd-3b8f3e93a99c.jsonl"
   },
   "timestamp": "2026-09-26T05:08:43Z",
-  "pr_head_sha": "457c939ee0bef7a4cf99a0f96be254e2ded8be36"
+  "pr_head_sha": "457c939ee0bef7a4cf99a0f96be254e2ded8be36",
+  "merge": {
+    "merge_sha": "794d23b8868fc16a1f2f2cdc3990efaed39146c1",
+    "merged_at": "2026-09-26T18:00:02Z",
+    "squash_of_pr_head": "457c939ee0bef7a4cf99a0f96be254e2ded8be36",
+    "gate_chain": "orchestrator numeric review ACCEPTED; reviewer #1 (parity-adversary-fast) EXPLICIT APPROVE on 457c939ee (effective after the head-exact pair); reviewer #2 (parity-adversary-2-fast) EXPLICIT APPROVE on 457c939ee (both block items verified from the pushed record); operator (Kevin) disposition of the red gates -> merged"
+  }
 }
