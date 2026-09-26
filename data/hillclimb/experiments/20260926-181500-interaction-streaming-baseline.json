@@ -1,0 +1,148 @@
+{
+ "id": "20260926-181500-interaction-streaming-baseline",
+ "axis": "interaction",
+ "hypothesis": "Token streaming throughput to screen has a dominant parity-safe cost in one of four stages (provider parse, worker event channel, TUI render, PTY write); the lane brief (wave2/streaming.md) asks to attribute it, then narrow-optimize only if a real gap shows. Secondary scaling question (parent requirement): per-frame render cost may scale with loaded transcript length (full layout walk per frame).",
+ "approach": "BASELINE ONLY, no code changes. Controlled fixture: scripted faux provider (PRIME_AGENT_FAUX_SCRIPT with engine:faux, tokensPerSecond-paced 3-5-char chunks, realistic markdown reply ~3.6KB/~893 faux tokens, unique end marker) driving the FULL production path: TUI -> supervisor -> worker (real AgentSessionEngine) -> coalesced session-event stream -> TUI frame scheduler (MIN_RENDER_INTERVAL 16ms) -> sparse-window transcript render -> ratatui cell diff -> PTY, all inside one 16c/32GB VM (xi5hltsa6c2r26laeo4jhslr). Driver: pty_stream_bench.py - per-trial isolated agent-dir+socket+daemon, pty 120x40, exact PTY byte capture, frame accounting via CSI ?2026 sync-update brackets, pyte screen-state per frame (needle sightings for TTFT/stream end), 100ms per-process CPU-jiffies/RSS/PSS sampler, pre/mid/post spin calibration, PI_REQUEST_TIMING=1 worker-side phases (controls with it off). Matrix: transcripts {fresh, ~100 rows, ~2k rows, ~10k rows} x rates {40, 200, 800 tok/s} x 3 interleaved rounds (38 trials total incl. 2 timing-off controls). Re-verified at new tip 6588b19cf with 8 additional trials (none/large x r40/r800 x2).",
+ "parity_notes": "No product edits; nothing merged. Frozen parity untouched. Reported behaviors that COULD tempt an edit but are parity-frozen: (1) exit-flush (TUI.stop -> exitFullscreen inline repaint, TS parity, kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 exists); (2) the daemon TurnStreamCoalescer's 50ms UPDATE_FLUSH_INTERVAL (wire event cadence).",
+ "base": {
+  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b",
+  "rebased_revision": "6588b19cfcd5263dcc3c73ad16120c064b1503f9"
+ },
+ "branch": "lane/hillclimb-interaction-streaming (baseline-only, no commits on a lane branch)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "xi5hltsa6c2r26laeo4jhslr",
+  "binary_sha256": "c7f44461822f0fc7c28fc33d193b8b1b35e76f27c6962b54438704ea5b29a22f (60e2e198c)",
+  "binary_sha256_rebase": "e7e8761486a8c551f6f0e9fcaf875d831e774dcb04434fc06e10de2619ae26de (6588b19cf)",
+  "binary_bytes": 212112288,
+  "build_seconds": 82,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "not-run (no code changes)",
+  "clippy": "not-run (no code changes)",
+  "test": "not-run (no code changes)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "streaming.tokens_to_screen": {
+    "description": "stream_wall_s: prompt-visible -> end-marker-visible (all ~893 tokens transit the viewport); p50 over 3+ trials per config",
+    "none-r40": {
+     "p50_s": 22.25,
+     "spread_s": 0.065
+    },
+    "small-r40": {
+     "p50_s": 22.27
+    },
+    "medium-r40": {
+     "p50_s": 22.27
+    },
+    "large-r40": {
+     "p50_s": 22.29
+    },
+    "none-r200": {
+     "p50_s": 4.61
+    },
+    "large-r200": {
+     "p50_s": 4.6
+    },
+    "none-r800": {
+     "p50_s": 1.25
+    },
+    "large-r800": {
+     "p50_s": 1.25
+    },
+    "verdict": "tracks provider pacing at every rate and transcript size; no loss, no transcript-size penalty; at r800 effective screen rate 716 tok/s equals worker emission (~695/s, faux timer-slack-bound)"
+   },
+   "streaming.ttft_ms": {
+    "description": "prompt-visible -> first reply heading visible (needle needs ~8 tokens of content; includes first-token pacing + first coalesced flush)",
+    "r40_p50_ms": 291.0,
+    "r200_p50_ms": 103.8,
+    "r800_p50_ms": 36.1,
+    "transcript_size_effect": "none (290-343ms at r40 across 0-10k rows, within noise band)",
+    "fixed_component": "~35ms (r800) + rate-dependent first-content pacing"
+   },
+   "streaming.frame_cadence_ms": {
+    "p50_all_configs_ms": 50.3,
+    "mean_p50": 51.1,
+    "p99": 80.3,
+    "max": 80.7,
+    "verdict": "entirely dominated by the worker TurnStreamCoalescer UPDATE_FLUSH_INTERVAL (50ms); TUI frame scheduler (16ms min interval) never binds; fps 20.5-26"
+   },
+   "streaming.tui_render_per_frame": {
+    "cpu_per_frame_ms_p50": {
+     "none": 0.78,
+     "small_100rows": 0.77,
+     "medium_2krows": 0.76,
+     "large_10krows": 0.79
+    },
+    "cpu_per_frame_spread": 0.04,
+    "tui_cpu_during_stream": {
+     "r40": "350-360ms/22.3s (1.6%)",
+     "r200": "80-100ms/4.6s (2%)",
+     "r800": "10-30ms/1.25s (2.4%)"
+    },
+    "verdict": "TRANSCRIPT-SIZE-INDEPENDENT (parent's scaling question): sparse window + entry-height caching + md caches keep per-frame work O(visible), not O(transcript). No candidate exists here."
+   },
+   "streaming.pty_bytes_per_frame": {
+    "r40_mean": 443,
+    "r40_p50": 106,
+    "r200_mean": 1414,
+    "r800_mean": 2894,
+    "big_frames": "52/466 frames >2KB at large-r40 (viewport scroll repaints ~4KB each when a new wrapped line shifts all visible rows; attach paint ~4KB)",
+    "verdict": "linear in token rate, transcript-size-independent in the streaming window; ratatui diff keeps most flushes ~100B"
+   },
+   "worker.request_timing_phases": {
+    "dispatchToPromptBuiltMs": 0.0,
+    "firstByteToFirstTokenMs": "0.1-0.2 (provider parse)",
+    "firstTokenToStreamDoneMs": {
+     "r40": 22590,
+     "r200": 4704,
+     "r800": 1284
+    },
+    "verdict": "provider parse ~0.1ms; stream-done tracks pacing (faux sleep granularity adds ~5% at r200, ~15% at r800 - faux-only artifact, not product)"
+   },
+   "memory.pss_kb_max": {
+    "tui": {
+     "none": 12618,
+     "small": 12838,
+     "medium": 17249,
+     "large": 50342
+    },
+    "worker": {
+     "none": 11644,
+     "small": 8087,
+     "medium": 12850,
+     "large": 38121
+    }
+   }
+  },
+  "extra": {
+   "exit_flush_on_10k_rows": {
+    "finding": "exitFullscreen inline repaint is O(transcript): leaves alt screen then writes the ENTIRE transcript into native scrollback",
+    "measured": {
+     "pty_bytes": 2623781,
+     "wall_s": 2.01,
+     "tui_cpu_ms": 90,
+     "tui_rss_kb_spike": "30900 -> 61952 (transient +31MB: render_inline_frame materializes all rows + 2.6MB flush buffer)"
+    },
+    "parity": "TS TUI.stop/exitFullscreen parity (frozen user-visible scrollback behavior); kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 exists",
+    "disposition": "REPORT ONLY - not a lane edit candidate under frozen parity"
+   },
+   "faux_seam_gap": "PRIME_AGENT_FAUX_SCRIPT without \"engine\": \"faux\" silently falls back to the unpaced ScriptedEngine (worker.rs engine selection); tokensPerSecond pacing is only honored on the engine:faux path. Affects verification-harness UX only (e.g. interactive_fork_e2e scripts run unpaced); documentation candidate, not perf."
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "38 trials at 60e2e198c + 8 re-verification trials at 6588b19cf (same VM, interleaved, per-trial calibration drift <=6%). PI_REQUEST_TIMING on/off control indistinguishable (sw 22.23-22.30, cad_p50 51.12-51.18, cpu/frame 0.76-0.81 both sides). ~17 idle leftover prime-agent daemons from earlier probe trials sat at 0 CPU during the matrix (per-trial pid attribution unaffected). Wire/geometry/fixture: 120x40, TERM=xterm-256color, fixture sha256 b79f2b4594e50c815854efb5c9686db7ae308850ed7099c6224bed36f9063f6d, PTY raw streams captured per trial (byte-parity oracle material for any future candidate)."
+ },
+ "outcome": "discarded",
+ "decision": "HONEST NEGATIVE: no dominant parity-safe cost in the streaming path at 40-800 tok/s x 0-10k rows. All four stages healthy: provider parse ~0.1ms; event channel bounded by the (deliberate) 50ms coalescer flush; TUI render 0.65-1.0ms/frame and transcript-size-independent; PTY writes linear in rate (~100B median flush). The only latency knob is the 50ms daemon flush interval - a design parameter, not a cost defect; touching it changes wire cadence and PTY frame sequences (byte-parity oracles would differ) with no measured throughput problem to justify it. Lane recommendation: close the streaming lane with this record; the exit-flush O(transcript) finding and the faux engine:faux seam note are reported for disposition.",
+ "record_path": "data/hillclimb/experiments/20260926-181500-interaction-streaming-baseline.json",
+ "session": {
+  "worker": "perf-streaming-fast",
+  "session_dir": "~/.prime/agent/sessions (see conversation log 01a0dc70-c442-77cf-9fda-eb80f8af1d63)"
+ },
+ "timestamp": "2026-09-26T18:15:00Z"
+}
