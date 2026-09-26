@@ -1,0 +1,354 @@
+{
+ "id": "20260926-203900-startup-spawn-latency-decompose",
+ "axis": "startup",
+ "hypothesis": "Early-session rlm.spawn cold-exec outliers (400-990ms recorded in handoffs) persist at the current tip and live in the spawn admission (supervisor-side child worker creation), not in the kernel venv/import phases (which are depth-0-gated out of children and land on the child's FIRST TOOL CALL), and not in the turn/wire path (sub-ms). Post-#2857 the per-worker process-global probe memo misses on every fresh child worker, so each child's first kernel start re-pays the direct probe chain.",
+ "approach": "MEASUREMENT ONLY, no product change. New daemon-direct probe driver (spawn_probe.py, orchestrator copy at hillclimb/spawn-work/vm-files/): JSONL protocol-7 wire client (bench daemon_boot adapter port) drives a REAL parent session (prime-inference/mock-1 via models.json) on a real supervisor; the offline mock provider (bench mock_provider.py, port 8890) serves parent turns with an ipython toolCall that runs `await rlm.spawn(...)` inside the parent kernel (kernel-side receipt: perf_counter spawn span + admit clocks), child turns with an ipython cell writing a child receipt (child kernel ready). Oracles: PI_REQUEST_TIMING=1 phase rows (agent.jsonl, pid+sessionId), per-request mock arrival log with queue audit, 2ms /proc process grid (worker/probe-python/kernel-python first sightings, classified by cmdline), child session-file row ledger, driver wire spans (accept/hello/create/prompt), per-trial receipts with wall+monotonic clocks (all processes share CLOCK_MONOTONIC), calibration (python loop + loadavg) pre/mid/post per trial. Regimes: cold_daemon x warm venv n=10 (fresh daemon+agent dir per trial, shared venv), warm_daemon shared n=8 (one daemon+parent, warmup cell boots the parent kernel, one spawn per trial turn), warm_daemon x 10MiB parent fixture n=6 (deterministic bench fixture sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda, 7391 rows, resumed via sessionPath), cold_daemon x cold venv n=3 (fresh kernel venv per trial, warm uv cache + seeded uv python). Shared-regime harness note: mock_state matches a request against EVERY user message in history, so prior-prompt markers keep matching; each trial gets its own queue keyed by its own prompt marker, newest first, with [toolCell, text] pairs so turn parity holds through arbitrary child-notice turns; all cells are replay-idempotent (receipt-preserving) and replays write .replay side-receipts. Standalone components on the same VM: RUNTIME_READY_CHECK probe (fresh process) x7, python -c 'import rlm' x7, raw kernel boot (python -m rlm.repl -> protocol-3 ready) x7, plus 4KB fsync probes bracketing the cold-arm rerun.",
+ "parity_notes": "No product code changed in any phase; frozen parity untouched (spawn semantics/wire/session replay). The probe drives the production path: real parent session, real supervisor create/prompt wire, real child worker processes, real kernel venv bootstrap/probe/python chain. Mock provider is offline-only (bench harness, not part of any product); parent/child model = prime-inference/mock-1 from models.json. Privacy: fixtures are deterministic bench fixtures; records carry sha256/counts only. Tool-name contract: the mock's ipython toolCall exercises the same kernel tool dispatch production uses.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ivrus13jctfqzrj2nqfwrogh (hillclimb-perf-spawn-latency, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_bytes": 212081960,
+  "build_seconds": null,
+  "toolchain": "rustup 1.98.1, cargo build --release --locked --workspace rc=0 at pinned 7064d039a",
+  "note": "tip verified before build; origin/rust churned during the lane (now past c7ca05f10) - this baseline is pinned at 7064d039a per the frozen-evidence rule"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg ~0.1-0.2), per-trial binary sha asserted, calibration pre/mid/post per trial, fsync probes bracketing the healthy-window cold arm",
+  "spawn_to_first_response_ledger_p50_ms": {
+   "coldwarm2_cold_daemon_warm_venv_n9_of_10": {
+    "spawn_admission_rlm_call_to_handle": {
+     "p50": 290.5,
+     "min": 148.4,
+     "max": 337.6,
+     "values": [
+      148.384,
+      266.69,
+      337.641,
+      313.619,
+      222.788,
+      290.458,
+      320.569,
+      286.971,
+      309.591
+     ]
+    },
+    "spawn_call_to_child_worker_exec": {
+     "p50": 5.1,
+     "values": [
+      4.8,
+      5.1,
+      4.8,
+      4.3,
+      11.2,
+      5.5,
+      3.7,
+      7.5,
+      5.9
+     ]
+    },
+    "admit_to_parent_turn_end_continuation_out": {
+     "p50": 2.0
+    },
+    "parent_turn_end_to_child_first_request": {
+     "p50": 32.8,
+     "values": [
+      36.0,
+      35.7,
+      40.0,
+      28.6,
+      31.2,
+      19.5,
+      32.8,
+      18.5,
+      45.5
+     ]
+    },
+    "child_request_to_first_byte": {
+     "p50": 1.0,
+     "note": "PI_REQUEST_TIMING requestSentToFirstByteMs p50 0.8-1.4 across regimes (mock, 0-delay)"
+    },
+    "spawn_to_first_response": {
+     "p50": 312.1,
+     "min": 186.8,
+     "max": 380.5,
+     "values": [
+      186.8,
+      304.9,
+      380.5,
+      344.5,
+      259.8,
+      312.1,
+      355.1,
+      307.8,
+      357.3
+     ]
+    },
+    "spawn_to_child_first_tool_exec": {
+     "p50": 506.7,
+     "values": [
+      335.0,
+      453.2,
+      569.1,
+      530.5,
+      439.7,
+      474.0,
+      506.7,
+      512.2,
+      542.8
+     ]
+    },
+    "child_first_response_to_first_tool_exec_kernel_boot": {
+     "p50": 179.9,
+     "values": [
+      148.2,
+      148.3,
+      188.6,
+      186.0,
+      179.9,
+      161.9,
+      151.6,
+      204.4,
+      185.5
+     ]
+    }
+   },
+   "warm_daemon_shared_n8": {
+    "spawn_admission": {
+     "p50": 342.2,
+     "min": 249.1,
+     "max": 387.0,
+     "values": [
+      249.09,
+      387.037,
+      374.07,
+      334.937,
+      349.512,
+      332.575,
+      371.699,
+      261.068
+     ]
+    },
+    "spawn_to_first_response": {
+     "p50": 381.4,
+     "values": [
+      284.1,
+      425.4,
+      393.8,
+      376.0,
+      386.7,
+      349.6,
+      407.5,
+      299.7
+     ]
+    },
+    "child_first_response_to_first_tool_exec_kernel_boot": {
+     "p50": 140.3,
+     "values": [
+      137.6,
+      139.0,
+      140.3,
+      144.8,
+      140.3,
+      158.2,
+      139.4,
+      143.6
+     ]
+    },
+    "note": "daemon-warmth does NOT reduce admission (342 vs 290 p50): admission is per-child-worker create, not daemon cache"
+   },
+   "large_parent_10mib_n6": {
+    "spawn_admission": {
+     "p50": 270.5,
+     "min": 195.3,
+     "max": 412.7,
+     "values": [
+      412.712,
+      195.31,
+      268.385,
+      225.318,
+      272.632,
+      295.761
+     ]
+    },
+    "parent_turn_end_to_child_first_request": {
+     "p50": 129.2,
+     "min": 94.9,
+     "max": 226.6,
+     "values": [
+      107.8,
+      119.1,
+      184.3,
+      139.4,
+      94.9,
+      226.6
+     ]
+    },
+    "spawn_to_first_response": {
+     "p50": 500.1,
+     "values": [
+      610.0,
+      433.8,
+      539.3,
+      452.0,
+      461.0,
+      610.8
+     ]
+    },
+    "child_first_response_to_first_tool_exec_kernel_boot": {
+     "p50": 148.3,
+     "values": [
+      142.4,
+      141.5,
+      168.5,
+      153.7,
+      162.9,
+      142.9
+     ]
+    },
+    "note": "the large parent inflates the TURN-BOUNDARY release (129ms vs 33ms small): the child's task prompt fires only after the parent's continuation round trip (TS parity, frozen); the mock re-serializes the 10MiB body on the request path (disclosed mock-side contribution to that leg)"
+   },
+   "cold_venv_fresh_build_per_trial_n3": {
+    "spawn_admission": {
+     "p50": 263.6,
+     "values": [
+      285.748,
+      263.617,
+      229.776
+     ]
+    },
+    "spawn_to_first_response": {
+     "p50": 299.6,
+     "values": [
+      320.2,
+      299.6,
+      267.8
+     ]
+    },
+    "child_first_response_to_first_tool_exec_kernel_boot": {
+     "p50": 144.0,
+     "values": [
+      144.0,
+      154.9,
+      140.5
+     ]
+    },
+    "note": "venv was rebuilt during the PARENT's first cell (one-time bootstrap; warm uv cache + seeded uv python); by spawn time the venv is warm, so admission and child legs are unaffected by venv-build cost - the spawn path itself never pays venv bootstrap"
+   }
+  },
+  "fresh_child_kernel_boot_decomposition_first_tool_call": {
+   "p50_ms_all_regimes": {
+    "tool_decision_to_probe_python_exec": 10.9,
+    "RUNTIME_READY_CHECK_probe_span_fresh_process_memo_miss": {
+     "coldwarm2": 54.6,
+     "warm": 48.5,
+     "large": 49.4,
+     "coldvenv": 51.2
+    },
+    "dill_probe_span_on_memo_miss": {
+     "coldwarm2": 39.5,
+     "warm": 33.2,
+     "large": 33.7,
+     "coldvenv": 34.3
+    },
+    "kernel_python_exec_to_first_cell_spawn_import_handshake": {
+     "coldwarm2": 71.0,
+     "warm": 56.1,
+     "large": 58.0,
+     "coldvenv": 55.3
+    },
+    "total_first_response_to_first_cell": {
+     "coldwarm2": 179.9,
+     "warm": 140.3,
+     "large": 148.3,
+     "coldvenv": 144.0
+    }
+   },
+   "note": "every spawned child is a FRESH worker process: #2857's RUNTIME_PROBE_MEMO is process-global, so every child's first kernel start pays the direct probe chain. The parent kernel's prewarm (depth-0 gate in engine.rs) does NOT cover children (depth>=1): the child's venv spawn + rlm import land AFTER its first provider response, on its first tool call."
+  },
+  "standalone_components_warm_venv_quiet": {
+   "runtime_ready_check_fresh_process_ms": {
+    "p50": 46.772,
+    "values": [
+     52.896,
+     47.126,
+     48.52,
+     45.751,
+     46.772,
+     45.742,
+     45.775
+    ]
+   },
+   "import_rlm_ms": {
+    "p50": 46.485,
+    "values": [
+     46.519,
+     49.57,
+     45.355,
+     45.039,
+     46.485,
+     44.321,
+     46.658
+    ]
+   },
+   "raw_kernel_boot_to_protocol3_ready_ms": {
+    "p50": 40.185,
+    "values": [
+     40.122,
+     40.108,
+     40.358,
+     40.601,
+     40.185,
+     40.086,
+     40.622
+    ]
+   }
+  },
+  "fsync_regime_attestation": {
+   "before_coldwarm2": {
+    "p50_ms": 0.12,
+    "note": "4KB fsync probe n=30; fresh-file first-write tail 30.67ms x1 then sub-ms"
+   },
+   "after_coldwarm2": {
+    "p50_ms": 0.24,
+    "note": "occasional 1.9-6.8ms tails mid-window; healthy regime (p50 sub-ms), far from the 80-240ms degraded class boot-floor flagged fleet-wide"
+   },
+   "disclosure": "the FIRST cold arm (coldwarm, n=10) ran 19:26-19:29Z inside the fleet-degraded window boot-floor later flagged (not fsync-probed at the time): its admission p50 370.8ms/max 439.1 exceeds the healthy-window rerun (290.5/337.6). The healthy-window rerun (coldwarm2) supersedes it for claims; the coldwarm run is retained on the orchestrator as degraded-window evidence only."
+  },
+  "daemon_log_admission_split_coldwarm01_example_ms": {
+   "spawn_call_to_child_worker_exec": 6.5,
+   "child_worker_exec_to_registered": 37,
+   "registered_to_create_re_registered": 168,
+   "re_registered_to_admission_reply": 171,
+   "note": "single-trial example from the d.sock RotatingLog timestamps (worker registration epochs); the admission cost is dominated by the supervisor Create route (probe/auth/create handler) and the post-create reply tail, not by process exec"
+  }
+ },
+ "validity": {
+  "excluded": [
+   {
+    "trial": "coldwarm2-08",
+    "reason": "transient spawn failure: the parent kernel issued the spawn toolCall but no admission receipt landed within the trial (parent session shows the toolCall + text turn completed); the remaining 9 trials valid; failure class not reproduced in any other trial (30/31 spawn attempts across regimes admitted)"
+   }
+  ],
+  "notes": "Single-driver discipline: one probe process per regime run, sequential trials, no concurrent probe instances (an early duplicated-driver incident was caught, cleaned, and all affected data discarded; every kept trial comes from the post-cleanup single-driver runs). The shared-daemon regimes accumulate child-notice turns; per-trial queue keys + replay-idempotent cells keep the mock deterministic (queue hits audited per trial: every parent request matched its own trial queue, every child request the child queue, aux hits 0). The 400-990ms cold-exec outliers from the handoffs were NOT reproduced at the healthy window: worst admission 438ms (degraded window) / 338ms (healthy); the handoff 976ms figure was a daemon-boot cold-artifact A/A characterization and the 0.8-1.2s figure was TUI navigation (worker-spawn-bound) - different surfaces from this lane's headless spawn path. Raw per-trial JSONs archived at hillclimb/spawn-work/results2/ on the orchestrator and /root/spawnprobe/results/ on the VM."
+ },
+ "outcome": "baseline-decompose-complete",
+ "decision": "awaiting orchestrator: (1) spawn->first-response is NOT at floor - admission (per-child supervisor create) dominates at p50 264-342ms across all four regimes, and is NOT owned by #2857's mechanism; (2) the child kernel boot (probe+dill+python+import, 140-180ms) lands on the child's FIRST TOOL CALL (depth-0 prewarm gate) - kernel-boot's on-disk memo candidate owns that leg; prewarming children at create would add ~140-180ms to admission to remove it from the first tool call (net ~zero for the spawn->answer path), so the depth-gate tradeoff is NOT an obvious win and needs the operator ruling before any edit; (3) no edit proposed by this lane (baseline only, per the no-claim bar); (4) the parent-session-size effect rides the frozen turn-boundary release (129ms at 10MiB vs 33ms small) - TS parity, not a candidate.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-203900-startup-spawn-latency-decompose.json",
+ "session": {
+  "worker": "perf-spawn-latency-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1e1ab275"
+ },
+ "timestamp": "2026-09-26T20:25:22Z"
+}
