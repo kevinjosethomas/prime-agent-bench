@@ -1,0 +1,340 @@
+{
+ "id": "20260926-194800-startup-boot-floor-decompose",
+ "axis": "startup",
+ "hypothesis": "The open path's ~340-400ms serialized BOOT FLOOR (launch-open record 0b65f95: small-fixture paint p50 369.9ms; tree CPU 0.39s vs wall 0.52s on real) decomposes into identifiable wall-serialized phases; the lane identifies the dominant parity-safe target: exec -> daemon spawn/bind -> TUI 25ms connect-probe grid -> hello (behind the boot_reap /proc census) -> create -> worker spawn/boot + 25ms worker-socket probe grid -> attach -> paint.",
+ "approach": "MEASUREMENT ONLY (no product change). Clean phase anchors on a quiet 16c/32GB VM (hillclimb-perf-boot-floor eh2maoxblls1ugh3tp97d0u4, release build rc=0 at origin/rust 7064d039a, binary sha256 994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892, rustup 1.98.1): (1) NEW socket-appearance watcher (1ms stat grid on the daemon socket path + 2ms listing grid on $TMPDIR/prime-agent-<uid>) giving CLEAN daemon-bind and worker-bind timestamps alongside the proven 2ms process-sighting grid, 5ms per-role CPU grid, first_paint/typed-echo-ready/sentinel/erase validation and per-trial fixture hashes (launch-open agent-view v2 contract, driver boot-floor-baseline.py); 30 clean trials across 4 fixtures (small 607,396B/159 rows sha 834cb5ba..., real 12,987,770B/11,923 rows sha 835c4473..., orc 5.1MB/2527/362, large 11.83MB/10790/1839). (2) Four FILTERED strace legs through the same harness launch via a product.yaml binary swap (asserted per leg, restored+grep-asserted after; launch-open's INVALID-matrix lesson): network-only (all pids), openat-only (all pids), TUI-only read/recvfrom/connect (NO -f: the daemon/worker/pythons run untraced = NEAR-CLEAN TUI-side wire view), execve-only (all pids: exact spawn argv). (3) One manual harness-identical probe run with /proc stat starttime + socket mtime (exact kernel-recorded process starts, ppid chains).",
+ "parity_notes": "No product change in any phase; the boot_reap /proc census (#289 operator-directed semantics) was quantified but NOT touched. Privacy: fixtures are private byte snapshots; records carry sha256/counts only; strace -s 192 truncation; anchor tokens hashed; raw strace files stay on the VM (archived tarball at /home/ubuntu/hillclimb/boot-floor-work/bf-strace.tar.gz). The bench env sets PRIME_AGENT_KERNEL_VENV (venv-dir override, managed path: PRIME_AGENT_KERNEL_PYTHON is NOT set), so the observed probe chain is the managed-path chain a default user runs.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "eh2maoxblls1ugh3tp97d0u4",
+  "toolchain": "rustup 1.98.1",
+  "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_bytes": 53265536,
+  "build_seconds": 121,
+  "build_note": "cargo build --release --locked --workspace rc=0 at 7064d039a on the VM; binary pin asserted by grep in product.yaml before every leg"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0), per-trial fixture prehash==source sha, post bytes differ, source unchanged; sentinel+echo+erase validated 30/30 clean + 15/15 strace legs + 5/5 execve legs",
+  "noop_control_pty_floor": {
+   "n": 30,
+   "min_ms": 0.024,
+   "p50_ms": 0.059,
+   "p95_ms": 0.093
+  },
+  "clean_phase_ledger_small_fixture": {
+   "trials": 10,
+   "valid": 10,
+   "launch_to_first_paint_ms": {
+    "p50": 330.5,
+    "values": [
+     324.0,
+     249.0,
+     321.1,
+     331.3,
+     329.6,
+     339.9,
+     343.2,
+     370.6,
+     318.5,
+     591.4
+    ]
+   },
+   "launch_to_ready_ms": {
+    "p50": 344.0,
+    "values": [
+     336.92,
+     312.98,
+     333.46,
+     347.23,
+     340.84,
+     353.23,
+     357.56,
+     386.42,
+     329.46,
+     606.7
+    ]
+   },
+   "t_daemon_sighting_ms": {
+    "p50": 9.4,
+    "values": [
+     5.9,
+     9.6,
+     11.6,
+     9.2,
+     9.1,
+     6.9,
+     12.1,
+     12.0,
+     10.3,
+     7.6
+    ]
+   },
+   "t_dsock_create_ms": {
+    "p50": 48.2,
+    "values": [
+     48.7,
+     48.7,
+     45.5,
+     47.3,
+     46.4,
+     46.3,
+     47.8,
+     89.0,
+     49.5,
+     317.2
+    ]
+   },
+   "t_worker_sighting_ms": {
+    "p50": 60.9,
+    "values": [
+     62.5,
+     60.0,
+     59.3,
+     59.1,
+     61.8,
+     58.8,
+     59.0,
+     110.4,
+     62.4,
+     321.7
+    ]
+   },
+   "t_wsock_create_ms": {
+    "p50": 60.5,
+    "values": [
+     61.3,
+     61.2,
+     60.3,
+     60.3,
+     60.5,
+     59.9,
+     60.0,
+     111.5,
+     60.5,
+     322.9
+    ]
+   },
+   "derived_spans_p50_ms": {
+    "exec_to_daemon_spawn": 9.4,
+    "daemon_spawn_to_bind": 39.2,
+    "bind_to_worker_spawn": 12.7,
+    "worker_spawn_to_worker_bind": 1.0,
+    "worker_bind_to_paint": 265.6
+   },
+   "cpu_at_ready_tree_s": {
+    "tui": 0.019,
+    "daemon": 0.002,
+    "worker": 0.034,
+    "other": 0.048,
+    "note": "mean across 10 trials (p50 of cpu values collapses to 0.0; values are 0.01-0.07)"
+   }
+  },
+  "clean_phase_ledger_real_fixture": {
+   "trials": 10,
+   "valid": 10,
+   "launch_to_first_paint_ms": {
+    "p50": 547.6,
+    "values": [
+     552.1,
+     490.9,
+     543.1,
+     469.3,
+     563.1,
+     528.8,
+     517.4,
+     570.2,
+     571.0,
+     587.8
+    ]
+   },
+   "launch_to_ready_ms": {
+    "p50": 571.6,
+    "values": [
+     572.48,
+     511.99,
+     570.76,
+     492.87,
+     579.7,
+     547.27,
+     537.37,
+     590.94,
+     590.47,
+     607.8
+    ]
+   },
+   "t_daemon_sighting_ms": {
+    "p50": 10.1,
+    "values": [
+     7.2,
+     10.0,
+     10.7,
+     10.5,
+     7.3,
+     11.4,
+     10.6,
+     9.7,
+     10.2,
+     7.4
+    ]
+   },
+   "t_dsock_create_ms": {
+    "p50": 47.7,
+    "values": [
+     46.5,
+     50.6,
+     47.6,
+     50.0,
+     46.6,
+     48.9,
+     47.7,
+     48.7,
+     47.7,
+     47.2
+    ]
+   },
+   "t_worker_sighting_ms": {
+    "p50": 59.2,
+    "values": [
+     58.2,
+     63.9,
+     59.0,
+     59.2,
+     59.2,
+     59.3,
+     61.2,
+     62.5,
+     66.5,
+     59.0
+    ]
+   },
+   "t_wsock_create_ms": {
+    "p50": 60.2,
+    "values": [
+     60.5,
+     60.1,
+     60.2,
+     60.2,
+     60.3,
+     60.4,
+     59.4,
+     60.4,
+     60.4,
+     60.0
+    ]
+   },
+   "derived_spans_p50_ms": {
+    "exec_to_daemon_spawn": 10.1,
+    "daemon_spawn_to_bind": 39.1,
+    "bind_to_worker_spawn": 12.2,
+    "worker_spawn_to_worker_bind": 1.0,
+    "worker_bind_to_paint": 487.2
+   }
+  },
+  "clean_scaling_legs_p50_paint_ms": {
+   "orc": 408.7,
+   "large": 535.5
+  },
+  "near_clean_tui_wire_ledger": {
+   "method": "TUI-only strace (no -f): the daemon/worker/python side runs UNTRACED, so TUI-side anchors are near-clean (leg paint 306.1/348.0/358.5 small, 576.2/581.1 real vs clean p50 330.5/547.6); timestamps exact from strace -tt",
+   "small_trial2": {
+    "exec_to_first_probe_enoent_ms": 9.1,
+    "probe_grid_steps_ms": [
+     0.12,
+     0.55,
+     26.2,
+     26.2
+    ],
+    "probe_connect_success_ms": 62.2,
+    "real_client_connect_ms": 62.8,
+    "worker_direct_connect_ms": 282.6,
+    "paint_ms": 306.1,
+    "note": "socket bind (watcher, 1ms grid) at 60.6ms: probe-grid overshoot 1.6ms this trial; bind->hello->create fits in ~1.5-2ms; create ~= +64.4 (hello->create 1.6ms measured in the net leg); create->response ~= 281-64.4 = ~217ms; response->paint ~= 24ms"
+   },
+   "real_trial1": {
+    "exec_to_first_probe_enoent_ms": 8.6,
+    "probe_connect_success_ms": 61.7,
+    "real_client_connect_ms": 62.2,
+    "worker_direct_connect_ms": 512.4,
+    "paint_ms": 576.2,
+    "note": "create->response ~= 512-64 = ~448ms (the file-scaled session-load passes, launch-open's domain); the FIXED floor phases match the small fixture"
+   }
+  },
+  "execve_leg_spawn_chain": {
+   "method": "-ff -e trace=execve: exact argv; spans inflated ~1.5x (ptrace stops all syscalls of all pids even when unprinted) - sequence + argv only, spans labeled STRACE-EXECVE-INFLATED",
+   "small_trial1_spans_ms_inflated": {
+    "tui_exec": 0.0,
+    "daemon_exec": 8.7,
+    "worker_exec": 154.2,
+    "kernel_runtime_ready_probe_exec": 357.6,
+    "kernel_runtime_ready_probe_exit": 462.8,
+    "dill_probe_exec": 466.9,
+    "dill_probe_exit": 524.0,
+    "rlm_repl_exec": 525.7,
+    "paint": 493.4
+   },
+   "argvs": [
+    "prime-agent --mode daemon --daemon-socket <trial>/d.sock",
+    "prime-agent worker",
+    "<kernel-venv>/bin/python -c 'import inspect; import rlm; from rlm import McpIntegration; import rlm.mcp as mcp; from rlm.harness import HarnessEntry; _harness_methods = [...] ...' (RUNTIME_READY_CHECK = has_prime_agent_runtime)",
+    "<kernel-venv>/bin/python -c 'import dill'",
+    "<kernel-venv>/bin/python -m rlm.repl"
+   ],
+   "reading": "EVERY cold open (fresh worker process per create) re-pays the full kernel-venv probe chain: the #2857 runtime-ready probe memo is PROCESS-GLOBAL (static Mutex in venv.rs), so a fresh worker's first kernel_ready() always memo-misses: installed_runtime_identity (hash_python_tree walk of the rlm+dill site-packages trees; the openat leg shows 62 .py opens on the worker before python spawns) -> python -c RUNTIME_READY_CHECK (~105ms inflated span, ~55-75ms clean est.) -> python -c 'import dill' (~57ms inflated, ~35-40ms clean est.). The rlm.repl kernel exec fires after the response/paint (concurrent), NOT gating. Identical chain on the real fixture."
+  },
+  "strace_leg_inflation_honesty": {
+   "net_leg_paint_ms": [
+    566.9,
+    520.6,
+    470.1,
+    1162.1,
+    1250.5
+   ],
+   "openat_leg_paint_ms": [
+    567.4,
+    437.9,
+    574.4,
+    1327.5,
+    1481.2
+   ],
+   "note": "ptrace stops every syscall of every traced pid (filter affects printing only): the daemon-side census (682 openat on /proc) inflates ~0.15-0.2ms per stop - the launch-open 'pre-hello census 151ms traced span' is ~98% strace amplification; CLEAN bind->hello->create is ~1.5-2ms (tuiread leg) and the census contributes ~1-3ms (syscall-bound, consistent with daemon CPU 0.000 at 5ms sampling). CORRECTION to the source record's framing: the census is NOT a wall-serialized boot-floor cost at clean scale."
+  },
+  "cpu_attribution": {
+   "method": "5ms per-role CPU grid (psutil cpu_times per process by cmdline role; python children land in 'other')",
+   "small_trial4_cpu_ramps_ms": {
+    "worker_first_cpu": 102.5,
+    "python1_rt_probe": "200-240 (cpu 0.03-0.04s)",
+    "python2_dill": "242.280 (cpu 0.01-0.02s)",
+    "python3_rlm_repl_concurrent": "280-330",
+    "paint": 329.6
+   },
+   "reading": "the worker binds at ~+63, begins create-replay CPU ~+102; the create response (~+281) trails the end of the probe chain; tree CPU at ready is ~0.07-0.10s vs ~0.33s wall - the floor is WAIT-bound, and the wait is python interpreter startup (exec+link+import) inside the create critical path"
+  },
+  "grids_quantified": {
+   "tui_daemon_probe_grid": "ensure_daemon_running_with sleeps 25ms between probes (interactive_mode.rs); net-leg bind->connect overshoots 1.6/25.0/4.0ms over 3 trials (mean ~10-13, worst ~26 incl. probe overhead) - a pure wait on every cold daemon",
+   "supervisor_worker_probe_grid": "probe_worker_socket sleeps WORKER_CONNECT_BACKOFF_MS=25ms between can_connect attempts (supervisor.rs + launch_budget.rs); worker bind -> supervisor connect ~+33.9ms in the inflated net leg, ~12.5ms mean clean est. - a pure wait on EVERY worker spawn (every cold open)",
+   "probe_ready_grid": "harness probe grid honesty (input_buffered=false, quantized_ms=50 worst-case, gap 12-17ms) unchanged from the launch-open contract"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 30 clean trials valid (sentinel rendered/echoed/erased; fixture pre-sha == source; post bytes differ; source unchanged; loadavg gate <1.0). small trial 9 (paint 591.4, dsock 317.2) is a slow-daemon-boot outlier consistent with the discarded daemon-boot lane's fsync range (30.9-103.6ms with tails) - kept in the arrays, noted, not excluded. The tick->wall conversion in the manual /proc probe is offset ~150ms on this VM (btime/uptime drift, the same class launch-open observed on their VM) - only RELATIVE tick deltas and mtime (REALTIME) were used; all ledger anchors come from the perf_counter watch grid and strace REALTIME timestamps. Strace legs are phase-order/structure evidence with disclosed inflation; every clean-phase claim is anchored on untraced watcher data or the near-clean TUI-only leg."
+ },
+ "outcome": "measured - DECOMPOSITION COMPLETE, no implementation",
+ "decision": "BOOT FLOOR LEDGER at 7064d039a (small fixture, clean p50 paint 330.5ms): exec->daemon fork 9.4ms; daemon boot->bind 39.2ms (inside it: the supervisor-config atomic-write fsync ~31ms, already measured and REJECTED by the daemon-boot lane - do not resurrect); TUI 25ms probe grid 1.6-25ms (mean ~12.5); census+hello+create ~1.5-2ms (CORRECTION: the /proc census is ~1-3ms clean, not a floor cost - launch-open's 151ms traced span was strace amplification; #289 semantics untouched, quantified only); create->worker fork+exec+bind ~1-3ms (worker boot is FAST); supervisor 25ms worker-socket probe grid ~12.5ms mean; THEN THE DOMINANT SEGMENT: worker create-replay window ~180-220ms (response ~+281 vs create ~+64) whose content is the PER-OPEN KERNEL-VENV PROBE CHAIN - installed_runtime_identity content walk (~20-40ms) + python -c RUNTIME_READY_CHECK (~55-75ms) + python -c 'import dill' (~35-40ms) - because #2857's runtime-ready memo is PROCESS-GLOBAL and every cold open boots a FRESH worker (the memo never helps the open path by construction); plus session load (10-25ms small) and routing. Tail: create response -> direct transport -> peer_auth -> attach -> snapshot -> render -> paint ~24ms; paint->ready ~13.5ms. Real fixture: identical fixed floor + create->response ~448ms (the file passes are launch-open's domain; their approved windowed-first candidate cuts ~130-150ms of it). FIX-LANE CANDIDATES, dominant first: (1) cross-process (on-disk) memo for the runtime-ready probe chain, extending #2857 with the SAME identity inputs (content-hash key preserved: a miss still re-probes, damage detection intact) - est. ~90-115ms off EVERY cold open, small AND real; coordinate with the kernel-boot lane (their scope was the in-process ensure, NOT the open path; this is a follow-up on new evidence, not a resurrection of the discarded records); (2) tighten the two 25ms probe grids (TUI daemon-connect + supervisor worker-connect) to ~5ms with the same timeout budgets - ~20-25ms mean combined, worst ~50ms, timing-only change (wire, error messages, and DAEMON_STARTUP_TIMEOUT_MS unchanged); needs adversarial review for TS-parity posture (the intervals mirror TS ensureDaemonRunning/connectWorker); (3) census: NOT a target (correction above); (4) daemon-boot fsync: rejected previously, stands. NO single >=50% lever inside the floor alone: candidate (1) is ~1/3 of the small-fixture floor and ~1/5 of the real-fixture open; (1)+(2) together ~40% of the floor.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-194800-startup-boot-floor-decompose.json",
+ "session": {
+  "worker": "perf-boot-floor-fast"
+ },
+ "timestamp": "2026-09-26T19:48:00+00:00"
+}
