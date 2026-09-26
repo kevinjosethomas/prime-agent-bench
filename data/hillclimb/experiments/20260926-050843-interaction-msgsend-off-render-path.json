@@ -42,60 +42,60 @@
         "baseline": {
           "trials": 5,
           "valid": 5,
-          "p50_ms": 1.8,
-          "p95_ms": 2.1,
+          "p50_ms": 4.5,
+          "p95_ms": 6.9,
           "values_ms": [
-            2.1,
-            1.8,
-            1.5,
-            1.8,
-            1.9
+            1.4,
+            6.3,
+            6.9,
+            4.5,
+            2.2
           ]
         },
         "candidate": {
           "trials": 5,
           "valid": 5,
           "p50_ms": 0.2,
-          "p95_ms": 0.4,
+          "p95_ms": 0.2,
           "values_ms": [
-            0.3,
             0.2,
             0.2,
-            0.4,
+            0.2,
+            0.2,
             0.2
           ]
         },
-        "delta_pct": -88.9,
+        "delta_pct": -95.6,
         "regression": false,
         "metric": "submit_to_ack_ms (first PTY output chunk after Enter; NOT daemon ack)",
         "settle_baseline": {
-          "p50_ms": 689.2,
+          "p50_ms": 691.4,
           "values_ms": [
-            691.7,
-            664.7,
-            690.0,
-            666.8,
-            689.2
+            691.4,
+            677.3,
+            699.0,
+            676.2,
+            692.3
           ]
         },
         "settle_candidate": {
-          "p50_ms": 689.3,
+          "p50_ms": 688.9,
           "values_ms": [
-            689.3,
-            665.2,
-            689.0,
-            689.7,
-            690.5
+            692.0,
+            688.9,
+            672.2,
+            672.8,
+            691.8
           ]
         },
-        "settle_delta_pct": 0.0,
+        "settle_delta_pct": -0.4,
         "order": "b,c,c,b,b,c,c,b,b,c (trial-level alternation, binary swapped between invocations, both sha256s recorded per run via harness versions.json)"
       }
     },
     "extra": {
       "binary_bytes": {
-        "baseline": 209951624,
-        "candidate": 210848448
+        "baseline": 210042112,
+        "candidate": 210079800
       },
       "calibration_s": {
         "min": 1.033,
@@ -138,10 +138,10 @@
   },
   "validity": {
     "excluded": [],
-    "notes": "FINAL-HEAD PAIR (primary): bbb886dd8 base (binary 29e5209e7ca330c5a9425e79266664c828605173c3d09626030f77882dd47dc0, 209951624B) vs c7ba643ee cand (binary e7e57bd927e81722cd4028b65611d1a7f5267e81ef32b1abf3551db06c5ebfaa) on lbavzw3, trial-level alternation b,c,c,b,b,c,c,b,b,c, binary swap between invocations, per-run sha256 via harness versions.json, base binary independently built on sibling VM xcde4o16 (identical sha, reproducible cross-check). CROSS-HEAD CONSISTENCY PAIR (d5cd4b132 head, same method/machine): base bf816710 vs cand e7e40c30e (4af05e26): ack p50 2.3->0.2ms (-91.3%), settle 692.5->689.6ms (-0.4%), 10/10 validated. b1 ack 7.5ms (d5cd4b132 pair) = base arm first trial after binary swap (cache warmup), valid + disclosed. Calibration drift within ~4% across both pairs (final-head pair: 1.033-1.074s over 20 samples); noop-control floors 0.054-0.079ms; load gate quiet; comparability qualified on all 20 trials across both pairs. Old-head iteration evidence (pre-park-fix fa217dc, w2-msgsend-abba-01..10, ack 2.1->0.2ms): superseded by the two pairs above; 84x live-runs watermark fix measured 30.08s->0.36s in the iteration."
+    "notes": "FINAL SETTLED-HEAD PAIR (primary, at PR head 868b011bf): 3f6b462b4 base (binary 73fd497b64506eb42c8a3820e63c1d67556e3a630a5ffc9907e5d06d4ab8d678, 210042112B) vs 868b011bf cand (binary c058ae8a98345486a338a8d3ce00c62539b60a1b8bedb487e433d156a3c5219a, 210079800B), same-vm-sequential on fresh VM c0mlslybuimtxv6cfwl9y5cm, trial-level alternation b,c,c,b,b,c,c,b,b,c, binary swap between invocations, per-run sha256 via harness versions.json, base binary independently built on sibling VM ylftvppnywmds02u82w90qlg. THREE-PAIR CONSISTENCY (same method): d5cd4b132 head pair: ack p50 2.3->0.2ms (-91.3%), settle -0.4%; bbb886dd8 head pair: ack 1.8->0.2ms (-88.9%), settle +0.0%; 3f6b462b4 head pair: ack 4.5->0.2ms (-95.6%), settle -0.4%. The improvement holds across three head folds; settle always at parity. All 30 trials across the three pairs validated (ack+settle true, comparability qualified). The settled-head pair ran after a bench-harness repair on the fresh VM (the bundle lacks configs/sandbox.yaml - recreated; the pinned binary needed +x after the failed first attempt): the first ABBA attempt failed all rounds with FileNotFoundError before any trial ran (zero trials, zero contamination); the repair + settle+warm preceded the successful 10-round run. Calibration 1.033-1.074s across all samples; noop-control floors 0.049-0.079ms; load gate quiet; b1 warmup behavior consistent across pairs (disclosed where applicable)."
   },
   "outcome": "in-progress",
-  "decision": "orchestrator numeric review ACCEPTED on the d5cd4b132 pair; final-head pair delivered (ack -88.9%, settle +0.0%); pending BOTH adversarial reviewers' explicit APPROVE on the final PR SHA + operator disposition of the disclosed load-sensitive bang frame-sequence difference and the pa-ai oauth / pa-daemon stats load flakes",
+  "decision": "orchestrator numeric review ACCEPTED (three pairs, same-direction: -91.3%/-88.9%/-95.6% ack p50, settle parity each); settled-head pair delivered at 868b011bf with GitHub CI ALL REAL GATES GREEN; pending: reviewer #1 re-affirmation + reviewer #2 re-request (incl. the both-pacing-commits sign-off) on the final settled head, the next clean-boundary fold of dc182606 with the typed worker_overloaded semantics verification, operator (Kevin) disposition of the bang frame-sequence item, and the non-applicable benchmark red. NO MERGE by this worker.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2868",
   "record_path": "data/hillclimb/experiments/20260926-050843-interaction-msgsend-off-render-path.json",
   "session": {
