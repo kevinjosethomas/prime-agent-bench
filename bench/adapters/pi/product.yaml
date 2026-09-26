@@ -14,7 +14,7 @@ auth_sources:
 first_run_dialogs: []
 vendor:
 - src: ~/bench-cmp5/repos/pi-mono
-  dst: root/bench/repos/pi-mono
+  dst: root/bench-cmp5/repos/pi-mono
 - src: ~/.pi/agent/auth.json
   dst: root/.pi/agent/auth.json
 - src: ~/.prime/config.json

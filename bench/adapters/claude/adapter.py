@@ -43,7 +43,9 @@ class ClaudeCodeProduct(ProductAdapter):
         src = Path.home() / ".claude"
         if src.exists():
             shutil.copytree(src, tpl / "home" / ".claude", dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("projects", "todos", "statsig", "shell-snapshots"))
+                            symlinks=True,
+                            ignore=shutil.ignore_patterns(
+                                "projects", "todos", "statsig", "shell-snapshots", "debug"))
         cj = Path.home() / ".claude.json"
         if cj.exists():
             data = json.loads(cj.read_text())
