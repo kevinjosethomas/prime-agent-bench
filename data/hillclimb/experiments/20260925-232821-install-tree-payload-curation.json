@@ -483,7 +483,7 @@
   },
   "outcome": "final-head deterministic payload reduction PASS, full gate and quiet exact-head neighbor PENDING; reviewable PR may open pending with disclosures",
   "decision": "Open reviewable PR after quiet neighbor and structured record. Orchestrator numeric final-head verdict and explicit APPROVE from BOTH formal standing adversaries required before any merge. Lane owner does not merge.",
-  "pr_url": null,
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2837",
   "record_path": "data/hillclimb/experiments/20260925-232821-install-tree-payload-curation.json",
   "session": {
     "worker": "perf-install-tree",
