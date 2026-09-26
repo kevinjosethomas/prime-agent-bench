@@ -1,0 +1,398 @@
+{
+  "id": "20260926-034002-startup-many-sessions-cache-lru",
+  "axis": "startup",
+  "hypothesis": "Repeated many-session roster scans spend O(N^2) time rewriting a Vec<PathBuf> recency LRU for each cached file (1000 warm ~57ms, 4096 ~1s), despite bounded header reads and resumed content fold.",
+  "approach": "Replace pa-daemon session_store.rs SessionInfoScanCache `order: Vec<PathBuf>` with BTreeMap<u64, PathBuf> and reverse HashMap<PathBuf,u64>; exact same read_session_info rich fold, eviction oldest, 4096 and usage caps. Tests cover touch/replacement/removal/ordinal rollover and >4096 zero-usage eviction.",
+  "parity_notes": "Only in-memory cache recency implementation changes; no JSONL parse, row fields, family attach, session-memory, wire/API/system prompt, macOS/Linux behavior, or session replay changes. True JSONL bytes remain unmodified; 4096 tier copies real files with unique filenames and repeated IDs only as stress.",
+  "base": {
+    "revision": "2a698b27bef7f44a8e5815763e09e0f61c9fe630"
+  },
+  "branch": "lane/hillclimb-many-sessions",
+  "commits": [
+    "89cbbf32a",
+    "e9bba3a01",
+    "6c0af8c63",
+    "28093cca8",
+    "21513e520",
+    "9171ac1a6"
+  ],
+  "build": {
+    "sandbox_id": "hh9epmjxh06hdpyp1en7actn",
+    "binary_sha256": "2cda16db9033e044dbead7f8ad7f7e0f001fb5caff13e30cb8abb497d0d06f0e",
+    "binary_bytes": 209072680,
+    "build_seconds": 77.1339,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "pass on baa7 and GitHub 21513",
+    "clippy": "pass on baa7 and GitHub 21513",
+    "test": "GitHub 21513 Rust 4 shards PASS. Local baa7 workspace FAIL 26/27 interactive_daemon_e2e image-stash screenshot; pristine SAME-HEAD baa7 baseline SAME FAIL 26/27; isolated candidate test PASS earlier. Latest-head workspace PENDING, explicit exception required. Public benchmark CI FAIL 0/0 TS npm ci missing package-lock; operator disposition pending."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "catalog.100.cold_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 53.272,
+          "p95_ms": 86.10669999999999,
+          "values_ms": [
+            89.755,
+            53.272,
+            53.065
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 52.335,
+          "p95_ms": 52.5546,
+          "values_ms": [
+            52.335,
+            52.074,
+            52.579
+          ]
+        },
+        "delta_pct": -1.7588977323922506,
+        "regression": false
+      },
+      "catalog.100.warm_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 0.8965000000000001,
+          "p95_ms": 0.91315,
+          "values_ms": [
+            0.915,
+            0.89,
+            0.8965000000000001
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 0.457,
+          "p95_ms": 0.46645000000000003,
+          "values_ms": [
+            0.4565,
+            0.457,
+            0.4675
+          ]
+        },
+        "delta_pct": -49.023982152816515,
+        "regression": false
+      },
+      "catalog.1000.cold_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 96.468,
+          "p95_ms": 97.6272,
+          "values_ms": [
+            97.756,
+            96.468,
+            95.918
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 68.932,
+          "p95_ms": 71.40339999999999,
+          "values_ms": [
+            68.932,
+            68.526,
+            71.678
+          ]
+        },
+        "delta_pct": -28.544180453621927,
+        "regression": false
+      },
+      "catalog.1000.warm_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 57.2485,
+          "p95_ms": 57.793,
+          "values_ms": [
+            57.8535,
+            57.1845,
+            57.2485
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 4.03,
+          "p95_ms": 4.23025,
+          "values_ms": [
+            4.0175,
+            4.03,
+            4.2524999999999995
+          ]
+        },
+        "delta_pct": -92.96051424928164,
+        "regression": false
+      },
+      "catalog.4096.cold_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 828.752,
+          "p95_ms": 829.9193,
+          "values_ms": [
+            830.049,
+            827.373,
+            828.752
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 341.712,
+          "p95_ms": 341.8038,
+          "values_ms": [
+            341.712,
+            341.814,
+            339.975
+          ]
+        },
+        "delta_pct": -58.76788230978628,
+        "regression": false
+      },
+      "catalog.4096.warm_ms": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 1030.4385,
+          "p95_ms": 1031.5167000000001,
+          "values_ms": [
+            1030.4385,
+            1027.9505,
+            1031.6365
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 19.814,
+          "p95_ms": 21.59645,
+          "values_ms": [
+            19.7745,
+            21.7945,
+            19.814
+          ]
+        },
+        "delta_pct": -98.0771292998078,
+        "regression": false
+      },
+      "session.agent_view_roundtrip.chat_to_agents": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 118.3,
+          "p95_ms": 119.74000000000001,
+          "values_ms": [
+            119.9,
+            118.3,
+            118.3
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 119.4,
+          "p95_ms": 124.08,
+          "values_ms": [
+            124.6,
+            119.4,
+            119.2
+          ]
+        },
+        "delta_pct": 0.9298393913778513,
+        "regression": null
+      },
+      "session.agent_view_roundtrip.agents_to_tail": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 20496.2,
+          "p95_ms": 21182.09,
+          "values_ms": [
+            21258.3,
+            20496.2,
+            20243.3
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 20479.8,
+          "p95_ms": 20534.7,
+          "values_ms": [
+            20446.5,
+            20479.8,
+            20540.8
+          ]
+        },
+        "delta_pct": -0.0800148320176497,
+        "regression": null
+      },
+      "compare.cold_start.first_paint": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 527.8,
+          "p95_ms": 528.07,
+          "values_ms": [
+            528.1,
+            526.2,
+            527.8
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 528.1,
+          "p95_ms": 550.6,
+          "values_ms": [
+            527.6,
+            553.1,
+            528.1
+          ]
+        },
+        "delta_pct": 0.05683971201213556,
+        "regression": null
+      },
+      "compare.cold_start.launch_to_ready": {
+        "baseline": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 2574.56,
+          "p95_ms": 3960.704,
+          "values_ms": [
+            2554.92,
+            2574.56,
+            4114.72
+          ]
+        },
+        "candidate": {
+          "trials": 3,
+          "valid": 3,
+          "p50_ms": 4080.82,
+          "p95_ms": 4110.457,
+          "values_ms": [
+            4113.75,
+            3632.78,
+            4080.82
+          ]
+        },
+        "delta_pct": 58.50553104219751,
+        "regression": null
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 209205976,
+        "candidate": 209072680
+      },
+      "rss_mb": {
+        "baseline": 11.784,
+        "candidate": 12.136
+      },
+      "peak_rss_kib": {
+        "1000": {
+          "baseline": 11784,
+          "candidate": 12136
+        },
+        "4096": {
+          "baseline": 45140,
+          "candidate": 46068
+        }
+      },
+      "fixture": {
+        "100": {
+          "distinct_real": 100,
+          "bytes": 29805001
+        },
+        "1000": {
+          "distinct_real": 1000,
+          "bytes": 34558806
+        },
+        "4096": {
+          "byte_exact_repeated_real_files": 4096,
+          "notes": "1000 distinct real sources repeated 4x plus first 96 again, all contents unchanged; ids duplicate by intent."
+        },
+        "manifest_path": "/home/ubuntu/hillclimb/fixtures/perf-many-sessions-real.tar.manifest.json",
+        "manifest_sha256": "fcc8f70a0597a2d32334cd8a72b18ad37db2dd7a2e38f77f88ea5b95cdaad7bc"
+      },
+      "raw_catalog": "/home/ubuntu/hillclimb/results-perf-many-sessions-2a6.json",
+      "raw_ui": "/home/ubuntu/hillclimb/results-perf-many-sessions-ui/",
+      "iteration_baa": "/home/ubuntu/hillclimb/results-perf-many-sessions-baa.json",
+      "iteration_f3_catalog": "/home/ubuntu/hillclimb/results-perf-many-sessions-f3-short.json",
+      "iteration_f3": {
+        "base": "f3ae85c0ab5a12013999912dc02e2e356071b4b9",
+        "candidate": "9171ac1a6154fea823ecb81172d1c1c6e5daaf55",
+        "catalog_1000_cold_ms": {
+          "baseline": [
+            98.582,
+            95.884
+          ],
+          "candidate": [
+            72.279,
+            69.738
+          ]
+        },
+        "catalog_1000_warm_ms": {
+          "baseline": [
+            58.1085,
+            58.237
+          ],
+          "candidate": [
+            4.1575,
+            4.0575
+          ]
+        },
+        "catalog_4096_cold_ms": {
+          "baseline": [
+            827.731,
+            825.361
+          ],
+          "candidate": [
+            343.993,
+            341.349
+          ]
+        },
+        "catalog_4096_warm_ms": {
+          "baseline": [
+            1023.071,
+            1022.2065
+          ],
+          "candidate": [
+            19.8,
+            19.8365
+          ]
+        },
+        "binary_sha256": {
+          "baseline": "9d2c21440bbee6c356058c7ab728998c5c0cc353bdd5022641723c96614c7cd8",
+          "candidate": "389e564bb783d35291649498e5cf3d8a791a5a1394a49f2f9ee6e6e8f5886ed0"
+        },
+        "status": "pinned UI 5-trial candidate in flight; latest rust since moved to 1974f8da"
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "Catalog 100/1000/4096 B,C,C,B,B,C: each slot fresh process 1 cold + 6 warm passes, 3 slots per side; SHA asserted per slot; 18/18 row count and checksum equal; no exclusions. 2a6 UI suite 3/3 validated/equivalent agent-view (single 10MiB fixture) and 3/3 validated but qualified compare.cold_start; launch-to-ready B p50 2574.56 vs C 4080.82ms WARNING, raw [2554.92,2574.56,4114.72] vs [4113.75,3632.78,4080.82], quantized 500ms and input-buffered; no waiver, F3 5-trial rerun ongoing. UI benchmark fixture has one session, not 1000. Original cache Vec::retain isolated 1000 32.63ms /4096 530.835ms per pass; cannot claim whole user navigation gain. First contaminated 91eedb5 base binary sha54a8 rejected unmeasured, clean rebuilt later."
+  },
+  "outcome": "in-progress",
+  "decision": "Parent provisionally accepts catalog numeric, holds merge pending latest-head neighbor/gates and both formal adversarial approvals; baseline-red screenshot/TS public 0/0 CI need explicit disposition.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2856",
+  "record_path": "data/hillclimb/experiments/20260926-034002-startup-many-sessions-cache-lru.json",
+  "session": {
+    "worker": "perf-many-sessions-sol",
+    "session_dir": "/home/ubuntu/.prime/agent/sessions/01a0db61-f5fc-707b-81b6-212d16f32db6.jsonl"
+  },
+  "timestamp": "2026-09-26T03:56:25.526962+00:00"
+}
