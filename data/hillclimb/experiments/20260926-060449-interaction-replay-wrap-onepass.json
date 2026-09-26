@@ -36,7 +36,7 @@
  "gates": {
   "fmt": "pass (full-suite VM gates at 9068febb7, 31d5d38ab, c6d74719: rc 0)",
   "clippy": "pass (same heads: rc 0, -D warnings)",
-  "test": "31d5d38ab: RED_KNOWN_REDS (mcp_login worker_begin_login + tool_result_entries_persisted_and_streamed - both ACTIVE rotating flakes, cited, unknown_failures empty); c6d74719 (PR head): RED - single failure worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row (pa-daemon; NOT lane-caused: reproduces on PURE upstream - scoped pa-daemon gate on branch rust failed the same test; lane diff is pa-tui/markdown.rs wrap only) - disclosed for operator disposition"
+  "test": "31d5d38ab: RED_KNOWN_REDS (mcp_login worker_begin_login + tool_result_entries_persisted_and_streamed - both ACTIVE rotating flakes, cited, unknown_failures empty); c6d74719 (PR head): RED - single failure worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row (pa-daemon) in the full-suite parallel-load gate; REPRODUCED ONCE on PURE upstream (my scoped pa-daemon gate on branch rust @ 3f6b462b4, full-suite context) => NOT lane-caused (lane diff is pa-tui/markdown.rs wrap only); REVIEWER RERUN (parity-adversary-fast, independent): scoped cargo test -p pa-daemon --lib on the SAME VM at pure upstream c9365d6ba AND PR head c6d74719, sequential: BOTH SIDES 737 passed / 0 failed (30.61s / 35.26s) - the red is NON-DETERMINISTIC and needs parallel load (kill_cancels is the known VM timing-flake family, 60.023s vs its own 60s deadline under co-scheduling, previously triaged on the install-tree lane); both reproduction attempts retained: mine proves it fires without lane code; the reviewer's proves it is not deterministic at either side - disclosed for operator disposition"
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -1054,5 +1054,21 @@
   "worker": "perf-replay-wrap-fast (glm-5.3-fast reboot)",
   "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-a9b11882/01a0dbfa-8b2f-7072-9fba-f3482855b30b.jsonl"
  },
- "timestamp": "2026-09-26T06:04:49.190238+00:00"
+ "timestamp": "2026-09-26T06:04:49.190238+00:00",
+ "review": {
+  "parity_adversary_fast": {
+   "verdict": "APPROVE (explicit, SHA-bound)",
+   "sha": "c6d747190f5943a8bafaf52ede33c12dbf200259",
+   "conditions": [
+    "head frozen: any new commit/fold voids the verdict",
+    "operator disposition of disclosed red-gate items"
+   ],
+   "notable_independent_checks": [
+    "programmatic diff: embedded legacy_wrap_spans_into body VERBATIM IDENTICAL to base c9365d6ba wrap_spans_into (name differs only)",
+    "drift-direction analysis: grapheme-cluster splits make consumed-char-sum >= rendered width, so rest_width only UNDER-estimates -> only reachable divergence is a premature tentative exit, caught by the true-measure confirmation",
+    "independent scoped-gate rerun both-sides-green (737/0) at c9365d6ba and c6d74719"
+   ],
+   "received_at": "2026-09-26T06:4xZ"
+  }
+ }
 }
