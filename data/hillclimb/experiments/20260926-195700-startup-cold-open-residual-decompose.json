@@ -1,0 +1,253 @@
+{
+ "id": "20260926-195700-startup-cold-open-residual-decompose",
+ "axis": "startup",
+ "hypothesis": "The stock-fixture cold_open ready (~938ms at the merged tip per worker-rss; P2 = launch-open's saved_session_context candidate) decomposes into the worker's 4 file passes + the wrap/first-paint cost + the serialized boot floor; what REMAINS after launch-open's fix is the goal-state seed load (P3), the engine's windowed-context adoption suffix loads (P4, the dropped P3/P4 sharing), and any residual single-pass cost - quantifiable precisely per fixture class.",
+ "approach": "Baseline FIRST at tip 7064d039a on a quiet 16c/32GB ubuntu:22.04 VM (hillclimb-perf-cold-open-residual q4wt593azsm2iqw5rnhldxe4; release --locked --workspace rc=0, binary sha 994c5563f7...; harness bundle rebuilt from current hillclimb f159ad8; product.yaml binary+revision pinned to the VM build; settle OK = attach-pipeline futex smoke PASS). Legs: (A) gold-standard harness suite session.cold_open_10mib x15 (same-vm sequential, quiet gate, per-trial fresh-inode fixture + prehash assert); (B) clean PTY driver x6 (2ms process-sighting watcher + per-role CPU tree at ready); (C) strace -ff -f decomposition x3 through the same launch contract (product.yaml wrapper swap, restored+grep-asserted; INVALID for timing, structure only); (D) env-gated throwaway instrument build x10 (same commit, separate tree /root/prime-agent-rust-instr, 17 exact-anchor edits, PRIME_PHASE_DUMP epoch-us phase points + WindowReadStats per pass; never on a lane branch); (E) fixture-class matrix on the instrument (stock no-boundary, compacted tail100/512/1024); (F) overhead isolation alternating pure/instrument single trials.",
+ "parity_notes": "No product source changed. The instrument tree is a separate clone with an env-gated dump; its binary (sha 00816392020bb6d69ca6922ca6c7058e7f9947270b262c21e5d0462a7ee2ad3c) never touched a lane branch and measured attribution only. The PR claim base will be rebuilt at the then-current tip after the #2844 (9d9cf2da7) + #2866 (5dbf6f653) folds with a lane-vs-merge-base re-diff.",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a",
+  "note": "recorded before the #2844/#2866 merges landed; folds batched at the next clean boundary per standing policy"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "q4wt593azsm2iqw5rnhldxe4",
+  "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_bytes": 212081960,
+  "instrument_binary_sha256": "00816392020bb6d69ca6922ca6c7058e7f9947270b262c21e5d0462a7ee2ad3c",
+  "instrument_binary_bytes": 211856928,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0 at launch), per-trial fixture prehash==source sha asserted + post-bytes differ + source unchanged, sentinel+echo+erase validated every trial",
+  "baseline_suite_legA": {
+   "trials": 15,
+   "valid": 15,
+   "launch_to_ready_ms": {
+    "p50": 914.12,
+    "min": 865.46,
+    "max": 1245.31,
+    "values": [
+     865.46,
+     873.68,
+     879.72,
+     883.89,
+     890.81,
+     891.54,
+     894.86,
+     914.12,
+     924.24,
+     929.24,
+     942.38,
+     976.11,
+     985.59,
+     1063.9,
+     1245.31
+    ]
+   },
+   "launch_to_first_paint_ms": {
+    "p50": 899.5,
+    "values": [
+     858.7,
+     866.6,
+     872.8,
+     876.0,
+     879.3,
+     884.1,
+     887.7,
+     899.5,
+     917.4,
+     922.4,
+     934.3,
+     968.3,
+     976.4,
+     1056.5,
+     1237.7
+    ]
+   },
+   "launch_to_sentinel_ms": {
+    "p50": 916.0,
+    "values": [
+     867.2,
+     875.5,
+     881.6,
+     885.7,
+     892.6,
+     893.4,
+     896.6,
+     916.0,
+     926.0,
+     931.0,
+     944.1,
+     977.8,
+     987.5,
+     1065.8,
+     1247.2
+    ]
+   },
+   "tree_rss_mb_p50": 373.6,
+   "values_rss_mb": [
+    357.0,
+    357.6,
+    361.3,
+    362.6,
+    363.3,
+    368.7,
+    369.7,
+    373.6,
+    374.4,
+    374.9,
+    378.0,
+    380.1,
+    381.9,
+    383.6,
+    386.2
+   ],
+   "note": "worker-rss's ~938ms reference confirmed at the current tip; tree RSS matches worker-rss's cold_open_10mib_n5 377.3 band"
+  },
+  "clean_driver_legB": {
+   "trials": 6,
+   "valid": 6,
+   "launch_to_ready_ms": {
+    "p50": 924.85,
+    "values": [
+     881.43,
+     884.11,
+     909.02,
+     940.67,
+     949.66,
+     971.64
+    ]
+   },
+   "t_daemon_sighting_ms_p50": 3.7,
+   "t_worker_sighting_ms_p50": 59.8,
+   "cpu_at_ready_p50": {
+    "tui_s": 0.23,
+    "daemon_s": 0.0,
+    "worker_s": 0.64,
+    "other_s": 0.06,
+    "tree_rss_mb": 383.6
+   },
+   "window_cache_sidecar": "exists post-launch every trial (904-906B); fresh inode per trial (sidecar written by the P1 walk, then certified by the create append)"
+  },
+  "phase_ledger_stock_10mib_instrument_legD2": {
+   "trials": 10,
+   "valid": 10,
+   "binary": "instrument build",
+   "ledger_p50_ms": {
+    "boot_to_create_handler_start_offset": 164.0,
+    "p0_to_p1": 2.0,
+    "p1_lease_open_windowed_total": 101.8,
+    "p1_walk_cold_reverse_scan": {
+     "wall_ms": 53.0,
+     "jsonl_bytes": 10485761,
+     "ranges": 161,
+     "cache_hit": false
+    },
+    "p1_sessionentry_parse": 47.9,
+    "gap_p1_to_p2b": 224.1,
+    "p2b_rlm_max_depth_full_read_parse": 34.5,
+    "p2b_present": "false in 10/10 (the rlm_max_depth_state row is absent; all parse work discarded)",
+    "gap_p2b_to_p3": 3.4,
+    "p3_goal_seed_windowed_open": {
+     "wall_ms": 50.2,
+     "jsonl_bytes": 10486294,
+     "ranges": 2,
+     "cache_bytes": 937,
+     "cache_hit": true
+    },
+    "p4_adoption_windowed_open": {
+     "wall_ms": 40.0,
+     "jsonl_bytes": 10486294,
+     "ranges": 2,
+     "cache_hit": true
+    },
+    "p4_restore_adopt_window_context_set_messages": 51.9,
+    "adopt_built_session_total": 145.1,
+    "attach_snapshot_render_wrap_to_paint": 384.5,
+    "paint_to_ready": 8.0
+   },
+   "ready_ms_p50": 1047.9,
+   "ledger_closure": "sum of buckets 1059.4 vs ready 1047.9 (within 12ms; run variance)",
+   "p2_saved_session_context": "NEVER RAN: flagged_model=true on every bench launch (harness mock argv carries --provider/--model; create.rs:41,187-188 gates restore_session_model). p2 hooks 0/10 trials."
+  },
+  "fixture_class_matrix_instrument_p50_ms": {
+   "stock_10mib_no_boundary_7391rows_10mb_retained": {
+    "ready_p50_drift_window": 1047.9,
+    "p1": 101.8,
+    "p2b": 34.5,
+    "p3_goal_seed": 50.2,
+    "p4_open": 40.0,
+    "p4_restore": 51.9
+   },
+   "compacted_tail1024_12175rows_1mb_retained": {
+    "ready_p50": 621.2,
+    "p1": 32.1,
+    "p2b": 66.2,
+    "p3_goal_seed": 6.8,
+    "p4_open": 5.2,
+    "p4_restore": 7.5
+   },
+   "compacted_tail512_11503rows_512kb_retained": {
+    "ready_p50": 637.8,
+    "p1": 24.9,
+    "p2b": 64.0,
+    "p3_goal_seed": 3.2,
+    "p4_open": 2.6,
+    "p4_restore": 4.1
+   },
+   "compacted_tail100_10984rows_100kb_retained": {
+    "ready_p50": 527.2,
+    "p1": 19.4,
+    "p2b": 65.9,
+    "p3_goal_seed": 0.7,
+    "p4_open": 0.6,
+    "p4_restore": 0.8
+   },
+   "fixture_artifact_disclosure": "the synthetic compacted fixtures carry ONE ~9.4MB bulk pad row (the discarded-prefix pad); their P2b (64-66ms) is pad-row-parse-inflated. The real-fixture P2b estimate is row-scaled from the stock number: ~50-60ms at 11923 rows/12.99MB (launch-open's real fixture shape). The stock P2b (34.5ms) has no pad row.",
+   "class_reading": "P3+P4 (the suffix-load sharing) is a no-boundary-class lever only (86-90ms stock vs 0.7-12ms compacted). P2b (persisted_rlm_max_depth full read+parse) pays the FULL-FILE cost on every class - the larger lever on compacted sessions and on the real resume path."
+  },
+  "strace_crosscheck_legC": {
+   "runs": 3,
+   "label": "STRACE-INFLATED (ready 2419-2609ms vs clean ~914) - structure only",
+   "read_amplification": "the worker (pid 19476 tree) reads ~31.5MB per open for the 10.49MB fixture: P1 cold walk 10,485,761B in 161 64KiB chunked reads + two warm full-suffix read_to_string passes of 10,486,294B each (P3/P4) + small daemon-side reads; matches launch-open's ~30.3MB finding",
+   "phases": "lease -> P1 walk (sidecar .tmp write at +103.6ms) -> create tail -> full read_to_string+parse (p2b) -> warm suffix reads; one traced run showed a cold-walk-shaped second open (155 chunked reads) - sidecar-generation race under 2.6x strace timing; the instrument's cache_hit=true in 10/10 clean runs is authoritative"
+  },
+  "overhead_isolation_legF": {
+   "method": "alternating single trials pure/instrument x3 after all legs",
+   "result": "pure p50 1063.7 vs instrument p50 1042.7 - INSEPARABLE from drift (both legs ~+120-140ms over the quiet-window numbers with worker_sighting 84-141ms vs 58-62ms early)",
+   "drift_disclosure": "the VM's serialized boot floor drifted +25-80ms mid-session (host contention from sibling wave-3 lanes; loadavg_before 0.14-0.19 early vs 0.49-1.0 late). Absolute cross-leg ready comparisons are VOID for attribution; the ledger's WITHIN-RUN phase walls (epoch-us deltas inside one process run) are insensitive to this and remain the attribution evidence. Leg A's quiet-window p50 914.12 is the absolute anchor; instrument overhead is bounded by the drift band (~60ms) and the phase-dump cost per point is one append-write (<0.1ms x ~20/trial).",
+   "calibration": "python 30M-loop pre 0.814-0.86 / post 0.817-0.83 per driver leg (within 2%); legF late-window loadavg 0.22-0.39 during alternating trials"
+  }
+ },
+ "findings": {
+  "f1_p2_never_runs_on_bench_path": "saved_session_context (launch-open's candidate target) does not run on the bench mock launch: the harness argv carries --provider/--model => create payload has model => flagged_model => restore_session_model skipped. Launch-open's strace 'pass 2' attribution (set_session_file -> load_entries_from_file) is superseded by this instrument evidence; launch-open has acknowledged and is re-registering its ABBA on the no-flags resume path.",
+  "f2_the_real_second_pass_is_p2b": "configure_rlm_identity (create.rs:487 area) calls persisted_rlm_max_depth (agent_engine.rs:1693): FULL read_to_string + parse_session_entries of the session file to find the LAST rlm_max_depth_state custom row (.rev().find_map), usually absent (10/10 stock trials present=false) - the entire full-file read+parse is discarded work on the create critical path (create handler thread, before the background build).",
+  "f3_p3_p4_double_warm_reread": "adopt_built_session opens WindowedSessionStore twice back-to-back: persisted_goal_state (P3; only snapshot.goal is consumed - the entire retained-suffix re-read + full FileEntry re-parse is discarded) then the adoption open (P4). On the no-boundary stock fixture each open re-reads + re-parses the WHOLE file (snapshot.start ~= header end); on compacted classes each pays only the retained-suffix cost.",
+  "f4_read_amplification": "worker reads ~31.5MB for a 10.49MB fixture on one cold open (3 full passes + small reads); the retained corpus is FileEntry-parsed 3x (P1 walk + P3 + P4) plus SessionEntry-parsed once (P1's store build) plus parse_session_entries once (P2b)."
+ },
+ "candidate_scoping_no_edit": {
+  "c1_p3_p4_shared_open": "share ONE windowed open between the goal seed and the adoption (open once, goal_state() from the same window, restore_windowed_context on the same window). Parity: the goal comes from snapshot.goal of a generation-certified snapshot of the same bytes (within the same build, no writes between); fallback chain preserved: no-window => ONE SessionFile::open serving both the goal branch-scan and branch_file_entries (currently TWO full parses). Expected: -50.2ms stock / -6.8 tail1024 / -3.2 tail512 / -0.7 tail100 (P3's entire wall). Golden tests: differential oracle (shared-open goal == reference persisted_goal_state over fixture classes incl. malformed rows) + goal persistence/recovery flow test (create -> goal.create -> kill worker -> revive -> rehydrate assert).",
+  "c2_p2b_store_backed_lookup": "persisted_rlm_max_depth re-reads + re-parses the file although the create flow ALREADY holds the fully-loaded store (core.store, SessionEntry rows, same post-append rows as disk). Candidate: compute the depth-bound override from the in-memory store (entries().rev() with the same custom/customType/maxDepth-u64 predicate - the same mapping persisted_goal_state's fallback already uses on SessionEntry), pass it into configure_rlm_identity; the disk-read function stays as the differential-oracle reference. Expected: -34.5ms stock / -60-66ms compacted-pad-inflated / ~-50-60ms real-fixture estimate. Golden test: differential oracle over fixture classes (row present, absent, malformed, torn tail) vs the reference implementation.",
+  "territory": "restore-windowed-context clone (52.9ms; the census B/C1/C2 to_vec) is worker-rss's; the serialized boot floor (0-164ms) is boot-floor's; the attach/snapshot/render/wrap bucket (384.5ms) is unowned - recorded here for a future lane; saved_session_context (P2) is launch-open's (no-flags resume path only).",
+  "sequence": "no edit until launch-open's head lands (brief); candidate ABBA will rebuild base+cand at the then-current tip post-#2844/#2866 folds with the lane-vs-merge-base re-diff."
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All trials application-level validated (sentinel true, echoed true, erased true; per-trial fixture prehash == source sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda; post bytes differ by appended bookkeeping rows; source unchanged). Stock fixture reproduced byte-identical locally (session-size/2). Strace rows are phase-structure evidence only. The late-window drift is disclosed above; within-run phase walls carry the attribution. Leg A ran in the quiet window (loadavg_before 0.08-0.19)."
+ },
+ "outcome": "measured - DECOMPOSITION COMPLETE + two new full-pass discoveries (P2b persisted_rlm_max_depth; P2-never-runs-on-bench-path); edits deferred per sequence",
+ "decision": "Two parity-safe candidates scoped with expected per-class deltas: P3/P4 shared open (-50.2ms stock) and P2b store-backed lookup (-34.5ms stock, larger on compacted/real classes ~50-66ms). Combined stock-class expectation ~-85ms of the 914ms quiet anchor (~9%). Honest negative on the brief's original expectation: the residual after launch-open's fix is NOT near the boot floor on the stock fixture class (P3+P4+P2b = 124.7ms p50 of redundant passes), but on compacted classes the P3/P4 residual alone IS near-floor (1.3-12ms) and only P2b remains material.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-195700-startup-cold-open-residual-decompose.json",
+ "session": {
+  "worker": "perf-cold-open-residual-fast"
+ },
+ "timestamp": "2026-09-26T20:05:00+00:00"
+}
