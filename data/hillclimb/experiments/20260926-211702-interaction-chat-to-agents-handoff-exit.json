@@ -10,8 +10,8 @@
  "branch": "lane/hillclimb-chat-to-agents",
  "commits": [
   "270b593b2 perf(pa-tui): a handoff exits the session loop this iteration, not after the idle tick",
-  "c2adac69e fold 6588b19cf",
-  "890729100 fold c7ca05f10 (lane head, PR candidate)"
+  "890729100 fold c7ca05f10",
+  "78d3ea798 fold e40db3a16 (PR #2893 head; post-fold re-diff vs e40db3a16 = exactly the 19-line interactive.rs delta)"
  ],
  "build": {
   "sandbox_id": "vw7df00lxy40alaqcjbl98xl",
@@ -183,9 +183,9 @@
   "excluded": [],
   "notes": "60/60 trials valid, zero errors, zero precondition fails. r1 pair (base d09fb8f9d vs cand 270b593b2, VM qe2f86njdtddb63qxdp0ilkk, 04:19-04:47Z) is HISTORICAL: superseded by tip churn; its VM died at max runtime BEFORE its full gate log could be saved (its gate tail showed agents_view_search_e2e + pa-core --lib failing at the old candidate; neither reproduces at the new tip; its fmt/clippy were never verified) - r2 redid everything. Sandbox max-runtime death is the r1 VM lesson: r2 VM created with 12h cap."
  },
- "outcome": "confirmed at base c7ca05f10 (tip moved to 1507d399b+ during the cycle; evidence pinned at c7ca05f10/890729100; next fold batches at the next clean boundary)",
+ "outcome": "confirmed at base c7ca05f10; PR #2893 open at folded head 78d3ea798 (base e40db3a16); full-suite fleet_gate on the PR head in flight; tip moved during the cycle - final-head evidence cycle per merge bar",
  "decision": "pending orchestrator",
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2893",
  "record_path": "data/hillclimb/experiments/20260926-211702-interaction-chat-to-agents-handoff-exit.json",
  "session": {
   "worker": "perf-chat-to-agents-fast",
