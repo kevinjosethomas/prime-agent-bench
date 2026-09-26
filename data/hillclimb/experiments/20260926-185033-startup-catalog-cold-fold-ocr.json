@@ -5,13 +5,15 @@
  "approach": "Two surgical commits on pa-daemon session_store.rs, neither changing a row byte: (1) SessionScanAccumulator carries search_text_chars in lockstep with the one writer; append_capped_search_text takes and returns the running count (guard + append read the O(1) counter, fold stays O(messages)); lockstep + legacy-mirror unit tests added; the info_tests legacy reference fold now inlines the TS append (independent of the product helper). (2) The fold's BufReader capacity raised to SESSION_SCAN_READ_BUF_BYTES = 64KiB (line semantics, folded bytes, and resume cursor unchanged - only syscall chunking). Baseline-first evidence: per-stage replica probe split the cold fold at each tier; strace -cf census counted cold-pass syscalls at base and candidate.",
  "parity_notes": "Row/wire parity: the char counter equals chars().count() by construction (single writer updates it from exactly the chars it appends: space + taken chars; multibyte chars counted via the char iterator), proven by the lockstep test across multibyte/cap-cut/post-cap sequences and by identical probe checksums across ALL tiers and arms (100=762089, 1000=893085, 4096=3680629 on every slot both before and after). SessionInfo rows, JSONL bytes, wire/API, replay, streaming catalog, resume/torn-tail semantics untouched; the counter rides SessionScanState clones (clone_for_resume) like the corpus string. 64KiB buffer only changes read() chunking; read_line consumes identical lines. No TS semantic is reinterpreted: TS caps the same way; this only stops re-counting. Fixture audit on both VMs: shipped many-sessions tar verified (manifest sha fcc8f70a; 1099/1100 clean + the known stale-manifest row 100/01a0dad3 whose VM bytes equal the tarball sha 39fca708); 4096 tier is byte-exact 4x+96 copies of the 1000 tier (4096/4096 sha-verified).",
  "base": {
-  "revision": "6588b19cf1d96594b6b4b5ba6a5790f9d19dfcc2"
+  "revision": "7064d039a2e1d45b03d2d11bd70c020990b08b33",
+  "note": "current origin/rust tip at PR time; earlier pairs used 60e2e198c and 6588b19cf (see iterations)"
  },
  "branch": "lane/hillclimb-catalog-cold",
  "commits": [
   "43ce7e242",
   "563ab79ac",
-  "ae46502d6"
+  "ae46502d6",
+  "323f9fd20"
  ],
  "build": {
   "sandbox_id": "yg3h81ljfc28qt3kdsf8qzny",
@@ -20,7 +22,7 @@
   "lanehead_binary_bytes": 211634688,
   "probe_base_sha256": "3bf287789c7f78056f279d9ef132ba74a17717dbbd9f2aa5394515b61070900d",
   "probe_cand_sha256": "468114406261599898421fc052347d76d230b99fc311f65f730befc579091fdf",
-  "probe_note": "timing probe = pa-daemon example catalog_scan_probe (list_sessions, 7 passes, row checksum), identical source both arms; base probe at 6588b19cf, cand probe at lane head ae46502d6 (43ce7e242 counter + 563ab79ac 64KiB reads + fold merge of 6588b19cf); earlier arm shas: counter-only cand df1a6b96 (4b591fb5b superseded by fmt amend 43ce7e242), pre-fold cand e5bf3b67 (563ab79ac); base probe at 60e2e198c rebuilt twice = 1784dfab (reproducible)"
+  "probe_note": "timing probe = pa-daemon example catalog_scan_probe (list_sessions, 7 passes, row checksum), identical source both arms; base probe at 6588b19cf, cand probe at lane head ae46502d6 (43ce7e242 counter + 563ab79ac 64KiB reads + fold merge of 6588b19cf); earlier arm shas: counter-only cand df1a6b96 (4b591fb5b superseded by fmt amend 43ce7e242), pre-fold cand e5bf3b67 (563ab79ac); base probe at 60e2e198c rebuilt twice = 1784dfab (reproducible) | post-fold-2 (#2865 pa-tui click, disjoint from pa-daemon): base probe at 7064d039a rebuilt = SAME sha 3bf28778 (pa-daemon lib unchanged), cand probe at 323f9fd20 = SAME sha 4681144062 - the pair binaries carry over byte-identical"
  },
  "gates": {
   "fmt": "PASS at ae46502d6 (cargo fmt --all --check, clean tree; probe/diag example sources are UNTRACKED on the VM only and are stashed for gates)",
@@ -286,6 +288,13 @@
      "cold_1000": "-18.4% (70.18->57.29)",
      "cold_4096": "-16.9% (282.76->234.84)",
      "warm": "parity"
+    },
+    {
+     "pair": "counter+reads+fold2 323f9fd20 vs 7064d039a (post-fold-2, same VM, same arm binaries)",
+     "cold_100": "-20.8% (51.69->40.95)",
+     "cold_1000": "-15.9% (67.85->57.03)",
+     "cold_4096": "-17.7% (284.32->233.92)",
+     "warm": "parity (-1.6..-2.2%)"
     }
    ]
   }
