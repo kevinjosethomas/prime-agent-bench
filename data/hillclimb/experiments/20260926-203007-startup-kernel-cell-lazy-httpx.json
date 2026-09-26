@@ -279,7 +279,7 @@
   "excluded": [],
   "notes": "Same-VM paired design with the Rust side constant (probe sha asserted each leg); calibration between legs drifted 0.6%; zero overlap between legs in every pair at both pre-fold and folded head. Historical context only: pre-#2857-merge tip 4740935c cold-create 4852ms, first-boot cell 139ms / warm 18-26ms (VM thbuq3..., reaped). e2e PTY flake class documented under gates; not attributable to a one-file Python change with Rust zero-diff."
  },
- "outcome": "pending-reviewer-conversion (evidence complete; both reviewers pinged with full state)",
+ "outcome": "fully-cleared pending operator red-gate dispositions: orchestrator numeric review ACCEPTED; parity-adversary-fast EXPLICIT APPROVE on 98611c2b216089375683543e5f339fa04978c8fd (SHA-bound, frozen, converted 2026-09-26T21:2xZ \u2014 all five conversion conditions verified); parity-adversary-2-fast EXPLICIT APPROVE on the same SHA (effective 2026-09-26T21:18Z \u2014 flip conditions met under the registered-family treatment with the structural argument). Operator disposition items outstanding: benchmark non-applicability; a_bang known_reds registration (entry drafted in gates); kill_cancels environmental entry; stale-base/settle at merge time; broken-but-findable-httpx edge. No merge by this worker.",
  "decision": "orchestrator numeric review ACCEPTED (2026-09-26T20:50Z). Reviewer #1 parity-adversary-fast: MECHANISM-APPROVE, formal verdict held on CI disclosure+triage+settle; reviewer #2 parity-adversary-2-fast: BLOCK-convertible on CI reds; source review POSITIVE on all six parity items from BOTH. SETTLE: FROZEN at 98611c2b2 (both verdicts SHA-bound; any further fold voids them; websearch.py byte-identical re-verification rule recorded for any future re-fold). Flip conditions executed: shard-2 registration_refusal triage (solo-green head 3/3 + pure-base 3/3 + GREEN rerun in CI run 2); CI state fully disclosed here and in the PR; fleet_gate result disclosed; settle decision recorded. OUTSTANDING OPERATOR DISPOSITIONS before merge: (1) benchmark non-applicability standing red; (2) a_bang known_reds registration (proposed entry in gates section); (3) kill_cancels_mid_provider_wait environmental classification (proposed entry); (4) stale-base/merge-order vs the moved tip; (5) broken-but-findable-httpx edge (disclosed in PR body; improvement-direction). No merge by this worker.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2888",
  "record_path": "data/hillclimb/experiments/20260926-203007-startup-kernel-cell-lazy-httpx.json",
@@ -287,5 +287,5 @@
   "worker": "perf-kernel-cell-fast",
   "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-b5a015b1/01a0dc70-ba0d-7438-be6a-85c03a05e0f1.jsonl"
  },
- "timestamp": "2026-09-26T21:14:12.335422+00:00"
+ "timestamp": "2026-09-26T21:18:48.807628+00:00"
 }
