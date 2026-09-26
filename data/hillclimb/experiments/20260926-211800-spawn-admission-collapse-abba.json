@@ -142,7 +142,7 @@
   "excluded": [],
   "notes": "All legs n=4/trial-set valid (no spawn failures). The known-red flake is unrelated to this change (create-path session-file writes vs the supervisor worker-route availability race; solo-green documented). Binary attribution exact per trial (driver-recorded sha). The candidate binary was built from the pre-split source; the split commit moves tests between files with zero code change (disclosed; the shipped ELF is built from the folded head by the release contract)."
  },
- "outcome": "mechanism-proven, timing-corroborated, regime-labeled",
+ "outcome": "MERGED: PR #2892 squash-merged into origin/rust as 543ea4181 under the standing autonomous-merge authorization (numeric review ACCEPTED + both adversarial reviewers' SHA-bound EXPLICIT APPROVEs at 7946239295640347b1165de849737b9b26b36b7a + CI green at the head verified by both reviewers + standing dispositions). Mechanism claim shipped: every fresh create (daemon boot + spawned child) issues ONE durable write instead of three (-3 durability syscalls per fresh create, renames 2->1); user-facing effect: one fresh-write storage stall removed per rlm.spawn admission (~40-78ms in the degraded regimes dominating this host class, ~1-2ms quiet).",
  "decision": "PR opened on lane/spawn-admission-collapse (folded head of org/rust 1a7b4d3ec) with the paired evidence; NO merge by this lane (merge bar: numeric review + both adversarial APPROVEs on the final PR SHA + standard dispositions). The user-facing gain is host-regime-dependent: one fresh-write stall per spawn admission (~40-78ms in the degraded regimes dominating this host class; ~1-2ms quiet), plus one fewer durability op on every daemon-boot session create.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2892",
  "record_path": "data/hillclimb/experiments/20260926-211800-spawn-admission-collapse-abba.json",
@@ -150,5 +150,10 @@
   "worker": "perf-spawn-admission-fast",
   "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-4e026d15"
  },
- "timestamp": "2026-09-26T21:20:00Z"
+ "timestamp": "2026-09-26T21:20:00Z",
+ "merged_as": {
+  "squash_sha": "543ea4181",
+  "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2892",
+  "review_head_sha": "7946239295640347b1165de849737b9b26b36b7a"
+ }
 }
