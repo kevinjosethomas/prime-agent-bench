@@ -1,0 +1,170 @@
+{
+  "id": "20260926-035104-startup-kernel-boot-override-parity",
+  "axis": "startup",
+  "hypothesis": "Repeated Python process imports to check a prepared kernel venv dominate production kernel provisioner ensure time.",
+  "approach": "Memoize runtime-ready probes with a content identity of installed rlm and dill plus installed interpreter and bootstrap version, preserving out-of-band repair; fast-path cold/restore/restart in bootstrap/venv.rs, manager/startup.rs, provisioner.rs.",
+  "parity_notes": "Explicit caller-owned PRIME_AGENT_KERNEL_PYTHON retains prior RLM-only readiness: VM-scratch no-snapshot probe on pure base and candidate with installed dill removed checked `print(1+1)==2` and persisted x=12. Auto-managed kernel venv separately probes dill on memo miss, then repairs installed dill/rlm damage next first-start and restores snapshot/kill-restart. This preserves frozen RLM API/wire/session replay; Linux x86_64 measured, macOS unmeasured. No claim to arbitrary non-witness damage repair.",
+  "base": {
+    "revision": "1ce0d94b1faff746b6ad78137a6cc9541ca4a7c1"
+  },
+  "branch": "lane/hillclimb-kernel-boot",
+  "commits": [
+    "78334a50b",
+    "88db801b11be939e657a6fae1b9f4aaeee812fd2",
+    "96fa6adddbeb4d65af11b828e62b158344dbd8ad",
+    "c403714316e7f4810ede47276e7a29c6d93d2fd6",
+    "44f4c053a17ed274fee9eddc7a14c470db15ea15",
+    "56b1df2154ccddb2844494071b7b81bcf310d0b7",
+    "f18c0ac299d31580f52d1f78fc29c3f518900002",
+    "3aa141eb86704a4cff998ecc717b9182afbb2662",
+    "f372886f747d2a94ff1eab21d859165b3588aaf3",
+    "dd4c4fd0b13809d991f5c0b2eedd40a72915e5fb",
+    "c5490d5ed4bcff58f2b334d3fd4b60af94a83491",
+    "d14a9ab60c8f47d9163f15a4422928f4599f4b6e",
+    "0761f1b25dae46663681c1b01693ee2ca07fb1ef"
+  ],
+  "build": {
+    "sandbox_id": "ud9dwuqzh3eehm4x6pwp0k36",
+    "binary_sha256": "8f669c1d0c67c59ce2387163759cc83586de29f37fdf88105c59cf784ce3d435",
+    "binary_bytes": 4998136,
+    "build_seconds": 27.41,
+    "toolchain": "rustup 1.98.1"
+  },
+  "gates": {
+    "fmt": "pass (0761f1b25)",
+    "clippy": "pass (0761f1b25 workspace all-targets -D warnings)",
+    "test": "pending workspace at 0761f1b25; earlier dd4c/bc412 workspace VM PASS, c549/85ca workspace VM RED on pa-ai OAuth dead-callback timeout (also public CI); exact isolated pure base/candidate PASS. Public CI benchmark 0/0 TS wrong-adapter failure remains RED pending operator disposition."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "cold_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 123.084137,
+          "p95_ms": 203.977486,
+          "values_ms": [
+            221.02185999999998,
+            110.066745,
+            123.644394,
+            121.987281,
+            122.52388,
+            152.844364
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 74.4863605,
+          "p95_ms": 221.91651625,
+          "values_ms": [
+            188.439289,
+            81.85306100000001,
+            66.698382,
+            233.075592,
+            49.576217,
+            67.11966
+          ]
+        },
+        "delta_pct": -39.48337916201176,
+        "regression": false
+      },
+      "snapshot_restore_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 147.6370365,
+          "p95_ms": 184.80143475,
+          "values_ms": [
+            146.448768,
+            116.201407,
+            137.52326300000001,
+            191.46383,
+            164.814249,
+            148.825305
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 72.685983,
+          "p95_ms": 91.37741025,
+          "values_ms": [
+            69.63817399999999,
+            92.388143,
+            75.733792,
+            69.00653299999999,
+            52.872006,
+            88.345212
+          ]
+        },
+        "delta_pct": -50.767107818504606,
+        "regression": false
+      },
+      "kill_restart_ensure": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 143.81985500000002,
+          "p95_ms": 197.34123025,
+          "values_ms": [
+            139.242312,
+            163.262203,
+            132.356692,
+            148.397398,
+            119.74819600000001,
+            208.700906
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 62.872772999999995,
+          "p95_ms": 83.27582425,
+          "values_ms": [
+            85.79118700000001,
+            62.399511999999994,
+            63.346033999999996,
+            55.940878999999995,
+            75.729736,
+            58.72158
+          ]
+        },
+        "delta_pct": -56.28366264171245,
+        "regression": false
+      }
+    },
+    "extra": {
+      "probe_source_sha256": "a916a1a3d63b49cde99b42343438bb673f11c23a5e49a1c942282b6e78478436",
+      "vm_id": "ud9dwuqzh3eehm4x6pwp0k36",
+      "trial_order": "A1/B1/B2/A2, 3 trials/leg",
+      "base_probe_sha256": "8f552e1651c518681f19af1cb042fffe353be0adce5157fd095103ee0dd8ebc8",
+      "candidate_probe_sha256": "8f669c1d0c67c59ce2387163759cc83586de29f37fdf88105c59cf784ce3d435",
+      "scope": "IpythonKernelProvisioner::ensure, not user-visible TUI ready",
+      "managed_dill_check": "runtime+separate dill import only on cold memo miss, installed rlm/dill content-hash memo identity on hit; cap 16 entries",
+      "base_probe_bytes": 4977240,
+      "custom_no_snapshot_source_sha256": "4693c9093126357cd823623c04a4ae4c0a1b23590dd42e5a0eab7bb38afe0761"
+    }
+  },
+  "validity": {
+    "excluded": [
+      "Original PTY mock Python syntax was invalid (print marker then %who); response routing and marker-only output did not establish execution.",
+      "Corrected PTY fixture executed a checked cell but readiness detector timed out. All old PTY kernel.cell_exec and marker-only cold_start rows excluded.",
+      "Prior b0 family-edge workspace gate and isolated baseline both red; #2828 upstream fixture subsequently fixed.",
+      "Earlier 91eed head candidate first and second full suite failed different tests (agents_view_search and supervisor stats); both exact isolated tests green on candidate and pure base; not relabeled pass.",
+      "Prior c549/85ca workspace VM and dd4/bc public CI pa-ai OAuth dead-callback timeout at openai_codex.rs:932. Both pure bc base and dd4 candidate exact isolated passed, but red suite is not green.",
+      "Public PR benchmark attempted TS adapter/npm ci with missing package lock, 0/0 trials; invalid for Rust kernel performance. CI remains red pending operator decision."
+    ],
+    "notes": "Exact 1ce/0761 same-VM ABBA all output/state/snapshot assertions valid (6 per side), but load higher and cold outliers; these timings include separate dill interpreter probe on managed memo miss. Earlier ignored live witness initially failed due fixture omitting dill; repaired fixture copies installed rlm+dill, explicitly executed pass. Memo bound 16 entries. Scratch custom no-snapshot source SHA 4693c9093126357cd823623c04a4ae4c0a1b23590dd42e5a0eab7bb38afe0761; all logs remain on VM. Default managed rlm/dill out-of-band removal repair and snapshot/restore/restart passed at d14. MacOS unmeasured."
+  },
+  "outcome": "in-progress",
+  "decision": "Review-only PR #2857, orchestrator numeric and formal adversarial approvals pending exact latest gates, red CI disposition, and final SHA; do not merge.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2857",
+  "record_path": "data/hillclimb/experiments/20260926-035104-startup-kernel-boot-override-parity.json",
+  "session": {
+    "worker": "perf-kernel-boot",
+    "session_dir": "/root/bench-root/homes/rust/trials/kernel_cell_exec-20260926-014925-kernel-boot-fixture-aa-base-00/agent/sessions/01a0db67-5ff7-747f-bb4d-764646d14307.jsonl"
+  },
+  "timestamp": "2026-09-26T03:51:04.167251+00:00"
+}
