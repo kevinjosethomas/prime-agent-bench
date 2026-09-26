@@ -1,0 +1,293 @@
+{
+ "id": "20260926-193312-interaction-msgsend-settle-decompose",
+ "axis": "interaction",
+ "hypothesis": "The msgsend ~689-692ms p50 submit_to_settle (unchanged across four prior heads, never decomposed) hides a dominant parity-safe product cost somewhere between submit->ack (0.2ms since #2868), provider request->first token, streaming body, and turn_end->settle (assistant write, session append, UI settle).",
+ "approach": "BASELINE DECOMPOSITION ONLY, no code changes, no commits on any lane branch. A single-VM (fct6ne9kszq00r72pdk2jlud, 16c/32GB ubuntu:22.04) controlled scripted-turn matrix at origin/rust tip 7064d039a replicates the bench compare.msg_send mock-regime protocol BYTE-EXACTLY (120x40 PTY; probe-input-ready Zq7x walk; erase_all; typed prompt 'bench hello'; Enter; ack = first PTY chunk after Enter; settle = DEFAULT_REPLY[:20] visible in whitespace-normalized screen + 600ms screen-hash stability at 0.02s polls) and adds decomposition instrumentation: exact per-chunk PTY ledger + per-chunk screen digests, session-JSONL row-arrival watcher (2ms poll; row's own ISO timestamps), PI_REQUEST_TIMING=1 (#2852) request-phase entries, per-process CPU/RSS/PSS sampler (100ms), pre/mid/post spin calibration, loadavg. Provider variants (24 trials total, sequential same-VM): http (bench mock_provider.py SSE on 127.0.0.1:8890 + models.json prime-inference/mock-1 + TUI --provider/--model/--offline - the ORIGINAL 690ms evidence's exact provider path), faux-unpaced (PRIME_AGENT_FAUX_SCRIPT engine:faux, in-process, brief-mandated), faux-800 (engine:faux tokensPerSecond=800). 2 warm trials + 4 PI_REQUEST_TIMING-off controls. One strace -f diagnostic trial (not used for timing evidence) to root-cause a ~20ms worker park.",
+ "parity_notes": "No product edits; nothing merged; frozen parity untouched. Trial protocol fidelity: typed prompt session rows contain exactly 'bench hello' (0 probe-token leftovers across all 24 trials); within-variant session JSONL rows identical modulo ids/timestamps/cwd (rows 1-6 byte-identical per variant); http variant rows carry prime-inference/mock-1, faux variant rows carry the daemon default model (TUI launched without --provider/--model per the streaming-lane pattern) - disclosed protocol difference that does not touch the measured path. Driver/harness files live in /home/ubuntu/hillclimb/fixtures/msgsettle/ (bench repo untouched outside this record).",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a"
+ },
+ "branch": "none (baseline-only decomposition; no lane commits)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "fct6ne9kszq00r72pdk2jlud",
+  "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_bytes": 212081960,
+  "build_seconds": 88,
+  "toolchain": "rustup 1.98.1",
+  "tip_verification": "origin/rust fetched inside the VM at clone time = 7064d039a (no drift; tip unchanged through the measurement window)"
+ },
+ "gates": {
+  "fmt": "not-run (no code changes)",
+  "clippy": "not-run (no code changes)",
+  "test": "not-run (no code changes)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "msgsend.settle_decompose.http_original_path": {
+    "description": "http variant: bench mock SSE provider (the original 690ms evidence's exact provider path); n=9 (6 timing-on + 1 warm + 2 timing-off controls)",
+    "submit_to_ack_ms": {
+     "p50": 0.3,
+     "values": [
+      0.2,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.4,
+      0.4,
+      0.5
+     ]
+    },
+    "submit_to_last_paint_ms": {
+     "p50": 36.53,
+     "values": [
+      18.96,
+      19.74,
+      20.0,
+      36.5,
+      36.53,
+      37.15,
+      37.77,
+      38.05,
+      38.47
+     ],
+     "note": "bimodal: final text frame waits for the worker TurnStreamCoalescer 50ms flush tick (classes ~19-20ms and ~36-39ms by tick phase)"
+    },
+    "submit_to_needle_visible_ms": {
+     "p50": 52.1,
+     "values": [
+      28.0,
+      29.8,
+      30.2,
+      52.0,
+      52.1,
+      52.7,
+      53.1,
+      53.2,
+      54.4
+     ],
+     "note": "settle-loop's own 0.02s poll grid"
+    },
+    "enter_to_stable_poll_ms": {
+     "p50": 74.2,
+     "values": [
+      50.4,
+      51.9,
+      52.3,
+      74.1,
+      74.2,
+      74.8,
+      75.3,
+      75.4,
+      76.5
+     ]
+    },
+    "stable_poll_to_settle_ms": {
+     "p50": 620.6,
+     "values": [
+      610.8,
+      619.8,
+      619.9,
+      619.9,
+      620.6,
+      620.8,
+      620.8,
+      620.9,
+      621.5
+     ],
+     "note": "THE DELIBERATE SETTLE WAIT: benchmark's 600ms screen-stability window + 0.02s poll quantization"
+    },
+    "submit_to_settle_ms": {
+     "p50": 694.0,
+     "values": [
+      671.0,
+      672.1,
+      672.7,
+      687.3,
+      694.0,
+      694.7,
+      695.7,
+      696.1,
+      696.3
+     ]
+    },
+    "worker_phases_p50_ms": {
+     "enter_to_user_row_append": 3.67,
+     "enter_to_turn_dispatch_prompt_built": 23.84,
+     "dispatch_to_prompt_built": 0.0,
+     "request_sent_to_first_byte": 1.35,
+     "first_byte_to_first_token": 0.15,
+     "first_token_to_stream_done": 0.1,
+     "stream_done_total_from_dispatch": 1.9,
+     "enter_to_assistant_row_append": 25.69,
+     "request_bytes": 32623,
+     "note": "enter_to_turn_dispatch is bimodal [5.68, 10.02, 23.69, 23.99, 26.34, 30.07]: the slow class pays a ~20ms auth-storage lock-contention retry (see extra.auth_lock_strace)"
+    }
+   },
+   "msgsend.settle_decompose.faux_unpaced": {
+    "description": "in-process faux provider, unpaced (brief-mandated variant); n=7 (6 timing-on + 1 warm)",
+    "submit_to_ack_ms": {
+     "p50": 0.3,
+     "values": [
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.3,
+      0.4,
+      0.4
+     ]
+    },
+    "submit_to_last_paint_ms": {
+     "p50": 19.68,
+     "values": [
+      19.35,
+      19.49,
+      19.52,
+      19.68,
+      20.13,
+      20.32,
+      20.39
+     ]
+    },
+    "submit_to_needle_visible_ms": {
+     "p50": 30.4,
+     "values": [
+      27.9,
+      28.3,
+      29.7,
+      30.4,
+      31.4,
+      32.5,
+      32.6
+     ]
+    },
+    "enter_to_stable_poll_ms": {
+     "p50": 52.5,
+     "values": [
+      50.2,
+      50.4,
+      51.4,
+      52.5,
+      53.3,
+      54.6,
+      54.7
+     ]
+    },
+    "stable_poll_to_settle_ms": {
+     "p50": 621.4,
+     "values": [
+      600.4,
+      607.8,
+      621.2,
+      621.3,
+      621.4,
+      622.0,
+      622.1
+     ]
+    },
+    "submit_to_settle_ms": {
+     "p50": 673.9,
+     "values": [
+      652.7,
+      657.8,
+      672.8,
+      673.9,
+      674.2,
+      674.6,
+      676.8
+     ]
+    },
+    "worker_phases_p50_ms": {
+     "enter_to_user_row_append": 2.41,
+     "enter_to_turn_dispatch_prompt_built": 2.64,
+     "stream_done_total_from_dispatch": 0.5,
+     "enter_to_assistant_row_append": 4.41
+    }
+   },
+   "msgsend.settle_decompose.faux_800tps": {
+    "description": "in-process faux provider paced 800 tok/s (streaming-body variant); n=8 (6 timing-on + 2 controls)",
+    "submit_to_settle_ms": {
+     "p50": 694.9,
+     "values": [
+      682.3,
+      693.9,
+      694.2,
+      694.6,
+      695.2,
+      695.4,
+      695.8,
+      696.0
+     ]
+    },
+    "submit_to_last_paint_ms": {
+     "p50": 37.5,
+     "values": [
+      35.82,
+      36.35,
+      36.36,
+      37.43,
+      37.56,
+      37.7,
+      37.72,
+      38.0
+     ]
+    },
+    "first_token_to_stream_done_ms": {
+     "p50": 23.4,
+     "values": [
+      23.4,
+      23.4,
+      23.4,
+      23.4,
+      23.5,
+      23.5
+     ],
+     "note": "faux pacing of the 61-char reply; body pacing rides the same coalescer tick so paint stays in the ~36-38ms class"
+    },
+    "enter_to_assistant_row_append": {
+     "p50": 26.04
+    }
+   }
+  },
+  "extra": {
+   "settle_metric_arithmetic": "p50 http: enter_to_stable 74.2ms + stable_to_settle 620.6ms = 694.8ms ~= measured 694.0ms; the metric is 89.4% deliberate 600ms stability window + 0.02s poll grid, 10.6% turn+detector",
+   "turn_decomposition_http_p50": {
+    "submit_to_ack": "0.3ms (TUI off-render-path submit, #2868 class)",
+    "ack_to_user_row_append": "~3.4ms (daemon route + worker admission + durable JSONL append)",
+    "user_row_to_turn_dispatch": "~20ms in 4/6 timing-on trials (auth-storage lock retry; fast class 3-8ms otherwise)",
+    "dispatch_to_stream_done": "1.9ms (incl. 1.35ms localhost HTTP+SSE mock roundtrip, 0.15ms provider parse, 0.1ms body)",
+    "stream_done_to_assistant_row": "~1-2ms (final message assembly + durable append)",
+    "assistant_row_to_last_paint": "~11ms (worker coalescer 50ms flush tick phase + TUI 16ms frame scheduler + PTY)"
+   },
+   "auth_lock_strace": "strace -f on one diagnostic trial (timings not evidence): after the user-row append, two worker threads race AuthStorage with_lock (both openat auth.json O_CREAT|O_EXCL -> EEXIST at 19:23:23.77957/.77962), the loser takes acquire_lock's TS-parity contention path and clock_nanosleeps EXACTLY 20ms (19:23:23.779738, tv_nsec=20000000) before retrying; source crates/pa-core/src/auth/storage.rs acquire_lock ('TS acquireLockSyncWithRetry: 10 attempts, 20ms apart, retrying only contention (ELOCKED)'). Fresh-session http-provider turns pay it when the turn's model-resolution registry build ('built from scratch each call', agent_engine.rs resolve_model -> resolve_registry_model) and a second auth read race; faux turns skip the registry chain entirely (cached faux model) and show no 20ms class. Candidate-class, NOT edited: TS-parity retry structure, ~20ms, only the fresh-session race window, invisible under the metric's 20ms poll grid.",
+   "protocol_replica_fidelity": "submit_to_settle p50 694.0ms http vs the original msgsend evidence's 688.9-692.5ms across four heads - same class; ack 0.3ms matches the post-#2868 arm; settle loop, needle, screen-hash, poll cadence, typing/erase/probe semantics replicated verbatim from bench/adapters/benchmarks/msg_send.py + core/harness.py + adapters/terminals/pty.py",
+   "pi_request_timing_controls": "4 timing-off controls (http-nt1/nt2, faux800-nt1/nt2): settle 671.4-694.7ms, same classes as timing-on; PI_REQUEST_TIMING overhead not visible above the protocol's 20ms poll grid",
+   "calibration": "spin calibration pre/post per trial; loadavg <= 2.0 on the 16-core VM throughout; single sequential driver, no cross-VM comparison"
+  }
+ },
+ "validity": {
+  "excluded": [
+   "smoke1 (driver erase_all needle bug: submitted prompt carried probe prefix 'Zq7x0bench hello'; fixed to bench-exact erase semantics before the final 24-trial matrix)",
+   "strace-http1 (strace -f overhead; syscall-timeline evidence only)",
+   "diag-http1..3 (mock GET-logging probe; timing not recorded)"
+  ],
+  "notes": "All 24 matrix trials completed=true with ack+settle validation; mock server requests log: exactly one 222-byte completion POST per http trial; session rows byte-identical within variant (modulo ids/timestamps/cwd); prompt row = exactly 'bench hello' in all trials (grep Zq7x count 0). Same VM, same binary (sha 994c5563...) for every trial; binary rebuilt at tip 7064d039a inside the VM."
+ },
+ "outcome": "discarded (negative result, hypothesis refuted): the ~690ms submit_to_settle is NOT a product cost - ~89% is the compare.msg_send settle protocol's deliberate 600ms screen-stability window plus its 0.02s poll grid (620.6ms p50 from first-stable-poll to settle fire); the visible turn paints in 19-38ms and its largest product-side items are parity-frozen or parity-parity mechanisms (worker coalescer 50ms flush tick; TS-parity auth-lock 20ms retry). No dominant parity-safe edit exists; no code changed.",
+ "decision": "Close msgsettle NEGATIVE per the brief's no-claim bar. The 690ms is the scripted turn's inherent content (the deliberate settle wait). Reported-only findings for other lanes/orchestrator: (1) fresh-session auth-lock contention ~20ms on http-provider first turns (TS-parity retry; would need a worker-side auth/model-resolution cache to remove - parity-sensitive, ~20ms, not pursued); (2) the settle METRIC itself has a 600ms floor by construction - any future submit_to_settle comparison should treat 690ms as protocol, not product, and the bench msg_send settle detector could optionally be re-specified (harness-only question for the orchestrator, NOT a product change).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-193312-interaction-msgsend-settle-decompose.json",
+ "session": {
+  "worker": "perf-msgsettle-fast",
+  "session_dir": "~/.prime/agent/sessions/01a0df1a-11b1-7502-b069-ec80bd4d6040.jsonl"
+ },
+ "timestamp": "2026-09-26T19:33:12Z",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/msgsettle/ (msgsettle-trials-evidence.tar.gz sha256 e298505f639050f190858a53679f2665e271f9ddaa58586a500f4f6144572980: 24 trials incl trace.json per-trial, matrix-run.log, analysis.json; strace-http1.log; analysis-final.json; driver msgsettle_bench.py + run_matrix.py + analyze.py + vendored mock provider + fixtures)",
+  "vm": "fct6ne9kszq00r72pdk2jlud (deleted after evidence pull)"
+ }
+}
