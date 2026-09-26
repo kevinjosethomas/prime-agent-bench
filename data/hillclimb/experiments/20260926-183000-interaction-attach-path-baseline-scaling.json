@@ -1,0 +1,1248 @@
+{
+ "id": "20260926-183000-interaction-attach-path-baseline-scaling",
+ "axis": "interaction",
+ "hypothesis": "daemon-side attach wall scales ~linearly with retained-window size (wire messages), and at Kevin-scale (~442k ctx) windows the attach phase is a growing, parity-safe target: at tip 60e2e198c the attach pays a full retained-window fold for the summary scalars (session_summary -> SessionFile::messages clone) plus a second fold for the snapshot payload, on top of the wire encode; the supervisor-routed fallback additionally parses + re-encodes the whole response.",
+ "approach": "BASELINE ONLY (no product edit). Pure tip release binary (rustc 1.98.1) on one 16c/32GB VM, same-VM sequential fresh-daemon probes over the REAL wire (supervisor socket + direct worker transport via ticket+peer_auth), 3 creates x per-fixture: create wall, noop floor (get_session_header), get_state (summary-fold proxy), get_messages (payload fold+encode proxy), slim attaches (supervisor-routed = CLI/fallback path; the supervisor forces slim for every socket client), direct-transport attaches (the pa-tui primary path: fresh link = open-like, reused link = Esc round-trip-like), direct get_state/get_messages (relay-free proxies), daemon worker RSS/PSS + per-command worker CPU deltas, wire bytes + message counts, one raw wire dump per fixture+kind, per-trial fixture prehash asserted (source pristine; post-copy grows by bookkeeping rows), pre/mid/post CPU calibration + loadavg gates.",
+ "fixtures": {
+  "canonical_10mib": {
+   "sha256": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda",
+   "rows": 7391,
+   "wire_messages": 7390,
+   "label": "stock full-window (no compaction), ~996k ctx-equiv by 10.5B/token"
+  },
+  "real_compacted_private": {
+   "sha256": "835c44732f333ff7088a918033fba5001b5f8ef6c03990e133f44710f3bb1be2",
+   "rows": 11923,
+   "retained_rows": 2972,
+   "retained_bytes": 3324678,
+   "label": "PRIVATE real compacted session; hashes/counts only in this record"
+  },
+  "synth_150k": {
+   "sha256": "eff19eb64a3cba18aa769bb9f8bae16121026ca9e3168dd33798b4891bd7ca53",
+   "generator": "attach-path-synthetic/1 seed 20260926",
+   "retained_rows": 1344,
+   "retained_bytes": 1618035,
+   "label": "SYNTH-150K-CTX-EQUIV-PROXY (synthetic dictionary content, real-schema shape; 10.5B/token heuristic)"
+  },
+  "synth_450k": {
+   "sha256": "fa45c5243ed6f0536202d33ee67cd56762e79a2fb041e86c66101966d9ff4923",
+   "generator": "attach-path-synthetic/1 seed 20260926",
+   "retained_rows": 4033,
+   "retained_bytes": 4774944,
+   "label": "SYNTH-450K-CTX-EQUIV-PROXY (synthetic; Kevin's ~442k scale class)"
+  }
+ },
+ "base": {
+  "revision": "60e2e198c52ee6537db2eeb72206218a0c5b464b"
+ },
+ "build": {
+  "sandbox_id": "iup0807aomd0xq8cii5793ie",
+  "binary_sha256": "4aba16d37d18ff41682883ca4a418c99bfbc8767a0669a374ace1c1996b96279",
+  "binary_bytes": 151296928,
+  "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential fresh-daemon probes over the real wire; wall = send -> full response; ttfb recorded separately",
+  "vm_calibration_s": {
+   "pre": 1.049,
+   "mid": [
+    1.05,
+    1.049,
+    1.057,
+    1.076
+   ],
+   "post": 1.056
+  },
+  "noop_floor_ms_p50": {
+   "synth-150k": 0.05,
+   "real-316k": 0.05,
+   "synth-450k": 0.05,
+   "canon-10mib": 0.06
+  },
+  "suites": {
+   "synth-150k": {
+    "create_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 361.2,
+     "min_ms": 298.3,
+     "max_ms": 388.7,
+     "values_ms": [
+      388.7,
+      361.2,
+      298.3
+     ]
+    },
+    "noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.05,
+     "min_ms": 0.03,
+     "max_ms": 0.2,
+     "values_ms": [
+      0.14,
+      0.05,
+      0.04,
+      0.03,
+      0.03,
+      0.2,
+      0.07,
+      0.06,
+      0.06,
+      0.05,
+      0.17,
+      0.07,
+      0.05,
+      0.05,
+      0.05
+     ]
+    },
+    "get_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 3.85,
+     "min_ms": 3.6,
+     "max_ms": 5.87,
+     "values_ms": [
+      5.31,
+      4.41,
+      4.22,
+      3.85,
+      3.69,
+      3.65,
+      3.64,
+      5.02,
+      3.91,
+      3.6,
+      3.62,
+      3.67,
+      3.65,
+      3.6,
+      5.46,
+      5.87,
+      4.28,
+      3.93,
+      3.76,
+      3.72,
+      3.85
+     ]
+    },
+    "get_messages_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 18.95,
+     "min_ms": 17.2,
+     "max_ms": 22.37,
+     "values_ms": [
+      20.18,
+      22.33,
+      21.61,
+      20.2,
+      19.97,
+      19.88,
+      22.37,
+      18.95,
+      21.26,
+      19.05,
+      17.2,
+      17.9,
+      18.05,
+      18.32,
+      22.31,
+      18.01,
+      18.06,
+      17.25,
+      17.2,
+      17.76,
+      18.16
+     ]
+    },
+    "attach_slim_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 27.6,
+     "min_ms": 27.0,
+     "max_ms": 28.2,
+     "values_ms": [
+      27.0,
+      28.2,
+      27.6
+     ]
+    },
+    "attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 27.5,
+     "min_ms": 23.5,
+     "max_ms": 30.2,
+     "values_ms": [
+      27.7,
+      27.5,
+      28.2,
+      26.3,
+      27.3,
+      27.1,
+      30.2,
+      24.2,
+      23.5,
+      23.5,
+      27.7,
+      28.1,
+      27.2,
+      28.5,
+      27.7
+     ]
+    },
+    "attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 26.0,
+     "min_ms": 22.8,
+     "max_ms": 28.1,
+     "values_ms": [
+      25.3,
+      26.4,
+      27.3,
+      23.6,
+      22.8,
+      26.0,
+      28.0,
+      28.1,
+      25.5
+     ]
+    },
+    "direct_peer_auth_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.2,
+     "min_ms": 0.2,
+     "max_ms": 0.2,
+     "values_ms": [
+      0.2,
+      0.2,
+      0.2
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 15.6,
+     "min_ms": 13.5,
+     "max_ms": 18.4,
+     "values_ms": [
+      13.5,
+      18.4,
+      14.4,
+      15.5,
+      15.7,
+      14.7,
+      15.6,
+      16.3,
+      17.0
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 13.3,
+     "min_ms": 12.0,
+     "max_ms": 14.6,
+     "values_ms": [
+      13.3,
+      12.4,
+      12.5,
+      12.8,
+      13.3,
+      13.3,
+      13.5,
+      12.0,
+      12.6,
+      12.1,
+      14.6,
+      14.5,
+      14.2,
+      14.1,
+      14.3
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 3.7,
+     "min_ms": 3.6,
+     "max_ms": 5.5,
+     "values_ms": [
+      4.6,
+      4.0,
+      3.8,
+      3.7,
+      3.7,
+      3.7,
+      3.7,
+      4.3,
+      3.9,
+      3.7,
+      3.7,
+      3.7,
+      3.6,
+      3.6,
+      5.5,
+      4.5,
+      4.1,
+      3.8,
+      3.7,
+      3.8,
+      3.7
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 8.5,
+     "min_ms": 7.7,
+     "max_ms": 14.6,
+     "values_ms": [
+      8.1,
+      7.9,
+      9.5,
+      8.6,
+      8.3,
+      8.1,
+      8.4,
+      7.7,
+      8.1,
+      7.9,
+      14.5,
+      10.8,
+      9.2,
+      9.1,
+      8.4,
+      9.5,
+      14.6,
+      9.4,
+      9.1,
+      8.5,
+      8.0
+     ]
+    },
+    "get_state_post_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 4.44,
+     "min_ms": 3.88,
+     "max_ms": 6.18,
+     "values_ms": [
+      5.07,
+      4.0,
+      3.88,
+      6.18,
+      4.86,
+      4.44,
+      5.21,
+      4.09,
+      3.88
+     ]
+    }
+   },
+   "real-316k": {
+    "create_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 536.7,
+     "min_ms": 524.9,
+     "max_ms": 555.2,
+     "values_ms": [
+      536.7,
+      524.9,
+      555.2
+     ]
+    },
+    "noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.05,
+     "min_ms": 0.04,
+     "max_ms": 0.24,
+     "values_ms": [
+      0.24,
+      0.07,
+      0.05,
+      0.05,
+      0.04,
+      0.15,
+      0.06,
+      0.05,
+      0.04,
+      0.05,
+      0.17,
+      0.06,
+      0.04,
+      0.04,
+      0.04
+     ]
+    },
+    "get_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 4.6,
+     "min_ms": 4.16,
+     "max_ms": 8.12,
+     "values_ms": [
+      6.7,
+      6.11,
+      5.73,
+      5.07,
+      4.48,
+      4.22,
+      4.16,
+      6.0,
+      5.18,
+      4.62,
+      4.39,
+      4.36,
+      4.19,
+      4.16,
+      8.12,
+      6.2,
+      5.47,
+      4.6,
+      4.4,
+      4.46,
+      4.35
+     ]
+    },
+    "get_messages_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 21.72,
+     "min_ms": 18.17,
+     "max_ms": 25.99,
+     "values_ms": [
+      20.6,
+      18.94,
+      19.22,
+      18.17,
+      18.65,
+      20.87,
+      19.08,
+      22.11,
+      22.85,
+      22.62,
+      25.99,
+      20.25,
+      19.18,
+      18.55,
+      22.32,
+      22.16,
+      21.72,
+      21.93,
+      22.28,
+      24.45,
+      22.52
+     ]
+    },
+    "attach_slim_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 29.9,
+     "min_ms": 27.4,
+     "max_ms": 30.2,
+     "values_ms": [
+      30.2,
+      27.4,
+      29.9
+     ]
+    },
+    "attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 27.2,
+     "min_ms": 23.3,
+     "max_ms": 35.0,
+     "values_ms": [
+      27.2,
+      26.6,
+      26.0,
+      32.7,
+      29.4,
+      30.0,
+      25.4,
+      24.1,
+      23.8,
+      23.3,
+      29.5,
+      29.2,
+      31.1,
+      27.0,
+      35.0
+     ]
+    },
+    "attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 25.9,
+     "min_ms": 23.4,
+     "max_ms": 27.2,
+     "values_ms": [
+      27.2,
+      25.9,
+      26.3,
+      24.0,
+      23.7,
+      26.7,
+      24.4,
+      26.8,
+      23.4
+     ]
+    },
+    "direct_peer_auth_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.2,
+     "min_ms": 0.2,
+     "max_ms": 0.2,
+     "values_ms": [
+      0.2,
+      0.2,
+      0.2
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 15.8,
+     "min_ms": 14.3,
+     "max_ms": 20.8,
+     "values_ms": [
+      14.3,
+      20.8,
+      15.9,
+      16.5,
+      15.8,
+      18.3,
+      14.8,
+      14.7,
+      14.9
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 17.5,
+     "min_ms": 13.9,
+     "max_ms": 23.3,
+     "values_ms": [
+      14.3,
+      14.5,
+      14.1,
+      13.9,
+      14.0,
+      17.7,
+      17.6,
+      18.1,
+      17.5,
+      17.9,
+      15.7,
+      14.7,
+      23.3,
+      18.1,
+      18.3
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 4.6,
+     "min_ms": 4.2,
+     "max_ms": 7.4,
+     "values_ms": [
+      5.3,
+      4.7,
+      4.4,
+      4.2,
+      4.3,
+      4.4,
+      4.3,
+      7.2,
+      6.1,
+      5.3,
+      4.8,
+      4.6,
+      4.5,
+      4.5,
+      7.4,
+      6.3,
+      5.6,
+      5.0,
+      4.5,
+      4.3,
+      4.3
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 10.2,
+     "min_ms": 8.3,
+     "max_ms": 14.2,
+     "values_ms": [
+      8.3,
+      10.2,
+      9.9,
+      10.0,
+      9.8,
+      9.8,
+      14.2,
+      8.8,
+      10.6,
+      10.2,
+      10.5,
+      9.9,
+      10.4,
+      10.2,
+      8.8,
+      12.2,
+      12.0,
+      12.6,
+      12.4,
+      12.2,
+      12.0
+     ]
+    },
+    "get_state_post_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 6.29,
+     "min_ms": 4.68,
+     "max_ms": 9.09,
+     "values_ms": [
+      9.09,
+      6.56,
+      5.7,
+      6.29,
+      5.04,
+      4.68,
+      7.97,
+      6.64,
+      6.14
+     ]
+    }
+   },
+   "synth-450k": {
+    "create_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 778.6,
+     "min_ms": 772.7,
+     "max_ms": 781.5,
+     "values_ms": [
+      772.7,
+      778.6,
+      781.5
+     ]
+    },
+    "noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.05,
+     "min_ms": 0.04,
+     "max_ms": 0.23,
+     "values_ms": [
+      0.23,
+      0.07,
+      0.05,
+      0.04,
+      0.04,
+      0.2,
+      0.07,
+      0.05,
+      0.05,
+      0.05,
+      0.21,
+      0.08,
+      0.05,
+      0.05,
+      0.04
+     ]
+    },
+    "get_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 15.05,
+     "min_ms": 13.73,
+     "max_ms": 22.99,
+     "values_ms": [
+      17.15,
+      15.15,
+      14.85,
+      14.33,
+      14.2,
+      13.97,
+      15.52,
+      19.59,
+      15.71,
+      16.26,
+      14.66,
+      14.3,
+      13.94,
+      13.73,
+      22.99,
+      20.85,
+      15.91,
+      15.86,
+      15.05,
+      14.57,
+      15.05
+     ]
+    },
+    "get_messages_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 70.45,
+     "min_ms": 67.16,
+     "max_ms": 83.85,
+     "values_ms": [
+      82.97,
+      73.66,
+      68.64,
+      70.9,
+      70.45,
+      67.71,
+      68.62,
+      78.2,
+      77.27,
+      69.53,
+      70.05,
+      67.43,
+      77.79,
+      69.61,
+      73.8,
+      83.85,
+      75.52,
+      79.53,
+      67.79,
+      67.16,
+      68.95
+     ]
+    },
+    "attach_slim_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 84.1,
+     "min_ms": 81.5,
+     "max_ms": 85.8,
+     "values_ms": [
+      84.1,
+      85.8,
+      81.5
+     ]
+    },
+    "attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 84.1,
+     "min_ms": 78.2,
+     "max_ms": 97.5,
+     "values_ms": [
+      83.7,
+      97.5,
+      82.1,
+      87.6,
+      80.7,
+      85.6,
+      81.5,
+      78.9,
+      84.1,
+      78.2,
+      92.0,
+      84.2,
+      91.5,
+      83.0,
+      85.9
+     ]
+    },
+    "attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 84.7,
+     "min_ms": 80.6,
+     "max_ms": 117.5,
+     "values_ms": [
+      89.9,
+      87.8,
+      84.7,
+      80.6,
+      82.5,
+      85.6,
+      82.7,
+      81.3,
+      117.5
+     ]
+    },
+    "direct_peer_auth_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.2,
+     "min_ms": 0.2,
+     "max_ms": 0.3,
+     "values_ms": [
+      0.3,
+      0.2,
+      0.2
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 50.5,
+     "min_ms": 46.9,
+     "max_ms": 52.9,
+     "values_ms": [
+      50.9,
+      50.5,
+      46.9,
+      49.6,
+      49.7,
+      52.9,
+      52.9,
+      50.0,
+      50.9
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 48.3,
+     "min_ms": 45.5,
+     "max_ms": 84.8,
+     "values_ms": [
+      46.5,
+      50.4,
+      84.8,
+      48.0,
+      52.6,
+      48.7,
+      57.7,
+      47.0,
+      48.6,
+      46.7,
+      48.3,
+      45.5,
+      46.0,
+      51.0,
+      47.5
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 14.9,
+     "min_ms": 14.1,
+     "max_ms": 23.5,
+     "values_ms": [
+      20.8,
+      16.6,
+      15.1,
+      14.7,
+      14.8,
+      16.1,
+      14.9,
+      16.9,
+      16.5,
+      14.8,
+      14.2,
+      14.1,
+      23.5,
+      16.6,
+      17.2,
+      15.0,
+      14.9,
+      14.8,
+      14.5,
+      14.4,
+      14.5
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 36.7,
+     "min_ms": 32.1,
+     "max_ms": 44.1,
+     "values_ms": [
+      33.9,
+      35.7,
+      37.5,
+      36.5,
+      35.4,
+      35.9,
+      38.4,
+      34.3,
+      38.3,
+      38.1,
+      38.4,
+      36.7,
+      44.1,
+      39.4,
+      32.1,
+      36.6,
+      36.0,
+      37.6,
+      36.6,
+      36.8,
+      39.2
+     ]
+    },
+    "get_state_post_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 16.03,
+     "min_ms": 14.75,
+     "max_ms": 25.65,
+     "values_ms": [
+      20.18,
+      15.53,
+      14.75,
+      25.65,
+      16.29,
+      16.03,
+      21.18,
+      15.66,
+      15.33
+     ]
+    }
+   },
+   "canon-10mib": {
+    "create_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 574.8,
+     "min_ms": 558.4,
+     "max_ms": 579.8,
+     "values_ms": [
+      574.8,
+      579.8,
+      558.4
+     ]
+    },
+    "noop_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 0.06,
+     "min_ms": 0.05,
+     "max_ms": 0.24,
+     "values_ms": [
+      0.24,
+      0.07,
+      0.06,
+      0.05,
+      0.05,
+      0.2,
+      0.08,
+      0.07,
+      0.06,
+      0.05,
+      0.2,
+      0.07,
+      0.05,
+      0.05,
+      0.05
+     ]
+    },
+    "get_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 23.77,
+     "min_ms": 21.95,
+     "max_ms": 40.03,
+     "values_ms": [
+      39.81,
+      31.07,
+      23.3,
+      23.43,
+      23.77,
+      22.2,
+      26.65,
+      40.03,
+      29.96,
+      24.85,
+      22.88,
+      22.37,
+      22.52,
+      22.41,
+      35.27,
+      30.01,
+      30.51,
+      23.88,
+      22.81,
+      22.91,
+      21.95
+     ]
+    },
+    "get_messages_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 121.45,
+     "min_ms": 113.43,
+     "max_ms": 180.3,
+     "values_ms": [
+      180.3,
+      133.37,
+      123.03,
+      117.49,
+      133.94,
+      119.01,
+      121.45,
+      133.56,
+      123.23,
+      114.84,
+      114.7,
+      113.43,
+      115.26,
+      113.79,
+      135.05,
+      130.84,
+      119.0,
+      138.05,
+      122.69,
+      114.44,
+      117.63
+     ]
+    },
+    "attach_slim_first_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 133.7,
+     "min_ms": 130.0,
+     "max_ms": 138.7,
+     "values_ms": [
+      138.7,
+      133.7,
+      130.0
+     ]
+    },
+    "attach_slim_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 133.5,
+     "min_ms": 125.1,
+     "max_ms": 151.2,
+     "values_ms": [
+      141.0,
+      134.6,
+      138.2,
+      133.2,
+      140.6,
+      132.9,
+      127.5,
+      130.2,
+      125.1,
+      146.4,
+      151.2,
+      133.0,
+      133.8,
+      131.7,
+      133.5
+     ]
+    },
+    "attach_legacy_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 136.3,
+     "min_ms": 126.6,
+     "max_ms": 145.4,
+     "values_ms": [
+      143.8,
+      136.3,
+      145.4,
+      126.6,
+      128.9,
+      132.9,
+      137.4,
+      131.1,
+      137.4
+     ]
+    },
+    "direct_peer_auth_ms": {
+     "trials": 3,
+     "valid": 3,
+     "p50_ms": 0.3,
+     "min_ms": 0.3,
+     "max_ms": 0.3,
+     "values_ms": [
+      0.3,
+      0.3,
+      0.3
+     ]
+    },
+    "direct_attach_fresh_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 81.1,
+     "min_ms": 74.3,
+     "max_ms": 89.8,
+     "values_ms": [
+      89.8,
+      83.9,
+      85.2,
+      77.1,
+      75.5,
+      76.8,
+      81.1,
+      83.4,
+      74.3
+     ]
+    },
+    "direct_reattach_ms": {
+     "trials": 15,
+     "valid": 15,
+     "p50_ms": 79.4,
+     "min_ms": 74.6,
+     "max_ms": 86.4,
+     "values_ms": [
+      78.4,
+      77.9,
+      82.0,
+      86.0,
+      79.4,
+      79.3,
+      78.3,
+      84.9,
+      77.6,
+      81.2,
+      86.4,
+      74.6,
+      80.6,
+      75.5,
+      80.3
+     ]
+    },
+    "direct_state_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 22.6,
+     "min_ms": 21.3,
+     "max_ms": 27.4,
+     "values_ms": [
+      27.4,
+      23.2,
+      22.5,
+      23.8,
+      22.4,
+      21.3,
+      22.5,
+      27.2,
+      23.9,
+      23.0,
+      22.0,
+      22.3,
+      22.2,
+      22.6,
+      26.5,
+      23.9,
+      23.3,
+      22.9,
+      22.3,
+      22.3,
+      21.8
+     ]
+    },
+    "direct_msgs_ms": {
+     "trials": 21,
+     "valid": 21,
+     "p50_ms": 65.3,
+     "min_ms": 54.6,
+     "max_ms": 73.4,
+     "values_ms": [
+      57.9,
+      68.2,
+      72.6,
+      66.7,
+      71.1,
+      65.4,
+      73.1,
+      57.9,
+      63.1,
+      71.6,
+      63.2,
+      73.4,
+      64.9,
+      65.8,
+      54.6,
+      62.0,
+      62.8,
+      65.3,
+      67.6,
+      61.2,
+      65.1
+     ]
+    },
+    "get_state_post_ms": {
+     "trials": 9,
+     "valid": 9,
+     "p50_ms": 26.46,
+     "min_ms": 22.76,
+     "max_ms": 31.02,
+     "values_ms": [
+      31.02,
+      24.56,
+      23.15,
+      29.69,
+      28.97,
+      26.46,
+      30.46,
+      24.19,
+      22.76
+     ]
+    }
+   }
+  }
+ },
+ "key_findings": {
+  "scaling_direct_reattach_p50_ms": {
+   "synth-150k": 13.3,
+   "real-316k": 17.5,
+   "synth-450k": 48.3,
+   "canon-10mib": 79.4
+  },
+  "scaling_supervisor_routed_p50_ms": {
+   "synth-150k": 27.5,
+   "real-316k": 27.2,
+   "synth-450k": 84.1,
+   "canon-10mib": 133.5
+  },
+  "wire_bytes_p50": {
+   "synth-150k": 1447615,
+   "real-316k": 1659541,
+   "synth-450k": 4290323,
+   "canon-10mib": 9476441
+  },
+  "wire_messages": {
+   "synth-150k": 1322,
+   "real-316k": 1444,
+   "synth-450k": 3966,
+   "canon-10mib": 7390
+  },
+  "summary_fold_share_of_direct_attach": {
+   "synth-150k": 27.8,
+   "real-316k": 26.3,
+   "synth-450k": 30.8,
+   "canon-10mib": 28.5
+  },
+  "supervisor_relay_overhead_ms": {
+   "synth-150k": 14.2,
+   "real-316k": 9.7,
+   "synth-450k": 35.8,
+   "canon-10mib": 54.1
+  },
+  "interpretation": "Attach wall scales ~linearly with retained wire size on BOTH client paths (direct 13.3->17.5->48.3->79.4ms across 1.45/1.66/4.29/9.48MB wire). The pa-tui primary (direct-transport) attach at the ~454k-ctx-equiv proxy is ~48ms, ~31% of it the summary fold (get_state relay-free 14.9ms) and ~69% the payload fold+encode+write (direct_msgs 36.7ms incl. one extra deep clone vs attach). The supervisor-routed fallback (and every non-direct client) pays an additional ~36-54ms parse+re-encode relay at scale. The 316k real fixture's wire is dominated by message/custom_message rows (custom thread_goal_state rows are skipped by SessionFile::messages), so wire-message count - not raw retained bytes - is the honest scaling variable."
+ },
+ "validity": {
+  "notes": "probe defect runs before this one are VOID (get_* commands missing activeSessionId; CPU/RSS read the supervisor pid instead of the worker): ap-baseline-run1 superseded; worker pid resolution + activeSessionId fixed in run2 (this record). Fixture prehash asserted per create (copy sha == source sha); post-copy grows by bookkeeping rows (source unchanged). 'Legacy' attach capability variant is VOID as a path label: the supervisor forces slim_attach on every routed attach (supervisor.rs client_command_payload), so attach_slim_ms and attach_legacy_ms measure the SAME path; kept as corroboration. Wire bytes: slim vs legacy differ only by the client.capabilities echo (13 bytes)."
+ },
+ "outcome": "baseline",
+ "session": {
+  "worker": "perf-attach-path-fast"
+ },
+ "timestamp": "2026-09-26T18:30:00+00:00"
+}
