@@ -1,0 +1,187 @@
+{
+ "id": "20260926-074124-memory-session-load-rss-final",
+ "axis": "memory",
+ "hypothesis": "Session load and attach-snapshot phases allocate several transient copies of the session body (whole-file String reads, parsed entry trees held alongside raw rows, deep-copied attach message trees); glibc keeps those freed pages resident per-arena for the process lifetime, so a grown session's load peak stays in RSS forever. Returning freed heap to the OS after each large transient phase + capping per-thread arenas should cut settled RSS of a loaded large session materially with no latency cost.",
+ "approach": "New pa-types memory_release module: cap_thread_arenas() (mallopt M_ARENA_MAX 8) called at startup in pa-cli and pa-daemon mains; trim_freed_heap() (malloc_trim(0)) after window walk/replay in agent_engine, after worker large-frame send (trim_freed_heap_if_large >=1MiB), after create/resume and hydrated-file commands, and after the TUI attach fold; streamed line-by-line SessionFile::open (BufReader, no whole-body String); windowed store raw/metadata rows consumed in place (take_raw_entries/take_metadata_entries, retained_ids from store ids, no third parse pass); attach snapshot builds the messages tree once (moved into snapshot, non-slim top-level duplicates cloned from it); attach_data_from_response consumes the Value by move.",
+ "parity_notes": "All changes are allocator plumbing and ownership moves; no data, capability, protocol, wire, prompt, or user-visible behavior changes. Non-glibc/non-Linux builds compile the helpers as no-ops (shipped platforms: Linux x86_64 glibc2.35+, Linux aarch64, macOS arm64). Attach wire bytes identical (non-slim top-level messages duplicate produced by clone of the same tree; assert tests in worker/agent_message_tests.rs + session_store_stream_tests.rs). /effort GetConnectionState wire hunk NOT present in final diff (mandatory parity restore 3c58d576b preserved through folds).",
+ "base": {
+  "revision": "4740935cb23e433a414bbcf381382e26cd1c613b"
+ },
+ "branch": "lane/hillclimb-session-memory",
+ "commits": [
+  "f22852664b33cc3c6ced916b8cfdbd53091f75b1"
+ ],
+ "build": {
+  "sandbox_id": "mx9xrmbuola85jghu0uhxke7",
+  "binary_sha256": "711395a2fe1696f5151ad346851fba3126f53ead04652d7454bad1dde98423d5",
+  "binary_bytes": 211747432,
+  "build_seconds": null,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (base 4740935cb + cand f22852664)",
+  "clippy": "pass (both sides)",
+  "test": "family_edges+abort_and_send_queued+7 headless (incl prompt_history_nav)+stop_escalation_e2e+session_stop_lifecycle_e2e GREEN both sides; agent_message wire asserts: attach_response_wire_bytes_keep_the_ts_key_order + deliver_message_respects_the_pending_capacity GREEN on cand (lane-only tests, N/A on pure base); workspace --no-fail-fast: base 153 ok/2 flake (goal_turn_end_loop, ranked_hits - both pass standalone), cand same picture (goal_turn_end_loop symmetric; ranked_hits load-flaky both sides); oauth openai_codex dead-callback env flake intermittent on both sides; NO candidate-only red; v5b no-fail-fast rerun: base 153 ok/2 load-flakes (goal_turn_end_loop + ranked_hits, both pass standalone), cand 1 load-flake (goal_turn_end_loop 745/1; ranked_hits passed in rerun, failed under load in v5 run + on base nff - flaky both sides), oauth dead-callback env-flake intermittent both sides (passed both nff runs)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "compare.memory_idle_load_rss_oldhead_sixpass_abba_iteration": {
+    "baseline": {
+     "trials": 15,
+     "valid": 15,
+     "p50_rss_mb": 570.4,
+     "min_rss_mb": 510.1,
+     "max_rss_mb": 592.1,
+     "values_rss_mb": [
+      510.1,
+      514.4,
+      519.3,
+      528.8,
+      529.9,
+      534.4,
+      569.0,
+      570.4,
+      571.7,
+      573.0,
+      573.3,
+      579.0,
+      581.0,
+      584.8,
+      592.1
+     ]
+    },
+    "candidate": {
+     "trials": 15,
+     "valid": 15,
+     "p50_rss_mb": 390.3,
+     "min_rss_mb": 358.9,
+     "max_rss_mb": 407.7,
+     "values_rss_mb": [
+      358.9,
+      363.8,
+      367.9,
+      368.0,
+      372.8,
+      374.9,
+      386.4,
+      390.3,
+      390.5,
+      392.4,
+      396.7,
+      397.7,
+      402.0,
+      407.4,
+      407.7
+     ]
+    },
+    "delta_pct": -31.6,
+    "regression": false,
+    "separation": "full: max cand 407.7 < min base 510.1"
+   },
+   "compare.memory_idle_load_rss_newhead_bc_pair": {
+    "baseline": {
+     "trials": 10,
+     "valid": 10,
+     "p50_rss_mb": 523.5,
+     "min_rss_mb": 478.7,
+     "max_rss_mb": 599.8,
+     "values_rss_mb": [
+      478.7,
+      479.8,
+      485.0,
+      500.8,
+      508.2,
+      538.7,
+      571.3,
+      580.0,
+      580.1,
+      599.8
+     ]
+    },
+    "candidate": {
+     "trials": 10,
+     "valid": 10,
+     "p50_rss_mb": 385.6,
+     "min_rss_mb": 369.5,
+     "max_rss_mb": 393.1,
+     "values_rss_mb": [
+      369.5,
+      377.1,
+      380.6,
+      383.6,
+      384.5,
+      386.6,
+      387.3,
+      387.6,
+      391.9,
+      393.1
+     ]
+    },
+    "delta_pct": -26.3,
+    "regression": false,
+    "separation": "full: max cand 393.1 < min base 478.7",
+    "binaries": {
+     "base_sha256": "29e5209e7ca330c5a9425e79266664c828605173c3d09626030f77882dd47dc0",
+     "cand_sha256": "391d352498e5fada155265c4a2de678601986a9258cbfa2239c035002db72ff7"
+    },
+    "probe_note": "probe shape differs from old-head ABBA (sends 1 @50ms vs 60 @500ms buffered): upstream #2854 first-frame input acceptance changed the adapter's input-ready path; both sides measured identically within the pair"
+   },
+   "compare.memory_idle_load_rss_finalhead_spotcheck": {
+    "baseline": {
+     "trials": 5,
+     "valid": 5,
+     "p50_rss_mb": 550.2,
+     "min_rss_mb": 525.3,
+     "max_rss_mb": 557.6,
+     "values_rss_mb": [
+      525.3,
+      536.5,
+      550.2,
+      554.5,
+      557.6
+     ],
+     "p50_launch_ms": 20726
+    },
+    "candidate": {
+     "trials": 5,
+     "valid": 5,
+     "p50_rss_mb": 416.1,
+     "min_rss_mb": 411.8,
+     "max_rss_mb": 422.1,
+     "values_rss_mb": [
+      411.8,
+      413.0,
+      416.1,
+      418.3,
+      422.1
+     ],
+     "p50_launch_ms": 20782
+    },
+    "delta_pct": -24.4,
+    "regression": false,
+    "separation": "full: max cand 422.1 < min base 525.3",
+    "binaries": {
+     "base_sha256": "d06533cc1c66e25a368efe7140c2855dbd7e99b936278e9cf1f8300da672606f",
+     "base_bytes": 211715808,
+     "cand_sha256": "711395a2fe1696f5151ad346851fba3126f53ead04652d7454bad1dde98423d5",
+     "cand_bytes": 211747432
+    }
+   }
+  },
+  "extra": {}
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Old-head six-pass ABBA (base 30b61ad43 bin 1d481e52 / cand 72c8954f4 bin 900fa5fd, VM mx9, fixture dadaecfc, 15 trials/side, all valid): memory_idle_load RSS base median 570.4 MiB (min 510.1, max 592.1) vs cand median 390.3 (min 358.9, max 407.7) = -31.6% with FULL separation; neighbors parity (cold_open +0.4%, scroll_typing +0.5%, launch +0.6%, msg_send symmetric; cold_start RSS -0.3%, cold_start launch pooled +6.7% is base pass-5 drift (two slow trials 383/346ms), per-pass medians overlap 315-329ms). New-head gates at base bbb886dd8/cand 0940ef81a: fmt+clippy+family+abort+7 headless GREEN both sides; workspace single-flake per side SYMMETRIC (goal_turn_end_loop fails both sides at RUST_TEST_THREADS=4, passes both standalone - known baseline flake at every head since 1ce0d94b1; oauth openai_codex dead-callback fails both standalone on gate VM env, passes both in full rerun). No candidate-only red. fa3b1a2a3 intermediate head had candidate-only clippy/workspace E0308 (upstream #2847 test called lane's moved-by-value API by ref) - repaired in 070a7e6ba, labeled in history, archived in smem-v3-gates tgz. Final-head spot-check: B/C on memory_idle_load at base 4740935cb/cand f22852664 (05:53-07:05Z window), calibration 1.057-1.086 stable, sha-asserted swaps, -24.4% with full separation. Worker.rs split (#2824) relocated the lane's post-frame-send trim into worker/connection.rs; attach single-tree snapshot re-applied in worker.rs; zero hunks touching GetConnectionState/GetState/worker_overloaded."
+ },
+ "outcome": "candidate-ready-final",
+ "decision": null,
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-074124-memory-session-load-rss-final.json",
+ "session": {
+  "worker": "perf-session-memory-fast",
+  "session_dir": null
+ },
+ "timestamp": "2026-09-26T07:41:24.777231+00:00"
+}
