@@ -1,0 +1,199 @@
+{
+  "id": "20260926-223327-startup-kernel-boot-xproc-memo",
+  "axis": "startup",
+  "hypothesis": "Every cold open boots a fresh worker and every spawned child is a fresh process, so #2857's process-global runtime-ready memo never fires there: the full probe chain (content walk + RUNTIME_READY_CHECK + dill import) is paid per fresh process.",
+  "approach": "A cross-process on-disk memo <venv>/.runtime-probe-memo.json (bounded 16-key map, clear-at-cap, schema field) keyed by the SAME identity composite as #2857's in-process memo; lookup order in-process -> disk -> real probes; the key is recomputed fresh on every check (the content walk stays on the hit path as the damage detector - only the two interpreter probes are skipped); atomic per-pid temp+rename writes inside the venv dir (rename replaces a symlink, never follows); fail-open on every I/O error; invalidate_runtime_probe_cache() (unchanged signature, call sites byte-identical) clears both layers, with delete -> atomic empty-map-overwrite fallback when the delete fails; custom PRIME_AGENT_KERNEL_PYTHON override untouched (d14 ruling; behavioral pin: no memo file created under the override path).",
+  "parity_notes": "Design pre-passes: BOTH adversarial reviewers approved at design level with binding conditions, all implemented + pinned by tests: (R2-A/R1-d) guaranteed-effective disk invalidation with the empty-map fallback + undeletable-file test + read-only-venv equivalence; (R2-B) the widened blind-spot window disclosed as an amendment - in #2857 the in-process memo died with the process (self-heal at next process start); the disk memo persists across processes so the masking window widens from process-lifetime to until-first-failed-start, same single-failure-then-heal end state (any kernel-start failure fires the invalidation, both layers drop, pinned by the masked-class-on-disk test); (R2-C/R1-e) cross-process oracles: hit-with-ZERO-interpreter-invocations after in-process-only clear, damage-across-processes matrix; (R2-D/R1-a) write-vs-invalidate race benign + tested, NO locking (cost equals base's own behavior); (R1-5/R2) stale/forged/symlink/directory/corrupt matrix; (R1-c) trust-domain sentence: the memo file's trust equals the venv's own (anyone who can write the venv can already inject kernel Python) - no new attack surface; (R1-e) the extended live witness (restore dill -> re-probe -> fresh-process disk hit with ZERO real interpreter invocations); LIVE-GATED closure-freeze test (operator-adopted): AST-parses the INSTALLED rlm sources with the real python and asserts the probe import closure's module-level imports are stdlib-or-rlm-relative (transitive walk; on first live run it found 18 real stdlib imports missing from the allowlist while the closure property itself held - zero third-party imports; allowlist completed, both live tests 2/2 PASS at the final head). The dill-heal-before-start behavior is inherited from #2857: the CURRENT base also repairs (the pre-#2857 base-fails-at-snapshot delta is HISTORICAL - both sides of this pair repair heal-before-start, verified at the final head).",
+  "base": {
+    "revision": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480"
+  },
+  "branch": "lane/hillclimb-kernel-boot-xproc",
+  "commits": [
+    "c12bed5a12dfaf170cc6ee9ea54705bd926d12fc",
+    "fc3851d315655f174f469f8adc39a3f4a995b9c5",
+    "13b4f307cbad5aecce916923eb70365cc09d83f7",
+    "543ea4181aae147a364b0ad5532cb28c89cebdb2",
+    "e927aa735a75d5f42c1d1667a01f972f6ddff0a2",
+    "e40db3a164dd782a82a163d13a079036d79f1e04",
+    "1a7b4d3ec132fcb5a61a245738adffbcf6864f5a",
+    "194c2e6166f935eb8e6e519a43501dce65c49f6f",
+    "476f9308a9581034292d50d0e7ccf5ba98677bed",
+    "a1b7d26a2def864eb4c9bc369e082663f56848f9",
+    "b6ca1beb2efa3551b2d15d4f4ca5c17c1e74f7c7",
+    "619f9fd09c0276cfc46319480c07286ec7482b0a",
+    "d0b4eea406b933eceb1e04df7b099b6cdb5ad471",
+    "462b261c910392315b43e9a0fac42e27287a5571"
+  ],
+  "build": {
+    "sandbox_id": "y5ia7srfi6m7tzuhpm1ghz80",
+    "toolchain": "rustup 1.98.1",
+    "note": "probe binaries sha-asserted per run; release binaries per the shipped-ELF contract; probe sha at 43c215372 from the final run log; binary bytes shift across test-only commits because rustc's crate hash covers the whole crate source (incl. #[cfg(test)] code) - mechanism-code identity is proven by the empty git diff e927aa735..43c215372 on crates/pa-core/src/kernel/bootstrap/"
+  },
+  "gates": {
+    "vm_at_43c215372": "cargo build --release --locked --workspace PASS; cargo fmt --all --check PASS; cargo clippy --workspace --all-targets -D warnings PASS; cargo test -p pa-core --lib PASS (all oracles incl. the memo-state-serialized suite); live-gated tests (--ignored --test-threads=1) 2/2 PASS (extended live witness + closure freeze)",
+    "public_ci": "at e927aa735: fmt, check+clippy (workspace), test shards 1-4, test summary, loc ALL SUCCESS; at 43c215372 (one batched fold of c12bed5a1, agent_engine.rs split 1/11 - zero kernel-bootstrap overlap, mechanism-file diff e927->43c EMPTY): CI running at record time",
+    "benchmark_ci": "the public TS benchmark check remains the non-applicable 0/0 wrong-adapter red; operator disposition pending; never called pass"
+  },
+  "measurements": {
+    "method": "same-vm-sequential ABBA + interleaved fresh-process arms + cross-lane driver legs",
+    "leg_c_provisioner_ensure_pair_43c_vs_1507": {
+      "fresh_process_cold_ensure": {
+        "baseline": {
+          "trials": 6,
+          "p50_ms": 119.91,
+          "values_ms": [
+            119.0,
+            119.0,
+            119.9,
+            119.9,
+            120.4,
+            121.5
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "p50_ms": 42.81,
+          "values_ms": [
+            41.3,
+            41.5,
+            42.8,
+            42.9,
+            43.7,
+            45.8
+          ]
+        },
+        "delta_pct": -64.3,
+        "regression": false
+      },
+      "fresh_process_restore": {
+        "baseline": {
+          "p50_ms": 45.7
+        },
+        "candidate": {
+          "p50_ms": 45.85
+        },
+        "delta_pct": 0.32,
+        "regression": false,
+        "note": "parity - both sides in-process memo-hit (the base includes #2857)"
+      },
+      "fresh_process_restart": {
+        "baseline": {
+          "p50_ms": 46.18
+        },
+        "candidate": {
+          "p50_ms": 46.03
+        },
+        "delta_pct": -0.33,
+        "regression": false
+      },
+      "three_trial_abba_cold": {
+        "baseline": {
+          "p50_ms": 52.15
+        },
+        "candidate": {
+          "p50_ms": 42.48
+        },
+        "delta_pct": -18.54,
+        "note": "leg-lead trials amortize the probe cost"
+      },
+      "earlier_replicate_at_f74965190": {
+        "fresh_cold_delta_pct": -65.72,
+        "note": "same VM, same method - agrees within noise"
+      }
+    },
+    "leg_b_fresh_child_first_tool_call_e927_vs_1507": {
+      "method": "spawn-latency's driver on their VM (warm_daemon regime, 4 groups x 8 trials = 16/side b/c/c/b, per-trial binary_sha256 asserted, mock queue audited, parent pre-warmed so only the fresh child carries the delta, shared warm venv, healthy fsync classes)",
+      "baseline": {
+        "trials": 16,
+        "p50_ms": 157.35,
+        "values_ms": [
+          138.5,
+          139.3,
+          140.5,
+          141.4,
+          142.1,
+          147.1,
+          147.4,
+          156.7,
+          158.0,
+          158.3,
+          158.6,
+          161.4,
+          163.3,
+          165.2,
+          181.4,
+          189.1
+        ]
+      },
+      "candidate": {
+        "trials": 16,
+        "p50_ms": 49.49,
+        "values_ms": [
+          46.3,
+          46.7,
+          46.8,
+          48.5,
+          48.6,
+          48.8,
+          48.9,
+          49.5,
+          49.5,
+          50.2,
+          50.5,
+          53.5,
+          54.4,
+          60.7,
+          73.9,
+          102.9
+        ]
+      },
+      "delta_pct": -68.6,
+      "regression": false,
+      "note": "child req1 first-byte -> child cell-start; non-overlapping distributions; base in-family with spawn-latency's published 140.3ms; mechanism files byte-identical e927->43c (empty diff) - the binary sha differs only by rustc crate-hash over unchanged code"
+    },
+    "leg_a_open_path_boot_floor_driver_43c_vs_1507": {
+      "method": "boot-floor's driver + fixtures (small 607KB sha 834cb5ba..., real 13MB sha 835c4473...) on a fresh healthy-VM run (4 legs x 10 trials = 20/side per fixture; daemon-config fsync class 0.01ms pre+post; base p50s match boot-floor's clean contract: small 342.4 vs their 330.5, real 567.8 vs their 547.6)",
+      "small_fixture_launch_to_first_paint": {
+        "baseline": {
+          "trials": 20,
+          "p50_ms": 342.4
+        },
+        "candidate": {
+          "trials": 20,
+          "p50_ms": 339.5
+        },
+        "delta_pct": -0.82
+      },
+      "real_fixture_launch_to_first_paint": {
+        "baseline": {
+          "trials": 20,
+          "p50_ms": 567.8
+        },
+        "candidate": {
+          "trials": 20,
+          "p50_ms": 571.4
+        },
+        "delta_pct": 0.63
+      },
+      "verdict": "NO PAINT DELTA measured (within noise). The boot-floor decomposition's estimate that the probe chain gates the open-path paint window did NOT reproduce as a base-vs-candidate paint delta at this pair under the boot-floor driver in the healthy window. The win claims of this candidate stand on LEG B and LEG C (both decisive); the open-path extrapolation is NOT claimed. Possible causes (not resolved here): kernel-start timing on the open path at the current base, per-trial invalidation churn (invalidate-on-start-failure is belt-and-suspenders by design), or the chain not gating paint in this trial shape.",
+      "invalid_runs_disclosed": "two earlier LEG A attempts discarded: (1) all legs ran the base binary (deploy script's fetchless cand checkout + no checkout guard - fixed with fetch+guard+sha-diff-assert); (2) both sides 4x off boot-floor's contract on a degraded-I/O VM (discarded per the fleet regime guidance)"
+    }
+  },
+  "validity": {
+    "excluded": [
+      "LEG A invalid run 1 (same-sha legs, deploy bug) - discarded.",
+      "LEG A invalid run 2 (degraded-I/O VM, both sides 4x off contract) - discarded; final LEG A on a fresh healthy VM.",
+      "The earlier phase02 pair at a stale hardcoded head (d0b4eea40) - discarded; superseded by the exact-head reruns.",
+      "Public TS benchmark check FAILURE (0/0, wrong adapter): non-applicable, operator disposition pending."
+    ],
+    "notes": "Implementation bug trail, fully disclosed: the first four commits of this lane carried escape-damage, test-module path errors, fmt/clippy violations, and three oracle bugs - each caught by CI/VM gates and fixed commit-by-commit (462b261c9 -> d0b4eea40 -> 619f9fd09 -> b6ca1beb2 -> a1b7d26a2 -> 476f9308a -> 194c2e616 -> e927aa735 -> fold 43c215372); a channel-manifest network test flaked once on the VM (isolated exact rerun PASS 1/1 - environmental); the closure-freeze test found 18 real stdlib imports missing from its allowlist on first live run while the closure property itself held (zero third-party module-level imports in the probe closure) - allowlist completed at e927aa735. The memo-state tests serialize on a shared lock (the in-process map is process-global; a concurrent test's invalidation cannot clear another test's verdicts mid-run). The 'base fails at snapshot' delta from #2857 is HISTORICAL: the current base (which includes #2857) repairs dill heal-before-start like the candidate (both verified at the final head). fsync regime attestations per the fleet correction: repeat-fsync + fresh-write+rename+stat classes probed on both measurement VMs (healthy at measure time); LEG A additionally attests the daemon-config-write class. macOS unmeasured."
+  },
+  "outcome": "in-progress",
+  "decision": "Review-only PR #2881 at final head 43c215372e41569fd79bb6e4f383900817b6c0d1 (one batched fold of c12bed5a1 - the agent_engine.rs split series has zero kernel-bootstrap overlap; mechanism-file diff e927->43c EMPTY). Orchestrator numeric review: LEG B + LEG C ACCEPTED; LEG A's no-delta verdict disclosed for disposition. Both formal adversarial reviewer final-SHA verdicts pending. No merge.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2881",
+  "record_path": "data/hillclimb/experiments/20260926-223327-startup-kernel-boot-xproc-memo.json",
+  "session": {
+    "worker": "perf-kernel-boot-fast"
+  },
+  "timestamp": "2026-09-26T22:33:27.470840+00:00"
+}
