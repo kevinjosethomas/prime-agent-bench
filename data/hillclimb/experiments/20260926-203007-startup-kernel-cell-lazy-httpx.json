@@ -1,0 +1,289 @@
+{
+ "id": "20260926-203007-startup-kernel-cell-lazy-httpx",
+ "axis": "startup",
+ "hypothesis": "kernel first-cell wall (session bootstrap cell: import rlm, rlm.mcp, 11 Python skills) is dominated by the websearch skill's module-level `import httpx`: ~15ms of every kernel boot pays the httpx import chain (in-kernel cum 14.5ms of the 16-17ms cell) in EVERY session, even when no search is ever run; the other 10 skills are light (PIL already function-level in attach-image; linear/notion go through the lazy rlm McpIntegration re-export). Deferring httpx to first use with a find_spec availability guard preserves the import-time failure contract byte-identically.",
+ "approach": "skills/websearch/src/websearch/websearch.py ONLY (pure Python; Rust untouched): (1) module-level `import httpx` replaced with `importlib.util.find_spec(\"httpx\") is None -> raise ModuleNotFoundError(\"No module named 'httpx'\")` (same type+message the unavailable-skill wrapper surfaces); (2) `import httpx` moved into `_fetch_serper` (first call). Measured via kernel_bench boot harness (spawn -> ready -> production-shaped bootstrap cell -> 50 trivial execs) on one VM with sha-asserted in-place swaps of websearch.py as the ONLY variable; Rust probe binary sha asserted constant c61fdf4c across all legs (pa-core unchanged by the fold).",
+ "parity_notes": "No RLM API/wire/tool-schema/prompt/session-JSONL change; kernel snapshot/repair semantics untouched; #2857 probe-memo identity keys (rlm/*.py content + pyproject hashes) do NOT include websearch.py, pyproject untouched so no venv rebuild. TS websearch (0.9.6 release, stage/skills/websearch/src/websearch/websearch.py) has the IDENTICAL eager header: 'import httpx' at module level \u2014 this change diverges from TS main on WHEN httpx imports; disclosed. Edge deltas: (a) absent-httpx: byte-identical (verified both raise ModuleNotFoundError 'No module named httpx' in an httpx-less venv; kernel unavailable-skill stub message unchanged); (b) broken-but-findable httpx: base stubs websearch unavailable at kernel bootstrap, candidate imports and errors at first search call \u2014 narrow edge, disclosed; (c) first websearch call pays the httpx import (~15ms) once per session instead of every session's kernel boot. Functional parity oracle: no-API-key setup message + dead-proxy connect-error string byte-identical base vs cand (json blob sha fdbb5eea14931e77ab100016238a21429d9784f5372b5e5bf174d4b89e567e09 both); cand's first call imports httpx in-process. Linux x86_64 measured; aarch64/macOS unmeasured (platform-neutral pure Python).",
+ "base": {
+  "revision": "7064d039ac3437596f75b44423d76a8f4bf4856a",
+  "note": "fold merge-base; ABBA swaps websearch.py pristine(949130e2)/patched(ee0ad93c) in-place inside the folded-head tree 98611c2b2 so Rust code is constant across legs; pre-fold pair was base 60e2e198c vs f62b2339a (=60e2e198c+the same single-file commit)"
+ },
+ "branch": "lane/hillclimb-kernel-cell",
+ "commits": [
+  "f62b2339a16fe6e205440e865831ccd7b9db323a",
+  "98611c2b216089375683543e5f339fa04978c8fd"
+ ],
+ "build": {
+  "sandbox_id": "e78qprg8sbwm98iv8ecr9qfq",
+  "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
+  "binary_bytes": null,
+  "build_seconds": 112,
+  "toolchain": "rustup 1.98.1",
+  "note": "release binary at folded head 98611c2b2; kernel_bench probe sha c61fdf4c7a1012beb0c12b9416799a9bc484cb9d47eb56b8ef1754ff5c7a61b4b identical pre/post fold (pa-core unchanged by 6588b19cf/7064d039a); binary_bytes not restated at folded head (Rust side of the candidate is zero-diff by construction)"
+ },
+ "gates": {
+  "fmt": "pass (98611c2b2 cargo fmt --all --check)",
+  "clippy": "pass (98611c2b2 workspace all-targets -D warnings)",
+  "test": "workspace --no-fail-fast at 98611c2b2: 156 suite summaries ok, 1 failure = tui_prompt_stash_restores_a_pasted_image_with_the_draft (pa-cli interactive_daemon_e2e PTY e2e, load-flake class): passes 3/3 isolated at folded base 7064d039a AND folded head 98611c2b2; same flake family observed pre-fold at f62b2339a (tui_refused_submit 1 fail in full suite then 3/3 pass isolated at base AND cand; a_bang_during_streaming 1 fail then 3/3 pass isolated); a triage-only full-e2e rerun HUNG at test #7 (futex_wait 45min, load 0.01; killed, documented) \u2014 PTY e2e harness flake, Rust code identical base/cand, unrelated to this Python-only change. Earlier env-red: 6 pa-core packages tests failed 'spawn npm ENOENT' (VM lacked node) \u2014 fixed by installing node 12.22.9/npm 8.5.1; 93/93 pass at base 60e2e198c AND cand f62b2339a. pa-ai oauth dead-callback flake passed at folded head. Public CI 'benchmark' check remains the standing NON-APPLICABLE TS-harness red (npm ci EUSAGE, 0/0 trials), never counted as a regression."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "bootstrap_cell_wall_ms_folded_head": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 17.0,
+     "p95_ms": 17.0,
+     "values_ms": [
+      17,
+      16,
+      17,
+      17,
+      17,
+      17
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 2.0,
+     "p95_ms": 2.0,
+     "values_ms": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "delta_pct": -88.2,
+    "regression": false,
+    "metric": "FINAL-HEAD pair at 98611c2b2: kernel_bench bootstrap-execute-ms (wall of the production-shaped first cell on a ready kernel). Zero overlap between legs."
+   },
+   "spawn_to_first_cell_done_ms_folded_head": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 56.0,
+     "p95_ms": 57.0,
+     "values_ms": [
+      58,
+      56,
+      56,
+      55,
+      57,
+      56
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 42.0,
+     "p95_ms": 43.0,
+     "values_ms": [
+      42,
+      41,
+      41,
+      43,
+      42,
+      47
+     ]
+    },
+    "delta_pct": -25.0,
+    "regression": false,
+    "metric": "FINAL-HEAD pair at 98611c2b2: kernel-boot-and-bootstrap-ms (python -m rlm.repl spawn -> ready -> bootstrap cell done; excludes provisioner ensure)"
+   },
+   "bootstrap_cell_wall_ms_prefold": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 16.5,
+     "p95_ms": 17.0,
+     "values_ms": [
+      16,
+      16,
+      17,
+      17,
+      17,
+      16
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 2.0,
+     "p95_ms": 2.0,
+     "values_ms": [
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+     ]
+    },
+    "delta_pct": -87.9,
+    "regression": false,
+    "metric": "HISTORICAL pre-fold pair: base 60e2e198c vs cand f62b2339a (same single-file diff), A1B1B2A2 3 trials/leg; superseded by the folded-head pair above, kept for fold-stability evidence (deltas identical across the fold)"
+   },
+   "ensure_kernel_python_ms_folded_head": {
+    "baseline": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 80.0,
+     "p95_ms": 82.0,
+     "values_ms": [
+      80,
+      82,
+      82,
+      79,
+      80,
+      79
+     ]
+    },
+    "candidate": {
+     "trials": 6,
+     "valid": 6,
+     "p50_ms": 80.0,
+     "p95_ms": 80.0,
+     "values_ms": [
+      80,
+      80,
+      80,
+      79,
+      80,
+      79
+     ]
+    },
+    "delta_pct": 0.0,
+    "regression": false,
+    "metric": "control leg: fresh-process #2857 memo-miss ready probe (unchanged path; the memo covers subsequent in-process starts)"
+   },
+   "fresh_venv_total_curve": {
+    "baseline": {
+     "trials": 1,
+     "valid": 1,
+     "p50_ms": null,
+     "p95_ms": null,
+     "values_ms": null,
+     "detail": {
+      "create_ms": 4049,
+      "first_boot_cell_ms": 96,
+      "first_boot_total_ms": 146,
+      "warm_cell_ms": [
+       18,
+       19,
+       19
+      ],
+      "warm_total_ms": [
+       60,
+       64,
+       61
+      ]
+     }
+    },
+    "candidate": {
+     "trials": 1,
+     "valid": 1,
+     "p50_ms": null,
+     "p95_ms": null,
+     "values_ms": null,
+     "detail": {
+      "create_ms": 4430,
+      "first_boot_cell_ms": 3,
+      "first_boot_total_ms": 51,
+      "warm_cell_ms": [
+       2,
+       2,
+       3
+      ],
+      "warm_total_ms": [
+       43,
+       43,
+       46
+      ]
+     }
+    },
+    "delta_pct": null,
+    "regression": false,
+    "metric": "TOTAL-COST curve (orchestrator requirement): venv create (one-time; candidate touches NO create-path code; observed create variance 4049-4852ms across 5 runs = uv/pip network noise) + first boot on fresh venv (cold pyc) + warm boots, per variant fresh home. Candidate holds at every phase: first-boot cell 96->3ms (the ~80ms cold-pyc compile penalty was mostly the httpx chain), first-boot total 146->51ms, warm cell 18-19->2-3ms, warm total 60-64->43-46ms. Nothing moved into create."
+   }
+  },
+  "extra": {
+   "kernel_rss_kb": {
+    "baseline_p50": 29724,
+    "candidate_p50": 26264,
+    "delta_kb": -3460,
+    "delta_pct": -11.6,
+    "detail": "3 trials/leg, /proc VmRSS of a python -m rlm.repl process after the production-shaped bootstrap cell, never-websearch kernel"
+   },
+   "kernel_pss_kb": {
+    "baseline_p50": 24641,
+    "candidate_p50": 21059,
+    "delta_kb": -3582,
+    "delta_pct": -14.5,
+    "detail": "smaps_rollup Pss, same trials"
+   },
+   "importtime_breakdown": {
+    "entry_self_sum_us": [
+     36600,
+     37260,
+     37526
+    ],
+    "bootstrap_cell_self_sum_us": [
+     51273,
+     52678,
+     51232
+    ],
+    "httpx_cum_us_in_cell": 14517,
+    "heavy_modules_NOT_on_boot_path": "tyro 98589us self-sum, pydantic 38961us, PIL 6254us (PIL already lazy in attach-image; tyro only via rlm.skill CLI; pydantic not imported by kernel bootstrap)"
+   },
+   "mechanism_probe": {
+    "httpx_in_sys_modules_after_cell": {
+     "baseline": "True",
+     "candidate": "False"
+    },
+    "all_skills_plus_rlm_mcp_loaded": {
+     "baseline": "True",
+     "candidate": "True"
+    },
+    "uncallable_skills_set_identical": [
+     "agent_message",
+     "agent_observe",
+     "goal",
+     "linear",
+     "notion",
+     "rlm_heartbeat"
+    ]
+   },
+   "functional_parity_blob_sha256": "fdbb5eea14931e77ab100016238a21429d9784f5372b5e5bf174d4b89e567e09",
+   "calibration_ms": {
+    "pre": 20.56,
+    "mid1": 20.49,
+    "mid2": 20.56,
+    "mid3": 20.62,
+    "post": 20.56,
+    "drift_pct": 0.6
+   },
+   "vm_id": "e78qprg8sbwm98iv8ecr9qfq",
+   "first_vm_thbuq3wo3a50dw9szh0bf1z9": "reaped in fleet-wide termination ~07:30Z after the historical 4740935c baseline (numbers preserved in transcript, superseded); all paired evidence here is from e78qprg8sbwm98iv8ecr9qfq",
+   "trial_design": "same-VM sequential ABBA, A1B1B2A2, 3 trials/leg, sha-asserted in-place swaps of skills/websearch/src/websearch/websearch.py (base 949130e2..., cand ee0ad93c...) as the ONLY variable; 2 warmup boots per swap; pyc cleared per swap; probe binary sha c61fdf4c asserted constant; metric resolution 1ms (delta is 15x resolution); per-execute overhead ~0.1ms unchanged both legs",
+   "fold_note": "fold 7064d039a (origin/rust at fold time) merged into the lane at 98611c2b2; post-fold re-diff vs merge-base shows ONLY the websearch.py file (11 insertions, 1 deletion); folded-head ABBA repeats the pre-fold deltas exactly (cell 17->2, total 56->42)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Same-VM paired design with the Rust side constant (probe sha asserted each leg); calibration between legs drifted 0.6%; zero overlap between legs in every pair at both pre-fold and folded head. Historical context only: pre-#2857-merge tip 4740935c cold-create 4852ms, first-boot cell 139ms / warm 18-26ms (VM thbuq3..., reaped). e2e PTY flake class documented under gates; not attributable to a one-file Python change with Rust zero-diff."
+ },
+ "outcome": "in-progress",
+ "decision": "pending: orchestrator numeric review provisionally accepted pre-fold (parent message 2026-09-26); final-head evidence now attached; PR open for BOTH adversarial reviewers + operator disposition; no merge by this worker",
+ "pr_url": null,
+ "record_path": null,
+ "session": {
+  "worker": "perf-kernel-cell-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-b5a015b1/01a0dc70-ba0d-7438-be6a-85c03a05e0f1.jsonl"
+ },
+ "timestamp": "2026-09-26T20:30:07.987002+00:00"
+}
