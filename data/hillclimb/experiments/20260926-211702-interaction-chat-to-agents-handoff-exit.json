@@ -176,6 +176,30 @@
      "post_run_21:16Z": 250.43
     },
     "regime_disclosure": "FLEET DUAL-CLASS STANDARD: repeat-fsync read HEALTHY (0.17-0.27ms p50) all run while the product write class (fresh+sync_all+rename) was DEGRADED ~237-442ms p50 across the whole window (fleet correction applied: r2 sanity 20:24Z fresh probe before any timing claim). The measured leg does no fresh-file+rename on its path; the pair is same-VM interleaved (systematic regime cancels in the paired delta); empirical insensitivity evidence: base sanity trial under the same degraded regime read 114.6ms, matching the r1 (regime-unprobed, HISTORICAL) and r2 baselines. launch_to_ready IS regime-suspect and labeled so."
+   },
+   "head_exact_spot_check_78d3ea798": {
+    "purpose": "reviewer-2 carry-rule prong 4: fresh head-exact evidence at the PR head",
+    "base": "e40db3a164dd782a82a163d13a079036d79f1e04",
+    "bin_base_sha256": "c53553110498f7e82608c28e0a12a7e5169f3b83e2b8fa1803b664583c6dd3b3",
+    "cand": "78d3ea798cc087dd347094a43b2e14194816194f",
+    "bin_cand_sha256": "9366304070adec1541886a241c3337d4e2535a3ab7a20788ea35daf5493c4ef1",
+    "method": "mini-ABBA B,C,C,B x5 x2 real fixtures, sha-asserted swaps, single-driver guards, 40/40 valid",
+    "p50_chat_to_agents_ms": {
+     "small": {
+      "B": 114.8,
+      "C": 66.8
+     },
+     "orc": {
+      "B": 118.8,
+      "C": 66.3
+     }
+    },
+    "delta_p50_ms": {
+     "small": -48.0,
+     "orc": -52.5
+    },
+    "regime": "RECOVERED fresh-write class during this leg (fresh+fsync+rename p50 0.32ms pre / 0.27ms post; repeat-fsync 0.12-0.16ms) vs the 237-442ms degraded window of the full pair - head-exact leg clean on BOTH I/O classes",
+    "conclusion": "fold-robust mechanism confirmed at the PR head; magnitudes match the full paired cycle"
    }
   }
  },
@@ -183,7 +207,7 @@
   "excluded": [],
   "notes": "60/60 trials valid, zero errors, zero precondition fails. r1 pair (base d09fb8f9d vs cand 270b593b2, VM qe2f86njdtddb63qxdp0ilkk, 04:19-04:47Z) is HISTORICAL: superseded by tip churn; its VM died at max runtime BEFORE its full gate log could be saved (its gate tail showed agents_view_search_e2e + pa-core --lib failing at the old candidate; neither reproduces at the new tip; its fmt/clippy were never verified) - r2 redid everything. Sandbox max-runtime death is the r1 VM lesson: r2 VM created with 12h cap."
  },
- "outcome": "confirmed at base c7ca05f10; PR #2893 open at folded head 78d3ea798 (base e40db3a16); full-suite fleet_gate on the PR head in flight; tip moved during the cycle - final-head evidence cycle per merge bar",
+ "outcome": "CONFIRMED at both c7ca05f10/890729100 (full pair) and e40db3a16/78d3ea798 (head-exact spot-check); PR #2893: reviewer-1 EXPLICIT APPROVE at 78d3ea798, reviewer-2 flip requested after completing its two carry-rule items; awaiting operator dispositions; no merge",
  "decision": "pending orchestrator",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2893",
  "record_path": "data/hillclimb/experiments/20260926-211702-interaction-chat-to-agents-handoff-exit.json",
@@ -191,5 +215,5 @@
   "worker": "perf-chat-to-agents-fast",
   "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9034d7f2/01a0dbfa-9559-73b6-b529-a6760090cd19.jsonl"
  },
- "timestamp": "2026-09-26T21:17:02Z"
+ "timestamp": "2026-09-26T21:55:00Z"
 }
