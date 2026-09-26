@@ -256,6 +256,30 @@ def test_msg_send_real_api_settles_on_sentinel_reply(tmp_path):
     assert bench.validate(record) is True
 
 
+def test_codex_real_api_apply_routing_writes_apikey_auth(tmp_path, monkeypatch):
+    """Real-api codex trials authenticate with the API key state (its
+    login-menu option 3 format): the ChatGPT OAuth cannot survive isolated
+    trial homes (single-use refresh tokens), so apply_routing re-auths the
+    trial home before any launch."""
+    from bench.adapters.codex.adapter import CodexProduct
+    key_src = tmp_path / "auth.json"
+    key_src.write_text(json.dumps({"openai": {"type": "api_key",
+                                              "key": "sk-test-123"}}))
+    monkeypatch.setattr(CodexProduct, "KEY_SOURCE", key_src)
+    prod = CodexProduct({"layout": None, "product": {}, "mock": {}})
+    ctx = {"home": tmp_path / "trial-home", "routing": "real-api"}
+    (tmp_path / "trial-home").mkdir()
+    prod.apply_routing(ctx)
+    auth = json.loads((tmp_path / "trial-home" / ".codex" / "auth.json").read_text())
+    assert auth == {"auth_mode": "apikey", "OPENAI_API_KEY": "sk-test-123"}
+    # mock-routed trials keep the template state (no rewrite)
+    ctx2 = {"home": tmp_path / "trial-home", "routing": "mock"}
+    prod.apply_routing(ctx2)
+    # and the real-api argv pins the key route's model
+    assert "-m" in prod.argv(ctx) and prod.KEY_MODEL in prod.argv(ctx)
+    assert prod.model_info(ctx).endswith("(api-key)")
+
+
 def test_benchmark_routing_for_config_override(tmp_path):
     """The per-benchmark ``msg_routing`` override (campaign config) wins
     over the product's own declaration, and an unknown regime fails

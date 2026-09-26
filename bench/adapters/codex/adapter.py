@@ -18,6 +18,7 @@ only with real auth (Kevin's call) or a codex that accepts the mock
 wire_api (product.yaml flip to ``mock``)."""
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
