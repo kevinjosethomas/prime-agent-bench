@@ -22,8 +22,8 @@
   ],
   "build": {
     "sandbox_id": "p9m0c2vp95kd947p75mrp4wo",
-    "binary_sha256": "90ff703ad55005bad9c9e3dad1c955db1bbddd0962068dd06955ce220ed3f057",
-    "binary_bytes": 209121544,
+    "binary_sha256": "ac3acc1db49789e9bd1f9e6ee81f22efb7f12cf6639bbbbb7e8956d30647c714",
+    "binary_bytes": 209607816,
     "build_seconds": null,
     "toolchain": "rustup 1.98.1"
   },
@@ -33,7 +33,7 @@
     "test": "Corrected 85ca/966d workspace gate RUNNING. Intermediate e824 full test retry RC101: 139 PASS targets, 4 FAIL (three held-lease expected-copy mismatch, one daemon connection refused); not current-head gate. Python package tests 24/24 PASS including 4 required docs, installed inline relative link-target resolution, dirty-cache negative. GitHub benchmark previous head RED/non-applicable: TS npm ci EUSAGE missing package-lock pre-build, PR trials 0/0, operator/CI disposition pending."
   },
   "measurements": {
-    "method": "Prior 91eed/bc1 30/30 quiet tree-pinned neighbor and deterministic bytes are historical because bc1 omitted quickstart-linked docs/FEATURE_PARITY.md (adversarial BLOCK). Corrected final base 85ca/candidate 966d deterministic artifacts and neighbor pending; old 24 removed and \u221269.18% NOT final.",
+    "method": "Final corrected 85ca/966d exact same-VM/path sequential release pair (full installed-tree pinned), archive membership/bytes PASS. Quiet 5-trial B/C and latest full gate RUNNING, historical 91eed/bc1 linked-doc omission superseded.",
     "suites": {
       "cold_start": {
         "baseline": {
@@ -274,7 +274,76 @@
     "extra": {
       "current_base": "85ca8cc18711fe3d656307b2f571c2deabf199f9",
       "current_candidate": "966d93292c6cb3248fc5dde1685df5dffb036c46",
-      "status": "pending exact same-path pair after retaining linked FEATURE_PARITY.md"
+      "same_vm_binary_sha256": "ac3acc1db49789e9bd1f9e6ee81f22efb7f12cf6639bbbbb7e8956d30647c714",
+      "same_vm_binary_bytes": 209607816,
+      "nonbinary_payload_file_bytes": {
+        "baseline": 1542661,
+        "candidate": 672368,
+        "delta_bytes": -870293,
+        "delta_pct": -56.4151
+      },
+      "install_du_bytes": {
+        "baseline": 211326605,
+        "candidate": 210452216,
+        "delta_bytes": -874389
+      },
+      "tarball_gz_bytes": {
+        "baseline": 54157826,
+        "candidate": 53907914,
+        "delta_bytes": -249912
+      },
+      "archive_member_count": {
+        "baseline": 127,
+        "candidate": 104,
+        "removed": 23,
+        "added": 0
+      },
+      "removed_members": [
+        "docs/PORTING-NOTES.md",
+        "docs/completion-matrix.md",
+        "docs/extensions-runner-design.md",
+        "docs/installer-ci-design.md",
+        "docs/parity-battery.md",
+        "docs/parity-checklist.md",
+        "docs/protocol-breadth-audit.md",
+        "docs/telemetry-design.md",
+        "docs/telemetry-events.md",
+        "docs/tui-keyboard-probe.md",
+        "docs/update-flow-state-machine.md",
+        "docs/windows-readiness.md",
+        "prime-agent-runtime/test/",
+        "prime-agent-runtime/test/test_agent_message_skill.py",
+        "prime-agent-runtime/test/test_bash.py",
+        "prime-agent-runtime/test/test_create_session.py",
+        "prime-agent-runtime/test/test_harness.py",
+        "prime-agent-runtime/test/test_mcp.py",
+        "prime-agent-runtime/test/test_mcp_base.py",
+        "prime-agent-runtime/test/test_repl.py",
+        "prime-agent-runtime/test/test_subagent_registry.py",
+        "prime-agent-runtime/test/test_winjob.py",
+        "prime-agent-runtime/uv.lock"
+      ],
+      "installed_tree_sha256": {
+        "baseline": "2ec123b316322b5b9a8fa628f6677dd8270ead8141e38ebf6d60161129289b16",
+        "candidate": "cbf5530946e72f7eb23250e92faf113fae2cf22d3e814d88bce8a29359365027"
+      },
+      "packaging_producer_member_parity": "both candidate assemble_artifacts.py and package_release.py exactly same 104 members",
+      "candidate_docs": [
+        "RUST_QUICKSTART.md",
+        "keybindings.md",
+        "MODEL-SURFACE.md",
+        "FEATURE_PARITY.md"
+      ],
+      "candidate_vm": "p9m0c2vp95kd947p75mrp4wo",
+      "artifact_paths_on_vm": {
+        "base": "/root/latest-85-base.tar.gz",
+        "candidate": "/root/latest-85-cand.tar.gz",
+        "member_lists": [
+          "/root/latest-85-base-members.txt",
+          "/root/latest-85-cand-members.txt",
+          "/root/latest-85-pkgrel-members.txt"
+        ]
+      }
     },
     "prior_head_quiet_neighbor": {
       "base_revision": "fb719b1367b09851b848895912208be60c49311c",
@@ -507,7 +576,7 @@
     ],
     "notes": "Primary CLEAN deterministic comparison: base 91eedb5d vs candidate bc1b3157, binary sha90ff703a (same path), exact removed 24 archive members, no additions, both producers agree. Historical B,C,C,B,B,C 90/90 trials were valid installed-tree-pinned but from symmetrically cache-polluted prior-head payloads, so their latency results are secondary context only; final-head short neighbor trial is primary neighbor sanity check. Do not claim latency speedup."
   },
-  "outcome": "REVIEW ONLY: corrected docfix pushed, exact current-head payload/gate/neighbor pending; prior 24-removed claim superseded, no merge",
+  "outcome": "Reviewable PR #2837 corrected docfix + deterministic exact-head payload delta PASS, full gate and short quiet neighbor PENDING, no merge",
   "decision": "Open reviewable PR after quiet neighbor and structured record. Orchestrator numeric final-head verdict and explicit APPROVE from BOTH formal standing adversaries required before any merge. Lane owner does not merge.",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2837",
   "record_path": "data/hillclimb/experiments/20260925-232821-install-tree-payload-curation.json",
@@ -515,5 +584,5 @@
     "worker": "perf-install-tree",
     "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-7ba3b8cf/01a0db50-cf28-733b-897d-d843c865237e.jsonl"
   },
-  "timestamp": "2026-09-26T03:41:02.744146+00:00"
+  "timestamp": "2026-09-26T03:43:51.843349+00:00"
 }
