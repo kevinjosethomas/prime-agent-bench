@@ -777,9 +777,9 @@
   ],
   "notes": "44/44 valid iteration pairs (60e2e198c vs 02e722676) and 32/32 valid final-head pairs (7064d039 vs 12d32fc59), all sha-asserted via symlink swap with per-trial binary sha check; ABBA order A,B,B,A; distributions do not overlap on the changed path; noop-control (boot_warm) shows parity (-1.1% span). Parity oracles: venv_bytes identical (290459505 both arms), marker content identical modulo harness tree prefix, runtime identity equal, kernel receipt + KERNEL_BOOT_OK on every session trial both arms."
  },
- "outcome": "in-progress",
- "decision": "Open PR for review only after full-gate disposition of the unrelated pa-tui flake; orchestrator numeric review + BOTH adversarial reviewers + operator disposition required before any merge; lane owner never merges.",
- "pr_url": null,
+ "outcome": "PR open for review only (never merged by lane owner); final-head paired evidence + full gate red disposition disclosed",
+ "decision": "Awaiting orchestrator numeric review + explicit APPROVE from BOTH formal adversarial reviewers (parity-adversary-fast, parity-advisary-2-fast) on the final PR head 12d32fc59 + operator disposition of the disclosed base-tip gate reds (pa-tui a_bang flake needs known_reds registration; parent_child green 16/16 isolated). No merge by the lane.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2884",
  "record_path": "data/hillclimb/experiments/20260926-194204-startup-venv-boot-skill-batch.json",
  "session": {
   "worker": "perf-venv-boot-fast",
