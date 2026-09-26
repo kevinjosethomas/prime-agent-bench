@@ -28,9 +28,9 @@
   "toolchain": "rustup 1.98.1"
  },
  "gates": {
-  "fmt": "pass (fleet_gate at PR head 6f53ac6eb: rc 0; CI fmt SUCCESS)",
-  "clippy": "pass (rc 0; CI check+clippy SUCCESS)",
-  "test": "pass: full-suite VM gate GREEN at PR head (130 sections ok, failures=[], unknown_failures=[]; pooled VM ykp6mbwtdtz17w58tayfa0yw). CI: shards 1-3 SUCCESS; shard 4/4 first run FAILED on oauth::openai_codex::a_dead_callback_falls_to_the_prompt_without_a_paste_surface (timing assertion 'settles promptly', pa-ai untouched by this PR, the same rotating env/timing flake documented on the gate VM where it fails on BASE too and passes standalone+rerun) \u2014 failed-jobs rerun in flight. fleet_review GREEN (blockers 0) at the PR head; prior-head review GREEN with stale-base advisory resolved by the fold."
+  "fmt": "pass (fleet_gate at PR head 6f53ac6eb rc 0; org CI fmt SUCCESS)",
+  "clippy": "pass (rc 0; org CI check+clippy SUCCESS)",
+  "test": "GREEN: (a) full-suite VM fleet_gate GREEN at the PR head (130 sections ok, failures=[], unknown_failures=[]); (b) fleet_review GREEN (blockers 0) at the PR head; (c) org CI: test shards 1/4-4/4 ALL PASS + test summary PASS after one full rerun of the test workflow \u2014 the single first-attempt red was oauth::openai_codex::a_dead_callback_falls_to_the_prompt_without_a_paste_surface ('settles promptly' timing assertion, pa-ai, untouched by this diff; the same rotating flake failed standalone on BASE 1507d399b 3/3 on the gate VM and passes standalone/rerun on both sides). Remaining CI red: the 'benchmark' check = the standing NON-APPLICABLE public TS benchmark workflow (this run's mode: 'Benchmark partial: failed or incomplete'; 0 Rust trials; standing operator disposition, never called pass)."
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -333,7 +333,7 @@
   "excluded": [],
   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (/root/bin-base, /root/bin-cand regenerated per head), per-trial fresh fixture copy with canonical prehash assert (10MiB dadaecfc..., 40MiB 85be402f...; resumed sessions append bookkeeping rows - post bytes differ, never claimed identical), pre/post calibration per pass set. Evidence repeated at THREE successive upstream heads (7064d039, c7ca05f10, 1507d399b) with consistent deltas and full B/C separation at every head. FLEET I/O REGIME DISCLOSURE: during the ABBA windows the repeat-fsync probe read 36-43ms on the measurement VM (fleet-degraded regime class per boot-floor warning), while the product-write-class probe (fresh file + fsync + rename + stat) read 0.02-0.06ms (healthy, per spawn-admission's corrected probe class); primary claims are RSS/PSS/census-byte measures (deterministic, calibration-stable); timing legs are within-pair parity checks only. Baseline matrix trials t2/t3 at the pre-fold tip 60e2e198c used fixtures that had accumulated a few bookkeeping rows from t1 (pre-fresh-copy discipline); effect bounded at sub-0.1MB, superseded by the fresh-copy ABBA pairs. Census numbers come from a PROBE build (lane/hillclimb-tui-memory-probe, never ships): its RSS values are PROBE-labeled and never used as product baselines. PR CI also carries the standing NON-APPLICABLE public TS benchmark red (workflow 'Prime Agent benchmarks', 'Benchmark partial: failed or incomplete' on this run's mode; standing operator disposition, never called pass, 0 Rust trials). Numeric review ACCEPTED (parent) on the final PR SHA."
  },
- "outcome": "candidate-ready (PR open, reviewer routing)",
+ "outcome": "candidate-ready (PR #2895 open, CI green, reviewer routing in progress)",
  "decision": null,
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2895",
  "record_path": "data/hillclimb/experiments/20260926-211500-memory-tui-firstframe-trim.json",
