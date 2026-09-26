@@ -232,8 +232,8 @@
   "notes": "Per-trial fixture prehash asserted (fresh inode copies; the resumed copy grows by bookkeeping rows post-trial as designed). Single-driver guards active per arm; the sha-asserted swap sequence is in the driver logs (SWAPPED_TO lines). The first ABBA (abba, pre-fix) pooled round-1/round-2 into per-arm dirs (round 1 overwritten) - superseded by the per-round-dir reruns (abba2/abba3/abba4). The census instrument build (3792b6bf...) is a THROWAWAY env-gated build (PRIME_DR_CENSUS), never on the lane branch; the VM tree was reset to the tip after each instrument/candidate build. cold_start sidecar has no per-proc rows (the benchmark's rss capture does not bind the patched rss_tree seam) - disclosed. The compaction_arms threshold test's standalone base failures are recorded as the flake's evidence, not measured as a metric."
  },
  "outcome": "pair-positive: the supervisor-side trim cuts the daemon's routed-relay retained heap -53% (get_messages 117.4->50.7 pre-fold; head-exact 107.7->54.4) and the catalog-scan residue -28..-32%, full separation at every base, with the TUI flow unchanged and fmt/clippy green; symmetric-flake test disclosure attached",
- "decision": null,
- "pr_url": null,
+ "decision": "PR #2899 open at lane head ddc4ee946 (merge-base 1507d399b): head-exact pair -49.5% relay / -31.5% catalog with full separation, TUI no-regression, fmt+clippy green, symmetric-flake test disclosure; merge bar = orchestrator numeric review + BOTH reviewer APPROVEs on the final PR sha + operator disposition of disclosed reds (benchmark non-applicability, the compaction_arms threshold flake, the load flakes)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2899",
  "record_path": "data/hillclimb/experiments/20260926-213000-memory-daemon-rss-trim.json",
  "session": {
   "worker": "perf-daemon-rss-fast",
