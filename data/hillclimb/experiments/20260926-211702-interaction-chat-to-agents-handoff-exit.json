@@ -1,0 +1,195 @@
+{
+ "id": "20260926-211702-interaction-chat-to-agents-handoff-exit",
+ "axis": "interaction",
+ "hypothesis": "The ~115ms chat->agents view-switch leg (measured flat vs session size) is paid on a handoff-exit control-flow defect: an exit_requested handoff (LEFT to the agents view, or a pending_selection open) only breaks the inner input-drain loop, so the session loop parks on its 50ms idle tick before teardown (~+51.3ms instrumented). Exiting the run loop this iteration for terminal handoffs should cut the leg to ~65ms with zero behavior change (headless keeps the tail pass; non-handoff /exit,/quit keep the final-frame gate).",
+ "approach": "19-line fix in crates/pa-tui/src/interactive.rs (commit 270b593b2, re-homed via 2 batched append-only folds at clean pair boundaries onto the then-tip c7ca05f10 -> lane head 890729100; post-fold re-diff vs merge-base = exactly the 19-line delta). Evidence: same-VM sequential ABBA B,C,C,B,B,C x5 trials x 2 REAL fixtures (2.4KB non-compacted real-small; 5,103,230B real-compacted-orc post-compaction snapshot) on one rust:1-bookworm 16CPU VM; sha-asserted atomic binary swaps (sha256 asserted per slot, log archived); per-trial driver validity flags (sentinel load/erase, dialogs, slash-menu smoke, editor dock bare, chrome+anchor-row paint, sentinel-gone, tail repaint); loadavg pre/mid/post; BOTH I/O regime classes probed (fleet dual-class standard): repeat-fsync AND fresh-write+sync_all+rename. Gates fmt+clippy+cargo-test full-suite on BOTH arms with full logs (pre-existing-red determination).",
+ "parity_notes": "Headless unchanged BY CONSTRUCTION (renderer.is_terminal() guard keeps the tail pass; headless captured frames keep the exit frame gate). Verified by test, not claim: full cargo-test workspace ran on BOTH arms incl the headless e2e family (agents_view_search/flash/subagents, clipboard, acp, continue_guard, eval) and the new #2865 click-parity tests (agents_view_click_headless, touch_click_headless) + #2866 incident notices: PASS on both arms; candidate failure set is a strict subset of base. The interactive.rs surface my hunk sits in was re-homed across #2865's mouse/touch click commit (its interactive.rs delta is only the click_used telemetry trait method at ~line 88; disjoint hunks, clean merge, no conflict). Non-handoff exits (/exit, /quit) keep the tail pass and its final-frame gate. No daemon/core/wire surface touched.",
+ "base": {
+  "revision": "c7ca05f1003c15bb179f422117c82b8d1bf1c704"
+ },
+ "branch": "lane/hillclimb-chat-to-agents",
+ "commits": [
+  "270b593b2 perf(pa-tui): a handoff exits the session loop this iteration, not after the idle tick",
+  "c2adac69e fold 6588b19cf",
+  "890729100 fold c7ca05f10 (lane head, PR candidate)"
+ ],
+ "build": {
+  "sandbox_id": "vw7df00lxy40alaqcjbl98xl",
+  "binary_sha256": "46a9ba56ec1b788764162efb84c10213e28338adb3a06e0ec3ddedfd85890c59",
+  "binary_bytes": null,
+  "build_seconds": null,
+  "toolchain": "rustup 1.98.1 (rust:1-bookworm VM)",
+  "note": "candidate binary at 890729100; base binary fcd287abc0e3d1e1bc326356c1ea9f61361a358d6d613ec0b8ea35d7aa19dd9a (213112232 bytes) at c7ca05f10, same VM; per-slot sha assertions in /root/abba-r2.log pattern SHA-ASSERT"
+ },
+ "gates": {
+  "fmt": "PASS both arms (cargo fmt --all --check @ 890729100 and c7ca05f10; first pass printed component-not-installed due to toolchain --profile minimal, components added, clean re-run PASS both arms)",
+  "clippy": "PASS both arms (cargo clippy --workspace --all-targets -D warnings; the winapi cfg warning in vendor/crossterm is not -D-elevated)",
+  "test": "full cargo test --workspace --no-fail-fast on BOTH arms. Candidate: 3 failed targets, 7 failing tests, ALL pre-existing/environment (strict subset of base). Base: 4 failed targets, 9 failing tests. Shared: packages::tests git/npm flows (6; container env), browser::tests opener absolute-path/url (1; env), tui_prompt_stash_restores_a_pasted_image_with_the_draft (1; pa-tui, fails BOTH arms). only-in-base: a_bang_during_a_streaming_turn_holds_then_flushes (1 flake; PASSED on candidate). The r1-era reds did NOT reproduce at this tip on either arm (agents_view_search_e2e, pa-core --lib). No candidate-caused test failure."
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA B,C,C,B,B,C; pty driver; 5ms poll grid; raw arrays from parsed trial JSONL",
+  "suites": {
+   "session.chat_to_agents (custom lane driver)": {
+    "metric": "chat_to_agents_ms (LEFT keypress -> agents-view chrome paint -> anchor identity row paint; controller-side monotonic clocks; first-observed boundaries)",
+    "baseline": {
+     "revision": "c7ca05f10",
+     "small": {
+      "trials": 15,
+      "valid": 15,
+      "p50_ms": 114.8,
+      "p95_ms": 119.7,
+      "values_ms": [
+       114.5,
+       114.6,
+       114.6,
+       114.7,
+       114.7,
+       114.7,
+       114.7,
+       114.8,
+       115.1,
+       115.2,
+       116.1,
+       116.6,
+       117.8,
+       119.7,
+       119.8
+      ]
+     },
+     "orc_5.1MB_compacted": {
+      "trials": 15,
+      "valid": 15,
+      "p50_ms": 119.1,
+      "p95_ms": 119.5,
+      "values_ms": [
+       105.4,
+       114.6,
+       114.6,
+       114.7,
+       115.0,
+       115.0,
+       118.7,
+       119.1,
+       119.3,
+       119.3,
+       119.3,
+       119.5,
+       119.5,
+       119.5,
+       119.9
+      ]
+     }
+    },
+    "candidate": {
+     "revision": "890729100",
+     "small": {
+      "trials": 15,
+      "valid": 15,
+      "p50_ms": 67.0,
+      "p95_ms": 68.0,
+      "values_ms": [
+       55.2,
+       57.3,
+       64.2,
+       66.8,
+       66.8,
+       66.9,
+       67.0,
+       67.0,
+       67.1,
+       67.1,
+       67.1,
+       67.4,
+       67.9,
+       68.0,
+       68.4
+      ]
+     },
+     "orc_5.1MB_compacted": {
+      "trials": 15,
+      "valid": 15,
+      "p50_ms": 66.6,
+      "p95_ms": 67.5,
+      "values_ms": [
+       55.4,
+       66.2,
+       66.4,
+       66.5,
+       66.5,
+       66.6,
+       66.6,
+       66.6,
+       66.7,
+       66.7,
+       66.7,
+       66.7,
+       66.9,
+       67.5,
+       69.5
+      ]
+     }
+    },
+    "delta_p50_ms": {
+     "small": -47.8,
+     "orc": -52.5
+    },
+    "flavor": "candidate keeps the same shape: flat vs session size; C bimodal (modes ~55 and ~67ms) as in r1"
+   }
+  },
+  "extra": {
+   "reverse_leg_agents_to_tail_ms_p50": {
+    "small": {
+     "B": 19.4,
+     "C": 19.1
+    },
+    "orc": {
+     "B": 42.0,
+     "C": 37.2
+    }
+   },
+   "launch_to_ready_ms_p50": {
+    "small": {
+     "B": 3371,
+     "C": 2732
+    },
+    "orc": {
+     "B": 3195,
+     "C": 3064
+    },
+    "note": "REGIME-SUSPECT: fresh-write class degraded during run (see validity) - do NOT use these as open-path evidence; the open leg belongs to other lanes"
+   },
+   "calibration": {
+    "loadavg_pre": "1.18 2.28 2.48",
+    "loadavg_mid": "0.44 1.53 2.16",
+    "loadavg_post": "0.36 1.06 1.88",
+    "repeat_fsync_4KB_p50_ms": {
+     "pre": 0.17,
+     "mid": 0.27,
+     "post": 0.17,
+     "post2": 0.2
+    },
+    "fresh_write_syncall_rename_p50_ms": {
+     "during_run_20:43Z": [
+      237.49,
+      441.89
+     ],
+     "post_run_21:16Z": 250.43
+    },
+    "regime_disclosure": "FLEET DUAL-CLASS STANDARD: repeat-fsync read HEALTHY (0.17-0.27ms p50) all run while the product write class (fresh+sync_all+rename) was DEGRADED ~237-442ms p50 across the whole window (fleet correction applied: r2 sanity 20:24Z fresh probe before any timing claim). The measured leg does no fresh-file+rename on its path; the pair is same-VM interleaved (systematic regime cancels in the paired delta); empirical insensitivity evidence: base sanity trial under the same degraded regime read 114.6ms, matching the r1 (regime-unprobed, HISTORICAL) and r2 baselines. launch_to_ready IS regime-suspect and labeled so."
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "60/60 trials valid, zero errors, zero precondition fails. r1 pair (base d09fb8f9d vs cand 270b593b2, VM qe2f86njdtddb63qxdp0ilkk, 04:19-04:47Z) is HISTORICAL: superseded by tip churn; its VM died at max runtime BEFORE its full gate log could be saved (its gate tail showed agents_view_search_e2e + pa-core --lib failing at the old candidate; neither reproduces at the new tip; its fmt/clippy were never verified) - r2 redid everything. Sandbox max-runtime death is the r1 VM lesson: r2 VM created with 12h cap."
+ },
+ "outcome": "confirmed at base c7ca05f10 (tip moved to 1507d399b+ during the cycle; evidence pinned at c7ca05f10/890729100; next fold batches at the next clean boundary)",
+ "decision": "pending orchestrator",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-211702-interaction-chat-to-agents-handoff-exit.json",
+ "session": {
+  "worker": "perf-chat-to-agents-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9034d7f2/01a0dbfa-9559-73b6-b529-a6760090cd19.jsonl"
+ },
+ "timestamp": "2026-09-26T21:17:02Z"
+}
