@@ -1,0 +1,1058 @@
+{
+ "id": "20260926-060449-interaction-replay-wrap-onepass",
+ "axis": "interaction",
+ "hypothesis": "First transcript frame of a resumed session pays quadratic time in the TUI wrap of unbroken tokens longer than the wrap width: markdown.rs wrap_spans_into re-measured str_width(&rest) and cloned the remaining tail per emitted row, O(token_len^2/width) for the 10MiB stock fixture's ~4.3MB single-word pad row (~22s of a ~21s-to-ready cold open). Upstream TUI laziness (bc412c5f) does NOT absorb it; the fix removes the re-measure and the tail clone, tracking remaining width arithmetically with a one-true-measure backstop at the tentative exit for non-additive grapheme-cluster splits.",
+ "approach": "crates/pa-tui/src/markdown.rs wrap_spans_into only: remaining width measured once, decremented per row, rest sliced in place (zero tail clones); correctness backstop re-measures once at the tentative exit when a row split lands inside a multi-char grapheme cluster. Tests: embedded verbatim legacy algorithm as the output oracle (full Vec<Line> equality incl. span styles + render-vs-count rows), adversarial ZWJ-family repro across widths 1-40, mixed Unicode/escape/OSC-8/multispan corpora, bounded differential corpora, 1MiB monoword stress (content round-trip + ceil row count, no wall-clock assert). Measured on VM bmxeyxz112wjq2g5wn7o82k0: pure-base control at d5cd4b132, then same-head B,C,C,B pairs at three successive upstream bases (sha-asserted binary swaps, per-trial canonical fixture prehash, pre/mid/post calibration), per-process RSS probes incl. a t0+20s double-sample, and a styled first-frame byte-parity probe on the real stock attach corpus.",
+ "parity_notes": "Complexity fix, never a layout change: embedded legacy-oracle differential tests prove byte- and style-identical wrap output across corpora incl. adversarial grapheme cases; end-to-end styled first-frame dump on the real 10MiB stock attach capture is byte-identical base-vs-cand (fnv1a digest 59a4ef8715652ad8, sha256 11e9782847c90415666202d09e3f13a8fa88793f9ae429cc943252ce504d4f96, 24 lines / 4284 styled bytes, both sides); all pinned stock trials emit identical pty_bytes (5555) on both sides; sentinel/echo/erase validation identical. Claim scope: long-unbroken-token worst case ONLY - never generic large-session resume (50x1MiB capped toolResult blobs render 13.7ms; real 2717-msg session 4.7ms; daemon create+attach ~0.7s).",
+ "base": {
+  "revision": "c9365d6ba44100d6ec6bef7bbaee52d2c15a819d"
+ },
+ "branch": "lane/hillclimb-replay-wrap-fix",
+ "commits": [
+  "a4d6339ae57afdcda7707b547b569b3518f1df86",
+  "1592becf6",
+  "37cfd0090",
+  "6167b1550",
+  "6ded5fe98",
+  "e1a7c05f014b570098299ff24bfb71d2bec49e7b",
+  "5d9ff29b8bae59fda0b14b03aa8a426bae61391d",
+  "9068febb70a72338d2885e5ca26be1504c68e999",
+  "31d5d38abf2c36da1237ed70899bddf591f0a8d9",
+  "c6d747190f5943a8bafaf52ede33c12dbf200259"
+ ],
+ "build": {
+  "sandbox_id": "bmxeyxz112wjq2g5wn7o82k0",
+  "binary_sha256": {
+   "base_d5cd": "bf81671044fce90d5e64664ed50cb7833aa7e279c2b85bbc7ae87e522430bdfc",
+   "cand_9068": "10e1964d977ec609afc514e2c6dff5bb1eb1a81256b279f5f40cb370762b8657",
+   "base_bbb8": "29e5209e7ca330c5a9425e79266664c828605173c3d09626030f77882dd47dc0",
+   "cand_31d5": "b47637bc2c8360797d520c97b55b43b9cff3c480fefc1604008e7baf6929b643",
+   "base_c936": "207de275e0537555baf4515d01ac04e79c28cdeb4cab4b613b6d4ca35902411a",
+   "cand_c6d7": "e1d7fa024cf4ef7764754f8a8700cec7a8ed9590dde0ed2a47e8781059b66837"
+  },
+  "binary_bytes": 210103576,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (full-suite VM gates at 9068febb7, 31d5d38ab, c6d74719: rc 0)",
+  "clippy": "pass (same heads: rc 0, -D warnings)",
+  "test": "31d5d38ab: RED_KNOWN_REDS (mcp_login worker_begin_login + tool_result_entries_persisted_and_streamed - both ACTIVE rotating flakes, cited, unknown_failures empty); c6d74719 (PR head): RED - single failure worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row (pa-daemon; NOT lane-caused: reproduces on PURE upstream - scoped pa-daemon gate on branch rust failed the same test; lane diff is pa-tui/markdown.rs wrap only) - disclosed for operator disposition"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "session.cold_open_10mib": {
+    "pure_base_control_d5cd": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 22425.02,
+     "p95_ms": 23221.51,
+     "min_ms": 22293.96,
+     "max_ms": 23221.51,
+     "values_ms": [
+      22670.57,
+      22425.02,
+      22294.15,
+      22293.96,
+      23221.51
+     ],
+     "first_paint_p50_ms": 22417.6,
+     "rss_p50_mb": 518.9,
+     "rss_values_mb": [
+      548.9,
+      560.4,
+      518.9,
+      493.2,
+      478.0
+     ],
+     "pss_p50_mb": 482.3,
+     "pss_values_mb": [
+      511.6,
+      523.7,
+      482.3,
+      456.4,
+      441.2
+     ],
+     "pty_bytes": [
+      5555
+     ],
+     "fixture_pre_sha256": [
+      "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+     ]
+    },
+    "pair_d5cd_9068_pinned": {
+     "baseline": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 21939.83,
+      "p95_ms": 23009.81,
+      "min_ms": 21383.49,
+      "max_ms": 23009.81,
+      "values_ms": [
+       22322.86,
+       21936.73,
+       21449.79,
+       21635.97,
+       22534.47,
+       21942.94,
+       21993.5,
+       21467.11,
+       23009.81,
+       21383.49
+      ],
+      "first_paint_p50_ms": 21932.45,
+      "rss_p50_mb": 514.65,
+      "rss_values_mb": [
+       478.3,
+       481.9,
+       547.8,
+       509.4,
+       475.0,
+       548.5,
+       527.0,
+       477.5,
+       546.9,
+       519.9
+      ],
+      "pss_p50_mb": 477.85,
+      "pss_values_mb": [
+       441.5,
+       445.1,
+       511.8,
+       472.8,
+       438.8,
+       512.5,
+       490.5,
+       441.4,
+       510.7,
+       482.9
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "candidate": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 842.62,
+      "p95_ms": 938.64,
+      "min_ms": 788.98,
+      "max_ms": 938.64,
+      "values_ms": [
+       938.64,
+       817.85,
+       790.7,
+       788.98,
+       844.21,
+       841.03,
+       857.86,
+       800.18,
+       881.48,
+       889.71
+      ],
+      "first_paint_p50_ms": 834.75,
+      "rss_p50_mb": 540.9,
+      "rss_values_mb": [
+       539.4,
+       524.6,
+       541.9,
+       511.4,
+       541.8,
+       540.0,
+       555.9,
+       553.9,
+       542.8,
+       519.4
+      ],
+      "pss_p50_mb": 504.65,
+      "pss_values_mb": [
+       503.2,
+       488.4,
+       505.8,
+       474.5,
+       505.9,
+       503.5,
+       519.4,
+       517.7,
+       506.0,
+       482.8
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "delta_pct": -96.16,
+     "speedup_x": 26.0
+    },
+    "pair_bbb8_31d5_short": {
+     "baseline": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 20757.66,
+      "p95_ms": 21368.55,
+      "min_ms": 20612.35,
+      "max_ms": 21368.55,
+      "values_ms": [
+       21368.55,
+       20664.14,
+       20790.2,
+       20817.62,
+       20725.12,
+       20612.35
+      ],
+      "first_paint_p50_ms": 20749.65,
+      "rss_p50_mb": 519.5,
+      "rss_values_mb": [
+       548.0,
+       510.0,
+       514.1,
+       520.8,
+       518.2,
+       524.9
+      ],
+      "pss_p50_mb": 482.6,
+      "pss_values_mb": [
+       510.8,
+       473.8,
+       477.5,
+       483.4,
+       481.8,
+       488.2
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "candidate": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 827.34,
+      "p95_ms": 1057.16,
+      "min_ms": 790.84,
+      "max_ms": 1057.16,
+      "values_ms": [
+       944.7,
+       814.45,
+       1057.16,
+       840.22,
+       790.84,
+       795.04
+      ],
+      "first_paint_p50_ms": 819.75,
+      "rss_p50_mb": 533.75,
+      "rss_values_mb": [
+       580.7,
+       513.6,
+       579.4,
+       553.9,
+       469.7,
+       470.9
+      ],
+      "pss_p50_mb": 497.2,
+      "pss_values_mb": [
+       543.5,
+       477.0,
+       542.4,
+       517.4,
+       433.6,
+       434.9
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "delta_pct": -96.01,
+     "speedup_x": 25.1
+    },
+    "pair_c936_c6d7_short_final_head": {
+     "baseline": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 20788.42,
+      "p95_ms": 21203.7,
+      "min_ms": 20707.52,
+      "max_ms": 21203.7,
+      "values_ms": [
+       21203.7,
+       20707.52,
+       20711.98,
+       20890.03,
+       20779.23,
+       20797.61
+      ],
+      "first_paint_p50_ms": 20780.5,
+      "rss_p50_mb": 508.65,
+      "rss_values_mb": [
+       510.1,
+       502.8,
+       507.2,
+       518.3,
+       482.7,
+       532.6
+      ],
+      "pss_p50_mb": 472.3,
+      "pss_values_mb": [
+       473.5,
+       467.0,
+       471.1,
+       481.8,
+       445.9,
+       496.4
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "candidate": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 815.36,
+      "p95_ms": 1502.62,
+      "min_ms": 798.68,
+      "max_ms": 1502.62,
+      "values_ms": [
+       1502.62,
+       800.78,
+       812.77,
+       935.6,
+       798.68,
+       817.94
+      ],
+      "first_paint_p50_ms": 808.5,
+      "rss_p50_mb": 546.0,
+      "rss_values_mb": [
+       551.7,
+       538.4,
+       540.3,
+       553.8,
+       512.5,
+       580.1
+      ],
+      "pss_p50_mb": 510.3,
+      "pss_values_mb": [
+       516.1,
+       502.8,
+       504.5,
+       517.5,
+       476.9,
+       543.2
+      ],
+      "pty_bytes": [
+       5555
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "delta_pct": -96.08,
+     "speedup_x": 25.5
+    },
+    "pair_baa7_e1a7_pinned_historical": {
+     "baseline": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 20879.77,
+      "p95_ms": 21132.41,
+      "min_ms": 20773.95,
+      "max_ms": 21132.41,
+      "values_ms": [
+       20967.94,
+       21010.1,
+       20803.72,
+       20885.15,
+       21132.41,
+       20773.95,
+       20799.25,
+       20784.94,
+       20874.39,
+       21019.21
+      ],
+      "first_paint_p50_ms": 31.85,
+      "rss_p50_mb": 523.15,
+      "rss_values_mb": [
+       487.3,
+       500.0,
+       486.7,
+       546.3,
+       599.7,
+       517.9,
+       549.9,
+       528.4,
+       517.7,
+       557.4
+      ],
+      "pss_p50_mb": 487.25,
+      "pss_values_mb": [
+       450.4,
+       464.3,
+       450.3,
+       509.9,
+       563.6,
+       481.8,
+       513.2,
+       492.6,
+       481.9,
+       520.9
+      ],
+      "pty_bytes": [
+       67853,
+       68807
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "candidate": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 832.59,
+      "p95_ms": 1054.7,
+      "min_ms": 798.0,
+      "max_ms": 1054.7,
+      "values_ms": [
+       1054.7,
+       820.15,
+       914.46,
+       817.23,
+       851.25,
+       876.46,
+       825.16,
+       799.55,
+       798.0,
+       840.02
+      ],
+      "first_paint_p50_ms": 32.45,
+      "rss_p50_mb": 548.9,
+      "rss_values_mb": [
+       552.7,
+       508.7,
+       581.0,
+       484.4,
+       546.9,
+       510.4,
+       552.0,
+       540.8,
+       550.9,
+       582.7
+      ],
+      "pss_p50_mb": 512.7,
+      "pss_values_mb": [
+       517.1,
+       472.8,
+       544.4,
+       447.9,
+       510.6,
+       473.7,
+       515.1,
+       504.3,
+       514.8,
+       546.7
+      ],
+      "pty_bytes": [
+       19513,
+       20428,
+       21406,
+       22384
+      ],
+      "fixture_pre_sha256": [
+       "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+      ]
+     },
+     "delta_pct": -96.01,
+     "speedup_x": 25.1
+    },
+    "delta_pct": -96.08,
+    "regression": false
+   },
+   "session.cold_open_10mib_compacted": {
+    "pure_base_control_d5cd": {
+     "trials": 5,
+     "valid": 5,
+     "p50_ms": 287.36,
+     "p95_ms": 289.45,
+     "min_ms": 285.97,
+     "max_ms": 289.45,
+     "values_ms": [
+      289.45,
+      287.36,
+      286.48,
+      287.86,
+      285.97
+     ],
+     "first_paint_p50_ms": 175.5,
+     "rss_p50_mb": 169.1,
+     "rss_values_mb": [
+      169.1,
+      169.0,
+      169.7,
+      168.5,
+      169.6
+     ],
+     "pss_p50_mb": 132.6,
+     "pss_values_mb": [
+      133.0,
+      132.1,
+      132.6,
+      131.6,
+      132.9
+     ],
+     "pty_bytes": [
+      5785,
+      6739
+     ],
+     "fixture_pre_sha256": [
+      "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+     ]
+    },
+    "pair_d5cd_9068_pinned": {
+     "baseline": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 287.25,
+      "p95_ms": 288.5,
+      "min_ms": 285.98,
+      "max_ms": 288.5,
+      "values_ms": [
+       287.16,
+       287.38,
+       286.84,
+       287.34,
+       287.63,
+       285.98,
+       287.03,
+       287.95,
+       288.5,
+       286.84
+      ],
+      "first_paint_p50_ms": 185.2,
+      "rss_p50_mb": 169.1,
+      "rss_values_mb": [
+       169.2,
+       168.0,
+       169.0,
+       168.0,
+       171.4,
+       167.5,
+       167.8,
+       169.4,
+       171.2,
+       171.7
+      ],
+      "pss_p50_mb": 132.3,
+      "pss_values_mb": [
+       132.0,
+       131.8,
+       132.7,
+       131.5,
+       134.5,
+       130.7,
+       131.6,
+       132.6,
+       134.1,
+       135.1
+      ],
+      "pty_bytes": [
+       5785,
+       6739
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "candidate": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 287.1,
+      "p95_ms": 295.12,
+      "min_ms": 285.03,
+      "max_ms": 295.12,
+      "values_ms": [
+       286.71,
+       290.03,
+       295.12,
+       285.89,
+       287.49,
+       288.33,
+       285.89,
+       290.46,
+       285.03,
+       286.18
+      ],
+      "first_paint_p50_ms": 206.45,
+      "rss_p50_mb": 169.25,
+      "rss_values_mb": [
+       169.2,
+       169.7,
+       169.6,
+       169.3,
+       168.7,
+       168.2,
+       168.6,
+       168.7,
+       169.7,
+       170.4
+      ],
+      "pss_p50_mb": 132.55,
+      "pss_values_mb": [
+       132.6,
+       133.2,
+       133.1,
+       132.5,
+       132.2,
+       132.2,
+       132.5,
+       131.8,
+       133.5,
+       133.8
+      ],
+      "pty_bytes": [
+       5785
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "delta_pct": -0.05,
+     "speedup_x": 1.0
+    },
+    "pair_bbb8_31d5_short": {
+     "baseline": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 286.49,
+      "p95_ms": 288.33,
+      "min_ms": 285.59,
+      "max_ms": 288.33,
+      "values_ms": [
+       286.47,
+       285.59,
+       285.78,
+       288.33,
+       286.91,
+       286.5
+      ],
+      "first_paint_p50_ms": 195.15,
+      "rss_p50_mb": 168.25,
+      "rss_values_mb": [
+       167.4,
+       168.3,
+       168.2,
+       169.0,
+       169.8,
+       168.0
+      ],
+      "pss_p50_mb": 132.05,
+      "pss_values_mb": [
+       131.6,
+       132.3,
+       132.1,
+       132.0,
+       133.4,
+       131.5
+      ],
+      "pty_bytes": [
+       4831,
+       5785,
+       6739
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "candidate": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 286.52,
+      "p95_ms": 287.31,
+      "min_ms": 285.32,
+      "max_ms": 287.31,
+      "values_ms": [
+       286.61,
+       285.32,
+       286.43,
+       285.65,
+       287.31,
+       286.74
+      ],
+      "first_paint_p50_ms": 183.8,
+      "rss_p50_mb": 169.75,
+      "rss_values_mb": [
+       169.9,
+       166.3,
+       169.5,
+       169.6,
+       171.7,
+       171.3
+      ],
+      "pss_p50_mb": 133.25,
+      "pss_values_mb": [
+       133.5,
+       129.3,
+       132.6,
+       133.0,
+       135.4,
+       134.8
+      ],
+      "pty_bytes": [
+       5785,
+       6739
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "delta_pct": 0.01,
+     "speedup_x": 1.0
+    },
+    "pair_c936_c6d7_short_final_head": {
+     "baseline": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 288.33,
+      "p95_ms": 291.1,
+      "min_ms": 287.61,
+      "max_ms": 291.1,
+      "values_ms": [
+       288.68,
+       287.61,
+       287.97,
+       288.76,
+       287.61,
+       291.1
+      ],
+      "first_paint_p50_ms": 175.15,
+      "rss_p50_mb": 168.55,
+      "rss_values_mb": [
+       166.9,
+       167.5,
+       169.0,
+       169.3,
+       168.1,
+       169.0
+      ],
+      "pss_p50_mb": 132.3,
+      "pss_values_mb": [
+       131.0,
+       130.6,
+       132.4,
+       132.9,
+       132.2,
+       133.2
+      ],
+      "pty_bytes": [
+       5785,
+       6739
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "candidate": {
+      "trials": 6,
+      "valid": 6,
+      "p50_ms": 287.36,
+      "p95_ms": 291.7,
+      "min_ms": 284.56,
+      "max_ms": 291.7,
+      "values_ms": [
+       291.7,
+       288.4,
+       286.31,
+       285.28,
+       289.86,
+       284.56
+      ],
+      "first_paint_p50_ms": 186.85,
+      "rss_p50_mb": 169.75,
+      "rss_values_mb": [
+       170.2,
+       169.7,
+       169.5,
+       171.1,
+       169.8,
+       167.2
+      ],
+      "pss_p50_mb": 133.2,
+      "pss_values_mb": [
+       133.8,
+       132.9,
+       132.8,
+       134.7,
+       133.5,
+       131.2
+      ],
+      "pty_bytes": [
+       4831,
+       5785,
+       6739
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "delta_pct": -0.34,
+     "speedup_x": 1.0
+    },
+    "pair_baa7_e1a7_pinned_historical": {
+     "baseline": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 292.04,
+      "p95_ms": 296.31,
+      "min_ms": 289.42,
+      "max_ms": 296.31,
+      "values_ms": [
+       292.58,
+       289.44,
+       291.16,
+       296.31,
+       292.31,
+       291.77,
+       292.56,
+       291.67,
+       295.86,
+       289.42
+      ],
+      "first_paint_p50_ms": 32.1,
+      "rss_p50_mb": 169.3,
+      "rss_values_mb": [
+       169.3,
+       170.3,
+       168.7,
+       170.2,
+       167.9,
+       169.1,
+       169.3,
+       171.2,
+       169.9,
+       168.9
+      ],
+      "pss_p50_mb": 133.1,
+      "pss_values_mb": [
+       133.0,
+       133.6,
+       131.9,
+       133.2,
+       130.8,
+       132.9,
+       133.2,
+       134.9,
+       133.9,
+       132.7
+      ],
+      "pty_bytes": [
+       9316,
+       9359,
+       10270,
+       10313
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "candidate": {
+      "trials": 10,
+      "valid": 10,
+      "p50_ms": 293.84,
+      "p95_ms": 301.31,
+      "min_ms": 289.82,
+      "max_ms": 301.31,
+      "values_ms": [
+       289.82,
+       292.89,
+       297.26,
+       295.07,
+       298.85,
+       301.31,
+       292.71,
+       291.16,
+       293.43,
+       294.24
+      ],
+      "first_paint_p50_ms": 32.0,
+      "rss_p50_mb": 169.35,
+      "rss_values_mb": [
+       169.3,
+       166.9,
+       169.0,
+       170.2,
+       168.2,
+       170.2,
+       171.3,
+       168.0,
+       169.4,
+       169.4
+      ],
+      "pss_p50_mb": 132.9,
+      "pss_values_mb": [
+       133.2,
+       131.1,
+       132.8,
+       133.4,
+       132.4,
+       134.2,
+       135.1,
+       132.1,
+       132.9,
+       132.9
+      ],
+      "pty_bytes": [
+       9316,
+       10270,
+       10313
+      ],
+      "fixture_pre_sha256": [
+       "97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8"
+      ]
+     },
+     "delta_pct": 0.62,
+     "speedup_x": 1.0
+    },
+    "regression": false
+   }
+  },
+  "extra": {
+   "styled_first_frame_parity": {
+    "input": "/root/attach_stock.json (real stock-suite attach capture, 9.65MB wire)",
+    "first_render_frame_ms": {
+     "base_c9365d6ba": 29914.2,
+     "cand_c6d74719": 95.6
+    },
+    "lines": 24,
+    "styled_span_bytes": 4284,
+    "fnv1a_digest_both": "59a4ef8715652ad8",
+    "sha256_both": "11e9782847c90415666202d09e3f13a8fa88793f9ae429cc943252ce504d4f96",
+    "verdict": "STYLED_FRAME_IDENTICAL"
+   },
+   "rss_perproc": {
+    "pinned_pair_tree_p50_stock": {
+     "base": 514.65,
+     "cand": 540.9,
+     "delta_mb": 26.25
+    },
+    "perproc_probe_bbb8_31d5_x4_per_role": {
+     "launch_tui_p50_rss_mb": {
+      "base": 163.34,
+      "cand": 154.98,
+      "note": "the fixed process is LIGHTER in cand (-8.4MB)"
+     },
+     "daemon_p50_rss_mb": {
+      "base": 24.48,
+      "cand": 24.32
+     },
+     "worker_p50_rss_mb": {
+      "base": 298.96,
+      "cand": 339.5,
+      "note": "code-identical path for this diff; carries the tree delta; ranges overlap (base 240-344, cand 261-372)"
+     },
+     "kernel_p50_rss_mb": {
+      "base": 30.49,
+      "cand": 30.57
+     }
+    },
+    "double_sample_t0_t20_x4_per_role": {
+     "base_worker_t0_vs_t20": "byte-stable (idle ~23s before t0)",
+     "cand_worker_t0_vs_t20": [
+      318.78,
+      362.11,
+      290.15,
+      371.91,
+      "then t20:",
+      319.02,
+      319.93,
+      290.33,
+      372.14
+     ],
+     "note": "one cand worker trimmed -42.18MB during the 20s idle (362.11 -> 319.93); base workers already settled at t0; ready-time sample-point bias: base idles ~23s before the sample, cand ~1s",
+     "compacted_suite_rss_p50": {
+      "base": 169.1,
+      "cand": 169.25,
+      "delta_mb": 0.15
+     },
+     "verdict": "no steady-state RSS cost attributable to the wrap fix (it allocates strictly less: TUI -7 to -8MB); stock-suite tree-sum RSS at the harness sample point is dominated by worker-process state variance with overlapping distributions"
+    }
+   },
+   "calibration_s_30m_loop": {
+    "pure_base_run": {
+     "pre": [
+      0.6216,
+      0.6239,
+      0.6249
+     ],
+     "post": [
+      0.6089,
+      0.6088,
+      0.6131
+     ]
+    },
+    "pair_d5cd_9068": {
+     "pre": [
+      0.6216,
+      0.6239,
+      0.6249
+     ],
+     "mid": "recorded in run log",
+     "post": [
+      0.5857,
+      0.5868,
+      0.5877
+     ]
+    },
+    "pair_bbb8_31d5": {
+     "pre": [
+      0.608,
+      0.605,
+      0.6044
+     ],
+     "post": [
+      0.6128,
+      0.5854,
+      0.5864
+     ]
+    },
+    "pair_c936_c6d7": {
+     "pre": [
+      0.6021,
+      0.6005,
+      0.6055
+     ],
+     "post": [
+      0.5849,
+      0.5913,
+      0.5917
+     ]
+    }
+   },
+   "first_paint_metric_honesty": "At base >= d5cd4b132 upstream 0eca2b4e7 suppresses the brand splash on content opens, so launch_to_first_paint_ms now tracks the transcript frame (~21.9s base / ~0.84s cand) instead of the ~32ms splash seen at baa7b323. Both sides shift identically; cross-boundary absolute comparison of first-paint is invalid, pair deltas are not affected.",
+   "pty_bytes_note": "stock suite: identical 5555 bytes in ALL 40 pinned+short pair trials both sides. compacted suite: bimodal 5785/6739 (one animation frame) historically present on BOTH sides at both heads (e1a7 era: 9316/10270); not a wrap-parity signal (wrap parity is proven by the styled-frame oracle + differential tests)."
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Same-VM sequential ABBA; sha256-asserted atomic binary swaps; per-trial canonical fixture restore (bench integrity fix e6980d5) with identical prehash and fresh inode; env_gate recorded per trial (a self-inflicted 300s compile-marker stall from a waiter cmdline was found and fixed mid-run: affected trials only sat longer at the gate, never measured concurrently); stock suite is an adversarial long-unbroken-token wrap stress case, NOT a representative large-session resume benchmark; compacted suite is the representative neighbor and stays neutral."
+ },
+ "outcome": "measured",
+ "decision": "PR with pinned same-commit evidence: -96.16% (26.0x) at d5cd4b132/9068febb7 (10/10 valid per side), reproduced -96.01% at bbb886dd8/31d5d38ab (6/6) and -96.08% at c9365d6ba/c6d74719 (6/6); compacted neighbor neutral in all three; styled first-frame byte-identical; gates disclosed (1 upstream pa-daemon worker-kill red reproduced on pure upstream, not lane-caused; rotating known-reds cited). Merge bar: orchestrator numeric review + both adversarial reviewers on the FINAL PR SHA + operator red-gate disposition - NOT to be merged by this worker.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260926-060449-interaction-replay-wrap-onepass.json",
+ "session": {
+  "worker": "perf-replay-wrap-fast (glm-5.3-fast reboot)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-a9b11882/01a0dbfa-8b2f-7072-9fba-f3482855b30b.jsonl"
+ },
+ "timestamp": "2026-09-26T06:04:49.190238+00:00"
+}
