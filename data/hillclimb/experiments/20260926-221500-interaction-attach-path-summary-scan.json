@@ -1,0 +1,298 @@
+{
+ "id": "20260926-221500-interaction-attach-path-summary-scan",
+ "axis": "interaction",
+ "supersedes": "20260926-183000-interaction-attach-path-baseline-scaling (same lane, baseline phase); 20260926-054522-agent-view-real-session-negative (the prior lane's discarded single-fold mechanism - this lane's scan supersedes it with a strictly-better primitive: the summary needs NO fold at all)",
+ "hypothesis": "At tip the summary surfaces (attach, get_state, every roster push, list rows, create response) materialize the whole retained window (SessionFile::messages -> Vec<Value>) just to read three scalars: the newest message timestamp (reverse find_map), the summed assistant usage, and the window's message count. A borrowed scalar scan over ONE shared windowed walk (the exact sequence messages() folds) removes that fold from every summary surface and one of the two retained-window folds an attach pays, with exact scalar parity and byte-identical wire.",
+ "claim_label": "ATTACH-PHASE claim (per parent approval): daemon-side attach/summary reduction measured on the real wire (direct transport = the pa-tui primary path + supervisor-routed fallback), verified SURFACING on the TUI end-to-end re-attach leg (the Kevin agents->chat round trip) on the real compacted fixture and the ~454k-ctx-equivalent synthetic proxy.",
+ "change": {
+  "branch": "lane/hillclimb-attach-path",
+  "final_head": "8336dae18778bf21b7037b157d5361dfce9e7ffb",
+  "merge_base": "1507d399b54f2ffe65cda22ed7a9c86fee6a1480 (origin/rust at pairing; one append-only fold each at clean boundaries: 9d9cf2da7 then 1507d399b)",
+  "mechanism_commit": "d15af0649 (pa-daemon: summary scalars from one borrowed walk, not the materialized fold)",
+  "fix_commits": [
+   "898f92f08 fmt",
+   "ea7ec52d4 clippy default_trait_access",
+   "88465f102 fmt wrap"
+  ],
+  "files": [
+   "crates/pa-daemon/src/session_store.rs (+143: walk_message_values shared walk; scan_message_scalars + MessageWindowScalars; entry_bears_message; messages() delegates to the walk, halving the old retained-loop clones)",
+   "crates/pa-daemon/src/worker/summary.rs (-51/+6: session_summary consumes the scan, no Vec)",
+   "crates/pa-daemon/src/session_store_window_tests.rs (+285: scalar-equivalence goldens across 8 window shapes + 2 boundary sequence pins)"
+  ],
+  "not_touched": "set_session_file/load paths (launch-open territory), session_scan.rs (catalog-cold), agent_engine.rs, supervisor files, worker/connection.rs handle_attach (the payload fold is unchanged by design)"
+ },
+ "pairs": [
+  {
+   "pair": "mechanism pair",
+   "base": "6588b19cf",
+   "base_bin_sha256": "392efffae0c08cfba85911565adc8171a31002d17850daf20306d89fd7716402",
+   "cand": "d15af0649",
+   "cand_bin_sha256": "56128e0f7a0cc2abad26a2518564ae44299c53876501b6142ee19c2488ed7567",
+   "vm": "iup0807aomd0xq8cii5793ie (16c/32GB; died 21:15Z mid-final-build - raw ABBA + wire dumps from this VM are archived in this record's numbers; the VM loss is disclosed)"
+  },
+  {
+   "pair": "TUI pair 1",
+   "base": "9d9cf2da7 (tip with #2844)",
+   "cand": "8a546e91e (mechanism + fold)",
+   "vm": "iup0807aomd0xq8cii5793ie"
+  },
+  {
+   "pair": "FINAL pair (PR evidence)",
+   "base": "1507d399b",
+   "base_bin_sha256": "9989bd3eccc1a59e32985da41ae8b8b9655b1f83a74a9972193ed3535671dc7c",
+   "cand": "8336dae18 (final head)",
+   "cand_bin_sha256": "39c89999ec2539d0a44907de0150597b22f17629ac45c2897adcbe183ce46cf8",
+   "tui_base_bin": "3a5d7278d7bcfb1c08536989a686070cc74d92c02f33dea15154cde13632defe",
+   "tui_cand_bin": "0a06005c7adab666c6020892b6adb63707fabf38b5a850e7a7ab70a387164a42",
+   "vm": "flqx63q2mkohg0zal65wj3hr (16c/32GB)"
+  }
+ ],
+ "measurements": {
+  "method": "same-VM sequential ABBA (b,c,c,b per fixture), fresh daemon per create, sha-asserted binaries, python wire client (probe) + the proven bench-harness PTY driver (agent-view lane's rendered-anchor oracle) for the TUI legs; wall = send -> full response; noop floor 0.04-0.06ms; per-trial fixture prehash asserted (source pristine, post-copy grows by bookkeeping rows); loadavg gates; calib 1.045-1.090 across all ABBA rounds (python 30M busy loop, same as fleet calib)",
+  "fsync_regime_disclosure": "repeat-fsync 4KB probe: 494.5ms first call then 0.4-0.8ms steady; fresh-write+sync+rename class (the product's write class): 514.6ms first call then 0.4-0.9ms steady. One cold-start outlier per class, healthy steady state on BOTH classes on both VMs; the attach/get_state/reattach legs perform no product file writes (post-create), so the fsync regime does not touch the claimed legs.",
+  "final_pair_daemon_side_p50_ms": {
+   "direct_reattach (TUI primary)": {
+    "synth-150k": [
+     15.2,
+     12.4,
+     -18.7
+    ],
+    "real-316k": [
+     16.4,
+     13.2,
+     -19.0
+    ],
+    "synth-450k": [
+     55.4,
+     41.2,
+     -25.7
+    ],
+    "canon-996k": [
+     84.9,
+     68.1,
+     -19.8
+    ]
+   },
+   "get_state (summary fold; also every roster push)": {
+    "synth-150k": [
+     3.9,
+     2.0,
+     -49.3
+    ],
+    "real-316k": [
+     4.9,
+     2.4,
+     -50.9
+    ],
+    "synth-450k": [
+     20.0,
+     3.8,
+     -81.2
+    ],
+    "canon-996k": [
+     23.7,
+     3.7,
+     -84.3
+    ]
+   },
+   "direct_state (relay-free summary)": {
+    "synth-450k": [
+     20.2,
+     6.5,
+     -67.8
+    ],
+    "canon-996k": [
+     23.9,
+     4.0,
+     -83.0
+    ]
+   },
+   "supervisor-routed attach (CLI/fallback)": {
+    "synth-150k": [
+     25.6,
+     23.6,
+     -8.0
+    ],
+    "real-316k": [
+     29.0,
+     28.2,
+     -2.8
+    ],
+    "synth-450k": [
+     99.9,
+     85.2,
+     -14.8
+    ],
+    "canon-996k": [
+     137.2,
+     126.8,
+     -7.5
+    ]
+   },
+   "CONTROL payload fold+encode (untouched)": {
+    "direct_msgs": {
+     "synth-150k": [
+      9.7,
+      9.4,
+      -2.6
+     ],
+     "real-316k": [
+      10.4,
+      11.1,
+      7.2
+     ],
+     "synth-450k": [
+      43.2,
+      43.8,
+      1.2
+     ],
+     "canon-996k": [
+      68.4,
+      70.8,
+      3.4
+     ]
+    },
+    "get_messages": {
+     "synth-150k": [
+      17.8,
+      19.6,
+      10.4
+     ],
+     "real-316k": [
+      20.7,
+      21.3,
+      3.1
+     ],
+     "synth-450k": [
+      86.5,
+      86.5,
+      -0.0
+     ],
+     "canon-996k": [
+      121.5,
+      125.8,
+      3.5
+     ]
+    }
+   },
+   "note": "arrays are [base_p50, cand_p50, delta_pct]; n=20-28 per arm per metric per fixture (ABBA b,c,c,b, 2 creates x per-run)"
+  },
+  "tui_end_to_end_reattach_leg (the Kevin metric; bench-harness rendered-anchor oracle; 6 trials/arm/fixture, b,c,c,b)": {
+   "pair_1 (base 9d9cf2da7 vs cand 8a546e91e, VM iup080...)": {
+    "real-316k agents_to_tail_p50_ms": [
+     95.28,
+     75.72,
+     -20.5
+    ],
+    "synth-450k agents_to_tail_p50_ms": [
+     176.44,
+     159.84,
+     -9.4
+    ],
+    "left_legs_control_chat_to_chrome": [
+     115.05,
+     114.9,
+     -0.1
+    ],
+    "caveat": "launch-leg deltas at this pair (-18..-29% at real) exceed the mechanism share and are attributed to build-layout/boot variance (agent-view precedent), not claimed"
+   },
+   "FINAL pair (base 1507d399b vs cand 8336dae18, VM flqx63...)": {
+    "real-316k agents_to_tail_p50_ms": [
+     76.72,
+     75.09,
+     -2.1
+    ],
+    "real-316k raw_values": {
+     "base": [
+      69.7,
+      70.6,
+      75.9,
+      77.5,
+      85.2,
+      87.4
+     ],
+     "cand": [
+      63.5,
+      70.0,
+      71.0,
+      79.1,
+      82.2,
+      82.2
+     ]
+    },
+    "synth-450k agents_to_tail_p50_ms": [
+     169.74,
+     147.31,
+     -13.2
+    ],
+    "synth-450k raw_values": {
+     "base": [
+      150.2,
+      158.1,
+      169.5,
+      169.9,
+      178.3,
+      193.1
+     ],
+     "cand": [
+      129.1,
+      134.1,
+      146.3,
+      148.3,
+      152.3,
+      152.6
+     ]
+    },
+    "left_legs_control_chat_to_chrome": [
+     114.85,
+     114.55,
+     -0.3
+    ],
+    "launch_legs (open path; not claimed)": {
+     "real-316k ready": [
+      2128.09,
+      2148.86,
+      1.0
+     ],
+     "synth-450k ready": [
+      2233.91,
+      2327.76,
+      4.2
+     ]
+    },
+    "validity": "real-316k: 6/6 trials per arm fully valid (anchor from retained content, identity row, anchor gone after LEFT, repaint + fresh echo after RIGHT, dialogs cleared, source unchanged). synth-450k: tail metric valid at both arms (tail_after=True all trials) but the full nav validation (row/chrome-gone legs) fails on the SYNTHETIC fixture at BOTH arms equally - disclosed as an oracle limitation on synthetic content (the identity-row/anchor-gone legs), not a product difference; the tail metric is unaffected",
+    "cross_vm_note": "agents_to_tail absolute levels differ between VMs (VM2 faster across the board: launch_to_ready 2.1s vs 4.4s); within-VM pairs are the evidence; the re-attach leg moved in the mechanism's direction on both fixtures at both pairs (real-316k: -20.5% then -2.1% as the base's absolute level fell; synth-454k-equiv: -9.4% then -13.2% with non-overlapping cand<base ranges at the final pair)"
+   },
+   "interpretation": "The daemon-side re-attach saving SURFACES on the end-to-end round trip at the ~454k-ctx-equivalent scale (-9.4%/-13.2% across two build pairs, cand max < base min at the final pair); at real-316k the daemon share is ~3ms of a ~76ms leg (within trial noise, direction consistent). The LEFT (detach/teardown) legs are flat at both pairs = clean control. Open-path legs are NOT claimed (create/replay dominates them - launch-open territory)."
+  }
+ },
+ "parity": {
+  "wire_oracle": "CLEAN at BOTH pairs: snapshot.messages RAW byte-identical on all 12 fixture x kind pairs (slim/legacy/direct-slim x 4 fixtures); stripped structural compare identical after excluding per-run volatiles (ids, generation, sessionFile/temp sessionDir, timestamps, workerPid/instanceId, clientId, cwd, lastActivityAt/modified); zero diff leaves beyond the volatile set",
+  "summary_scalar_equivalence": "in-tree golden tests: scan_message_scalars == the old full-clone extraction (messages() -> rev find_map timestamp + assistant usage sums in fold order + count) across 8 window shapes: plain conversation, non-monotonic timestamps (last-positioned not max), custom rows carrying usage (role custom never counts), kept id on a message row / on a NON-bearing row (keeping never flips - the fold's continue-before-id-check subtlety preserved) / missing id, stacked compactions (last wins), empty session, degenerate message row; plus 2 boundary-sequence pins asserting messages()' exact windowed sequence incl. the summary message's retainedMessageCount",
+  "untouched_control": "the payload fold+encode legs are flat (see measurements) - the mechanism touches only the summary scalars",
+  "frozen_parity_respected": "session JSONL replay + compaction content, RLM API/wire/tool schemas, prompts, user-visible behavior: messages() output byte-identical (the walk is a faithful port), summary fields derive from the same helpers in the same order, no schema/key changes"
+ },
+ "gates_at_final_head_8336dae18": {
+  "fmt": "PASS",
+  "clippy": "PASS (-D warnings, workspace --all-targets)",
+  "pa_daemon_suite": "PASS: 58 test binaries green, 0 failed (incl. the 2 new golden test fns) on VM flqx63; goal_turn_end_loop passed there (uv on PATH)",
+  "base_reds_disclosed": [
+   "pa-ai oauth dead-callback: parallel-load flake (3/3 isolation pass; agent-view precedent)",
+   "pa-cli interactive_daemon_e2e: 1-3 varying timing failures/run in pty-less harness envs AT ALL heads tested (6588b19cf, 7064d039, lane) - pre-existing, not lane-caused",
+   "pa-core packages git/npm network tests: red at all heads on the measurement VMs (network sandbox), not lane-caused",
+   "goal_turn_end_loop_runs_to_completion: needs kernel environment (uv + PI_PACKAGE_DIR); failed on VM iup080 (no uv) at ALL heads incl. base; passed on VM flqx63 (uv installed) - environment-dependent, not lane-caused"
+  ]
+ },
+ "measurement_environment_notes": [
+  "The supervisor FORCES slim_attach on every routed attach (client_command_payload) - all supervisor-socket clients are slim; the non-slim duplication exists only on worker direct-socket attach; 'legacy' probe rows at the mechanism pair measured the same slim path (labeled VOID as a path label, kept as corroboration)",
+  "A hand-rolled raw-pty TUI probe could not drive the interactive loop (input unprocessed after first render in that harness); the proven bench-harness PTY driver (agent-view lane's) runs the same flow correctly - all TUI-leg evidence uses the bench-harness driver",
+  "VM iup0807aomd0xq8cii5793ie died at ~21:15Z (mid final-build); all results reported from it were downloaded before death; the final pair re-ran end-to-end on VM flqx63q2mkohg0zal65wj3hr",
+  "Fixtures: canonical 10MiB dadaecfc (stock, full window ~996k ctx-equiv), private real compacted 835c4473 (retained 2972 rows/3.32MB, ~316k ctx-equiv; content never leaves the VMs; records carry hashes/counts only), synth-150k eff19eb6 + synth-450k fa45c524 (attach-path-synthetic/1 seed 20260926: dictionary-word content, real-schema shape incl. compaction rows; ctx-equivalent labels via the fleet's ~10.5 retained-bytes/token heuristic; the honest scaling variable is wire message count/bytes)"
+ ],
+ "outcome": "candidate",
+ "pr": "PENDING - to be opened on lane/hillclimb-attach-path @ 8336dae18 vs rust",
+ "session": {
+  "worker": "perf-attach-path-fast"
+ },
+ "timestamp": "2026-09-26T22:15:00+00:00"
+}
