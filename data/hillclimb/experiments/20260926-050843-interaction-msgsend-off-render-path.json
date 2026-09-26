@@ -142,11 +142,12 @@
   },
   "outcome": "in-progress",
   "decision": "orchestrator numeric review ACCEPTED on the d5cd4b132 pair; final-head pair delivered (ack -88.9%, settle +0.0%); pending BOTH adversarial reviewers' explicit APPROVE on the final PR SHA + operator disposition of the disclosed load-sensitive bang frame-sequence difference and the pa-ai oauth / pa-daemon stats load flakes",
-  "pr_url": null,
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2868",
   "record_path": "data/hillclimb/experiments/20260926-050843-interaction-msgsend-off-render-path.json",
   "session": {
     "worker": "perf-msgsend-fast",
     "session_dir": "~/.prime/agent/sessions/01a0dbfa-934d-77c5-a4bd-3b8f3e93a99c.jsonl"
   },
-  "timestamp": "2026-09-26T05:08:43Z"
+  "timestamp": "2026-09-26T05:08:43Z",
+  "pr_head_sha": "c7ba643eed2ea09c94a59baaecb79077f0f44618"
 }
