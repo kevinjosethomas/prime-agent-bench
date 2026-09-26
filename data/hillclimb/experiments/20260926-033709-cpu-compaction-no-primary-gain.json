@@ -1,0 +1,232 @@
+{
+  "id": "20260926-033709-cpu-compaction-no-primary-gain",
+  "axis": "cpu",
+  "hypothesis": "Compaction and post-compaction context rebuild clone a large retained entry chain and materialize JSON Value trees; borrowed references, prebuilt summarizer requests, and buffered wire conversion may lower CPU and latency without changing behavior.",
+  "approach": "Borrow retained entries and context message references, reuse summarizer request bodies for estimation and wire calls, and serialize the pa-core/pa-agent crossing through buffered JSON with the original Value path as a duplicate-key fallback. Modified pa-core session and session_engine compaction/messages modules.",
+  "parity_notes": "Unit tests compare borrowed vs owned context, prebuilt vs rebuilding estimator, buffered vs Value wire crossing including flattened-rest collisions, non-ASCII/raw blocks, and session rows. Focused tests passed, but no final-head golden compacted-session parity was measured; live full-suite red prevents a parity sign-off. No production PR or merge.",
+  "base": {
+    "revision": "b0afcdbe1df5d591e1ccb1f64f511564b16cb993",
+    "sandbox_id": "s41ekrn392w43scwwbfnvnp9",
+    "binary_sha256": "0ce55e438471e6a2e4c20c90a3bae04d38a4ddfeba5dcbfd21df207f36c24473",
+    "binary_bytes": 209233736
+  },
+  "branch": "lane/hillclimb-compaction",
+  "commits": [
+    "f53d5206c9c836cfafa19daa3fd3871679b0468c",
+    "00f35f6bd2359cca61291931bc84f6cc7486db0c",
+    "6ba7d5483b37115261e243f162a72e55dd7652ce",
+    "a90418843232514a940a8187f653b316f96313d5",
+    "403ce814f8c4284d4174828bf43a22808fdcf3d6"
+  ],
+  "build": {
+    "sandbox_id": "s41ekrn392w43scwwbfnvnp9",
+    "binary_sha256": "fb8aa59c33f564ec776fec85d9fa9454b9215400cd1829b2a2eaa877fef10912",
+    "binary_bytes": 208151896,
+    "build_seconds": null,
+    "toolchain": "Rust release build on Linux sandbox"
+  },
+  "gates": {
+    "fmt": "pass at 403ce814f",
+    "clippy": "pass at 403ce814f",
+    "test": "fail: 403ce814f serialized live-kernel workspace stops at pa-cli acp_mode_e2e 25 pass/1 fail (acp_threshold_auto_compaction_publishes_the_compaction_meta); isolated pure base 2a698b27 and isolated candidate 403ce814f both pass 26/26, so full-suite red remains unresolved, not waived. Candidate pa-daemon lib separately 715 pass/1 fail/6 ignored (threshold_arm_compacts_and_publishes_the_acp_meta); pure base 91eedb5d same environment 715/1/6 same failure, historical symmetric only. Candidate 403ce814f live family 2/2 pass; six focused TUI headless targets pass. Prior non-live candidate 00f35f 714/2 runtime failure invalid for symmetry classification. Latest upstream f3ae85c0 was NOT folded or gated."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "compare.scroll_typing": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22297.03,
+          "p95_ms": 22827.72,
+          "values_ms": [
+            22297.03,
+            22817.9,
+            21394.15,
+            22830.17,
+            21843.38
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22104.4,
+          "p95_ms": 23891.66,
+          "values_ms": [
+            21626.08,
+            24167.87,
+            22786.82,
+            21324.37,
+            22104.4
+          ]
+        },
+        "delta_pct": -0.86,
+        "regression": false,
+        "rss_mb": {
+          "baseline": {
+            "values": [
+              548.4,
+              509.8,
+              479.6,
+              490.0,
+              528.9
+            ],
+            "p50": 509.8
+          },
+          "candidate": {
+            "values": [
+              527.6,
+              579.9,
+              536.7,
+              528.5,
+              555.2
+            ],
+            "p50": 536.7
+          }
+        }
+      },
+      "session.cold_open_10mib": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 21328.68,
+          "p95_ms": 22878.22,
+          "values_ms": [
+            23072.25,
+            21321.82,
+            21260.02,
+            21328.68,
+            22102.12
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22436.9,
+          "p95_ms": 23922.65,
+          "values_ms": [
+            21239.08,
+            22650.02,
+            24240.81,
+            22436.9,
+            21435.63
+          ]
+        },
+        "delta_pct": 5.2,
+        "regression": true,
+        "rss_mb": {
+          "baseline": {
+            "values": [
+              478.8,
+              520.2,
+              560.6,
+              572.1,
+              498.4
+            ],
+            "p50": 520.2
+          },
+          "candidate": {
+            "values": [
+              449.4,
+              527.3,
+              549.6,
+              525.2,
+              536.3
+            ],
+            "p50": 527.3
+          }
+        }
+      },
+      "compare.memory_idle_load": {
+        "baseline": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22434.79,
+          "p95_ms": 25072.28,
+          "values_ms": [
+            25688.94,
+            21468.11,
+            22434.79,
+            21374.57,
+            22605.66
+          ]
+        },
+        "candidate": {
+          "trials": 5,
+          "valid": 5,
+          "p50_ms": 22060.95,
+          "p95_ms": 26404.2,
+          "values_ms": [
+            22903.86,
+            27279.29,
+            21326.57,
+            22060.95,
+            21330.66
+          ]
+        },
+        "delta_pct": -1.67,
+        "regression": false,
+        "rss_mb": {
+          "baseline": {
+            "values": [
+              549.5,
+              557.6,
+              537.5,
+              504.0,
+              522.5
+            ],
+            "p50": 537.5
+          },
+          "candidate": {
+            "values": [
+              535.3,
+              550.3,
+              537.9,
+              552.1,
+              538.0
+            ],
+            "p50": 538.0
+          }
+        }
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 209233736,
+        "candidate": 208151896,
+        "delta_bytes": -1081840
+      },
+      "rss_mb": {
+        "compare.scroll_typing": {
+          "baseline": 509.8,
+          "candidate": 536.7
+        },
+        "session.cold_open_10mib": {
+          "baseline": 520.2,
+          "candidate": 527.3
+        },
+        "compare.memory_idle_load": {
+          "baseline": 537.5,
+          "candidate": 538.0
+        }
+      },
+      "compaction_handler_latency_ms": null,
+      "compaction_handler_cpu_ms": null
+    }
+  },
+  "validity": {
+    "excluded": [
+      "One accidentally-started compaction PTY probe aborted after ~32s before either arm returned a result; INVALID, excluded."
+    ],
+    "notes": "10-slot B,C,C,B,B,C,C,B,B,C suite run on one quiet VM, one validated trial per slot per suite; pinned older base b0afcdbe/candidate f53d5206, 5/5 valid each. Three suites measure resumed-session/TUI readiness and RSS, NOT direct compaction handler. Cold-open p50 +5.20% and scroll RSS p50 +5.28% regress; any small ready wins fall below noisy run spread. Fixture byte hash 4b2d16ed8db614caa966734c8d86ff48ede9011a46a11fad31afd0ae803d25bc; both binaries SHA-verified. Upstream moved; these are iteration evidence only, not current-head PR evidence. No cheap direct handler microbenchmark found; expensive PTY probe not repeated. Raw suites: /home/ubuntu/hillclimb/perf-compaction-negative-raw.tar.gz SHA256 e54c64a0438dcee6967dbf3457e62b3b60bec51c7b50dbe4d06d33d7b043f1ea. Gate archive: /home/ubuntu/hillclimb/perf-compaction-negative-gates.tar.gz SHA256 fbf6d8ba2b2e4fe456fbcb65d1de49a65a4f61e20aacc54d56df3c66632517b7."
+  },
+  "outcome": "discarded",
+  "decision": "Operator approved discard: no credible primary compaction gain measured; secondary cold-open and RSS regress; candidate full-suite ACP failure unresolved, despite both isolated target runs passing. No PR; do not merge.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20260926-033709-cpu-compaction-no-primary-gain.json",
+  "session": {
+    "worker": "perf-compaction",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-fcf8eaf1"
+  },
+  "timestamp": "2026-09-26T03:38:48.461487+00:00"
+}
