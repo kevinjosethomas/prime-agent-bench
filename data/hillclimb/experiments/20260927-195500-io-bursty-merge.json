@@ -1,0 +1,237 @@
+{
+ "approach": "Same-VM sequential ABBA with sha-asserted atomic binary swaps at the frozen tip (base 13d5c0d78 vs cand-c-at-tip d0ae3cfb5), pre/mid/post calibration, dual-class host-relative I/O probe gates before every leg (advisory v1.0), PHASE MODEL re-classification at leg boundaries, NO-CEILING labeling. Arms pre-registered and run in order D (disk ambient, descriptive) -> T (tmpfs, PRIMARY) -> T1 (tmpfs, K=1 control) -> TC (strace census, COUNTS ONLY, one leg per binary). Driver bursty_io_curve.py (sha 78e515cf..., frozen); burst oracle smoke_burst.py (70af18a8...); source oracle smoke_registry.py (78ab2dba...) \u2014 oracles run TWICE per binary at VM setup, all PASS.",
+ "axis": "io",
+ "base": {
+  "binary_sha256": "3227d076162d70fa901cd4a97fd6be09a433111159cb94f6ec7b8e1479293ed5",
+  "revision": "13d5c0d781d28228ab95d60760e5e018d283083a (origin/rust at lane start, #2953 at top)"
+ },
+ "branch": "lane/perf-bursty-merge @ d0ae3cfb5 (local; NO PR opened \u2014 the pre-registered claim failed)",
+ "build": {
+  "base_binary_sha256": "3227d076162d70fa901cd4a97fd6be09a433111159cb94f6ec7b8e1479293ed5",
+  "cand_binary_sha256": "b479012ab93a5b126868bebd4100cdc363b75d2b39b25197207988d8cd22100d",
+  "gates": "fmt RC 0 on the cand tree (fmt log empty) + clippy RC 0 (0 warnings/errors); wire oracles x2 per binary per script all PASS (smoke_registry 6 frames; smoke_burst 18 frames, per-session FIFO clean, 0 unattached/late/post-detach); no full-suite gate run (no code shipped; the merge bar does not apply to a no-code outcome)",
+  "sandbox_id": "bi87qkithtvv13vayxa5h0mz (hillclimb-perf-bursty-merge, 16c/32GB ubuntu:22.04)",
+  "toolchain": "rustup 1.98.1, CARGO_INCREMENTAL=0"
+ },
+ "cand": {
+  "binary_sha256": "b479012ab93a5b126868bebd4100cdc363b75d2b39b25197207988d8cd22100d",
+  "commit": "d0ae3cfb5 (lane/perf-bursty-merge, local; cand-c diff reapplied at 13d5c0d78 via git apply --3way, content verified line-for-line identical to the archived cand-c.diff; clients.rs parent moved 59bf9ac1b->1f1249e7d by the disjoint #2763 update-restart hunk, untouched)"
+ },
+ "commits": [
+  "d0ae3cfb5 perf(pa-daemon): batch-drain coalescing of already-queued session-event frames (cand-c reapplied at tip 13d5c0d78; content-identical to the archived diff)"
+ ],
+ "decision": "honest negative per the pre-registered claim criterion; no PR opened; the merge bar's numeric+adversarial gates do not apply to a no-code outcome; the precondition question (does a bursty shape resolve the merge?) is CLOSED negative with the measured mechanism (round-gated wake cadence; wire-layer merge without CPU benefit)",
+ "evidence": {
+  "archive": "/home/ubuntu/hillclimb/bursty-merge/bm-evidence-20260927.tgz (sha256 912afce2770d4afb9eaffa75b567d43440c88693b9c17e9c4da7dff0a7e696ae, local sha-verified == VM-side sha; VM-side archive built from /root/bm-archive: all leg evidence D/T/T1/TC + the two excluded-leg outdirs + campaign/abba/leg logs + regime jsonl + digests + oracle jsons + fmt/clippy logs + the sendto probe trace + analysis outputs)",
+  "pre_registration": "/home/ubuntu/hillclimb/bursty-merge/PRE-REGISTRATION.md (written before any leg ran; claim criterion, stop rules, frozen instrument shas \u2014 all honored)",
+  "vm": "bi87qkithtvv13vayxa5h0mz (hillclimb-perf-bursty-merge, 16c/32GB ubuntu:22.04) \u2014 deleted AFTER archive sha verification"
+ },
+ "gates": {
+  "note": "no PR, no merge bar; product-code gates = compile+fmt+clippy+wire-oracle (all PASS); the full VM gate was never needed (no code shipped)"
+ },
+ "head_at_lane_start": "origin/rust 13d5c0d78 (28 hillclimb merges; the lane is append-only off the tip \u2014 no fold; the supervisor churn series had no overlap with the cand-c hunks)",
+ "hypothesis": "cand-c (batch-drain coalescing of already-queued session-event frames; 32-frame/256KiB caps; nothing pulled dropped) failed the taskrun lane's trickle shape because the two frames of one append never co-accumulate there. This lane asked the single precondition question: does the merge resolve above the noise when the workload delivers multi-frame clusters per parked window BY DESIGN \u2014 cross-session synchronized bursts (C=6 collectors, K=16 sessions/collector, R=200 rounds, 8ms park gaps, N=96, payload 2048) into shared collector connections? Pre-registered claim: arm T (tmpfs), per phase (burst1 AND burst2): ALL cand legs < ALL base legs (2v2 range separation) AND mean(base)-mean(cand) >= 10us/append.",
+ "id": "20260927-195500-io-bursty-merge",
+ "lane": "bursty-merge (perf-bursty-merge-fast; reboot session \u2014 the predecessor died in the glm-5.3-fast endpoint outage mid-campaign; the VM completed all arms unattended and state was reconstructed from disk)",
+ "measurements": {
+  "arm_D_ambient_descriptive": {
+   "burst1": {
+    "base_values_us": [
+     1174.2,
+     3557.3
+    ],
+    "cand_values_us": [
+     953.4,
+     1552.7
+    ],
+    "claim_cell": false,
+    "delta_us": 1112.7,
+    "range_separation": false
+   },
+   "burst2": {
+    "base_values_us": [
+     1882.7,
+     888.6
+    ],
+    "cand_values_us": [
+     825.2,
+     840.9
+    ],
+    "claim_cell": true,
+    "delta_us": 552.6,
+    "range_separation": true
+   },
+   "read": "naive burst2 cell (separation + floor) is a DISCLOSED OBSERVATION ONLY per the pre-registration (ambient disk arm, base legs 888.6-1882.7 apart; no claim expected, no claim taken)"
+  },
+  "arm_T1_k1_control": {
+   "burst1": {
+    "base_values_us": [
+     307.8,
+     301.0
+    ],
+    "cand_values_us": [
+     270.4,
+     299.5
+    ],
+    "claim_cell": true,
+    "delta_us": 19.4,
+    "range_separation": true
+   },
+   "burst2": {
+    "base_values_us": [
+     306.0,
+     271.4
+    ],
+    "cand_values_us": [
+     303.6,
+     302.4
+    ],
+    "claim_cell": false,
+    "delta_us": -14.3,
+    "range_separation": false
+   },
+   "read": "the burst1 cell (19.4us floor met, separation by 1.5us on ~300us values = 0.5% margin) is LABELED AGAINST THE THEORY per the pre-registration: K=1 carries no cross-session clusters, so separation there was NOT expected; the margin is noise-level and is never the claim's basis. burst2 shows none."
+  },
+  "arm_T_primary": {
+   "burst1": {
+    "base_mean_us": 4034.4,
+    "base_spread_us": 1664.7,
+    "base_values_us": [
+     3202.1,
+     4866.8
+    ],
+    "cand_mean_us": 5028.1,
+    "cand_spread_us": 434.5,
+    "cand_values_us": [
+     4810.9,
+     5245.4
+    ],
+    "claim_cell": false,
+    "delta_pct": 24.6,
+    "delta_us": -993.7,
+    "meets_floor": false,
+    "range_separation": false
+   },
+   "burst2": {
+    "base_mean_us": 3368.5,
+    "base_spread_us": 2930.4,
+    "base_values_us": [
+     4833.7,
+     1903.3
+    ],
+    "cand_mean_us": 3499.0,
+    "cand_spread_us": 3532.7,
+    "cand_values_us": [
+     5265.4,
+     1732.7
+    ],
+    "claim_cell": false,
+    "delta_pct": 3.9,
+    "delta_us": -130.5,
+    "meets_floor": false,
+    "range_separation": false
+   },
+   "claim_cells": "burst1: NO separation AND cand WORSE by 993.7us (+24.6%); burst2: NO separation AND below floor -> PRE-REGISTERED CLAIM FAILS",
+   "walls": {
+    "burst1_s": [
+     11.62,
+     19.05,
+     18.48,
+     20.48
+    ],
+    "burst2_s": [
+     19.1,
+     7.88,
+     20.05,
+     7.17
+    ],
+    "round_p50_ms_burst1": [
+     41.16,
+     99.01,
+     85.04,
+     99.95
+    ],
+    "round_p50_ms_burst2": [
+     96.22,
+     24.89,
+     98.45,
+     23.92
+    ]
+   }
+  },
+  "census_tc_counts_only": {
+   "census_merge_fraction_verdict": "UNMEASURABLE with the frozen instrument; superseded by the application-layer cluster evidence below",
+   "instrument_finding": "THE PRE-REGISTERED CENSUS MEASURED THE WRONG SYSCALL CLASS. The frozen trace set (write,writev,pwrite64,fsync,fdatasync,rename,renameat,renameat2) excludes sendto \u2014 and sendto(fd, buf, len, MSG_NOSIGNAL) is what the supervisor ACTUALLY uses for every client-wire write (proven live by a full-strace probe: session_event frames leave a supervisor thread via sendto on the accepted UNIX-STREAM collector fd; probe trace in the archive, probe/bm-probe2/trace, 58312 lines; see PROBE-NOTES.txt).",
+   "measured_ratio": {
+    "burst1": 0.998,
+    "burst2": 1.04
+   },
+   "pre_registered_expectation": "cand supervisor write/writev count over a burst phase <= 60% of base's (merge fraction >= 0.40)",
+   "what_the_census_did_measure": "supervisor eventfd wakeups (8-byte tokio runtime wake tokens): base 25156 (burst1) / 24097 (burst2) vs cand 25114 / 25062 -> the supervisor WAKE ECONOMY is pair-identical at this shape (0.17%/4% pair-internal deltas). Also captured identically in both binaries: the workers' durable session-row writes (19200 x 2231B per burst phase per binary, exactly one row per append) and zero client-socket write/writev anywhere in the traced tree (consistent: those writes are sendto)."
+  },
+  "mechanism_closure": "(a) merge evidence: arrival-cluster shift above (the pre-registered syscall-count census was unmeasurable \u2014 sendto excluded \u2014 disclosed with the live probe proof); (b) arrival-cluster vs park-gap arithmetic at the measured round spreads: rounds gate the workload (p50 24-100ms per leg, 16-session append-completion variance; park 8ms between rounds), the collector writer parks BETWEEN rounds in BOTH binaries, and within a round the queue drains at arrival rate (most inter-frame gaps <=20us), so the writer's wake cadence is round-gated, not frame-gated; cand merges the occasional 2-5-frame cluster and saves only those few 15-40us park-wakes \u2014 ~100x below the shape's between-leg CPU/append spread (435-3533us); (c) the shape class where coalescing cannot help now has THREE measured members: continuous deep backlog (never parks), trickle with gaps > drain time (source lane), and ROUND-GATED bursts (park window between rounds; queue drains within the arrival spread) \u2014 the designed bursty shape lands in the third class. The precondition question is CLOSED: at the round-gated bursty shape the merge fraction exists at the wire but resolves no CPU; cand-c is dead at every io shape class tried (trickle, bursty-round-gated), and the next candidate on this surface would need a wake-cadence change (batch by park window, not by queue depth) or a shape with a continuously-backlogged writer \u2014 which is exactly the no-merge class.",
+  "method": "sup_cpu_per_append per burst phase (supervisor CFS schedstat runtime over the phase / total session-appends), per leg; ABBA b c c b per arm; digests per leg; collector delivery oracle per leg",
+  "wire_cluster_evidence_arrival_gaps": {
+   "arm_T1_sub10us_gap_fraction": {
+    "m1": {
+     "base": [
+      0.041,
+      0.013
+     ],
+     "cand": [
+      0.002,
+      0.013
+     ]
+    }
+   },
+   "arm_T_sub10us_gap_fraction": {
+    "m1": {
+     "base": [
+      0.315,
+      0.329
+     ],
+     "cand": [
+      0.473,
+      0.523
+     ]
+    },
+    "m2": {
+     "base": [
+      0.365,
+      0.383
+     ],
+     "cand": [
+      0.451,
+      0.565
+     ]
+    }
+   },
+   "method": "per-collector inter-frame arrival-gap histograms from the UNTRACED timing legs (application layer; frame timestamps taken by the driver's collector reader thread \u2014 frames delivered in one daemon sendto batch arrive in one recv and get near-identical timestamps)",
+   "read": "cand clusters +13-19pp more sub-10us arrivals at the K=16 bursty shape in BOTH phases, and the K=1 control shows NONE -> the coalescing DOES batch real frame groups at the wire layer at the designed shape; the merge fraction EXISTS (arrival-cluster estimate ~0.13-0.19 absolute shift) but yields no measurable supervisor CPU benefit (claim cells) and no wake-economy change (eventfd pair)"
+  }
+ },
+ "outcome": "discarded",
+ "parity_notes": "Frozen surfaces untouched by the diff (clients.rs only; session-JSONL/compaction/RLM wire/prompt/TUI untouched \u2014 digest oracle per leg + the source lane's parity case stands); wire parity: smoke_registry.py x2 + smoke_burst.py x2 per binary, all PASS (>=6 session_event frames to attached clients over 3 appends; 18 frames at the cross-session collector with per-session FIFO in round order; 0 to unattached/late/post-detach; normalized frame-shape parity base==cand); D7 per-(session,connection) FIFO verified per leg by the collector oracle; no TS-parity case needed (no behavior change shipped)",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-195500-io-bursty-merge.json",
+ "session": {
+  "session_dir": "bursty-merge lane (this session; /home/ubuntu/hillclimb/bursty-merge/)",
+  "worker": "perf-bursty-merge-fast"
+ },
+ "timeline": {
+  "campaign": "2026-09-27T19:55:26Z armed (calm window, rep 0.705/fresh 1.021); D 19:55-20:07; T 20:08-20:21; T1 20:25-20:33; TC 20:33-20:41:59Z",
+  "endpoint_outage": "the predecessor session (glm-5.3-fast) died mid-campaign; the VM completed all arms unattended",
+  "reboot": "21:17Z collection; 21:24-21:27:40Z reruns (D-b-5, T-b-5 both PASS); 21:30Z analysis; 22:00/22:09Z instrument probes (sendto discovery)"
+ },
+ "timestamp": "2026-09-27T19:55:00Z",
+ "validity": {
+  "excluded": [
+   "arm D leg b-4 (driver rc=1 at resume1: 'session worker b55b4437c7c9 did not come up in time'; worker stderr 'Connection reset by peer (os error 104)' \u2014 the source lane's disclosed worker-boot respawn-storm budget flake class, fresh-triaged: 37/193 worker stderrs at the boot second carried the same reset (mass-boot reset noise is ambient at 96-worker spawn: the SAME leg passed its created phase carrying 37 resets); the flake fires when a reset coincides with a create's driver-side boot timeout; no OOM, no panic, no budget log lines)",
+   "arm T leg b-4 (same class at created: 'session worker b56aab4deeef did not come up in time'; 39/97 worker stderrs with the reset)"
+  ],
+  "honest_negative": "The pre-registered claim FAILS: in arm T, burst1 has NO 2v2 range separation and cand is WORSE by 993.7us/append (+24.6%); burst2 has NO separation and the delta (-130.5, cand worse) is below the floor in the wrong direction. The criterion requires BOTH phases; NEITHER holds. Disclosed marginals per the pre-registration: arm D burst2 naive cell and arm T1 burst1 control cell are observations only (labeled against theory), never the claim's basis. The fallback deliverable is the workload characterization (measurements.mechanism_closure).",
+  "notes": "All 14 valid legs (D 4, T 4, T1 4, TC 2) passed the digest identity oracle within shape (4b90232f... @ N=96/K=16 across D/T/TC; 2e16a048... @ N=6/K=1 for T1 \u2014 NEW digests for this workload; equality with the source lane's 85607aee/4195cad0 was NOT expected and is NOT claimed, per the pre-registration); collector delivery oracle clean on every valid leg (0 FIFO violations, 0 leaks, 0 pre-attach/post-detach/unattached frames, 0 daemon-log queue-full/lagged lines \u2014 the 2Kx-in-flight backlog bound held by construction); resume-prefix preservation all-pass on every valid leg; regime gates: dual-class probe before every leg, DEGRADED/MARGINAL windows waited out (campaign logs show the 90s retry pattern), calibrations uniform 0.017-0.038s; ABBA sha-asserted atomic swaps (bin unlink-then-copy, sha asserted before AND after every leg; base 3227d076, cand b479012a, asserted per leg)",
+  "reboot_provenance": "The campaign (19:55:26-20:41:59Z: D, T, T1, TC) ran unattended on the VM through the predecessor session's endpoint outage; the reboot session collected the logs/done-markers at 21:17Z, fresh-triaged both exclusions, ran the 1+1 reruns, and completed the analysis; the two b-4 exclusions and their b-5 reruns are the only legs added by the reboot",
+  "reruns": "exactly ONE rerun per excluded leg per the pre-registered stop rule: D-b-5 and T-b-5 (21:24-21:27:40Z, both HEALTHY windows, both rc=0 validated=True, digests match their arms); STOP honored \u2014 no further reruns, no arm re-runs, no new legs"
+ }
+}
