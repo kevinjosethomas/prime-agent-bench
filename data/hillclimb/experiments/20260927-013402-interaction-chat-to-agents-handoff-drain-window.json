@@ -288,8 +288,8 @@
   "notes": "prefold pair 60/60 valid, final-head pair 40/40 valid, zero errors, zero precondition fails; per-slot sha asserts (launcher + payload) all matched; the instrumented throwaway build and the gate-lint iteration builds never ran timing legs"
  },
  "outcome": "POSITIVE - chat->agents 68ms -> 14ms p50 (-79%) at both the pre-fold and folded-head pairs, flat and tight on the candidate; the 50ms attribution proven by 12/12 zero-event full-window drains; kitty-release contract locked by the new real-pty e2e at the PR head",
- "decision": "PR OPEN (no merge - awaiting orchestrator numeric review + both adversarial reviewers at the final PR SHA + standing dispositions)",
- "pr_url": null,
+ "decision": "PR OPEN #2916 (no merge - awaiting orchestrator numeric review + both adversarial reviewers at the final PR SHA + standing dispositions)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2916",
  "record_path": "data/hillclimb/experiments/20260927-013402-interaction-chat-to-agents-handoff-drain-window.json",
  "session": {
   "worker": "perf-drain-idle-fast",
