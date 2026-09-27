@@ -1,0 +1,329 @@
+{
+ "id": "20260927-042000-memory-tui-scroll-retain-packed",
+ "axis": "memory",
+ "hypothesis": "The REMAINING post-scroll TUI retention census-documented by tui-memory's merged #2895 record (+65MB RSS after a 2600-key PageUp walk at 10MiB, fully retained at tail) is live span-fragmented entry_layout row storage, not allocator slack; it is dominated by per-span Vec/String chunk overhead (the text is a small fraction of it), so storing the cached rows PACKED (one content blob + dense (offset,len,style) records, byte-exact range expansion) should cut the retained heap ~60-70% with byte-identical output on every path, because merging spans instead (the -67% any-style census savings) would change the exit-flush inline scrollback's per-span SGR bytes - a frozen TS-parity stream.",
+ "approach": "(1) Census first (PROBE build lane/hillclimb-tui-scroll-probe*, kick-file census of entry_layout/md_caches/entry_heights/sparse_entries + span-fragment stats + self-smaps + PA_TUI_FLUSH_DUMP byte-dump tee): walk2600 at 10MiB retains 5,428 slots / 86,437 lines / 713,761 spans (604,519 walk-added; assistant rows own 657,804 at ~10/line, alternating Style::new() and fg(Rgb(216,216,220)) per word); content 9.59MB with ZERO content-capacity slack, 44% line-buffer capacity slack; 98% of mergeable adjacent pairs are STYLED (adjacent-same default pairs only 1.9%) - merge-compaction would alter the exit-flush SGR bytes (measured: dumps are 26,941,120 bytes of per-span SGR), so the fix packs instead. Heights never cache in sparse mode (heights_some [0,0,0] all phases; no orphan heights; layout/height cross-checks clean); md_caches stay EMPTY through the walk post-#2895 (the memory lane's fix holds on scroll). Trim-kick attribution: idle_final trim frees only 0.9MB - the retention is LIVE. (2) Product change (3 files, 278 insertions): view/layout.rs gains RowPack { first: Vec<u32>, spans: Vec<PackedSpan{offset: u32, len: u32, style}>, blob: String } + EntryRows enum; EntryLayout.rows becomes Arc<RowPack>; sparse_entry_rows stores pack(&rows) (exact blob capacity via first-pass sizing) and returns EntryRows (Packed on cache hit, Fresh for transient uncacheable rows); slice_entry_rows + the sparse-walk emit loops expand ONLY the [from,to) row range (a frame inside a huge entry pays its visible rows); size-gated post-pack trim (rows >= 8192) returns the freed expanded transient to the OS (the same pa_types::memory_release plumbing as #2872/#2895; ungated ordinary entries never pay a trim). (3) Two unit oracles added: row_pack_expands_byte_exact (mixed spans incl. adjacent same-style + empty spans + blank line; every range expansion equals the original) and cached_packed_rows_render_identical_to_a_fresh_layout.",
+ "parity_notes": "Byte parity proven at TWO head pairs by construction AND by oracles: painted frames are a per-column (style,glyph) function and expansion reproduces exact span boundaries - (a) styled-frame dumps pa-tui-replay --frame 120x40 on canonical 10MiB+40MiB: base==cand sha256 48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841 and 75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d (the SAME values the tui-memory lane recorded across heads); (b) exit-flush inline scrollback ANSI dumps (PA_TUI_FLUSH_DUMP tee on PROBE builds; walk + nowalk, both arms): at pair 4d57eb082/414a101d2 all six 26,941,120-byte dumps sha256 5f44e8077cfa6adf2b5bdb66192a8ce823aa7ceffc76f8552a7323808c62ae1d; at final pair 1f45bd860/d0c3f8770 (post-#2913 streamed flush, which changed the dump plan bytes upstream: 2,623,962-byte dumps) all four sha256 185546c8aeef0148d71d830f9a91991f432992e162d7e8c28bc86de4a91a9d18 - identical base-vs-cand at every pair. No wire, schema, prompt, or behavior change: packing is internal to the layout cache; transient uncacheable entries keep the rendered-rows path. Interaction parity: back-walk keys 2750 (10MiB) / 700 (2MiB) all trials both arms (identical transcript geometry), top-walk 53.25-53.42s both arms (driver-bound), sentinel 1.03-1.44s, echo 1.17-1.41ms; bench compare.scroll_typing 12 interleaved trials on the settled VM: typing p50 base 1.00/1.08ms vs cand 1.03/1.09ms, typing-while-scrolled 0.29 vs 0.23-0.31ms, typing_ok true everywhere, wheel bursts 1/1 (the pad-sea fixture renders screen-stable walks: scroll_pgup screen-hash readings are None after the first key - the known fixture trait, disclosed by tui-memory too).",
+ "base": {
+  "revision": "57ccb67de (final fold; evidence pairs: 4d57eb082b54f2ffe65cda22ed7a9c86fee6a1480 + 1f45bd860643ce40897dea0b53b825c9a704dca2 vs cand 414a101d2/8e7521a03 fold chain)"
+ },
+ "branch": "lane/hillclimb-tui-scroll-retain",
+ "commits": [
+  "0564ffdc9 (packed storage, folded under merges to 414a101d2)",
+  "ef1e39ac8 (exact blob capacity + 8192-row gated post-pack trim)",
+  "b0d1f8d33 (EntryRows::is_empty fold-completion for #2911's shows-tail peek)",
+  "20b7e4b1e + a4688a788 (pack-test clippy fixes)",
+  "4623cc6a4 (fold f8fc71f1e)",
+  "e238a0952 (fold 57ccb67de, session_ui split 1/14) - PR head"
+ ],
+ "build": {
+  "sandbox_id": "gvuh12aux79fmm1uvthbr0vw (measurements; ubuntu:22.04 16c/32GB, rustup 1.98.1) + pooled gate VMs (fleet_gate)",
+  "binary_sha256": {
+   "final_pair_base_1f45bd860": "4586e01c5870e694a213c3eb25e5e22eeb569e3076876ad52fabf8f277cb00c1",
+   "final_pair_cand_d0c3f8770": "c67e6abfd64bb6370ae702f49564f03b664a6fc17c7fff91532caea2ba0a68d9",
+   "pair1_base_4d57eb082": "1755d097bd40ac47b760eec7056e4b6bcd58b8b8900e0af376ee6a012e8e50b3",
+   "pair1_cand_414a101d2": "a3a9c61abc83d7c69d0f2c87432bd91207cc415eadad922cc15c2bd5305efbd0",
+   "probe_builds": "96bedd9af648e521175537c2d4cd48ae60e1c68ca18e7b3abf330596ba404bba (base-probe) / aa2bf1571bd71ed3662226f6c9b690505396bd93399212aba093825aab276531 (cand-probe) - PROBE-labeled, never product baselines"
+  },
+  "binary_bytes": {
+   "final_pair_base_1f45bd860": 214078760,
+   "final_pair_cand_d0c3f8770": 214070472,
+   "pair1_base_4d57eb082": 213820208,
+   "pair1_cand_414a101d2": 213867256,
+   "note": "cand is 8,288 bytes SMALLER than base at the final pair (the pack code is smaller than the capacity-slack behavior it replaces... net code+data layout effect; no size gate claimed)"
+  },
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (fleet_gate rc 0 at 4623cc6a4 and e238a0952 cycles)",
+  "clippy": "pass (fleet_gate rc 0 after two pack-test findings fixed: untyped Vec::new in an assert + a shadowed view helper + unused mut closure - zero-warning posture restored; the 6 vendor/crossterm clippy warnings are PRE-EXISTING at the base tip, verified by base-tip clippy run, and tolerated upstream)",
+  "test": "fleet_gate full-suite: fmt+clippy GREEN; cargo test rc 101 with exactly ONE failure: mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - KNOWN-RED EXPIRED (daemon-timing rotating family, red only alongside the compaction pair under full-suite co-scheduling; passes 3/3 standalone focused at the lane head; GitHub CI workspace shards green on the same heads per the entry) - DISCLOSED for operator disposition, not a pa-tui red (my diff touches 3 pa-tui view files); fleet_review GREEN blockers 0 (one advisory: layout.rs 372->521 LoC crosses the ~500 advisory line - RowPack/EntryRows are cohesive with EntryLayout in the layout-cache module). Remaining CI red: the standing NON-APPLICABLE public TS benchmark workflow (0 Rust trials; standing operator disposition, never called pass)."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "tui_rss_walk2600_10mib_final_head": {
+    "baseline": {
+     "trials": 4,
+     "values_rss_mb": [
+      70.8,
+      70.9,
+      69.1,
+      71.3
+     ],
+     "p50_ready_rss_mb": 70.85,
+     "values_tail_rss_mb": [
+      136.6,
+      136.6,
+      134.8,
+      136.3
+     ],
+     "p50_tail_rss_mb": 136.45
+    },
+    "candidate": {
+     "trials": 4,
+     "values_rss_mb": [
+      59.6,
+      62.7,
+      62.5,
+      69.6
+     ],
+     "p50_ready_rss_mb": 62.6,
+     "values_tail_rss_mb": [
+      77.6,
+      79.9,
+      80.6,
+      77.6
+     ],
+     "p50_tail_rss_mb": 78.75
+    },
+    "delta_pct": -42.3,
+    "regression": false,
+    "separation": "full: max cand tail 80.6 < min base tail 134.8; walk growth p50 +65.6 -> +16.2MB (-75%)"
+   },
+   "tui_rss_walk2600_2mib_final_head": {
+    "baseline": {
+     "trials": 2,
+     "values_tail_rss_mb": [
+      54.6,
+      54.9
+     ],
+     "p50_tail_rss_mb": 54.75
+    },
+    "candidate": {
+     "trials": 2,
+     "values_tail_rss_mb": [
+      38.9,
+      40.0
+     ],
+     "p50_tail_rss_mb": 39.45
+    },
+    "delta_pct": -28.0,
+    "regression": false,
+    "separation": "full: max cand 40.0 < min base 54.6; walk growth +18.7 -> +4.9MB (-74%)"
+   },
+   "tui_rss_walk2600_40mib_final_head": {
+    "baseline": {
+     "trials": 3,
+     "values_tail_rss_mb": [
+      200.9,
+      201.3,
+      200.4
+     ],
+     "p50_tail_rss_mb": 200.9
+    },
+    "candidate": {
+     "trials": 3,
+     "values_tail_rss_mb": [
+      204.9,
+      165.8,
+      165.1
+     ],
+     "p50_tail_rss_mb": 165.8
+    },
+    "delta_pct": -17.5,
+    "regression": false,
+    "separation": "partial: 2-of-3 cand trials realize -35MB (the pad-entry pack + post-pack trim); 1-of-3 (the first after the builds) at 204.9 retains the freed transient's pages - the residual glibc page-return variance, disclosed; walk-in-pad-sea shows no growth on either arm",
+    "note": "40MiB is the ready-state pad-pack case (walk stays inside the pad sea); the earlier pre-trim-fix pair measured bimodal {181.7, 203.3}: the exact blob capacity + 8192-row gated trim moved the realized cluster 181->165 (-16MB capacity slack + deterministic return) but one straggler remains"
+   },
+   "tui_rss_walk2600_10mib_pair_4d57eb082": {
+    "baseline": {
+     "trials": 4,
+     "p50_tail_rss_mb": 136.7,
+     "values_tail_rss_mb": [
+      136.7,
+      136.4,
+      137.4,
+      136.7
+     ]
+    },
+    "candidate": {
+     "trials": 4,
+     "p50_tail_rss_mb": 83.8,
+     "values_tail_rss_mb": [
+      86.4,
+      81.7,
+      81.5,
+      85.9
+     ]
+    },
+    "delta_pct": -38.7,
+    "regression": false,
+    "separation": "full: max cand 86.4 < min base 136.4; walk growth +65.2 -> +17.7MB (-73%); repeated at TWO head generations with consistent deltas"
+   },
+   "census_probe_pair_4d57eb082": {
+    "baseline_heap_mb_tail": 97.8,
+    "candidate_heap_mb_tail": 47.0,
+    "delta_pct": -52.0,
+    "candidate_packed_structure": "713,761 records / 30.3MB packed total (records 17.1MB + blob 9.6MB + row index 0.35MB) vs the expanded form's ~76MB chunk model; ready-state pad entry 109,242 records / 10.7MB vs expanded ~16.4MB",
+    "note": "PROBE-labeled numbers (kick-file census + PA_TUI_FLUSH_DUMP tee builds, never ships); the same-walk structure: 5,428 slots, 86,437 lines, identical on both arms - only the storage differs"
+   }
+  },
+  "extra": {
+   "baseline_matrix_tip_013e40a4a": {
+    "10mib": {
+     "ready_rss_mb": [
+      72.0,
+      70.8,
+      70.8
+     ],
+     "tail_rss_mb": [
+      136.9,
+      136.4,
+      136.4
+     ],
+     "retained": true
+    },
+    "40mib": {
+     "ready_rss_mb": [
+      200.8,
+      201.0
+     ],
+     "tail_rss_mb": [
+      200.9,
+      201.3
+     ],
+     "walk_in_pad_sea_no_growth": true
+    },
+    "2mib": {
+     "ready_rss_mb": [
+      36.7,
+      36.2
+     ],
+     "tail_rss_mb": [
+      55.4,
+      54.1
+     ]
+    },
+    "note": "3 trials 10MiB / 2 trials 40MiB+2MiB, stock tip binary sha 1755d097b..., pre-#2894/#2891 folds; the retention reproduces the tui-memory record's candidate numbers (136.2 vs 70.65) exactly on the merged #2895 tip"
+   },
+   "fixture_prehash_per_trial": "fresh copy per trial; 10MiB canonical dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda and 40MiB 85be402f49550b3b5b894c458bc3e5df0b14ea29ab0d719286c580b906274c94 asserted in-trial (probe_tui_rss records fixture_pre_sha256 per trial); resumed sessions append bookkeeping rows - post bytes differ, never claimed identical; 2MiB d12e7daa97cac6db4a4c05e89c32dfbadff6e6023f46e31a319f264ac4c40ff0 (deterministic generator session-size/2)",
+   "styled_frame_oracle": {
+    "10mib_sha256_both_sides": "48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841",
+    "40mib_sha256_both_sides": "75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d",
+    "identical": true,
+    "note": "identical at BOTH head pairs; same values the tui-memory lane recorded"
+   },
+   "exit_flush_ansi_oracle": {
+    "pair_4d57eb082_vs_414a101d2": {
+     "bytes": 26941120,
+     "sha256_all_six": "5f44e8077cfa6adf2b5bdb66192a8ce823aa7ceffc76f8552a7323808c62ae1d",
+     "identical": true
+    },
+    "pair_1f45bd860_vs_d0c3f8770": {
+     "bytes": 2623962,
+     "sha256_all_four": "185546c8aeef0148d71d830f9a91991f432992e162d7e8c28bc86de4a91a9d18",
+     "identical": true,
+     "note": "the dump plan's byte scale changed upstream between the pairs (#2913 streamed exit flush + #2911 touch follow-ups) - the base-vs-cand identity holds at every pair"
+    },
+    "method": "PROBE-build PA_TUI_FLUSH_DUMP tee (writes the exact bytes the terminal receives), resume 10MiB + optional 2600-key walk + Ctrl+D exit; walk + nowalk, base + cand, repeatable"
+   },
+   "latency_parity": {
+    "scroll_typing_bench": {
+     "typing_ms_p50": {
+      "base_runs": [
+       1.0,
+       1.08
+      ],
+      "cand_runs": [
+       1.03,
+       1.09
+      ]
+     },
+     "typing_scrolled_ms_p50": {
+      "base_runs": [
+       0.29,
+       0.29
+      ],
+      "cand_runs": [
+       0.23,
+       0.31
+      ]
+     },
+     "typing_ok": "true all 12 trials",
+     "wheel_bursts": "1/1",
+     "scroll_pgup_ms": "first-key only (pad-sea screen-stability: None after first, the known fixture trait)"
+    },
+    "sentinel_s_10mib": {
+     "base": [
+      1.03,
+      1.24
+     ],
+     "cand": [
+      1.03,
+      1.44
+     ]
+    },
+    "echo_ms_10mib": {
+     "base": [
+      1.18,
+      1.39
+     ],
+     "cand": [
+      1.17,
+      1.41
+     ]
+    },
+    "top_walk_s_10mib": {
+     "base": [
+      53.27,
+      53.42
+     ],
+     "cand": [
+      53.27,
+      53.42
+     ],
+     "note": "driver-bound (0.02s/key pacing); symmetric parity legs"
+    },
+    "back_to_tail_keys_10mib": {
+     "base": [
+      2750,
+      2750,
+      2750,
+      2750
+     ],
+     "cand": [
+      2750,
+      2750,
+      2750,
+      2750
+     ]
+    }
+   },
+   "io_regime_v09_gates": {
+    "fresh2_class": "DEGRADED all windows (p50 65.9-67.4ms, stall15 100%, max 78-85ms)",
+    "fsync2_class": "MARGINAL (p50 0.05-0.07ms, stall15 4%, max 65-67ms)",
+    "note": "fleet flush-path regime (advisory v0.9, perf-write-regime series); the VM's product-write class is in the degraded regime for the whole campaign while repeat-fsync is near-healthy - the same inverted-shape regime the tui-memory lane disclosed; primary claims are RSS/heap/census measures (deterministic, calibration-stable); every timing leg is a within-pair symmetric parity check, never an absolute claim"
+   },
+   "cpu_calibration_s_30m_loop": {
+    "final_head_pre": [
+     1.056,
+     1.059,
+     1.076
+    ],
+    "final_head_post": [
+     1.045,
+     1.041,
+     1.05
+    ],
+    "drift_pct": 0.6
+   }
+  }
+ },
+ "validity": {
+  "excluded": [
+   "phase3a/phase3b flush-oracle + cand-census + first ABBA pass at the wrong binaries (stale-binary copies: leftover sentinel-stuck probe TUIs held the old files open, cp failed 'Text file busy' and the sha-gate caught it; redone clean with rm+mv atomic copies and per-build sha asserts)",
+   "one 40MiB cand trial family pre-trim-fix (bimodal 181/205) - superseded by the exact-capacity + gated-trim head, re-measured"
+  ],
+  "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (rm+cp.new+mv after the stale-copy lesson; every phase records bins.sha256 + a post-ABBA sha re-assert), fresh fixture copy per trial with in-trial canonical prehash assert, pre/mid/post CPU calibration (drift 0.6%), I/O regime recorded with the advisory v0.9 dual-class gates (this VM's fresh-write class DEGRADED throughout - disclosed; deterministic primary claims unaffected). Evidence repeated at TWO head generations (4d57eb082/414a101d2 and 1f45bd860/d0c3f8770, spanning the #2913 streamed-exit-flush and #2911 touch folds) with consistent deltas and full B/C separation at 10MiB/2MiB; the 40MiB ready-state case is a pad-pack story (no walk growth) where the cand realized -35MB in 2-of-3 final trials with one straggler (freed-page return variance, disclosed). The 604,519 walk-added-span and +71.7MB figures in the tui-memory record reproduce here as +64.6MB heap growth at the merged-#2895 tip (the delta is the memory lane's own md-cache fragment removal). Two zombie sentinel-stuck probe TUIs (97% CPU spinners from a killed phase) contaminated one bench-suite window before detection - the load-gate caught them ('compile:/root/bin-probe'), all affected legs (the first scroll_typing attempt) were rerun on the cleaned VM; every RSS/census/oracle number reported here was produced by the trial's own process (deterministic self-smaps/statm reads) and is unaffected by co-resident spinners, but the contamination window is disclosed for the record. mcp_login known-red-expired disclosed under gates. Bench suite rows carry the swap-logged binary shas (the bench's vendored versions metadata is stale on this VM - superseded by oracle/st-swaplog.txt)."
+ },
+ "outcome": "candidate-ready (PR open; CI + fleet_review GREEN except the disclosed known-red-expired mcp_login flake; reviewer routing on the final PR SHA per the merge gate)",
+ "decision": null,
+ "pr_url": "PENDING",
+ "record_path": "data/hillclimb/experiments/20260927-042000-memory-tui-scroll-retain-packed.json",
+ "session": {
+  "worker": "perf-tui-scroll-retain-fast (GLM 5.3 Fast)",
+  "session_dir": "hillclimb wave-4 tui-scroll-retain"
+ },
+ "timestamp": "2026-09-27T04:20:00+00:00"
+}
