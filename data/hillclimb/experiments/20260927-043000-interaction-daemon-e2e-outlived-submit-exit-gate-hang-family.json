@@ -1,0 +1,67 @@
+{
+ "id": "20260927-043000-interaction-daemon-e2e-outlived-submit-exit-gate-hang-family",
+ "axis": "interaction",
+ "lane": "wedge-triage (fleet-infra investigation; evidence-gathering only \u2014 no code changes, no merge authority)",
+ "hypothesis": "PR #2916 (drain-idle) CI shard 4/4 wedged 45min inside pa-cli#test:interactive_daemon_e2e (stuck daemon+2-workers trio, job-timeout kill) and the SAME wedge reproduced on the lane's VM BASE arm (30+min, same trio, tui_submit_outlived_by_switch_stays_silent_on_the_new_session context). The test is byte-identical across the lane's arms, so the wedge is upstream of the candidate. QUESTION: is the wedge (a) a NEW failure class introduced by #2913 (streamed exit-flush, fcf306e2b) that CI missed, or (b) a rare pre-existing upstream wedge family that predates #2913?",
+ "approach": "Clean parent-exact bisection on a dedicated Prime VM (hillclimb-wedge-triage mjyfm7dhp86o8nh31tcrtdtg, ubuntu:22.04 16c/32GB/100GB, rustc 1.98.1): PRE 824d6118a2e488fa635b0ef1b65c4978e6032f9c (#2899) vs POST fcf306e2b3e6ff74311635db0bbbfe0e2f8687d4 (#2913) \u2014 POST is EXACTLY ONE commit ahead of PRE (pa-tui interactive.rs/view.rs/view/layout.rs only). Frozen worktrees + separate target dirs (sha-asserted per trial, zero rebuild during trials). Trial unit = the exact CI unit (cargo test --locked -p pa-cli --test interactive_daemon_e2e, solo suite, default test threads), interleaved PRE,POST, per-trial timeout 900s (green wall ~15.2-15.9s => a 900s timeout is unambiguous), leftover-kill+record before every trial, FULL trio evidence capture on every timeout (ps forest, /proc state/wchan/kstack/syscall/fds/thread-names, gdb thread-apply-all-bt for the test binary + daemon + both workers, daemon log, session JSONLs, tmpdir artifacts).",
+ "verdict_bisection_arrow": "WEDGE AT BOTH SHAs => THE FAMILY PREDATES #2913 (final wedge counts in trial_matrix). #2913 is NOT the wedge's cause. NOTE: #2913's runtime delta (AgentView::stream_flush_to) is DEAD CODE in the headless e2e suite (Renderer::flush_to_main_screen early-returns for Renderer::Headless), so even a POST-rate excess could only be a binary-layout/timing perturbation of the latent race \u2014 the family's existence at PRE is proven by the captured PRE wedge regardless.",
+ "repro_signature": "Unit: cargo test --locked -p pa-cli --test interactive_daemon_e2e (CI shard-4/4 unit; scripts/ci_test_shard.py has NO per-unit timeout, so the hang eats the whole job). On a wedge: (1) the other 31 tests complete; the last standing test is tui_submit_outlived_by_switch_stays_silent_on_the_new_session (libtest 'has been running for over 60 seconds'; binary never exits); (2) alive at kill: test binary + cargo + EXACTLY 3x prime-agent = 1 daemon supervisor + 2 session workers (the test creates 2 sessions via the daemon pre-run, so the trio is the test's own); (3) the test thread is parked in Runtime::block_on at interactive_daemon_e2e.rs:4389 (the run_interactive await), TUI loop ALIVE ticking its ~50ms select cadence forever (epoll timeout=48); (4) the ENTIRE trio is IDLE (all tokio workers condvar/mio parked; no runnable thread); (5) daemon-side work COMPLETE: both sessions' turns ran + persisted ~1-2s in ('for a'/'a turn reply', 'for b'/'b turn reply' in the session JSONLs; daemon log: both workers registered+re-registered then silence; worker stderr empty); (6) => the TUI-side headless EXIT GATE never opens (no timeout guards it): a submit/switch round-trip settle member never drains. Observed instances: CI attempt-1 job 108526878090 (41min cancel, 3x prime-agent orphans, zero test output); drain-idle VM base arm (30+min kill); triage trials PRE#01, POST#02, POST#08, POST#44 (+any later; see trial_matrix).",
+ "mechanism": "The headless exit gate (crates/pa-tui/src/interactive.rs, the post-input-drain break) requires the FULL settle: headless_done && pending empty && !turn_active && prompt_submits_in_flight()==0 && view.queued empty && !dirty && !share/reload/traces/auth pending \u2014 NO timeout. prompt_in_flight drains ONLY in apply_prompt_outcome (session_ui.rs) when the prompt-submit round trip resolves and its PromptSubmitNote lands on prompt_rx. The outlived test arms exactly one round trip ACROSS the switch: Submit 'for a' -> Submit '/switch <second>' (the reply is delayed 400ms to land provably post-switch) -> WaitIdle(30s) x2 -> HeadlessDone. The WaitIdle barriers time out (30s note), so the PLAN cannot hang past ~60s \u2014 and the daemon saw both turns complete ~1-2s in. The forever-hang is AFTER HeadlessDone: one settle member never drains in the post-switch bookkeeping. Consistent with the outlived submit's round-trip note / turn-end / queue-drain marker never ARRIVING on the post-switch subscription (dropped between detach and re-attach, or routed to the pre-switch subscription) \u2014 a lost-settle race between the switch and the in-flight round trip. NOT excluded by the evidence: a turn-end marker consumed by the stale-session filter leaving turn_active latched, or a queued-item drain marker lost the same way. All shapes share the fingerprint and the fix territory: bound the exit gate's settle wait (converts the family from a 30-45min hang into an attributable red) and/or flush the in-flight submit bookkeeping at the switch.",
+ "parity_notes": "TS reference: interactive-mode.ts's staleness guard (promptStashSessionId/inputSubmissionGeneration) is the semantics under test; the exit gate is Rust-harness-specific (the headless verification harness has no TS counterpart), so the unbounded settle wait is a harness-side Rust gap, not a TS parity delta.",
+ "trial_matrix": {
+  "protocol": "5 interleaved matrices (m1-m5), 152 total trials, 76 PRE + 76 POST, exact CI shard-4/4 unit (cargo test --locked -p pa-cli --test interactive_daemon_e2e), 900s/trial, default test threads (16 on the 16-CPU VM), worktree HEAD sha-asserted per trial, leftover-kill+record per trial, full trio capture on every wedge. Full rows: hillclimb/wedge-triage/matrices/trials-all-152.jsonl",
+  "pre_824d6118a": {
+   "trials": 76,
+   "wedges": 4,
+   "wedge_trials": [
+    1,
+    131,
+    145,
+    151
+   ],
+   "wedge_rate": "5.3%",
+   "flake_fails": 10,
+   "green": 62
+  },
+  "post_fcf306e2b": {
+   "trials": 76,
+   "wedges": 10,
+   "wedge_trials": [
+    2,
+    8,
+    44,
+    48,
+    70,
+    80,
+    106,
+    128,
+    144,
+    150
+   ],
+   "wedge_rate": "13.2%",
+   "flake_fails": 11,
+   "green": 55
+  },
+  "verdict": "WEDGE AT BOTH SHAs (>=2 each: 4 vs 10) => the family PREDATES #2913 (task decision rule satisfied with margin). NOT a #2913 regression finding (that branch requires PRE clean at comparable counts; PRE wedged 4x with the identical captured signature). NOT candidate-caused (#2916 test-file-only; the lane BASE arm wedged).",
+  "rate_disclosure": "POST 2.5x PRE (13.2% vs 5.3%); one-sided Fisher p=0.0795 (two-sided ~0.16) - NOT significant; no asymmetry is statable. Wedge probability also clustered over wall-time on BOTH arms (final 25 trials contained 6 wedges: PRE 131/145/151 + POST 128/144/150) - unmodeled VM-state drift, arm-independent; the interleaved design is what keeps the arms comparable. Mechanistically a POST rate excess could only be a binary-layout/timing perturbation of the latent race (#2913's delta is dead code in headless runs).",
+  "flake_family_disclosure": "21 non-wedge failures total (PRE 10, POST 11), ALL members of the long-registered interactive_daemon_e2e render-timing flake family (rotating: tui_prompt_stash_restores_a_pasted_image_with_the_draft, tui_prompts_queued_behind_a_turn_render_the_queue_strip, tui_attaches_prompts_streams_lists_and_switches, tui_refused_submit_restores_the_draft_after_the_round_trip) - fast NAMED failures, a different class from the wedge; symmetric across arms.",
+  "regime_labels": "advisory v1.0 phase labels, probes at every matrix boundary: fsync p50 0.13-0.23ms (healthy) on every boundary with isolated maxima 91-103ms (the no-ceiling trap class, never clustered); fresh+rename steady p50 87-96ms across ALL phases (persistent host-class marginal property, not an epoch). The wedge is a hang-repro, NOT a timing leg: no wedge-vs-green comparison relies on timing; green walls (~15s) are 60x under the trial timeout."
+ },
+ "regime_disclosure": "Fleet I/O advisory v0.9 probes around the matrices: fsync p50 0.19-0.21ms (healthy) with isolated stalls (max 95-103ms); fresh+rename p50 91-92ms (the marginal/degraded class on this host class). The wedge is a hang-repro, NOT a timing leg: no wedge-vs-green comparison relies on timing; green walls (~15s) are 60x under the 900s trial timeout.",
+ "gates": "Build-clean both arms on the triage VM: fmt --all --check PASS x2; clippy -p pa-tui -p pa-cli --all-targets -D warnings PASS x2 (scope: delta crates + the suite crate; full-workspace legs evidenced by the org's green CI at both merge SHAs \u2014 fcf306e2b itself: all 4 test shards + clippy + fmt green, only the standing benchmark red); cargo test -p pa-cli --test interactive_daemon_e2e --no-run PASS x2.",
+ "ci_context": "PR #2916 head 527cad7a4 (fold of fcf306e2b): shard 4/4 attempt 1 WEDGED (job 108526878090: started 01:40:02Z, zero test output, cancelled 02:21:32Z; orphan cleanup killed cargo + test binary + 3x prime-agent pids 5300/5309/5315); attempt 2 at the SAME head GREEN in 8.5min (02:57:55Z->03:06:26Z) \u2014 1-for-2 at the POST-containing head, consistent with a rare race.",
+ "validity": "152/152 trials disclosed (118 green incl. 62+55 arm greens, 21 flake-family fails, 14 wedges captured); wedges never rerun-to-green; worktree SHAs asserted per trial; capture-script escaping bug on the first 3 wedges disclosed+fixed (per-proc evidence captured regardless; daemon tmpdir artifacts fetched manually for the deep-dive exemplar and included in all post-fix captures); driver notebook LEFTOVERS label on trial 01 actually records the post-wedge cleanup sweep (VM had no leftovers pre-trial).",
+ "family_registration_proposal": {
+  "id": "interactive_daemon_e2e_outlived_submit_switch_exit_gate_hang",
+  "pattern": "tui_submit_outlived_by_switch_stays_silent_on_the_new_session + hung/timeout (NO failure name is produced \u2014 the gate sees a timeout/kill; the known_reds.json failure-name matcher cannot attach to a hang, so the registry needs a wedge-aware shape or this context pattern)",
+  "classification": "UPSTREAM flaky-wedge family (HANG, not a red): unbounded headless exit-gate settle + submit/switch round-trip race. PRESENT AT LEAST SINCE 824d6118a (#2899). NOT caused by #2913 (dead code in headless) and NOT caused by the drain-idle candidate #2916 (test-file-only lane delta; the lane's BASE arm wedged).",
+  "owner": "UNOWNED \u2014 needs routing (fix territory: pa-tui interactive.rs exit gate / session settle bookkeeping, or the switch's in-flight submit flush; NOTE the upstream session_ui.rs split series (1/14..) is rehoming this file \u2014 re-triage after the series lands)",
+  "suggested_remediation": "(a) bound the headless exit-gate settle wait (wall-clock guard that fails the run with a diagnostic naming the stuck member) \u2014 converts the family into an attributable red; (b) make the switch flush/drain the in-flight submit bookkeeping for the switched-away session. NOT prescriptive.",
+  "expiry": "re-triage after any change to the switch/settle path or after the session_ui split series settles"
+ },
+ "outcome": "CLASSIFIED: upstream flaky-wedge family, PREDATES #2913 (4 PRE wedges vs 10 POST wedges over 76+76 interleaved solo-suite trials; >=2-each rule satisfied; rate difference 2.5x, p=0.08 one-sided, not statable). The CI wedge at the #2916 head and the drain-idle VM base-arm wedge are instances of this upstream family - NOT a #2913 regression and NOT candidate-caused. Family registration proposed: interactive_daemon_e2e_outlived_submit_switch_exit_gate_hang (unbounded headless exit-gate settle + submit/switch round-trip race; last-standing test tui_submit_outlived_by_switch_stays_silent_on_the_new_session; trio idle with daemon-side turns complete). Full repro signature, 14 evidence bundles, mechanism map, and suggested remediation directions in the triage report.",
+ "session": "wedge-triage child (session 01a0e0cc-4cf6-7315-af71-7a04f6c11c6e)",
+ "timestamp": "2026-09-27T08:05:00Z",
+ "vm": "mjyfm7dhp86o8nh31tcrtdtg (hillclimb-wedge-triage, ubuntu:22.04 16c/32GB/100GB); recorded /home/ubuntu/hillclimb/vms/wedge-triage.json; cleanup = archive-verify then delete",
+ "evidence_paths": "/home/ubuntu/hillclimb/wedge-triage/ (TRIAGE-REPORT.md, m1/m2/m3 trial matrices + logs + wedge evidence bundles, ci-shard4-attempt1.log, 2913-squash.patch, source snapshots)"
+}
