@@ -317,9 +317,9 @@
   ],
   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (rm+cp.new+mv after the stale-copy lesson; every phase records bins.sha256 + a post-ABBA sha re-assert), fresh fixture copy per trial with in-trial canonical prehash assert, pre/mid/post CPU calibration (drift 0.6%), I/O regime recorded with the advisory v0.9 dual-class gates (this VM's fresh-write class DEGRADED throughout - disclosed; deterministic primary claims unaffected). Evidence repeated at TWO head generations (4d57eb082/414a101d2 and 1f45bd860/d0c3f8770, spanning the #2913 streamed-exit-flush and #2911 touch folds) with consistent deltas and full B/C separation at 10MiB/2MiB; the 40MiB ready-state case is a pad-pack story (no walk growth) where the cand realized -35MB in 2-of-3 final trials with one straggler (freed-page return variance, disclosed). The 604,519 walk-added-span and +71.7MB figures in the tui-memory record reproduce here as +64.6MB heap growth at the merged-#2895 tip (the delta is the memory lane's own md-cache fragment removal). Two zombie sentinel-stuck probe TUIs (97% CPU spinners from a killed phase) contaminated one bench-suite window before detection - the load-gate caught them ('compile:/root/bin-probe'), all affected legs (the first scroll_typing attempt) were rerun on the cleaned VM; every RSS/census/oracle number reported here was produced by the trial's own process (deterministic self-smaps/statm reads) and is unaffected by co-resident spinners, but the contamination window is disclosed for the record. mcp_login known-red-expired disclosed under gates. Bench suite rows carry the swap-logged binary shas (the bench's vendored versions metadata is stale on this VM - superseded by oracle/st-swaplog.txt)."
  },
- "outcome": "candidate-ready (PR open; CI + fleet_review GREEN except the disclosed known-red-expired mcp_login flake; reviewer routing on the final PR SHA per the merge gate)",
+ "outcome": "candidate-ready (PR #2921 open at head e238a0952; fleet_pr GREEN; CI + reviewer routing in progress)",
  "decision": null,
- "pr_url": "PENDING",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2921",
  "record_path": "data/hillclimb/experiments/20260927-042000-memory-tui-scroll-retain-packed.json",
  "session": {
   "worker": "perf-tui-scroll-retain-fast (GLM 5.3 Fast)",
