@@ -1,0 +1,226 @@
+{
+ "id": "20260927-054500-io-write-regime-calendar",
+ "axis": "io",
+ "lane": "write-regime (perf-write-regime-fast)",
+ "hypothesis": "The fleet's fresh-write durability class (fresh temp + fsync/sync_all + rename + stat) is subject to a TIME-VARYING, FLEET-SYNCHRONIZED storage-layer regime (the fleet's historical ~0.3ms vs 40-450ms flapping, spawned dual-class probe standard): characterize whether the regime is host-level, per-VM, or fleet-wide correlated; whether it correlates with the product's own write bursts or is idle-correlated; and deliver a regime calendar + measurement-trustworthiness advisory. Infra characterization lane: NO product change.",
+ "approach": "Longitudinal dual-class probe series on 3 fresh VMs (a=16c/32GB dense+burst, b=4c/8GB dense+burst, c=4c/8GB QUIET ambient control) + a light probe on the orchestrator host (different infra class). 30s rich samples (fresh4k/64k/256k+sync_all+rename, fresh4k+fdatasync+rename, fresh+rename-no-fsync control, append+fsync, repeat-fsync 4KB, cached-read control, O_DIRECT 4KB control) with per-sample guest counters (/proc/stat incl steal, meminfo Dirty/Writeback, vmstat, PSI, root-cgroup io.stat/io.psi/cpu.stat, raw diskstats); 0.5s dense isolated-flush stream on a+b (stall structure/periodicity); 100-op back-to-back burst + 6-op recovery tail every 10min on a+b only (self-induction test); flock-guarded detached probes, raw JSONL, no transcription. 6h duration 2026-09-26T23:45Z -> 2026-09-27T05:45Z.",
+ "parity_notes": "Infra lane, record only: NO product code changed, no product build measured; frozen parity untouched by construction. All claims about host/storage infrastructure, not the product.",
+ "base": {
+  "revision": "origin/rust 4d57eb0826f874879c17cd31124b5759a8a5b582 at series start (anchor only; no product binary involved)"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_ids": {
+   "a": "rtepcnrtuisxzpu7vfjsf87c (16c/32GB/80GB)",
+   "b": "k7y317slxhjb29m7doxu66om (4c/8GB/40GB)",
+   "c": "dr3vx1dwbsnxs1pp50je0uo9 (4c/8GB/40GB, quiet node)"
+  },
+  "orchestrator_probe": "Nebius GCE-style box (kernel 5.15.0-185-generic, AMD EPYC-Genoa, ext4/PD vda) 60s cadence"
+ },
+ "gates": {
+  "fmt": "n/a (no product code)",
+  "clippy": "n/a",
+  "test": "n/a",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; standing disposition; never called pass"
+ },
+ "measurements": {
+  "method": "flock-guarded detached probes (probe_regime.py): fresh4k/64k/256k+sync_all+rename, fresh4k+fdatasync+rename, fresh4k+rename-no-fsync control, append+fsync, repeat-fsync 4KB, cached-read control, O_DIRECT 4KB control; per-sample counters: /proc/stat (incl steal), meminfo Dirty/Writeback, vmstat, PSI, root-cgroup io.stat/io.psi/cpu.stat, raw diskstats; dense 0.5s stream (a,b); 100-op burst + 6-op recovery tail every 10min (a,b); raw JSONL arrays, no transcription",
+  "env": "cloud-hypervisor microVMs, kernel 6.16.9+, AMD EPYC 9255, ext4 on virtio vda, sched [none], rotational=1, cgroup 0::/ (root)",
+  "disclosure_nonambient": "apt python3 install on all 3 VMs 23:42-23:44Z; simultaneous small startup cluster 23:45:51-54Z (4 stalls med 26-27ms on a+b) labeled NON-AMBIENT, excluded from regime claims",
+  "historical_fleet_anchors": {
+   "20:05Z": "catalog-second-parse: 8x 4KiB fsync 4,33,43,31,32,32,32,32ms (p50 ~32ms)",
+   "20:10Z": "boot-floor fleet warning: 4KB fsync 80-240ms fleet-wide",
+   "20:14-20:15Z": "launch-open: fsync4KB p50 31.9 max 40.6ms; cold-open-residual 56.22ms n=20",
+   "20:43Z": "catalog VM2 both classes 333-340ms; launch-open fresh-class bursty 0.7-41ms; cpu-creep both classes ~23ms",
+   "21:10Z": "boot-floor VM2 dual-class healthy 1.07-1.16ms while VM1 ~60ms (time-varying, per-VM)",
+   "21:12Z": "catalog bimodal: repeat 73,35,1,1,34,44,35,1 / fresh 37,37,2,36,2,36,39,2",
+   "22:42Z": "boot-floor close-out: dual-class probe healthy 0.90ms but device slow for product legs",
+   "source": "bench records 20260926-204300 (spawn-admission), -202000 (boot-floor), -194204 (venv-boot), -195700 (cold-open-residual), -201400 (launch-open), -185033 (catalog-cold), -193438 (catalog-second-parse), -080500 (cpu-creep), -213000 (daemon-rss), -211500 (tui-firstframe), -210500 (concurrent-io), -223000 (supervisor-relay)"
+  },
+  "first_epoch_2348_2350Z": {
+   "onset": "23:48:38-23:49:49Z: wr-a dense cluster 27 stalls med 40.9ms max 127.6ms; wr-b 21 stalls med ~58-65ms max 426ms; wr-c 30s sample 23:49:40 3/6 fresh ops 29.4/37.5/53.4ms; loadavg ~0.00 on all",
+   "orch_host_same_window": "steady 1.73-2.25ms (different infra, unaffected)",
+   "bimodal_structure": "wr-c sample8: f4k [29.4,2.1,2.0,53.4,37.5,2.0] ms - adjacent ops alternate healthy/stalled at 0.1s spacing",
+   "controls_during_epoch": {
+    "fresh4k_nofsync_rename": "0.058-0.097ms",
+    "odirect_4kb": "0.18-0.27ms",
+    "read_cached": "untouched",
+    "fdatasync": "STALLED 22.6-51.5ms (data-flush, not just metadata)"
+   },
+   "interpretation": "flush-command-path-specific stall (fsync/fdatasync pay ~30-50ms slow commits intermittently); device data path healthy; consistent with backend-side flush batching/remote-commit acks",
+   "per_host_baselines": {
+    "wr-a": "~1.0ms fresh4k p50",
+    "wr-b": "~2.2ms (2x a/c)",
+    "wr-c": "~0.9ms",
+    "orch-host": "~2.0ms steady, no stalls (GCP-PD-like)"
+   }
+  },
+  "chronic_window_2348_2358Z": {
+   "stall_rates": "wr-a 130/1492 (8.7%), wr-b 124/1492 (8.3%) dense ops stalled >15ms vs ~0% in the 23:46-23:48 clean window",
+   "cross_vm_stall_rate_pearson_30s_buckets": 0.814,
+   "cluster_onset_sync": "a/b cluster starts within 1-3s of each other (23:50:01/23:50:01, 23:52:05/23:52:06, 23:54:49/23:54:43, 23:56:47/23:56:53)",
+   "stall_magnitudes": "28-71ms typical, max 128.3 (a) / 426.0 (b)",
+   "baseline_lift_component": "wr-a non-stalled ops 1.0 -> ~5.2ms for 23:52:30-23:57:42; wr-c 1.0 -> ~2.5ms; wr-b stable at its own 2.2-2.6ms baseline; per-host component, invisible in guest counters",
+   "guest_counters": "CPU steal 1-9 jiffies/30s (~0.2% max, NOT oversubscription), Dirty 32-112KB (no backlog), loadavg 0.00-0.12, PSI io some avg10 near zero outside own blocked time",
+   "orch_host_same_window": "1.73-2.25ms steady, zero stalls, 20 samples (different infra)"
+  },
+  "protocol_finding_small_n_p50_underdetects": "Through the chronic window, 6-op 30s-sample p50s stayed 0.75-6.4ms (epoch classification H/M; zero D-samples on wr-a) while dense streams show 8-27% stall rates and 128-426ms maxima. p50-of-small-n probes are a NECESSARY but INSUFFICIENT regime gate \u2014 they miss op-level bimodality. Explains the historical 'probe healthy but product legs slow' pattern (boot-floor 22:42Z close-out: probe 0.90ms, sanity legs 464-650ms). Advisory: gate on stall-rate/p95/max from a denser pre-probe, not p50 alone.",
+  "two_component_decomposition": {
+   "component_1_stall_bursts": "fleet-synchronized isolated-op stalls (15-250ms band, 5-6% of dense ops over the series); per-30s stall-rate pearson a~b = 0.803 over 80 buckets",
+   "component_2_baseline_lift": "per-VM/per-host, UNSYNCHRONIZED: wr-a oscillates 0.8 <-> ~5.1ms on 5-15min scales; wr-c stepped 0.99 -> ~2.3ms at ~23:50 and stayed; wr-b flat 2.4-2.7ms baseline throughout",
+   "p50_metric_blindness": "69-70 30s-samples/VM: 6-op p50s >15ms only once each on b (26.4) and c (29.4), NEVER on a (max 10.8); pearson on p50 series ~0 (a~b -0.14) while stall-rate pearson 0.803 \u2014 the p50 metric cannot see the fleet-synchronized regime"
+  },
+  "orch_host_through_0024Z": "43 samples, p50-of-p50s 2.041ms, max 2.67, zero stalls, zero lifts (cross-infra isolation at 40min grade)",
+  "twin_19s_stall_event_0033Z": {
+   "wr_a": "flush issued ~00:33:09 blocked 19413.6ms (completed 00:33:28)",
+   "wr_b": "flush issued ~00:33:10 blocked 19168.9ms (completed 00:33:29)",
+   "structure": "PER-REQUEST, not a window freeze: next ops 0.5s later were 3.3/1.2ms healthy; wr-c flushes issued 00:33:35-41 (during the block) completed 0.7-2.7ms; exactly one trapped in-flight request per VM, ~19.3s duration on both, issue times 1s apart",
+   "interpretation": "most extreme shared-layer event captured; consistent with a storage-backend GC/pause/rebalance trapping in-flight flushes fleet-wide at ~00:33:09; the advisory max>100ms DEGRADED rule catches this class (p50 gates miss it entirely)"
+  },
+  "baseline_state_machine": {
+   "wr_a": "oscillates fast 0.8 <-> lifted ~5.1ms (5-15min bands); fresh lifted band 00:42-00:47",
+   "wr_b": "2.2-2.5ms -> FAST 0.7-0.9ms at ~00:32:26 through ~00:42 -> back to ~2.0-2.4",
+   "wr_c": "0.99 -> ~2.3ms step at ~23:50 (48-min plateau) -> stepped back DOWN to ~1.0ms at 00:38:38",
+   "model": "host flush path serves from discrete states (fast ~0.7-1.1 / slow ~2.2-2.5 / lifted ~5ms); states switch on minutes-to-tens-of-minutes scales, UNSYNCHRONIZED across hosts",
+   "wr_a_periodicity": "full-hour regular alternation of H (~0.8-0.9ms) and M (~4.4-5.1ms) epochs every 2-8min (H: 23:46-23:52, 23:58-00:00, 00:15:59-00:19, 00:22:50-00:27, 00:33:04-00:37, 00:39:52-00:41, 00:47:53-00:50, 00:53:34-00:57) \u2014 per-host periodic activity (host-side background flush/writeback cycle candidate), NOT fleet-synchronized (wr-b flat through wr-a's M bands)"
+  },
+  "shared_moderate_window_0037_0047": "all three VMs: a lifted+stalls 27-183ms; b stalls 19-78ms; c stalls 18-77ms at staggered instants \u2014 window-level fleet sync, op-level stochasticity; orch-host unaffected through the same window (loadavg 3.3-6.7, Dirty to 3.5MB \u2014 busy box, flush path untouched)",
+  "per_request_trap_family": {
+   "census_through_0149Z": "wr-a: 170.0, 1922.3, 19413.6ms; wr-b: 153.1, 182.6, 210.3, 426.0, 1246.3, 2101.4, 19168.9ms \u2014 recurrences every ~10-30min somewhere, magnitude unbounded by any observed ceiling",
+   "twin_19s_event": "see measurements.twin_19s_stall_event_0033Z",
+   "census_through_0159Z": "all >150ms: 153.1, 169.7, 170.0, 177.4, 182.6, 210.3, 426.0, 1246.3, 1678.7, 1922.3, 2101.4, 2124.6, 19168.9, 19413.6ms (a+b); plus wr-c 29-77ms stall ops in the same windows; single traps recur ~every 10-30min, multi-second traps come in near-simultaneous fleet-wide pairs/quads"
+  },
+  "orch_host_through_0059Z": "76 samples, p50-of-p50s 2.114ms, max 2.67, zero impact across all 74 minutes incl. the 19s twin event",
+  "calmed_window_0100_0125Z": {
+   "state": "all three VMs in FAST state (~0.7-1.1ms dense/sample p50s); recent stall rates 3.7-4.1% (a max 170ms, b max 210ms residual traps)",
+   "advisory_classification": "MARGINAL under v0.9 (2-5% stall band) \u2014 re-probe before timing legs, label if proceeding",
+   "series_p50_of_p50s": {
+    "wr_a": "4.27 -> 1.13ms",
+    "wr_b": "2.15 -> 0.99ms",
+    "wr_c": "1.06ms"
+   }
+  },
+  "orch_host_through_0124Z": "99 samples, 2.114ms p50-of-p50s, max 2.67, zero impact across the entire 99 min incl. the 19s twin event",
+  "fleet_window_0137_0139Z": {
+   "wr_a": "REPEAT-class degraded sample 01:37:53 (p50 16.8ms, values 8.0-21.8ms) while fresh near-healthy [0.98-4.70] \u2014 live class-divergence example",
+   "wr_b": "two per-request traps 1246.3ms (01:38:36) + 2101.4ms (01:38:43)",
+   "wr_c": "fresh-class sample 01:38:15: 3/6 ops stalled 27.0/38.8/55.0ms",
+   "note": "caught on ALL THREE nodes incl. quiet node; preceded by ~35min deep-healthy; recovered by 01:40 (burst #10 clean at 01:39)",
+   "upgrade": "QUAD TRAP: wr-a 1,678.7ms (01:38:35) + 2,124.6ms (01:38:42); wr-b 1,246.3ms (01:38:36) + 2,101.4ms (01:38:43) \u2014 all four within ~8s; two independent VMs each trapped two in-flight flushes at matching wall instants; SECOND near-simultaneous multi-trap event (first: 19.4s/19.2s twin at 00:33:09-10). Trap events are definitively fleet-synchronized backend incidents."
+  },
+  "incident_census": {
+   "00:33:09-10": "twin: a 19,413.6ms + b 19,168.9ms (per-request traps issued 1s apart)",
+   "01:37:53-01:38:43": "quad: a 1,678.7+2,124.6ms; b 1,246.3+2,101.4ms at matching instants; c fresh stalls 27-55ms; a repeat-class degraded sample",
+   "02:12:34-02:18:18": "band: ~19 traps 100-155ms on a+b at matching instants (a 109.3/122.6/115.8/148.5/155.0; b 102.8@02:12:34, 117.1@02:12:45, 153.6@02:13:27 ... 137.7@02:18:13); quiet node c caught the tail (74.3/120.6/125.1ms at 02:24:54)",
+   "structure": "three fleet-synchronized incident windows in 2.5h; magnitudes 19s -> 1-2s -> 100-155ms; each traps IN-FLIGHT flushes on multiple VMs at matching wall instants",
+   "02:28:28-29": "SECOND 19s twin: a 19,135.4ms + b 19,229.7ms, 1s apart, same signature as 00:33 twin; interval 00:33:09 -> 02:28:28 = 1h55m19s \u2014 PERIODICITY HYPOTHESIS with testable prediction: next twin ~04:23-04:25Z (verdict pending at record time)",
+   "02:25:47-02:51:21": "matched bands: 02:25:47-02:32:24 (incl. matched pairs a/b at 02:26:27-28: 124.5/124.9ms and 02:30:21-22: 166.2+109.9 vs 163.3+109.9ms); 02:36:45-02:38:59 (10 traps per node at same instants); 02:50:24-02:51:21 (a 441.7ms max, b matched 143-174ms)",
+   "03:00:11-03:24:51": "a-only 233.1ms (03:00:11); matched band 03:09:44-03:14:42 (b 19 traps 104-144ms, a overlapping 102-148ms incl. matched 03:12:05-12 sub-band); matched singles 03:24:25-51 (a 138.0, b 110.5/101.7). Incident cadence ~every 15-25min; the 19s twins are the extreme tail of a continuous incident stream"
+  },
+  "orch_host_through_0224Z": "156 samples, 2.107ms, max 2.72, zero impact through all three incident windows",
+  "orch_host_through_0259Z": "189 samples, 2.107ms p50-of-p50s; FIRST local elevation 02:59:58 (fresh staircase to 33.3ms, O_DIRECT 6.7ms tail, loadavg 5.13 \u2014 busy-box local candidate, NOT the fleet trap class: no matched-instant traps; VMs quiet that minute)",
+  "periodicity_prediction_refuted": {
+   "prediction": "from the 00:33:09 -> 02:28:28 interval (1h55m19s) between the two 19s twins, a third twin was predicted at ~04:23-25Z",
+   "verdict": "REFUTED: the window passed with both dense nodes at 0.0-0.1% stall rates (max 8.7-18.0ms, zero >50ms ops) \u2014 no twin landed",
+   "interpretation": "the 19s twins are SPORADIC, not fixed-periodic (2 in 4.2h); the interval was coincidence. Disclosed as negative evidence against any fixed-cycle model of the twin class. The fleet-synchronized structure (matched instants across VMs) is unaffected and remains the causal signature."
+  },
+  "series_summary_through_0536Z": {
+   "window": "2026-09-26T23:45:43Z -> 2026-09-27T05:46:09Z (6h COMPLETE; probes exited cleanly with end lines: a 05:45:45Z n=634, b 05:46:08Z n=635, c 05:46:09Z n=641; final tail 05:36-05:45 verified healthy: 0.00-0.19% stall rates, max 15.9ms)",
+   "wr_a_16c_dense_burst_node": {
+    "dense_ops": 37902,
+    "dense_p50_ms": 0.979,
+    "stalls_gt15ms": 844,
+    "stall_pct": 2.23,
+    "dense_max_ms": 19413.6,
+    "traps_gt100ms": 65,
+    "bursts": 31,
+    "burst_p50_range_ms": [
+     0.25,
+     4.07
+    ],
+    "burst_max_range_ms": [
+     0.73,
+     48.09
+    ],
+    "burst_stalls_out_of_3000_ops": 7,
+    "burst_stalls_out_of_3100_ops": 7,
+    "samples": 634
+   },
+   "wr_b_4c_dense_burst_node": {
+    "dense_ops": 38014,
+    "dense_p50_ms": 0.922,
+    "stalls_gt15ms": 744,
+    "stall_pct": 1.96,
+    "dense_max_ms": 19229.7,
+    "traps_gt100ms": 71,
+    "bursts": 31,
+    "burst_p50_range_ms": [
+     0.18,
+     1.49
+    ],
+    "burst_max_range_ms": [
+     0.73,
+     33.7
+    ],
+    "burst_stalls_out_of_3000_ops": 2,
+    "burst_stalls_out_of_3100_ops": 1,
+    "samples": 635
+   },
+   "wr_c_4c_quiet_control": {
+    "samples": 641,
+    "fresh4k_p50_of_p50s_ms": 0.854,
+    "fresh_degraded_samples": 5,
+    "repeat_degraded_samples": 2,
+    "max_sample_p50_ms": 115.04,
+    "note": "no dense stream, no bursts \u2014 ambient confirmation node"
+   },
+   "orch_host_different_infra": {
+    "samples": 339,
+    "p50_of_p50s_ms": 2.116,
+    "max_ms": 16.46,
+    "note": "single local outlier 02:59:58 (busy box); ZERO fleet-trap-class events across the full 6h; probe ended cleanly 05:40:25Z"
+   },
+   "stall_rate_pearson_a_b": "0.793 over 721 aligned 30s buckets (full series); per-30s-p50-series pearson ~0.05 (the p50 metric cannot see the regime)",
+   "epoch_overlap_note": "at the 15ms 30s-p50 threshold, D-band epochs NEVER co-occur across VMs by more than isolated single samples \u2014 the blindness finding quantified: per-VM degraded p50s a 0 / b 3 / c 5 (+1 a repeat) across ~620 samples while thousands of isolated ops stalled"
+  },
+  "trap_census_final": {
+   "definition": "per-request traps = isolated fresh+sync_all+rename ops exceeding 100ms on the dense streams (a: 65, b: 71 final), plus the quiet node's sampled equivalents",
+   "extreme_events": "19.4s/19.2s twin (00:33:09-10); 19.1s/19.2s twin (02:28:28-29); quad 1.2-2.1s (01:38:35-43); 1.9s single (00:39:17); 426ms (23:48:39); 441.7ms (02:50:54); 233.1ms (03:00:11)",
+   "band_incidents": "matched 100-200ms trap bands at ~23:48-58 (chronic), 00:52, 01:10, 02:12-18, 02:25-39, 02:50-51, 03:09-14, 03:24-25 \u2014 b and a within 0-8s at every matched instant",
+   "magnitudes": "no observed ceiling in 6h (100ms -> 19.4s); the histogram core band is 15-75ms (a: 222/173/203/124; b: 185/139/176/126) with thin tails to 19s"
+  },
+  "correlation_series_final": "stall-rate pearson a~b 0.793 over 721 aligned 30s buckets (full series); per-30s-p50-series pearson ~0.05 \u2014 the finding"
+ },
+ "validity": {
+  "excluded": [
+   "23:42-23:44Z apt python3 install on all 3 VMs (one-time write burst) and the 23:45:51-54Z startup stall cluster (4 stalls, med 26-27ms on a+b) labeled NON-AMBIENT; excluded from regime/incident claims",
+   "orchestrator-host single-sample elevation 02:59:58 (fresh staircase to 33.3ms, O_DIRECT 6.7ms tail, box loadavg 5.13 with its own fleet-coordination I/O) labeled LOCAL-BOX; not the fleet trap class (no matched-instant traps; VMs quiet that minute)"
+  ],
+  "notes": "Probes flock-guarded single instance (1 process per VM verified each check-in); no product code involved (infra lane); all values parsed from raw JSONL, no transcription; VM clock offsets bounded by launcher_wall handshake (<2s); the failed fixed-cycle prediction is retained as negative evidence; burst tests ran only on a+b (c is the quiet ambient control \u2014 its 30s samples confirm the windows without dense traffic); the 19s twins completed with the probe blocked (no data gap), dense cadence resumed at the next 0.5s slot."
+ },
+ "outcome": "in-progress",
+ "decision": null,
+ "pr_url": null,
+ "regime_calendar_advisory": "FINAL ADVISORY v1.0 (supersedes v0.9 broadcast): (1) The regime is OP-LEVEL BIMODAL \u2014 p50-of-small-n probes are a NECESSARY but INSUFFICIENT gate (0-5 degraded 30s-p50s across ~400 samples/VM while 3.6-6% of isolated ops stalled 15ms-19.4s; pearson on p50 series ~0 while stall-rate pearson 0.75-0.87). Gate on: >=40 ISOLATED fresh+sync_all+rename ops at >=0.3s spacing (0.5s fine, ~20-25s) + >=20 repeat-fsync; HEALTHY = stall-rate(>15ms) <=2% AND max <=50ms AND baseline p50 <=2x host known-good; MARGINAL (2-5% / max 50-100ms / baseline >2x) = re-probe in 2-5min; DEGRADED (>5% sustained or max >100ms) = no timing legs, re-probe ~every 5min. (2) NEVER judge the regime with back-to-back probe streams (they AMORTIZE: 100-op bursts ran at 0.18-4.07ms p50 with 0-4 stalls even inside incident windows) \u2014 isolated ops only; bursts mask exactly the trap class. (3) Per-host baselines diverge (0.7-2.5ms fast/slow states, ~5ms lifted) \u2014 thresholds are HOST-RELATIVE; never compare absolute ms across hosts; flag >2x baseline lifts even at low stall rate. (4) The incident process is CLUSTERED not cyclic: chronic multi-minute windows and ~15-25min band cadence alternate with fully-quiet hour-plus stretches; mid-leg re-probes for any leg >5min; label every timing leg with its regime state. (5) Both probe classes remain required (class divergence observed in BOTH directions across this series). (6) For the PRODUCT: single durability writes (session open, spawn admission, config persist, sidecar cert) pay per-op trap costs 30-50ms typical, tail to 19.4s; write storms (resume storms, concurrent appends) amortize (~0.2-3.5ms/op) \u2014 attribution of absolute walls must use the leg-time regime label, and same-VM interleaved ABBA arms pay symmetric stall rates (paired deltas survive MARGINAL windows).",
+ "root_cause_hypothesis": "ROOT-CAUSE (provisional, evidence-based): a fleet-shared storage-backend flush-path layer serves sandbox-VM durability writes; it (i) runs a per-request TRAP mechanism whose victims are in-flight FLUSH requests (fsync AND fdatasync stall; no-fsync rename, O_DIRECT writes and cached reads are untouched through the same windows; back-to-back flush streams AMORTIZE through it at ~0.2-3.5ms/op), (ii) fires SYNCHRONIZED across independent VMs (matched trap instants within 0-8s across a/b/c: 19s twin pairs at 00:33 and 02:28, quad 1.2-2.1s at 01:38, five 100-200ms bands) => the cause is upstream of every VM (the sandbox-fleet shared storage/host layer), not per-VM or product-induced; (iii) produces magnitudes 100ms-19.4s with no observed ceiling, hitting 1-2 requests per VM per incident; (iv) arrives CLUSTERED, NOT CYCLIC (chronic 10-min window, band cadence ~15-25min, then a fully-quiet 1h+ stretch; the 2 extreme twins are sporadic \u2014 the fixed-115min-cycle prediction was REFUTED by a live covered window with zero events); (v) coexists with an independent per-host BASELINE STATE MACHINE (fast ~0.7-1.1ms / slow ~2.2-2.5ms / lifted ~5ms states switching on minutes-to-hours scales, unsynchronized across hosts \u2014 the fast/slow/lifted states are per-host, NOT the trap mechanism). Guest counters show NO cause (steal ~0.2%, Dirty 32-112KB, loadavg ~0) and the orchestrator host (different infra) is UNTOUCHED through every incident. Most economical model consistent with all evidence: backend-side flush-batching/commit-cycle machinery (e.g., periodic maintenance/GC/rebalance of a shared storage layer, possibly coalescing FLUSH/FUA commands across tenants) that intermittently traps in-flight flush requests; the fleet-synchronization proves shared infrastructure, the per-request structure proves the trap not a freeze, the burst-amortization proves pipeline batching, and the unbounded magnitudes prove a non-local (remote/queued) dependency.",
+ "burst_self_induction_verdict": {
+  "final": "31 bursts per VM (3,100 burst ops each arm): burst p50 range a 0.25-4.07ms / b 0.18-1.49ms, total stalls 7/3100 (a) and 1/3100 (b) \u2014 back-to-back streams AMORTIZE in every baseline state and every incident window; ambient stalls continued at their own cadence through every burst; post-burst tails mirror ambient state. VERDICT: the regime is NEVER product/self-induced; it is an ambient fleet-storage property. Product implication: single durability writes pay the trap costs; write storms amortize (per-op ~0.2-4ms even in incident windows).",
+  "per_burst_log": {
+   "burst_1_2346_2356Z": "100 back-to-back fresh+fsync+rename: wr-a p50 3.48ms max 8.78ms ZERO stalls>15ms; wr-b p50 1.42ms max 33.7ms (1 stall); recovery tails 4.66/2.09ms normal. Ambient stall clusters active before (23:56:16-20) and after (23:56:47, 23:56:55) \u2014 verdict NOT self-induced, n=1; back-to-back flushes AMORTIZE (~3.5ms/op steady drain) while isolated flushes pay the 30-50ms wait",
+   "product_implication": "write storms (resume storms, concurrent session appends) amortize flush cost; single durability writes (session open, spawn admission, config persist) pay the full regime stall \u2014 consistent with fleet product observations (spawn-admission 2-6 stalls/admission)",
+   "status": "n=19 per VM: CONFIRMED ambient",
+   "burst_2_0008Z": "during wr-a's lifted band: a p50 4.07ms (lifted baseline) 4 stalls max 35.6; b p50 1.49ms 0 stalls; post-burst isolated ops med 29.2ms (ambient degraded state continued)",
+   "burst_3_0019Z": "healthy window: a p50 0.26ms max 1.94 ZERO stalls; b p50 0.30ms max 2.27 ZERO \u2014 back-to-back ops cost LESS than isolated baseline (write-cache absorbs, flushes merge); post-burst med 0.71-0.78ms",
+   "burst_4_0030Z": "a p50 3.52ms max 14.72 0 stalls; b p50 0.24ms max 0.82 0 stalls",
+   "burst_5_0042Z": "a p50 3.19ms 2 stalls max 44.7; b p50 0.21ms max 2.90 0 stalls",
+   "burst_6_0053Z": "a fast state: p50 0.30ms 1 stall 48.09ms; b p50 0.18ms max 0.94 0 stalls",
+   "burst_7_0104Z": "a p50 0.35ms max 3.26 0 stalls; b p50 0.34ms max 7.98 0 stalls",
+   "burst_8_0116Z": "a p50 0.27ms max 0.80 0 stalls; b p50 0.31ms max 2.99 0 stalls",
+   "burst_11_0149Z": "clean (both nodes in deep-healthy: 0.4% stall rates)"
+  }
+ },
+ "cross_vm_correlation": "stall-rate pearson a~b = 0.75-0.874 across the series (510-560 aligned 30s buckets, monotonically informative; the 30s-p50 series pearson is ~0 \u2014 the p50 metric cannot see the regime); matched trap instants across a/b/c at every incident (see incident_census); a/b stall-cluster wall-overlap 1,106s over ~15,000s spans; per-host baseline states are UNSYNCHRONIZED (independent state machine). The regime is therefore FLEET-WIDE CORRELATED at the incident level (shared backend) with per-host baseline independence.",
+ "archive": "/home/ubuntu/hillclimb/archives/perf-write-regime/write-regime-evidence-20260927T055210Z.tar.gz sha256 29b2f216164044d360342629039080d0415fcfa875c4a922a578febca6c1c5b0",
+ "timestamp": "2026-09-27T05:50:00Z"
+}
