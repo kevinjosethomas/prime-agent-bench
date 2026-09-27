@@ -1,0 +1,99 @@
+{
+ "id": "20260927-114500-io-subscriber-floor",
+ "axis": "io",
+ "lane": "subscriber-floor (perf-subscriber-floor-fast)",
+ "hypothesis": "After the subscriber registry (PR #2914, squash 950c3f6cc) made delivery O(attached), the residual per-session event path at N=100 is: the registry lock + String hash + map probe + per-connection mpsc push + the wake + the per-connection serialize + the write syscall, 2 events per append. TASK: (1) baseline-decompose this residual at N=100/N=1 (CFS schedstat us/append, source-lane driver contract); (2) evaluate three behavior-preserving candidate classes \u2014 per-connection reserved serialization buffer (cand-a), registry lock granularity via per-session entry locks (cand-b), batch-drain coalescing of already-queued frames into one write (cand-c) \u2014 each gated by the wire oracle (6 session_event frames to attached, zero to unattached/late/post-detach) and D7 per-session FIFO; (3) paired ABBA per candidate at N=100 + N=1 controls, honest negatives valid.",
+ "approach": "Parent-exact single-change branches off e6e7a26e4 (origin/rust at lane start; tip later moved 3x, ZERO overlap with this surface verified each move \u2014 supervisor.rs/subscribers.rs/clients.rs untouched upstream through ba4ea9d3b). sf-diag: a decomposition instrument (both relay publish sites stubbed; NOT a candidate, never ships; smoke-oracle-exempt by design) measuring the event-path TOTAL as base-minus-diag. cand-a: write_line_scratch (to_writer into a per-connection reserved Vec, byte-identical JSON, newline/write/flush pattern unchanged). cand-b: SessionSubscribers split into map lock (lookup only) + per-session entry locks (fan-out), attach holds the entry lock across its insert (delivery boundary == the TS .add() instant, same predicate as the single-lock registry), rebind holds BOTH entry locks in pointer order, register/move re-validate the entry against the map under the locks (stale-entry stranding race analyzed and closed), publish never drops empty entries (lifecycle owners only). cand-c: build_event_batch drains already-queued frames (<=32 frames / 256KiB, checked AFTER each serialized frame so nothing pulled is dropped) into one write; per-session FIFO is the queue's own recv order; nothing waits \u2014 first-frame latency unchanged; cross-class order vs ring events was already the select's nondeterministic interleaving (D6). Micro-bench (scratch crate, no product imports): component cost map at the N=100 shape. Driver: concurrent_io_curve.py (bench hillclimb sha 0cd875c7 = the source lane's VM copy, byte-verified) --workers {1,100} --appends 200 --seed-rows 20 --payload-size 2048; pa-daemon binaries (THE driver-contract binary \u2014 see the trap in validity), sha-asserted atomic swap per leg to /root/bin-cur, unique per-leg run paths, pre/mid/post calibration, dual-class I/O probe (40 isolated fresh+sync_all+rename @0.5s + 20 repeat-fsync) before EVERY leg with host-relative gates anchored from THIS host's best calm window (rep 0.7ms / fresh 1.15ms).",
+ "parity_notes": "Wire oracle (smoke_registry.py, the source lane's script byte-identical) run TWICE per shipped binary on the VM: base + cand-a + cand-b + cand-c all PASS (6 session_event frames to the attached client over 3 appends; ZERO to an unattached connection, ZERO to a late attacher, ZERO post-detach; frame byte-shape parity after run-volatile normalization). D7 per-(session,connection) FIFO: preserved by construction in every candidate (one registry/entry lock per session orders all its publishers; the per-connection queue is FIFO; the batch drain is the queue's own order). cand-b keeps the exact single-lock delivery predicate (attach holds the entry lock across the insert) and the rebind both-or-neither atomicity (both entry locks, pointer order, no deadlock); the new stale-entry race is closed by map re-validation under the locks (a detached entry can only ever be empty). cand-c adds no new cross-class inversions (the select's arm order was already nondeterministic; TS's own cross-class order is timer-coalesced; one-syscall-per-batch is CLOSER to Node's Writable chunking than one-per-frame). Frozen surfaces untouched: session-JSONL bytes, compaction, RLM wire schemas, prompts, TUI bytes. Full reasoning: candidate-parity-notes.md in the evidence archive. sf-diag changes the client-visible event stream BY DESIGN (zero frames) and never ships; its legs validate on the session-file digest only (identical: 85607aee@N=100, 4195cad0@N=1 \u2014 matching the source lane's).",
+ "base": {
+  "revision": "e6e7a26e4ed9c5bb051df2fedccd270eba946c33 (origin/rust at lane start; the PR-less honest-negative outcome keeps all measurement parent-exact at this base)",
+  "binary_sha256": "46caa1a9968de90aeaf4804184b0148575edcde9b41797dcbfcd14f049ec6b5e (pa-daemon release, 154MB)"
+ },
+ "branch": "no lane PR \u2014 candidates live on local branches sf-cand-a (635394ffe/amended), sf-cand-b (857924e07), sf-cand-c (1f7007964), sf-diag (uncommitted diff, saved as sf-diag.patch in the archive); diffs cand-a/b/c.diff + sf-diag.patch archived",
+ "commits": [
+  "sf-cand-a: 635394ffe (clients.rs +25/-1, reserved serialize scratch)",
+  "sf-cand-b: 857924e07 (subscribers.rs +176/-55, per-session entry locks)",
+  "sf-cand-c: 1f7007964 (clients.rs +55/-2, batch-drain coalescing)",
+  "sf-diag: uncommitted working diff (supervision.rs +9/-12), archived as sf-diag.patch"
+ ],
+ "build": {
+  "sandbox_id": "e8hqdbhxs89uub5r6cr7nco4 (16c/32GB ubuntu:22.04, rustup 1.98.1, CARGO_INCREMENTAL=0)",
+  "base_binary_sha256": "46caa1a9968de90aeaf4804184b0148575edcde9b41797dcbfcd14f049ec6b5e",
+  "cand_a_binary_sha256": "acde3d15972fcac2ae8dc40e304b959dfa574556a0c89dbadc67aeba73728df6",
+  "cand_b_binary_sha256": "beefb3c11b5acecac6a30f9eb343a734224366756b4f77f0611e7ff895232bfe",
+  "cand_c_binary_sha256": "ac4a1ee0d683088e540f00db825920b6c3bdff1d5c5b35eff4dfd676c242d230",
+  "diag_binary_sha256": "ca37971e5d1806d7729db5d15abfa33f962da91fe8cf7a752364b5c7ed6352f0",
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "note": "no PR, no merge bar; product-code gates were compile+smoke-oracle only for the candidate instruments (all 4 binaries built clean as pa-daemon at e6e7a26e4 and passed the wire oracle twice each); the shipped-tip test suite was never touched by this lane (no code shipped)"
+ },
+ "measurements": {
+  "method": "same-vm sequential ABBA on the source lane's driver contract (concurrent_io_curve.py, pa-daemon binary), sha-asserted atomic binary swaps per leg, unique leg paths, digest oracle every leg, dual-class I/O probe before every leg (host-relative H/M/D), pre/mid/post calibration",
+  "binary_identity_trap": "the driver contract's binary is pa-daemon (subervisor|worker subcommands), NOT the prime-agent CLI; a first build produced the CLI, whose argv fallback treats 'supervisor' as an agent PROMPT (boots its own session, tries bedrock, exits 1 before binding) \u2014 caught by a foreground repro + strace + the daemon-written session jsonl BEFORE any leg burned; rebuilt all binaries as -p pa-daemon",
+  "decomposition_event_path_total": {
+   "n100_diag_bddb": {
+    "append1_clean_pair": "base b-1 947.9 vs diag 901.1/905.1 -> ~44us/append",
+    "append2_clean_pair": "base b-1 890.4 vs diag 886.6/802.0 -> ~0-88us/append (diag legs spread 84.6us)",
+    "statement": "the per-session event path (2 publishes + 2 wakes + 2 serializes + 2 writes + the woken task's run) costs ~30-90us per session per append at N=100 (schedstat, metric already per-session-append)"
+   },
+   "n1_diag_bddb": {
+    "legs": "b-1 443.9/401.0 (slow-fsync leg, walls 7.1/7.4s), b-4 251.5/218.9 (fast walls 0.1s), d-2 174.0/190.0, d-3 202.8/178.8",
+    "wall_matched": "b-4 vs d-2/d-3: append1 251.5 vs 174.0/202.8 (delta 48.7-77.5us/append), append2 218.9 vs 190.0/178.8 (delta 28.9-40.1us/append)",
+    "statement": "N=1 confirms the same floor: ~29-78us/session/append"
+   }
+  },
+  "microbench_component_matrix": {
+   "lock_lookup": "0.05us p50 (lock+String hash+map probe, miss path)",
+   "push_nowake": "0.08us p50 (+mpsc try_send, receiver never parks)",
+   "publish_parked": "0.39us p50 / 3.4us p99 (full publish incl. wake of a parked per-connection task)",
+   "storm_global_vs_entry": "8 publishers x 25k over 100 sessions: global single registry lock 0.624us/publish vs per-session entry locks (cand-b shape) 0.409us/publish = -34% under synthetic storm; entry variant within 5% of uncontended",
+   "serialize_2545b": "to_string 0.917us vs reserved to_writer 0.820us per frame (-0.10us, -11%); bytes identical asserted",
+   "write": "one write_all+flush per 2546B frame 0.789us; two frames in one write 0.733us per PAIR (-0.85us per append pair)",
+   "transfer_failure": "the component arithmetic (~4.2us/append) MISSES the dominant term: the RECEIVER-SIDE TASK-RUN overhead per wake (parked task -> scheduled -> poll -> recv -> serialize -> write -> park, ~15-40us per event), which the bench's hot-loop receiver tasks never paid and the publish-side wall never included; the diag instrument's base-minus-diag (~30-90us/append) is the ground truth \u2014 component wall-clock arithmetic does NOT transfer to schedstat accounting"
+  },
+  "n100_abba_candc": {
+   "legs": "b-1 915.1/863.9, c-2 887.5/808.7, c-3 1173.7/813.0 (append1 wall 11.2s = fast-fsync regime, excluded from wall-matched pairing), b-4 878.5/810.3",
+   "append1_wall_matched": "c-2 887.5 vs base 915.1/878.5: -1.0%, within base spread -> NO CLAIM",
+   "append2_wall_matched": "cand 808.7/813.0 (4.3us apart, TIGHT) vs base 863.9/810.3 (53.6us spread): -3.1% mean, ranges overlap (base leg 810.3 inside cand range) -> NO CLAIM",
+   "regime_conditional_observation": "the two fast-fsync-regime legs pair as base b-7 1280.6 vs cand c-3 1173.7 = -8.3% (-10.7us/append) \u2014 a 1-LEG PAIR, disclosed as such, no claim; consistent with the task-run-merge theory (batching saves ~1 task-run per append, worth more in the CPU-saturated regime)"
+  },
+  "n100_abba_candb": {
+   "legs": "b-1 1235.1/1013.0 (fast walls 10.1/6.3s), b-4 923.7/865.8 (normal walls), c-2 1208.4/884.7, c-3 1255.4/959.7 (append1 fast walls, append2 normal)",
+   "wall_matched": "append1 fast pair: base b-1 1235.1 vs cand 1208.4/1255.4 \u2014 overlap, NO CLAIM; append2 normal: base b-4 865.8 vs cand 884.7/959.7 \u2014 +2..+11% vs one base leg, no claim",
+   "falsification_boundary": "the micro-bench -34% storm result is a SYNTHETIC-storm property; the driver's per-session-relay timing (fdatasync-decoupled, ~650 appends/s aggregate) never produces correlated publish storms \u2014 cand-b's mechanism has no driver-shaped trigger"
+  },
+  "n100_abba_canda": {
+   "legs": "b-1 869.0/831.1 (slow walls 38-41s), b-4 928.5/800.7 (walls 43-44s), c-2 1157.2/870.3, c-3 1295.6/854.7 (append1 walls 11.9s = fast regime)",
+   "wall_matched": "append1: NO wall-matched cross-role pair exists (base slow vs cand fast) \u2014 the naive +36.5% mean is pure regime artifact; append2 (walls 39.6-43.0s matched): base 800.7/831.1 vs cand 854.7/870.3 = +5.7% \u2014 but the cand legs' walls are ~8% faster (in-leg concurrency), and the between-battery base drift (810-864 / 866-1013 / 800-831) is the same magnitude -> NO CLAIM; mechanistically a -0.10us/frame alloc removal cannot cost +0.47us/session"
+  },
+  "n1_controls": {
+   "candc": "append1 base 206.1-220.6 vs cand 145.9-266.9 overlap -> no claim; append2 base 197.8-218.7 vs cand 140.9-169.4 ranges SEPARATE (-25.5% mean) but c-3 is within-leg inconsistent (append1 266.9 in-base-range, append2 169.4 far below) \u2014 directional evidence for the task-run-merge theory, NOT a claim on 2v2 legs at the source lane's documented 30-70% single-session noise",
+   "candb": "c-2 hit the slow regime (walls 7.8-8.5s, excluded); clean legs within base ranges -> no claim",
+   "canda": "all ranges overlap -> no claim"
+  },
+  "regime": "host-relative dual-class probes before every leg (HEALTHY/MARGINAL/DEGRADED; DEGRADED windows refused \u2014 e.g. a 12-min persistent fresh-write phase at 41-42ms p50 / 100% stalls burned no legs); host baseline anchored from the best calm window (rep 0.7 / fresh 1.15ms); IN-LEG REGIME FLIPS labeled by in-leg phase walls (fast-fsync legs measure HIGHER sup CPU/append \u2014 the b-7 exemplar: append1 wall 9.1s, p50 0.03ms, 1280.6us/append vs ~30s-wall legs at ~900): per-append CPU is regime-dependent exactly as the source lane's stability observation described; the pre-leg probe classifies the pre-leg window only (the no-ceiling advisory's phase model applied per leg)"
+ },
+ "validity": {
+  "excluded": [
+   "sf-diag-n100-b-3 (append1 only; driver crashed at resume1 with 'session worker did not come up in time' \u2014 the known respawn-storm worker-boot budget flake the source lane disclosed; rerun 1+1 as b-7 per the rerun discipline)",
+   "sf-candb-n1-c-2 (slow-fsync regime legs, walls 7.8-8.5s \u2014 regime-excluded from pairing)"
+  ],
+  "notes": "All 28 completed legs validated with digest oracles matching the source lane's (85607aee@N=100, 4195cad0@N=1) and resume-prefix preservation; every leg sha-asserted before AND after its run. One measurement-arithmetic correction is disclosed in full: the first decomposition report divided the N=100 diag delta by N \u2014 wrong, the sup_cpu_per_append metric is already per-session-append; the N=1 diag battery caught it and the record states the corrected floor (~30-90us/session/append). The candidate-branch edit that produced cand-b's first binary was built from a diff missing one compile fix (or_insert_with(Arc::new)) \u2014 the binary was rebuilt from the verified diff and its smoke oracle re-passed before any cand-b leg; all binary shas in this record are the final, sha-asserted ones. The measurement-binary identity trap (pa-daemon vs the CLI) is a fleet-reusable lesson (the parent holds it for close-out refinement).",
+  "honest_negative": "NO candidate class clears its regime's noise band at either scale: the between-leg base spreads (54-192us/append across batteries) exceed every candidate's effect; the two regime-conditional observations (cand-c fast-fsync 1-leg pair -8.3%; cand-c N=1 append2 range separation) stay OBSERVATIONS \u2014 claiming them would be green-fishing. The task's premise (a residual wake floor worth attacking) resolves to a floor DOMINATED by receiver-side task-run overhead (~15-40us/wake), which none of the three classes removes: cand-a attacks a 0.1us term, cand-b a trigger the driver never produces, cand-c merges task-runs but the merge is only observable in regimes this host flips into mid-battery. A follow-up lane wanting this win needs a regime-controlled window (or a driver-side fsync-latency pin) and should start from the cand-c mechanism (task-run merge) \u2014 the only candidate whose observed deltas sit on the correct side in every clean pairing."
+ },
+ "outcome": "discarded",
+ "decision": "honest negative, accepted by the orchestrator at every milestone (decomposition matrix; diag result; cand-c/cand-b/cand-a ABBAs; the arithmetic correction; the N=1 controls): no PR opened \u2014 the merge bar's numeric-review + adversarial-reviewer gates do not apply to a no-code outcome; the record is the deliverable",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-114500-io-subscriber-floor.json",
+ "evidence": {
+  "archive": "/home/ubuntu/hillclimb/subscriber-floor/sf-evidence-20260927.tgz (sha256 5e5ca707426f6ae3386f44676dfd07b3d9f19c65c4e9090bfbe059c7b199c9c3, 13824712 bytes, 2156 files: all 28 legs' result.json + battery/leg logs + regime probes + host baseline + smoke oracle jsons + micro-bench output + binary shas + candidate diffs + the diag patch; VM-side archive sha verified against the downloaded copy BEFORE any VM teardown)",
+  "parity_case": "/home/ubuntu/hillclimb/subscriber-floor/candidate-parity-notes.md",
+  "vm": "e8hqdbhxs89uub5r6cr7nco4 (hillclimb-perf-subscriber-floor, 16c/32GB ubuntu:22.04)"
+ },
+ "session": {
+  "worker": "perf-subscriber-floor-fast",
+  "session_dir": "subscriber-floor lane (this session)"
+ },
+ "timestamp": "2026-09-27T11:45:00Z"
+}
