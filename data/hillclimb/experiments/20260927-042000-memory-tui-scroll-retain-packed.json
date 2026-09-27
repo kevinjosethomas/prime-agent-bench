@@ -318,7 +318,7 @@
   ],
   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (rm+cp.new+mv after the stale-copy lesson; every phase records bins.sha256 + a post-ABBA sha re-assert), fresh fixture copy per trial with in-trial canonical prehash assert, pre/mid/post CPU calibration (drift 0.6%), I/O regime recorded with the advisory v0.9 dual-class gates (this VM's fresh-write class DEGRADED throughout - disclosed; deterministic primary claims unaffected). Evidence repeated at TWO head generations (4d57eb082/414a101d2 and 1f45bd860/d0c3f8770, spanning the #2913 streamed-exit-flush and #2911 touch folds) with consistent deltas and full B/C separation at 10MiB/2MiB; the 40MiB ready-state case is a pad-pack story (no walk growth) where the cand realized -35MB in 2-of-3 final trials with one straggler (freed-page return variance, disclosed). The 604,519 walk-added-span and +71.7MB figures in the tui-memory record reproduce here as +64.6MB heap growth at the merged-#2895 tip (the delta is the memory lane's own md-cache fragment removal). Two zombie sentinel-stuck probe TUIs (97% CPU spinners from a killed phase) contaminated one bench-suite window before detection - the load-gate caught them ('compile:/root/bin-probe'), all affected legs (the first scroll_typing attempt) were rerun on the cleaned VM; every RSS/census/oracle number reported here was produced by the trial's own process (deterministic self-smaps/statm reads) and is unaffected by co-resident spinners, but the contamination window is disclosed for the record. mcp_login known-red-expired disclosed under gates. Bench suite rows carry the swap-logged binary shas (the bench's vendored versions metadata is stale on this VM - superseded by oracle/st-swaplog.txt)."
  },
- "outcome": "candidate-ready; PR #2921 open at binding SHA e238a0952 (standing decision); CI complete (all Rust checks green); fleet_review GREEN; both adversarial reviewers routed with the completed rollup; awaiting verdicts",
+ "outcome": "candidate-ready; PR #2921 at binding SHA e238a0952; merge bar FULLY ASSEMBLED: orchestrator numeric review ACCEPTED + BOTH adversarial reviewers EXPLICIT APPROVE on the final PR SHA (parity-adversary-fast: pack byte-exactness verified in source, all surfaces ruled, u32 accepted-with-note; parity-adversary-2-fast: merge-rejection ruled the correct frozen-surface instinct, oracles ruled strongest-available, straggler disambiguated); CI all Rust checks green (benchmark = standing non-applicable TS red); awaiting operator merge + dispositions (benchmark non-applicability; mcp_login expired-entry renewal; the 40MiB RSS-straggler disclosure noted)",
  "decision": null,
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2921",
  "record_path": "data/hillclimb/experiments/20260927-042000-memory-tui-scroll-retain-packed.json",
@@ -326,5 +326,15 @@
   "worker": "perf-tui-scroll-retain-fast (GLM 5.3 Fast)",
   "session_dir": "hillclimb wave-4 tui-scroll-retain"
  },
- "timestamp": "2026-09-27T04:20:00+00:00"
+ "timestamp": "2026-09-27T04:20:00+00:00",
+ "reviewers": {
+  "binding_sha": "e238a09523fad7330fc2cb53b3c8cc672ced27e8",
+  "numeric_review": "ACCEPTED (parent) on the final-head paired evidence",
+  "parity_adversary_fast": "EXPLICIT APPROVE (SHA-bound, effective; pack-expansion byte-exactness verified in source; all attack surfaces ruled; reopen trigger = a NEW signature)",
+  "parity_adversary_2_fast": "EXPLICIT APPROVE (SHA-bound, effective; merge-rejection of span-merge ruled correct; oracles strongest-available; straggler = glibc page-return artifact, disambiguated by the deterministic live-heap census)",
+  "operator_dispositions_pending": [
+   "benchmark non-applicability (standing)",
+   "mcp_login known-red expired-entry renewal"
+  ]
+ }
 }
