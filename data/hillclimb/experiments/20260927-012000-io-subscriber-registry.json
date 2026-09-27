@@ -1,0 +1,113 @@
+{
+  "id": "20260927-012000-io-subscriber-registry",
+  "axis": "io",
+  "lane": "subscriber-registry (perf-subscriber-registry-fast)",
+  "hypothesis": "After the concurrent-io lane's Arc<Value> broadcast (PR #2896, merged as 06f07d119), the remaining per-event supervisor cost at N=100 live sessions is the wakeup+recv+match floor of waking EVERY connected client's event arm on every session event (the source record estimated ~5.9us/session/append). A per-session subscriber registry resolves the delivery set at PUBLISH time (send-time attached check, TS handleWorkerFrame parity): session events enqueue only to the attached connections' bounded per-connection queues, so delivery is O(attached) instead of O(connections). SECONDARY HYPOTHESIS (the parity risk the source record named): moving the attached-check from recv time to send time changes which events a racing attach/detach observes.",
+  "ts_parity_case": "/home/ubuntu/hillclimb/subscriber-registry/ts-parity-case.md \u2014 BUILT FIRST, before any edit. Verdict DEFENSIBLE: TS (origin/main cd1f215cffd, daemon-supervisor.ts) evaluates the delivery set at send time, atomically with the socket write (handleWorkerFrame l.5971 -> the fan-out loop l.6353; attach l.5586 -> session_attached l.5608 in one tick; detach l.5942; no-activeSessionId events DROPPED l.6296-6305, not broadcast). Rust's recv-time check was a TS-impossible superset in the race window (an event published before an attach could still land after it, duplicating a custom row the attach snapshot already carries - pa-tui pushes CustomRow unconditionally on message_start). The registry moves Rust's predicate to the exact TS evaluation point: removes a TS-impossible delivery class, adds none. Section 6 answers the brief's two questions directly (Q1: yes, TS can deliver a message for a session the client just left, exactly when the delivery pass beats the detach delete; the registry reproduces that predicate at the same single instant. Q2: observably equivalent at every client-observable point, with disclosed exceptions D1-D7).",
+  "wire_oracle": "smoke_registry.py, run on BOTH binaries (twice, reproducible): PASS both. Candidate: exactly 6 session_event frames (3 appends x message_start+message_end) to the attached client; ZERO to an unattached connection (registry isolation); ZERO to a late attacher (the send-time convergence - the old recv-time check could deliver a stale frame); ZERO post-detach. Frame byte-shape parity with the base holds after normalizing run-volatile fields (epoch timestamps, cursor generation): the registry does not change a byte on the wire.",
+  "approach": "supervisor/subscribers.rs (new): SessionSubscribers registry (session id -> connection id -> bounded mpsc queue) + ClientSubscriptions per-connection handle. Publish resolves the attached set under one registry lock and enqueues; a full queue drops with ONE log line per stall cycle (finding-4a visibility); closed queues prune. All AttachedSession publish sites route through Supervisor::publish_session_event: the worker-relay session_event + side_question_event publishes, the session_binding supersede + rebind notices, the terminal aborted-compaction event, AND the zero-copy splice arm's attach push discovered at the fold (#2897 added a second attach-success site on the tip). ClientRouting::AttachedSession REMOVED (fail-closed: a stale publish fails to compile). Broadcast/BroadcastExcept/RosterSubscribers keep the ring untouched. attach/detach/rebind/disconnect keep registry+list consistent (registry insertion = the delivery boundary; the rebind move is atomic under the registry lock). TARGETED_EVENT_QUEUE_CAPACITY=4096 mirrors EVENT_RING_CAPACITY. 6 new unit tests (routing, isolation, detach instant, rebind move, stall-cycle logging, closed-queue pruning). The dormant supervisor/clients.rs split copy carries the same change (upstream has not declared mod clients yet; re-home disclosure at the fold).",
+  "stacking_with_2897": "The zero-copy relay (#2897, in the tip) and this registry are STACKED mechanisms on the same routing path and compose cleanly: the relay shares payload BYTES on the worker->client RESPONSE path (spliced client id), while the registry gates the send-time attached SET on the worker->client EVENT path (the ring kept waking every connection per event). The fold's one interaction was the splice arm's attach push, converted to the registry (commit 2677fc146).",
+  "base": {
+    "revision": "4becda49a54abfbcc33413a6566947064760b378 (the concurrent-io lane's settled head; that lane's change is now UPSTREAM as squash 06f07d119) - PARENT-EXACT pairing isolates the registry delta from the Arc change",
+    "binary_sha256": "ab86a7935a446d646ba485781277389a11a1ab61590ab57035842a187c37ab8d"
+  },
+  "branch": "lane/hillclimb-subscriber-registry (measurement head 776bb2494, binary 455f5345a127a248dfbeb793822b606c5b9adeea39de3eae5e9bb1bd64a43493; folded head 2677fc146 = origin/rust ec0c4ce6f + registry, post-fold re-diff = registry-only 11 files +560/-88)",
+  "commits": [
+    "914bc47e6 registry (base 4becda49a)",
+    "d2e22b3b1 clippy if-let + fmt",
+    "7244622e2 test fix",
+    "1e7961775 rustfmt",
+    "776bb2494 rustfmt exact = MEASUREMENT HEAD (binary 455f5345...)",
+    "14639fbba fold ec0c4ce6f (7 conflicts resolved registry-side)",
+    "2677fc146 zero-copy splice arm attach push converted (fold artifact the gate caught) = FOLDED HEAD"
+  ],
+  "build": {
+    "sandbox_id": "l0j1fuwrk79pvehuoevwn60f (16c/32GB ubuntu:22.04, glibc 2.35, rustup 1.98.1)",
+    "base_binary_sha256": "ab86a7935a446d646ba485781277389a11a1ab61590ab57035842a187c37ab8d (4becda49a)",
+    "candidate_binary_sha256": "455f5345a127a248dfbeb793822b606c5b9adeea39de3eae5e9bb1bd64a43493 (776bb2494)"
+  },
+  "measurements": {
+    "method": "same-vm sequential ABBA (B C C B) at N=100, driver contract inherited from perf-concurrent-io-fast (scripts/concurrent_io_curve.py, --workers 100 --appends 200 --seed-rows 20 --payload-size 2048), sha-asserted binaries per leg, per-request latency arrays + supervisor CFS schedstat per phase boundary, digest + resume-prefix oracles every leg",
+    "regime": "fleet interim advisory v0.9 stall-rate gate before EVERY leg (40 isolated 0.5s-spaced fresh+sync_all+rename ops + 20 repeat-fsync, H/M/D classification): all four N=100 legs started in HEALTHY windows (stall rate 0%, max 1.1-8.5ms, fresh p50 0.79-0.93ms vs this host's known-good 0.38ms = 2.1-2.4x, steady-MARGINAL-low p50 band with the re-probe-then-decide rule documented and per-leg classification recorded). The surrounding fleet I/O regime oscillated on a minutes cadence through the session (100%-stall DEGRADED windows with 140ms+ p50s came and went; one probe caught a 24.5s max op behind a 1.35ms p50 - the advisory's p50-underdetection mechanism, caught live by the stall-rate probe).",
+    "n100_abba_bccb": {
+      "append1_base_us": 1304.9,
+      "append1_base_values": [
+        1145.3,
+        1464.6
+      ],
+      "append1_cand_us": 1035.7,
+      "append1_cand_values": [
+        1036.1,
+        1035.3
+      ],
+      "append1_delta_pct": -20.6,
+      "append1_per_session_us": 2.69,
+      "append2_base_us": 1057.2,
+      "append2_base_values": [
+        1026.7,
+        1087.6
+      ],
+      "append2_cand_us": 929.0,
+      "append2_cand_values": [
+        932.6,
+        925.3
+      ],
+      "append2_delta_pct": -12.1,
+      "append2_per_session_us": 1.28
+    },
+    "stability_observation": "the candidate's legs are TIGHT (append1 1036.1/1035.3 = 0.08% apart; append2 932.6/925.3 = 0.8%) while the BASE's legs spread 319us on append1 (1145.3 -> 1464.6) and 61us on append2: the ring's per-connection wake cost varies with residual I/O contention exactly as the source lane's stability observation described; the registry's O(attached) path is insensitive to it. Directionally favorable; magnitude is regime-dependent - NOT a numeric claim.",
+    "projection_miss_honesty": "the source record's follow-up estimated the remaining floor at ~5.9us/session/append (from its a+b*N fit at a STALLIER regime); this pair measures the registry's saving at 1.3-2.7us/session in this cleaner window. The wakeup floor is REGIME-DEPENDENT: under I/O stalls the per-arm recv+check costs more (interrupted polls, cache misses); in a stall-free window the ring's per-connection residual is ~1-3us/session. The registry's absolute win therefore grows in degraded windows (where hosts actually run hot) and shrinks in clean ones. NO CLAIM is made on the -50% magnitude the naive projection suggested.",
+    "wall_latency_no_claim": "wall/latency p50s (250-257ms both binaries, N=100) are dominated by the fdatasync barrier + storage regime; no claim.",
+    "worker_rss": "sum 4115-4138MB both binaries (flat, no memory regression); supervisor fds 410 both (12+4/session, unchanged).",
+    "n1_control": {
+      "status": "COMPLETE (4 legs, B C C B, all validated, digest 4195cad08392... matching across roles)",
+      "append1_base_us": 373.2,
+      "append1_base_values": [
+        434.3,
+        312.2
+      ],
+      "append1_cand_us": 334.6,
+      "append1_cand_values": [
+        420.8,
+        248.3
+      ],
+      "append2_base_us": 282.9,
+      "append2_base_values": [
+        329.3,
+        236.4
+      ],
+      "append2_cand_us": 299.8,
+      "append2_cand_values": [
+        392.7,
+        206.9
+      ],
+      "claim": "NO CLAIM - B/C ranges overlap on both phases (append1 base 312-434 vs cand 248-421; append2 base 236-329 vs cand 207-393): the single-session spread in this window is 30-70%, far larger than any registry effect. The control shows no measurable regression at the common case (N=1), matching the source lane's own N=1 disclaimer."
+    }
+  },
+  "oracles_every_leg": {
+    "session_semantics_digest": "85607aeec65269edb028f4cbcd4e734bdf3e603f2878fb079e91b5c460695122 on ALL legs (matches the fleet-canonical digest and the source lane's legs)",
+    "resume_prefix_preservation": "true on all completed legs",
+    "fixture_canonical_prehash": "validated per driver contract (canonical prehash match; post bytes differ by bookkeeping rows - never claimed identical)"
+  },
+  "gates": {
+    "measurement_head_776bb2494_vm_scoped": "fmt GREEN; clippy --workspace --all-targets -D warnings GREEN; cargo test --release -p pa-daemon --lib 757-758 passed with ONLY the two documented environment reds (worker::tests::goal_turn_end_loop_needs_kernel_runtime; acp compaction meta flake pre-existing at tip) across 3 passes; 6/6 registry unit tests green",
+    "full_suite_folded_head_2677fc146": "fleet gate (pooled VM, 1.98.1): fmt GREEN, clippy GREEN, workspace test RED only on mcp_login::worker_begin_login - the known rotating daemon-timing flake family whose known-red entry EXPIRED 2026-09-26 (re-triage flag; green in all 3 of my VM passes; GitHub CI green on same heads per the entry's evidence)",
+    "first_folded_gate_14639fbba": "RED on a REAL fold artifact: #2897's zero-copy splice arm added a second attach-success push site my pre-fold fail-closed grep could not see; fixed in 2677fc146. Also triaged: a_bang (pa-tui, MOCK supervisor - out of blast radius; upstream #2904 later made that test causal-gated) and worker::tests::kill_cancels (worker EventPump test, green 3/3 on the measurement VM - out of blast radius)."
+  },
+  "parity_notes": "Wire bytes unchanged (byte-shape parity oracle); per-session event order preserved (one registry lock + per-connection FIFO); Broadcast/BroadcastExcept/RosterSubscribers untouched on the ring; attach/detach/rebind/disconnect ordering matches TS's send-time predicate; disclosed residuals: (D5) slow-receiver loss mechanics (bounded queue drop-newest + one log line per stall cycle vs ring drop-oldest + counted Lagged line - same loss class, same visibility); (D6) a session event vs daemon_closing can invert on one client's wire in the sub-ms shutdown window (self-healing via reattach); response-vs-event wire order unchanged (pre-existing two-arm select race); (D4) no-activeSessionId session events dropped per TS instead of broadcast.",
+  "validity": {
+    "excluded": [],
+    "notes": "Driver run-dir reuse bug found and disclosed: my leg() reused the sr-<tag>-<N>-<role> path per role, so leg 1 of each role was overwritten when leg 2 ran; legs B-1 (1145.3/1026.7) and C-1 (1036.1/932.6) are scalars extracted from the parsed result.json BEFORE deletion (printed from the raw JSON at 00:47/00:52Z), while B-2/C-2 retain full raw files (pulled archive). Both legs of each role validate with matching digests; the pair means use all four legs. The N=1 legs each landed in brief HEALTHY windows (the chronic DEGRADED stretch broke at 01:25 and 01:29/01:32); their within-role spread (30-70%) reflects single-session noise, not binary effects.",
+    "regime_label": "clean-window steady-MARGINAL-low (0% stalls, max<=8.5ms, fresh p50 2.1-2.4x known-good) with per-leg HEALTHY classification; absolute walls not comparable across hosts or regimes per the advisory."
+  },
+  "outcome": "in-review (PR #2914 open at folded head 2677fc146; no merge - numeric review + BOTH adversarial reviewers + standing dispositions remain the bar)",
+  "evidence": {
+    "archive": "/home/ubuntu/hillclimb/archives/perf-subscriber-registry/sr-evidence-final.tgz (sha256 4b5355a2d600969097c7185ad67b7327f58a37e682778275d481c08b9aa3358d, 85943569 bytes: full raw trial trees for all 8 legs + N=1 partial pulls + smoke oracle jsons + regime probe jsonl + progress + logs); plus sr-evidence.tgz (early pull, 4995337 bytes) with the B-2/C-2 raw result.json files",
+    "parity_case": "/home/ubuntu/hillclimb/subscriber-registry/ts-parity-case.md",
+    "smoke_oracle": "/home/ubuntu/hillclimb/subscriber-registry/smoke_registry.py + sr-smoke-base.json + sr-smoke-cand.json",
+    "regime_probe": "/home/ubuntu/hillclimb/subscriber-registry/sr_regime_probe.py",
+    "runner": "concurrent_io_curve.py (bench hillclimb, sha 0cd875c7... = VM copy) + sr-abba.sh driver"
+  },
+  "timestamp": "2026-09-27T01:35:00Z",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2914"
+}
