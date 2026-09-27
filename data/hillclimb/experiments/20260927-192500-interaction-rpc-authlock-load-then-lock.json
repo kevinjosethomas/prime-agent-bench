@@ -2,7 +2,7 @@
  "id": "20260927-192500-interaction-rpc-authlock-load-then-lock",
  "axis": "interaction",
  "hypothesis": "Wave-5 task from the rpc-baseline record's candidate 3: 'the RPC path pays auth-lock cycles with holds of 194-201ms EACH - the heaviest lock class on the surface'. Decompose-first: the archived census strace (hillclimb/archives/rpc-baseline) shows the hold is NOT assembly-time model resolution - every trial has ONE fast cycle (~0.1-0.25ms, the assembly read-miss) and ONE SLOW cycle (177-358ms) INSIDE cycle_model, whose window contains the OAuth bridge's thread+private-runtime+join signature (F_DUPFD_CLOEXEC x2 + getaddrinfo /etc/hosts + socket + ~190ms untraced network + both threads exiting at window end). The vendored bench auth.json carries EXPIRED anthropic+xai oauth credentials; cycle_model steps from the mock to an anthropic model and its get_api_key resolution pays refresh_oauth -> the OAuthIntegration token fetch (a synchronous-by-contract NETWORK call) INSIDE AuthStorageBackend::with_lock's critical section - under BOTH the auth.json.lock dir AND #2932's process mutex (which spans the whole with_lock), stalling every other same-process auth read/write for the round trip. TS runs the SAME fetch inside its withLockAsync (proper-lockfile, stale 30s) - the port is faithful; the asymmetry is the engine model (TS single-threaded pays nothing for holding the lock across the await). Candidate: load-then-lock refresh_oauth (precedent #2932's process-mutex/cache patterns) - the fetch leaves the lock, behavior-preserving.",
- "approach": "PINNED TIP 13d5c0d78 (brief's 5cf45d4d superseded by #2953/#2941/#2932 - all decomposed AT the tip; upstream churn respected: pa-tui-only #2922 landed mid-lane, no rpc/ or pa-core/auth overlap). VM qkyq6kz9hk0r7s72irgm173p (hillclimb-perf-rpc-authlock, ubuntu:22.04 16c/32GB/100GB vm=True, rustup 1.98.1, glibc 2.35). BINARIES: base sha 5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574 (tip, 223183088 bytes), cand sha 98cbf7ca55c5f7fcb77b4cca3ece58798d3b694ed87eb6317e6599d7a5b0bf07 (lane c32be2eda), DIAG sha 35289443388859e55462f52c9c1502b53d04b9014bcb8c90fdf7d71306a849a0 (branch diag/au-probe: env-gated PA_AUTH_TRACE probe - with_lock/read_miss phase walls + refresh_oauth enter/fetched/exit + both OAuth bridge thread brackets; measurement-only, never shipped, never merged). Bench harness deployed (product.yaml pinned to the VM base build; settle OK; fixtures rebuilt on-VM; mock provider offline, prime-inference/mock-1 via models.json). FIXTURE DETERMINISM: the harness vendored ~/.prime/agent/auth.json carries anthropic oauth expires 1790402772547 (EXPIRED 2026-09-26) - every trial copies it into the trial agent dir; the anthropic token refresh FAILS every time (stale vendored refresh token) so the hold is the pure fetch attempt: wrote:false, zero real-account traffic. Driver au_probe.py (per-trial fresh agent dir/home/tmp/cwd, scrubbed env + venv-env.json, loadavg quiet gate, product-only zombie sweep by explicit pid list, 10ms nonblocking frame pump with scan-after-every-window, per-command wall receipts, per-trial bin sha assert; battery: rdy -> pr1 MOCK TURN FIRST (no arm ever does real-API inference; the initial model is the mock) -> st2 gm gss ssn -> gam -> cam -> PAIR cam2+gam2 fired together (cam2 3ms first: the concurrent in-process queue probe) -> stl sam sfm -> EOF). LEGS (same-VM sequential, A-B-B-A blocks): quiet fresh x4/arm (A1 B1 B2 A2) + census x3/arm interleaved (censA-1 censB-1 censA-2 censB-2 censB-3 censA-3; strace -ff -f -tt -T -yy, file+network+process filter, INVALID for timing, structure-only) + I/O advisory v1.0+v0.9 probes before EVERY block + post (>=40 isolated fresh+sync_all+rename @0.5s spacing + >=20 repeat-fsync; host-relative H/M/D). DIAG decomposition legs before the ABBA: quiet x4 (base) + census x2 (DIAG binary, PA_AUTH_TRACE on) + pair x4. TWO DRIVER BUGS FOUND AND FIXED DURING THE CAMPAIGN, BOTH MINE, BOTH DISCLOSED: (1) the decompose driver's io-pre phase returned early (legs skipped, re-run); (2) read_until_response scanned only newly-pumped frames so a response landing during another command's wait was never matched - this fabricated a 'gam2 90s hang' in the first pair legs (the product had answered both pair commands promptly per the census write timestamps); fixed to scan-all-frames and all ABBA legs re-run clean.",
+ "approach": "PINNED TIP 13d5c0d78 (brief's 5cf45d4d superseded by #2953/#2941/#2932 - all decomposed AT the tip; upstream churn respected: pa-tui-only #2922 landed mid-lane, no rpc/ or pa-core/auth overlap). VM qkyq6kz9hk0r7s72irgm173p (hillclimb-perf-rpc-authlock, ubuntu:22.04 16c/32GB/100GB vm=True, rustup 1.98.1, glibc 2.35). BINARIES: base sha 5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574 (tip, 223183088 bytes), cand sha 98cbf7ca55c5f7fcb77b4cca3ece58798d3b694ed87eb6317e6599d7a5b0bf07 (lane c32be2eda), DIAG sha 35289443388859e55462f52c9c1502b53d04b9014bcb8c90fdf7d71306a849a0 (branch diag/au-probe: env-gated PA_AUTH_TRACE probe - with_lock/read_miss phase walls + refresh_oauth enter/fetched/exit + both OAuth bridge thread brackets; measurement-only, never shipped, never merged). Bench harness deployed (product.yaml pinned to the VM base build; settle OK; fixtures rebuilt on-VM; mock provider offline, prime-inference/mock-1 via models.json). FIXTURE DETERMINISM: the harness vendored ~/.prime/agent/auth.json carries anthropic oauth expires 1790402772547 (EXPIRED 2026-09-26) - every trial copies it into the trial agent dir; the anthropic token refresh FAILS every time (stale vendored refresh token) so the hold is the pure fetch attempt: wrote:false, zero real-account traffic. Driver au_probe.py (per-trial fresh agent dir/home/tmp/cwd, scrubbed env + venv-env.json, loadavg quiet gate, product-only zombie sweep by explicit pid list, 10ms nonblocking frame pump with scan-after-every-window, per-command wall receipts, per-trial bin sha assert; battery: rdy -> pr1 MOCK TURN FIRST (no arm ever does real-API inference; the initial model is the mock) -> st2 gm gss ssn -> gam -> cam -> PAIR cam2+gam2 fired together (cam2 3ms first: the concurrent in-process queue probe) -> stl sam sfm -> EOF). LEGS (same-VM sequential, A-B-B-A blocks): quiet fresh x4/arm (A1 B1 B2 A2) + census x3/arm interleaved (censA-1 censB-1 censA-2 censB-2 censB-3 censA-3; strace -ff -f -tt -T -yy, file+network+process filter, INVALID for timing, structure-only) + I/O advisory v1.0+v0.9 probes before EVERY block + post (>=40 isolated fresh+sync_all+rename @0.5s spacing + >=20 repeat-fsync; host-relative H/M/D). DIAG decomposition legs before the ABBA: quiet x4 (base) + census x2 (DIAG binary, PA_AUTH_TRACE on) + pair x4. TWO DRIVER BUGS FOUND AND FIXED DURING THE CAMPAIGN, BOTH MINE, BOTH DISCLOSED: (1) the decompose driver's io-pre phase returned early (legs skipped, re-run); (2) read_until_response scanned only newly-pumped frames so a response landing during another command's wait was never matched - this fabricated a 'gam2 90s hang' in the first pair legs (the product had answered both pair commands promptly per the census write timestamps); fixed to scan-all-frames and all ABBA legs re-run clean. POST-RECORD REBIND (the gate-red fix cycle): the first gate (gate_1790537101_902960) went RED on fmt+clippy in the new tests; three mechanical amends (c32be2eda -> e3d95fc2e -> f0b1dcad3 -> b01dd6246: match->let-else, unwrap_or_default, crate-path, rustfmt) voided the c32be2eda binary binding, and the successor reboot re-ran the FULL ABBA at the FINAL head c711b4c6806387da405d2560427c59e52cdeb101 (the fmt fix staged+amended after a first amend missed the staging - disclosed; the head binary sha b184e0ef4da9326aaef1440578291e363f8519c06945afcdc0edbfa85ee5558d, built from the exact c711b4c68 tree content, manager.rs sha 484a514179d56b5ec090d1bd410ade02f690086a9a6df0d6b6a9f1e889ba56e5 verified identical worktree==VM-tree==commit). The re-run (same driver au_abba_r2.py, same battery, fresh legs root) is the binding evidence; the first campaign's numbers are retained below as the mechanism decomposition.",
  "parity_notes": "TS-PARITY FIRST (the task's step 2): TS DOES hold its auth lock across the SAME token fetch - auth-storage.ts refreshOAuthTokenWithLock runs `await getOAuthApiKey(providerId, oauthCreds)` INSIDE storage.withLockAsync (proper-lockfile.lock retries 10x100-10000ms stale 30000, readFileSync -> await fn -> writeFileAtomicSync, release). The Rust port's refresh-under-with_lock is a FAITHFUL port. The candidate is therefore NOT a TS convergence but a deliberate, disclosed Rust-side lock-scope narrowing: TS's single-threaded runtime never observes in-process contention on the held lock; the threaded Rust engine serializes ALL same-process auth I/O behind the fetch (#2932's process_lock spans the whole with_lock), which the census shows as the concurrent reader queueing ~190ms behind the refresher. Frozen surfaces untouched: no session-JSONL/compaction/wire/prompt/TUI byte changed (the auth file protocol is byte-identical - the same with_lock read-modify-write arm; read results identical; every resolution outcome preserved including the failed-fetch path returning None, the unexpired fast path, and the Err-path reload-and-serve-stored shape). Cross-process divergence introduced and disclosed: TS serializes two processes' refreshes through the lockfile (the second blocks, sees fresh, never fetches); with the fetch outside the lock two processes may fetch concurrently - the in-lock re-check keeps the peer's fresher credential (this attempt writes nothing) so the document state converges identically, at the cost of a rare extra network call. In-process, the per-provider single-flight gate + its expiry re-check preserve TS's single-flight semantics exactly (a second caller joins the first flight and serves its fresh credential without spending a single-use refresh token).",
  "base": {
   "revision": "13d5c0d781d28228ab95d60760e5e018d283083a",
@@ -10,20 +10,21 @@
  },
  "branch": "lane/perf-rpc-authlock",
  "commits": [
-  "c32be2eda perf(pa-core): the oauth token fetch leaves the auth document lock - 194-201ms holds to sub-ms"
+  "c711b4c68 perf(pa-core): the oauth token fetch leaves the auth document lock - 194-201ms holds to sub-ms (final head; first-campaign shas: 6aa6b9241 -> c32be2eda, pre-rework binary 98cbf7ca)"
  ],
  "build": {
   "sandbox_id": "qkyq6kz9hk0r7s72irgm173p (hillclimb-perf-rpc-authlock, ubuntu:22.04 16c/32GB/100GB vm=True)",
   "binary_sha256_base": "5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574",
-  "binary_sha256_cand": "98cbf7ca55c5f7fcb77b4cca3ece58798d3b694ed87eb6317e6599d7a5b0bf07",
+  "binary_sha256_cand": "b184e0ef4da9326aaef1440578291e363f8519c06945afcdc0edbfa85ee5558d",
   "binary_sha256_diag": "35289443388859e55462f52c9c1502b53d04b9014bcb8c90fdf7d71306a849a0",
-  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0"
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0",
+  "binary_sha256_cand_first_campaign": "98cbf7ca55c5f7fcb77b4cca3ece58798d3b694ed87eb6317e6599d7a5b0bf07"
  },
  "gates": {
-  "fmt": "PENDING full-suite gate gate_1790537101_902960",
-  "clippy": "PENDING",
-  "test": "PENDING",
-  "benchmark_ci": "PENDING"
+  "fmt": "GREEN (gate_1790547986_945285 at head c711b4c680, pool slot 1, rust:1-bookworm 1.98.1): cargo +1.98.1 fmt --all --check rc=0 - the two residual fmt diffs (if-let chain at manager.rs:950, AtomicUsize::fetch_add at :1623) fixed at the final head after the gate-red fix cycle disclosed in approach (gates 1790537101/1790537217/1790537269/1790539569 carried the cycle: clippy clean since f0b1dcad3, fmt red until the staged amend c711b4c68; the phantom-head 691a5fbb0 gate reds disclosed)",
+  "clippy": "GREEN (same gate): cargo +1.98.1 clippy --workspace --all-targets -- -D warnings rc=0 (the manual_let_else/single_match_else/manual_unwrap_or_default errors at c32be2eda fixed in the amends)",
+  "test": "GREEN (same gate): cargo +1.98.1 test --workspace --no-fail-fast rc=0, ZERO failures, hosts_guard OK. Earlier pool-VM full-suite runs red'd three rotating co-scheduling members across two pool slots (partial_restore_keeps_the_fuller_on_disk_payload_through_the_dispose_flush + restored_functions_run_against_live_namespace_globals [kernel_restore_guards], stages_a_local_payload_directory [update::download]); all three SOLO-GREEN at the exact head tree on the lane VM (kernel_restore_guards 6/6 and update::download 8/8, PA_CORE_KERNEL_PYTHON=the harness kernel venv 3.11.16, receipts in the r2 evidence archive); none touch pa-core/src/auth/manager.rs; the GREEN gate confirms the class. The mcp_login DNS known-red did NOT fire (HOSTS_GUARD v1.4.6 repaired /etc/hosts at claim - gate_1790539569 hosts_guard OK)",
+  "benchmark_ci": "PENDING the PR's GitHub CI rollup (the merge request carries it; the 'benchmark' check is the standing non-applicable class per ruling)"
  },
  "measurements": {
   "method": "same-vm-sequential, quiet-gated (loadavg<1.0), per-block binary sha asserted (base 5a96671b vs cand 98cbf7ca), A-B-B-A interleave per class, I/O advisory v1.0+v0.9 preflight before EVERY block + post; PHASE MODEL: re-classified at every leg boundary, every leg labeled",
@@ -100,7 +101,76 @@
     ],
     "hold_sum_p50_ms": 0.17
    },
-   "answer": "per-trial auth.json.lock hold-sum 388.3ms -> 0.17ms (cycles 3 -> 1): the two refresh cycles VANISH (the failed-fetch path now takes no file lock at all); the remaining cycle is the boot read-miss"
+   "answer": "per-trial auth.json.lock hold-sum 388.3ms -> 0.17ms (cycles 3 -> 1): the two refresh cycles VANISH (the failed-fetch path now takes no file lock at all); the remaining cycle is the boot read-miss",
+   "rebind_at_final_head_c711b4c68": {
+    "method": "same analyzer (per-tid mkdir/rmdir pairing for auth.json.lock, strace -yy); validated by reproducing the first campaign table byte-for-byte before applying to the re-run",
+    "A_base": {
+     "trials": [
+      "censA-1",
+      "censA-2",
+      "censA-3"
+     ],
+     "cycles": [
+      3,
+      3,
+      3
+     ],
+     "holds_ms": [
+      [
+       0.168,
+       170.691,
+       198.327
+      ],
+      [
+       0.162,
+       219.449,
+       265.175
+      ],
+      [
+       0.106,
+       213.902,
+       182.351
+      ]
+     ],
+     "hold_sum_ms": [
+      369.19,
+      484.79,
+      396.36
+     ],
+     "hold_sum_p50_ms": 396.36
+    },
+    "B_cand": {
+     "trials": [
+      "censB-1",
+      "censB-2",
+      "censB-3"
+     ],
+     "cycles": [
+      1,
+      1,
+      1
+     ],
+     "holds_ms": [
+      [
+       0.181
+      ],
+      [
+       0.09
+      ],
+      [
+       0.091
+      ]
+     ],
+     "hold_sum_ms": [
+      0.18,
+      0.09,
+      0.09
+     ],
+     "hold_sum_p50_ms": 0.09
+    },
+    "answer": "reproduced at the final head: per-trial auth.json.lock hold-sum 396.36ms -> 0.09ms (cycles 3 -> 1); the two refresh cycles VANISH, the remaining cycle is the boot read-miss (0.09-0.18ms)",
+    "io_regime_note": "the re-run campaign sat in a DEEPENED fresh-write regime (probes A_P50 158-197ms, A_STALL_RATE 100%, CLASS=D at every leg boundary + post; first campaign was 62-72ms CLASS=D) - all walls regime-labeled; the A-B-B-A interleave balances the regime across arms"
+   }
   },
   "in_process_queue_claim_concurrent_reader_census": {
    "method": "census stdout write(1) timestamps; the pair (cam2+gam2) fires ~0.35s after cam's response (driver settle); latencies carry ~+-10ms settle jitter",
@@ -133,6 +203,38 @@
     "A_p50": 280.0,
     "B_p50": 282.8,
     "note": "UNCHANGED BY DESIGN - the token fetch stays on the refresher's own response path exactly like TS; the lock is the only thing it leaves"
+   },
+   "rebind_at_final_head_c711b4c68": {
+    "gam2_concurrent_reader_latency_ms": {
+     "A": [
+      10.4,
+      21.2,
+      190.3
+     ],
+     "B": [
+      13.3,
+      8.0,
+      13.3
+     ],
+     "A_p50": 21.2,
+     "B_p50": 13.3,
+     "note": "ARRIVAL RACE LABELED: on base the reader queues ONLY when its read lands while the refresher holds the lock - r2-A queued 1/3 (censA-3 gam2 190.3ms, lands inside the 182ms hold window), slipped in early 2/3 (+10.4/+21.2ms, before the refresher acquired); first campaign queued 3/3 (212.7-221.7ms). On cand the reader NEVER exceeds 13.3ms in either campaign (the fetch holds no lock). The queue claim rests on the queued instances + the hold-sum census, not on the race outcome"
+    },
+    "cam2_refresher_latency_ms": {
+     "A": [
+      182.8,
+      286.0,
+      352.7
+     ],
+     "B": [
+      202.3,
+      175.4,
+      192.7
+     ],
+     "A_p50": 286.0,
+     "B_p50": 192.7,
+     "note": "unchanged-by-design class (the fetch stays on the refresher response path); r2 walls are fetch-jitter (network round trip 175-353ms across both arms)"
+    }
    }
   },
   "per_command_walls_quiet_8_arm": {
@@ -191,10 +293,67 @@
      31.4
     ]
    },
-   "note": "[A_p50, B_p50]. cam/cam2 -26 to -28ms (the lock-cycle overhead leaves the wall; the ~200ms fetch remains by design). gam2's wall here is DRIVER-ORDER-CONTAMINATED (the driver reads cam2's response first; both members' walls converge to the pair max) - the census write-timestamp table above is the clean pair evidence. The read floors (st2/gm/gss 10.4-10.5ms) and eof are identical; the sam/sfm ~80-83ms walls are the DEGRADED fresh-write regime class, symmetric."
+   "note": "[A_p50, B_p50]. cam/cam2 -26 to -28ms (the lock-cycle overhead leaves the wall; the ~200ms fetch remains by design). gam2's wall here is DRIVER-ORDER-CONTAMINATED (the driver reads cam2's response first; both members' walls converge to the pair max) - the census write-timestamp table above is the clean pair evidence. The read floors (st2/gm/gss 10.4-10.5ms) and eof are identical; the sam/sfm ~80-83ms walls are the DEGRADED fresh-write regime class, symmetric.",
+   "rebind_at_final_head_c711b4c68": {
+    "table_p50_ms": {
+     "pr1": [
+      14.2,
+      14.1
+     ],
+     "st2": [
+      10.4,
+      10.4
+     ],
+     "gm": [
+      10.4,
+      10.6
+     ],
+     "gss": [
+      10.4,
+      10.7
+     ],
+     "ssn": [
+      11.2,
+      11.5
+     ],
+     "gam": [
+      17.6,
+      17.9
+     ],
+     "cam": [
+      262.9,
+      254.7
+     ],
+     "cam2": [
+      332.9,
+      295.7
+     ],
+     "gam2": [
+      343.0,
+      305.9
+     ],
+     "stl": [
+      10.4,
+      10.5
+     ],
+     "sam": [
+      203.7,
+      64.2
+     ],
+     "sfm": [
+      100.5,
+      17.4
+     ],
+     "eof": [
+      31.4,
+      31.6
+     ]
+    },
+    "note": "[A_p50-of-block-p50s, B_p50-of-block-p50s]. Read floors identical; cam -8ms, cam2 -37ms, gam2 -37ms (the lock-protocol overhead leaves the wall; the fetch remains by design); the sam/sfm settings-write walls scattered wildly across BOTH arms (A 203.7/100.5 vs B 64.2/17.4) - the DEEPENED fresh-write regime class (settings.json.lock is the NEIGHBOR lock, untouched by the candidate; the first campaign showed it symmetric at ~80ms in the milder regime) - regime variance, labeled, not candidate effect. cam/cam2/gam2 quiet pair walls remain DRIVER-ORDER-CONTAMINATED as disclosed in the first campaign (census write timestamps carry the pair claim)."
+   }
   },
   "neighbor_classes": "settings.json.lock cycles 8 per trial on BOTH arms (counts identical, no regression; the hold-sum spread 6.6-275ms is the regime's fsync variance); per-response read floors unchanged; boot read-miss cycle unchanged (~0.1-0.2ms)",
-  "honest_negatives": "(1) the cam COMMAND WALL does not collapse - the fetch stays on the resolving call's response path exactly like TS (the lock leaves the fetch, the fetch does not leave the command); the -27ms is the lock-protocol overhead only. (2) The quiet pair walls are driver-order-contaminated (disclosed above); the census timestamps carry the pair claim. (3) The vendored-auth anthropic refresh fails every trial (stale snapshot token) - the class is the FAILED-fetch hold; a successful refresh would additionally pay the auth write under the lock on base (~65-90ms in this regime) vs outside on cand. (4) The first decompose campaign's io-pre-only run and the frame-matcher bug cost two re-runs - all disclosed above."
+  "honest_negatives": "(1) the cam COMMAND WALL does not collapse - the fetch stays on the resolving call's response path exactly like TS (the lock leaves the fetch, the fetch does not leave the command); the -27ms is the lock-protocol overhead only. (2) The quiet pair walls are driver-order-contaminated (disclosed above); the census timestamps carry the pair claim. (3) The vendored-auth anthropic refresh fails every trial (stale snapshot token) - the class is the FAILED-fetch hold; a successful refresh would additionally pay the auth write under the lock on base (~65-90ms in this regime) vs outside on cand. (4) The first decompose campaign's io-pre-only run and the frame-matcher bug cost two re-runs - all disclosed above. (5) The re-run's A-arm pair legs exposed the arrival race explicitly (2/3 readers slipped in early) - disclosed and labeled above; the queue claim is carried by the queued instances (censA-3 190.3ms) and the first campaign's 3/3. (6) The first amend of the fix cycle (691a5fbb0) committed the index without the staged fmt fix - the successor caught it via the gate fmt red, re-staged, re-amended (c711b4c68), and re-gated; no evidence was collected at the phantom head (the ABBA re-run binary b184e0ef was built from the worktree content that BECAME c711b4c68, manager.rs sha verified identical on both ends)."
  },
- "next": "full-suite gate verdict -> record gates field -> PR with the census evidence + adversarial review requests"
+ "next": "PR with both campaigns' evidence -> GitHub CI rollup -> parent routes the standing reviewers (parity-adversary-fast, parity-adversary-2-fast) + numeric review -> merge bar (fold at the agent_engine-11/11 settle boundary per the stale-base rule; the record pins base 13d5c0d78 per the frozen-evidence rule)"
 }
