@@ -34,7 +34,7 @@
  "gates": {
   "fmt": "pass at ae4355af7 (two nits fixed in 9839dd60e/ae4355af7; gate gate_1790468381 red on the pre-fix head 9839dd60e)",
   "clippy": "pass (gate_1790468381 rc 0 at 9839dd60e; missing_errors_doc fixed in the same nit commit)",
-  "test": "workspace: 2 reds at 9839dd60e, both non-lane: mcp_login VM-DNS env red (fails identically on pristine base in the same VM class - fleet-documented) and agents_view_subagents_e2e panel_expand frame-wait (36s timeout, timing flake family; final-head gate re-run for the verdict; fresh triage if it recurs)"
+  "test": "workspace at PR head ae4355af7 (gate_1790469964): fmt PASS, clippy PASS, 1 red mcp_login (VM-DNS env; fresh triage: solo-reproduced identically on pristine merge-base 4d57eb082 in the same gate VM - same DNS failure, 3 passed/1 failed/0.02s - not lane-caused; the panel_expand e2e flake from one earlier run did not recur)"
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -547,7 +547,7 @@
  },
  "outcome": "in-progress (PR open; awaiting numeric review + both adversarial reviewers on the final head + operator disposition; NO merge by this lane)",
  "decision": "pending orchestrator numeric review",
- "pr_url": "pending (fleet_pipeline_pr opens it)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2913",
  "record_path": "data/hillclimb/experiments/20260927-010500-interaction-exit-flush-bounded-stream.json",
  "session": {
   "worker": "perf-exit-flush-fast",
