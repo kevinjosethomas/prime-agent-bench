@@ -1,0 +1,299 @@
+{
+ "id": "20260927-013402-interaction-chat-to-agents-handoff-drain-window",
+ "axis": "interaction",
+ "hypothesis": "The ~67ms chat->agents leg remaining after #2893 is the enhanced_keys drain_bounded fixed 50ms DRAIN_IDLE poll window (TS drainInput(1000,50) parity), paid on every in-process handoff. The window guards a kitty release landing after RAW MODE IS OFF (the parent-shell leak over slow SSH); on a handoff raw mode stays on and every surface's dispatch drops release events (input::filter_enhanced_key_events, TS tui.ts), so the guarded leak is unreachable on this path and the fixed wait is removable without observable behavior change: consume what the terminal has already written with zero-timeout polls, return on observed-empty, and fall through to the exact bounded idle loop only when input WAS observed.",
+ "approach": "Decompose-first: instrumented throwaway BASE build (drain_instr_note to /root/drain-instr.log) observed 12/12 handoff drains consume the FULL 50ms with ZERO input events. Candidate: drain_for_handoff in enhanced_keys.rs (identical preamble: kitty pop + modifyOtherKeys reset, active check; then poll(ZERO) consume loop bounded by DRAIN_MAX; only if input observed, the original drain_until_idle(50ms idle / 1000ms cap)) + the finish() call site picks it for preserve_alt_screen only. True exits (drain, drain_for_exit) untouched. NEW real-pty e2e (pa-cli/tests/kitty_release_handoff_e2e.rs): answers the kitty probe over a raw pty (arm proof via the >7u push), injects the handoff trigger's release in flight, asserts the view mounts, late releases produce zero output, search stays interactive, exit restores with the last kitty-mode byte a pop and no post-restore echo. Evidence: same-VM sequential ABBA at the pre-fold boundary (B,C,C,B,B,C x5 x2 REAL fixtures: 2.4KB real-small + 5,103,230B real-compacted-orc) + a second pair at the FOLDED head (B,C,C,B x5 x2), sha-asserted atomic swaps (launcher + payload both asserted), per-trial driver validity flags, loadavg pre/mid/post, dual-class I/O probes + the fleet v0.9 isolated-op preflight (H/M/D) gating the final-head legs. Gates fmt+clippy+full cargo-test --workspace on BOTH arms at BOTH boundaries with full logs + isolation triage of the single cand-only red.",
+ "parity_notes": "TS parity: TS Terminal.drainInput(maxMs=1000, idleMs=50) has the SAME ~50ms floor (its loop always sleeps min(idleMs,timeLeft) once before the >=idleMs check can trip) and TS returnToAgentsView->teardownSessionUi->drainInput(1000) pays it on the same leg - this is a deliberate LATENCY-only divergence. Behavior preservation: (1) a handoff keeps raw mode on (the adopting surface's reader takes the same tty; the parent shell never sees it); (2) every surface's dispatch drops release events (input.rs filter_enhanced_key_events - TS tui.ts semantics), so a release that outruns the drain is consumed-and-ignored by the next reader; (3) the port's sibling handoff direction (agents_view.rs finish preserve=true) has NO drain at all, matching TS agents-view finish. Headless unchanged by construction (identical preamble on pipes). True exits keep the TS drainInput contract byte-for-byte. Disclosure: keys typed in the teardown gap used to be swallowed within the 50ms window and can now reach the adopting surface once the drain returns early - the window was already timing-dependent (input in [50,67]ms reached the view before; the dying-reader handoff still eats near-simultaneous keys) and the adopting surface drops releases; the eat-window narrows. pty byte-count parity exact across arms (both fixtures, both pairs).",
+ "base": {
+  "revision": "0038c3f72d591fd06911e309f63c9aa462d5734a (final-head merge-base; the pre-fold pair ran at 013e40a4a)"
+ },
+ "branch": "lane/hillclimb-drain-idle",
+ "commits": [
+  "056f02833 perf(pa-tui): a handoff drain consumes buffered input instead of parking on the idle window",
+  "1e5cb24bd test(pa-cli): fix the kitty-release e2e gate lints (fmt shape, unit let-binding, unused import)",
+  "a7adff457 test(pa-cli): the kitty-release mock supervisor serves every connection in turn",
+  "ab5555dab test(pa-cli): qualify the mock supervisor connection handler call",
+  "ff9bf1a65 test(pa-cli): handle the listener incoming result in the mock supervisor",
+  "3d8e5ef09 test(pa-cli): the kitty-release editor probe waits for the painted cell",
+  "c5001c904 test(pa-cli): the kitty-release harness reaps the pty child on panic paths too",
+  "971837d8c test(pa-cli): the kitty-release exit drives the CSI-u escape form",
+  "3882b144d fold 0038c3f72 (PR head; post-fold re-diff vs merge-base = exactly the 3-file lane delta)"
+ ],
+ "build": {
+  "sandbox_id": "cfv8vv7vbuhyiebjh0fv6ycm",
+  "image": "ubuntu:22.04 16c/32GB/100GB (glibc 2.35, rustc 1.98.1)",
+  "final_head_bin_cand_sha256": "6aa3fc287097a75c4ac25831bf690b92c53c8945edf4b0d5faaf60b9907828f0",
+  "final_head_bin_base_sha256": "0eaf80c95a656b9126193f478445d0a40033d22c3d59ac0a5fc2c5423e5ad53e",
+  "prefold_bin_cand_sha256": "a1f9f824937a6d3aff1ae5d72df893d33795a379a80c77c517f858165f17867c",
+  "prefold_bin_base_sha256": "1755d097bd40ac47b760eec7056e4b6bcd58b8b8900e0af376ee6a012e8e50b3",
+  "note": "the fmt/clippy fixes after 056f02833 are test-file-only: the pre-fold candidate binary a1f9f824 is byte-identical across 056f02833..c5001c904"
+ },
+ "gates": {
+  "folded_head": "fmt PASS both arms; clippy PASS both arms; full cargo test --workspace both arms. Shared failures (both arms, standing container-env family): packages::tests git/npm flows x6 + browser::tests opener x1. cand-only: kernel::bootstrap::venv::tests::probe_memo_misses_on_out_of_band_venv_mutation - PASSES 3/3 isolated at the cand head and 2/2 at base, and the pa-core code is byte-identical on both arms (the lane delta is pa-tui + a pa-cli test): environment/timing flake, not candidate-caused. base-only: tui_prompt_stash_restores_a_pasted_image_with_the_draft (the registered flake family). The NEW kitty_release_handoff_e2e PASSES at the fold head (2/2).",
+  "prefold_pair_shas": "cand(056f02833) fmt/clippy failed on the NEW TEST FILE only (fixed at 1e5cb24bd+, binary-identical); the same 7 env flakes fail both arms; base had 1 additional flake (tui_refused_submit...)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA; pty driver; 5ms poll grid; raw arrays from parsed trial JSONL",
+  "decompose_instrumented_base": "12/12 handoff drains: what=bounded max_ms=1000 events=0 elapsed_ms=50-51 (the FULL 50ms idle window consumed with ZERO input events observed on every handoff)",
+  "baseline_at_tip_013e40a4a": {
+   "p50_ms": {
+    "small": 56.0,
+    "orc": 68.0
+   },
+   "note": "matches the merged #2893 plateau; bimodal 56/68ms modes"
+  },
+  "suites": {
+   "session.chat_to_agents (custom lane driver)": {
+    "metric": "chat_to_agents_ms (LEFT keypress -> agents-view chrome paint -> anchor identity row paint; controller-side monotonic clocks; first-observed boundaries)",
+    "full_pair_prefold (base 013e40a4a vs cand 056f02833, B,C,C,B,B,C x5 x2)": {
+     "baseline": {
+      "small": {
+       "trials": 15,
+       "valid": 15,
+       "p50_ms": 67.9,
+       "values_ms": [
+        55.9,
+        55.9,
+        55.9,
+        56.0,
+        56.0,
+        64.7,
+        67.9,
+        67.9,
+        67.9,
+        68.0,
+        68.0,
+        68.1,
+        68.2,
+        68.4,
+        68.4
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 15,
+       "valid": 15,
+       "p50_ms": 67.7,
+       "values_ms": [
+        55.7,
+        55.7,
+        55.8,
+        55.8,
+        67.6,
+        67.7,
+        67.7,
+        67.7,
+        67.8,
+        67.8,
+        67.8,
+        67.9,
+        67.9,
+        68.0,
+        68.2
+       ]
+      }
+     },
+     "candidate": {
+      "small": {
+       "trials": 15,
+       "valid": 15,
+       "p50_ms": 14.0,
+       "values_ms": [
+        13.8,
+        13.9,
+        13.9,
+        13.9,
+        13.9,
+        13.9,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.1,
+        14.1,
+        14.1,
+        14.4
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 15,
+       "valid": 15,
+       "p50_ms": 14.0,
+       "values_ms": [
+        13.8,
+        13.8,
+        13.9,
+        13.9,
+        13.9,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.1,
+        14.3
+       ]
+      }
+     },
+     "delta_p50_ms": {
+      "small": -53.9,
+      "orc": -53.7
+     },
+     "flavor": "C flat and tight 13.8-14.4 across both fixtures; the B bimodality (56/68) is gone on C"
+    },
+    "final_head_folded (base 0038c3f72 vs cand 3882b144d, B,C,C,B x5 x2)": {
+     "baseline": {
+      "small": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 56.0,
+       "values_ms": [
+        55.7,
+        55.7,
+        55.9,
+        55.9,
+        55.9,
+        56.0,
+        56.0,
+        56.5,
+        68.1,
+        68.3
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 67.7,
+       "values_ms": [
+        56.1,
+        67.5,
+        67.5,
+        67.5,
+        67.7,
+        67.7,
+        67.7,
+        67.9,
+        68.1,
+        69.3
+       ]
+      }
+     },
+     "candidate": {
+      "small": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 14.0,
+       "values_ms": [
+        13.9,
+        13.9,
+        13.9,
+        13.9,
+        14.0,
+        14.0,
+        14.1,
+        14.1,
+        14.1,
+        15.1
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 13.9,
+       "values_ms": [
+        13.8,
+        13.8,
+        13.8,
+        13.8,
+        13.8,
+        13.9,
+        13.9,
+        13.9,
+        14.1,
+        14.3
+       ]
+      }
+     },
+     "delta_p50_ms": {
+      "small": -42.0,
+      "orc": -53.9
+     },
+     "note": "the small fixture's B arm landed mostly on the ~56ms bimodal mode in this pair (median-mode artifact, not a mechanism difference: the same arm read 67.9 p50 in the full pair); C is flat at 14ms in both pairs"
+    }
+   }
+  },
+  "extra": {
+   "pty_byte_parity": {
+    "prefold": {
+     "small": {
+      "B": 4114,
+      "C": 4114
+     },
+     "orc": {
+      "B": 6035,
+      "C": 6035
+     }
+    },
+    "final_head": {
+     "small": {
+      "B": 4115,
+      "C": 4115
+     },
+     "orc": {
+      "B": 6036,
+      "C": 6036
+     }
+    },
+    "note": "byte-count parity EXACT across arms on both fixtures in both pairs (+1 byte between pairs = the 0038c3f72-series upstream frames)"
+   },
+   "reverse_leg_agents_to_tail_p50_ms": {
+    "final_head": {
+     "small": {
+      "B": 19.0,
+      "C": 19.1
+     },
+     "orc": {
+      "B": 36.8,
+      "C": 36.7
+     },
+     "note": "flat - the reverse leg has no drain (agents_view finish); the pre-fold orc +5.4ms did not reproduce"
+    }
+   },
+   "launch_to_ready_ms_p50": {
+    "label": "REGIME-SUSPECT at the pre-fold pair (the fresh-write class was degraded the whole window); healthy-class at the final head",
+    "final_head": {
+     "small": {
+      "B": 1800,
+      "C": 1500
+     },
+     "orc": {
+      "B": 2000,
+      "C": 1700
+     }
+    }
+   },
+   "calibration": {
+    "loadavg": "pre 1.48/2.94/3.09 -> mid 0.64-0.84 -> post 0.70/1.50/2.41 (pre-fold); final-head legs ran between a HEALTHY preflight and a DEGRADED post probe",
+    "preflight_v09": "pre1 MARGINAL (fresh p50 1.04ms vs the 2x0.50ms baseline constant - a baseline-calibration artifact: the constant came from burst probes, this host's isolated-op baseline is ~1.0ms; ZERO stalls, max 2.62ms) -> pre2 HEALTHY (fresh p50 0.82, max 1.08, 0 stalls; fsync p50 0.61, max 0.84) -> legs",
+    "post_probe": "OVERALL=DEGRADED - a fresh fleet epoch onset caught at the end; the last small-fixture C rev-legs (24.9/30.9ms) mark the onset inside the final trials; ALL measured chat_to_agents values stayed in-band (max 15.1)",
+    "prefold_dual_class": "fresh+rename DEGRADED ~330ms p50 the whole pre-fold window (the same class read 0.39ms p50 during the healthy baseline window); fsync p50 0.18-0.26ms with isolated 327-383ms stalls. Leg insensitivity: the chat->agents leg does no fresh-file+rename on its path and the B arm held its tight 67.7/67.9 plateau (matching the healthy-window 68.0 baseline) across all 30 B trials inside the same degraded window"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "prefold pair 60/60 valid, final-head pair 40/40 valid, zero errors, zero precondition fails; per-slot sha asserts (launcher + payload) all matched; the instrumented throwaway build and the gate-lint iteration builds never ran timing legs"
+ },
+ "outcome": "POSITIVE - chat->agents 68ms -> 14ms p50 (-79%) at both the pre-fold and folded-head pairs, flat and tight on the candidate; the 50ms attribution proven by 12/12 zero-event full-window drains; kitty-release contract locked by the new real-pty e2e at the PR head",
+ "decision": "PR OPEN (no merge - awaiting orchestrator numeric review + both adversarial reviewers at the final PR SHA + standing dispositions)",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-013402-interaction-chat-to-agents-handoff-drain-window.json",
+ "session": {
+  "worker": "perf-drain-idle-fast",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1562ac02/01a0dff3-e391-743b-983a-6bb876456665.jsonl"
+ },
+ "timestamp": "2026-09-27T01:34:16Z"
+}
