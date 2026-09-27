@@ -99,5 +99,11 @@
   "session_dir": "~/.prime/agent/sessions/ (this session)"
  },
  "timestamp": "2026-09-27T11:35:00Z",
- "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2941"
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2941",
+ "reviews": {
+  "numeric": "orchestrator ACCEPTED at a6ea27d21 (the evidence set complete and honest; the census decisive, the wall-clock honestly negative, the stall asymmetry dropped at larger n)",
+  "parity-adversary-fast": "EXPLICIT APPROVE at a6ea27d21 (per-claim C1-C8 verdicts incl. their own greps: the full non-test settings.json writer census finds NO production in-place writer - every writer renames (new inode) so the same-ns edge's same-ino prerequisite is unreachable from workspace writers, the external-editor same-length-within-1ns class = the #2932 accepted-with-note ruling carried; exactly ONE production read() caller (manager.rs:928, load_scope); zero functional cross-nesting between the auth and settings cache registries; the frozen-surface diff = pa-core/src/settings only; the no-unmasking attributed to the #2915 mutex already in the base)",
+  "parity-adversary-2-fast": "EXPLICIT APPROVE at a6ea27d21 (their own verified angles: the cache-hit-under-foreign-lock window = the #2932 convergence class for settings, strictly fresher than the TS load-once snapshot (the TS citations re-read directly incl. the in-memory getter reads); error-class parity incl. the platform-guard note (the non-(unix|windows) stat_identity stub returns None so the cache never hits there - the miss path always runs the full protocol); C8 proven by the diff)",
+  "conditions": "both APPROVEs SHA-bound to a6ea27d21 (head movement voids); operator disposition of the benchmark infra class (pr-side leg never measured, main leg fully green - the worker-clone precedent) required before merge; the reviewers do not merge"
+ }
 }
