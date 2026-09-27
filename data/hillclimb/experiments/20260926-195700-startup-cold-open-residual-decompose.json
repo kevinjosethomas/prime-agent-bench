@@ -9,7 +9,28 @@
   "note": "recorded before the #2844/#2866 merges landed; folds batched at the next clean boundary per standing policy"
  },
  "branch": "hillclimb (bench repo)",
- "commits": [],
+ "commits": [
+  {
+   "sha": "1be4545a9",
+   "subject": "perf(pa-daemon): share the open's artifacts + skip the depth scan's full parse (cold-open-residual)"
+  },
+  {
+   "sha": "705417230",
+   "subject": "fix: Path::new returns &Path (no ? on the reference + scan)"
+  },
+  {
+   "sha": "47051e566",
+   "subject": "test: fresh-construction fixtures for the oracle classes (clippy useless_vec/redundant_clone)"
+  },
+  {
+   "sha": "575355b90",
+   "subject": "clippy: if-let over single-match; persisted_goal_state is the oracle reference (compiled, lint-silenced for non-test builds)"
+  },
+  {
+   "sha": "a093c8011",
+   "subject": "fmt: rustfmt"
+  }
+ ],
  "build": {
   "sandbox_id": "q4wt593azsm2iqw5rnhldxe4",
   "binary_sha256": "994c5563f7559ac26f4d4f54d02aade7e9e72b700656c096daed6c9d89a5b892",
@@ -251,10 +272,61 @@
  },
  "outcome": "measured - DECOMPOSITION COMPLETE + two new full-pass discoveries (P2b persisted_rlm_max_depth; P2-never-runs-on-bench-path); edits deferred per sequence",
  "decision": "Two parity-safe candidates scoped with expected per-class deltas: P3/P4 shared open (-50.2ms stock) and P2b store-backed lookup (-34.5ms stock, larger on compacted/real classes ~50-66ms). Combined stock-class expectation ~-85ms of the 914ms quiet anchor (~9%). Honest negative on the brief's original expectation: the residual after launch-open's fix is NOT near the boot floor on the stock fixture class (P3+P4+P2b = 124.7ms p50 of redundant passes), but on compacted classes the P3/P4 residual alone IS near-floor (1.3-12ms) and only P2b remains material.",
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2970",
  "record_path": "data/hillclimb/experiments/20260926-195700-startup-cold-open-residual-decompose.json",
  "session": {
   "worker": "perf-cold-open-residual-fast"
  },
- "timestamp": "2026-09-26T20:20:00+00:00"
+ "timestamp": "2026-09-26T20:20:00+00:00",
+ "settle_day": {
+  "settled_tip": "d3d4e5ca9cdc4fbf8f0fb4df80c242987b09b4d7",
+  "settle_signal": "agent_engine.rs split series COMPLETE: 11/11 (the facade trim, #2964 = 41356ab99) merged; the settle tip d3d4e5ca9 contains it. Remaining churn (session_ui, pa-tui; supervisor 8/8 done) is disjoint from the lane's pa-daemon files.",
+  "fold": "2026-09-27T21:58Z: settle-day.sh d3d4e5ca9 -> FOLD_CONFLICT exactly as pre-proven (reboot trials at bab47d99a AND d3d4e5ca9; recipe in cold-open-work/fold-recipe/RECIPE.md). Conflicts ONLY in agent_engine.rs + agent_engine/tests.rs (the two-file resolution): the facade file kept OURS (the lane must not touch it post-split; the C1 hunks re-homed to agent_engine/lifecycle.rs where part 10 moved adopt_built_session whole; the tests tail stitched ours+blank+theirs - both sides had appended different tail batteries after agent_engine_streams_updates_and_final_message, incl. the #2755 api-key-override adjacency). model.rs + goal_state_persist.rs auto-merged.",
+  "fold_verification": "post-fold re-diff (d3d4e5ca9..a093c8011) = EXACTLY the 4-file lane delta (lifecycle.rs 107 / model.rs 60 / tests.rs 327 / goal_state_persist.rs 27; 454 ins / 67 del - the original lane numbers); agent_engine.rs UNTOUCHED (the absorbed move); the folded tree 27006346033a92e00413e0d0afe6305c86fd0622 is BYTE-IDENTICAL to both pre-settle trial folds; tests.rs a pure 327-line tail insertion vs the tip (zero deletions); both oracle fns present exactly once.",
+  "lane_head": "a093c801197b98053086c90cf0cfac5b59f55ce4 (5 commits rebased: 1be4545a9 705417230 47051e566 575355b90 a093c8011)",
+  "push": "force-with-lease asserting the pre-fold head (f1a3c01b0 -> a093c8011)",
+  "vm_gates_folded_head": {
+   "fmt_rc": 0,
+   "clippy_rc": 0,
+   "oracle_rc": 0,
+   "build_rc": 0,
+   "oracles": "shared_window_goal_seed_matches_persisted_goal_state ok; persisted_rlm_max_depth_scan_matches_reference_across_classes ok; recovery_rebuild_rehydrates_the_goal_from_the_session_file ok (3 passed/0 failed at the folded head, release)",
+   "vm": "o87wy9bbsx1xuzg6d8jngoi3 (VM2)"
+  },
+  "pair_staged": {
+   "base": {
+    "rev": "d3d4e5ca9 (the settle tip = the post-fold merge-base)",
+    "binary_sha256": "9af0bf5c655788b31c026414e75767df9f271d9f72e89941527bd6e2c60e2d91"
+   },
+   "cand": {
+    "rev": "a093c8011 (the folded lane head)",
+    "binary_sha256": "dfc25a1d978b18204205fbc1616f7622bf2af48b9691561c8da9b561bb31356d"
+   },
+   "cand_sha_assert": "independently verified: a fresh rebuild at a093c8011 reproduces dfc25a1d byte-identical",
+   "disclosure": "pair-prep.sh v2: the staged v1 hardcoded the ABBA base at the stale pre-fold merge-base 5cf45d4da (would have confounded the lane delta with ~30 upstream commits); v2 takes the settle tip as arg 1 with full-sha asserts. First v2 run caught its own assert bug (full-vs-short sha compare) after a successful checkout; the rerun then read LANE_HEAD from the detached HEAD - the VM lane branch was restored to a093c8011 and prep.done corrected; the staged binaries were never wrong (the cand copy preceded any checkout; both shas re-verified)."
+  },
+  "staged_script_fixes": "pair-run.sh v2 (disclosed in-script): v1 ran (base,cand) per round = ABAB, not the fleet's ABBA - v2 runs B,C,C,B x5 = 10+10; v1 called /root/v09-gate-probe.sh which DOES NOT EXIST on VM2 (only v11 - a silent fail-open: the gate file would carry the shell error, grep CLASS finds nothing, the leg proceeds ungated) - v2 calls the v1.1 probe and is FAIL-CLOSED: any leg-boundary gate without an in-band CLASS aborts the pair immediately (partial = void, kept on disk); pin-restore trap on any exit; per-leg calibration bookends via the driver (cal_pre/cal_post per cold_open_decomp.py invocation).",
+  "event_gate_status_at_fold": "2026-09-27T22:10Z: BEYOND-CENSUS/TRAP-EVENT (fresh p50 83.51ms 100% stalls; reference class 83.00ms) - the fleet-synchronized deep I/O event is ~26h old and deepening locally; the pair is EVENT-gated (only an in-band v1.1 reference reading at leg time opens it; heartbeat probes every 15min). | 22:26Z probe: BEYOND-CENSUS/TRAP-EVENT again (fresh 91.27ms 100% stalls, reference 90.71ms) - the 22:15Z reference-class lift was a transient lull, not the recovery.",
+  "pr": {
+   "number": 2970,
+   "head": "a093c801197b98053086c90cf0cfac5b59f55ce4",
+   "opened": "2026-09-27T22:32Z",
+   "full_suite_gate": {
+    "verdict": "GREEN",
+    "run": "gate_1790547144_945324",
+    "phases": {
+     "fmt_rc": 0,
+     "clippy_rc": 0,
+     "test_rc": 0
+    },
+    "test_suites": 80,
+    "failures": 0,
+    "hosts_guard": "OK",
+    "vm": "pooled rust:1-bookworm bvwr5lk9t7jbsj3e5tc6x7im",
+    "toolchain": "1.98.1",
+    "stale_base_note": "org/rust tip moved past the fold (07f42eaa3, session_ui splits - disjoint from the diff); the pre-merge re-fold + re-gate rule stands"
+   },
+   "reviewer_requests": "HELD until the pair evidence lands in the record + the CI rollup completes (the request carries the completed CI rollup - the #2914 lesson)"
+  }
+ }
 }
