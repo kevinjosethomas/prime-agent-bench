@@ -1,0 +1,87 @@
+{
+ "id": "20260927-194600-other-fleet-gate-etc-hosts-guard",
+ "axis": "other",
+ "lane": "wave-5 fleet-hygiene infra lane: the gate-bootstrap /etc/hosts remedy (operator queue item (a)); harness-side only - NO product change",
+ "hypothesis": "The fleet-hygiene record 20260927-193330 established both pooled gate VMs as deterministically red on mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating (the rust:1-bookworm image build intermittently ships a 59-NUL-byte /etc/hosts; the files leg is unparseable, getent hosts localhost fails rc=2, the DNS fallback NXDOMAINs the bare single-label name, getaddrinfo returns EAI_NONAME). The documented standing remedy - an /etc/hosts overwrite at gate VM claim/bootstrap with a probe assertion - should turn both pooled slots' deterministic reds green with NO product change, and be a no-op on well-formed fresh VMs.",
+ "approach": "fleet_pipeline v1.4.5 -> v1.4.6 (module /home/ubuntu/.prime/agent/fleet-tools/fleet_pipeline.py, version-controlled at /home/ubuntu/lane-worktrees/fleet-tools): (1) new HOSTS_GUARD constant run via the VM claim path on BOTH _op_gate and _op_review, right after kill-verify-claim and BEFORE any test run (also covers spec['vm'] triage-VM gates, which skip the pool claim but hit the same call site); (2) guard semantics: probe getent hosts localhost + an od-based NUL-byte check; on a broken file OVERWRITE (never append - appending after NUL padding stays unparseable, proven 2026-09-23) with the known-good shape '127.0.0.1\\tlocalhost\\n::1\\tlocalhost ip6-localhost ip6-loopback\\n192.0.2.1\\tprime.internal\\n' (the fresh-VM well-formed shape per the hygiene record, plus the task-directed ::1 line), probe-assert getent after the write, emit a clear HOSTS_REPAIR log line, and keep a VM-side hosts_corrupt_<tag>.log snapshot of the pre-repair file; well-formed files are untouched (HOSTS_OK no-op); (3) every gate/review verdict now carries hosts_guard: OK|REPAIRED and a guard failure RED_SETUPs ('localhost must resolve before any test runs'); (4) gate + review harness skill entries re-registered with the guard note (register_skills, v1.4.6). Infra repairs en route: the fleet-tools VC repo at /home/ubuntu/lane-worktrees/fleet-tools was GONE (deleted at some point) - re-seeded from the live module with a byte-identical v1.4.5 baseline commit 106f60f (sha256 524f5130d4eab5b771cb5ff87717f6c8dd6afd766d1ac5ca0b857dd226b8cef) then the fix commit d9d45af, copy-to-live sha-verified (e1c3e3775c3f9ff95c7a44cee9f0a13e31fd24f634b97362945a0cdd3ed2b522); the missing kernel-venv fleet_pipeline.pth (the import-by-name contract was broken after a venv rebuild) restored.",
+ "verification": {
+  "driver": "/home/ubuntu/gate-logs-host/etc-hosts-guard-20260927/ (driver.py, spec.json, per-leg logs, verdict.json; detached PRIME_PY driver, 2026-09-27T19:44:13Z-19:45:56Z, module v1.4.6 sha e1c3e3775c3f9ff95c7a44cee9f0a13e31fd24f634b97362945a0cdd3ed2b522)",
+  "method": "both pooled slots via the atomic free-N/held-N marker contract (targeted per-slot claim; kill-verify on claim AND release per the battery re-arm rule; released after each leg) + one fresh rust:1-bookworm VM (8c/32G/100G, sleep-infinity, same pool spec), deleted after the leg; the guard executed in every leg is the EXACT live-module HOSTS_GUARD",
+  "slot_1": {
+   "sandbox_id": "bvwr5lk9t7jbsj3e5tc6x7im",
+   "pre": "od: 59 NUL bytes (image-build mtime 2026-09-24 00:32:45); stat size=59; getent hosts localhost RC=2; nsswitch 'hosts: files dns'; VM repo head e6d1a18a2a88fa9b27af6ae80fef5458111864c4",
+   "pre_canary": "cargo +1.98.1 test -p pa-daemon --lib mcp_login::tests::worker_begin_login: rc=101, worker_begin_login_persists_creds_and_unlocks_gating FAILED with 'failed to lookup address information: Name or service not known' (worker_begin_login_rejects_unknown_servers ok); '1 passed; 1 failed'",
+   "guard": "HOSTS_REPAIR: /etc/hosts broken at claim (getent-fail nul-padded); overwriting with the known-good shape / HOSTS_REPAIRED: known-good /etc/hosts written; getent hosts localhost resolves",
+   "post": "od: the 86-byte known-good shape (127.0.0.1\\tlocalhost / ::1\\tlocalhost ip6-localhost ip6-loopback / 192.0.2.1\\tprime.internal); mtime 19:44:53; getent RC=0",
+   "post_canary": "rc=0; BOTH worker_begin_login tests ok; '2 passed; 0 failed'; no EAI line. SAME VM, same repo head - red-to-green on the guard alone",
+   "result": "PASS"
+  },
+  "slot_0": {
+   "sandbox_id": "ykp6mbwtdtz17w58tayfa0yw",
+   "pre": "od: 59 NUL bytes (image-build mtime 2026-09-24 00:46:05); getent RC=2; VM repo head f0b1dcad3065b1acdc11e063f1b1fd0484f5e429 (lane/perf-rpc-authlock - the 19:41Z pre-remedy full gate on this slot had just REDed with mcp_login auto-classified as the ENVIRONMENTAL DNS known-red)",
+   "pre_canary": "rc=101, worker_begin_login_persists_creds_and_unlocks_gating FAILED with the EAI_NONAME line (rejects_unknown_servers ok)",
+   "guard": "HOSTS_REPAIR (getent-fail nul-padded) / HOSTS_REPAIRED",
+   "post": "od: the 86-byte known-good shape; getent RC=0",
+   "post_canary": "rc=0; both worker_begin_login tests ok; no EAI line",
+   "result": "PASS"
+  },
+  "fresh_vm": {
+   "sandbox_id": "q31elh2fk8zwp8sqiambv9yn (name fleet-hostsguard-verify-1790538338)",
+   "pre": "od: WELL-FORMED 59 bytes ('127.0.0.1 localhost' + '192.0.2.1 prime.internal', mtime 2026-09-26 20:15:19); getent RC=0",
+   "guard": "HOSTS_OK: /etc/hosts well-formed, localhost resolves (no repair) - the NO-OP PATH",
+   "post": "byte-identical od, mtime UNCHANGED (2026-09-26 20:15:19) - the guard did not touch the file; getent RC=0",
+   "deleted": "true (post-delete get: TERMINATED)",
+   "result": "PASS"
+  },
+  "pool_after": "both slots released back to free markers; state.json untouched by the legs (runs counters unchanged)"
+ },
+ "parity_notes": "Harness-side only: no product file, no TS-parity surface, no user-visible behavior change in the shipped product. The known-reds registry is UNCHANGED (mcp_login_worker_begin_login_gating stays registered until its 2026-09-29 expiry as the belt for unguarded contexts); the guard is additive to the fleet gate/review verdict shape (new hosts_guard field, RED_SETUP class only when localhost cannot be made to resolve - previously such runs silently produced environmental DNS reds). The repair shape adds the ::1 line beyond the platform's 59-byte fresh shape (task-directed); post-canary green on both pooled slots proves localhost-resolving tests (tokio sequential connect: ::1 refused then 127.0.0.1) work under it. Well-formed files are never rewritten (fresh-VM leg: byte-identical od + unchanged mtime).",
+ "base": {
+  "fleet_tools_repo": "/home/ubuntu/lane-worktrees/fleet-tools",
+  "baseline_commit": "106f60f (live v1.4.5 re-seed, byte-identical, sha256 524f5130d4eab5b771cb5ff87717f6c8dd6afd766d1ac5ca0b857dd226b8cef)",
+  "pre_remedy_live_sha256": "524f5130d4eab5b771cb5ff87717f6c8dd6afd766d1ac5ca0b857dd226b8cef"
+ },
+ "commits": [
+  "106f60f (re-seed baseline)",
+  "d9d45af3d971f5e7cf1611365ca73ecf0412d19d (v1.4.6 hosts guard)"
+ ],
+ "build": {
+  "module": "fleet_pipeline.py v1.4.6",
+  "live_module_sha256": "e1c3e3775c3f9ff95c7a44cee9f0a13e31fd24f634b97362945a0cdd3ed2b522",
+  "repo_live_match": "sha-verified after copy-to-live"
+ },
+ "gates": {
+  "product": "N/A (no product change)",
+  "verification": "PASS 3/3 legs (both pooled slots red->repair->green on the mcp_login solo canary; fresh VM no-op), driver verdict PASS"
+ },
+ "measurements": {
+  "method": "same-VM sequential pre/post around the single-guard intervention (the ABAB-shaped minimal pair; no perf measurement involved)",
+  "suites": {
+   "mcp_login_worker_begin_login_solo_canary": {
+    "slot_1": {
+     "pre": "FAILED (EAI_NONAME)",
+     "post": "ok (2 passed)"
+    },
+    "slot_0": {
+     "pre": "FAILED (EAI_NONAME)",
+     "post": "ok (2 passed)"
+    },
+    "fresh_vm": {
+     "guard": "no-op (HOSTS_OK)"
+    }
+   }
+  }
+ },
+ "validity": {
+  "notes": "the canary is the documented deterministic red (58-run census + renewed known-red entry); pre-legs reproduced it on both slots at the current red era (no DNS-leg dependence); post-legs green on the SAME VM + SAME repo head, so the delta is the /etc/hosts repair alone"
+ },
+ "outcome": "merged",
+ "decision": "Operator queue item (a) CLOSED: the remedy is live in the fleet gate flow (fleet_pipeline v1.4.6; both pooled slots verified + fresh-VM no-op path). No product PR (harness-side infra; the fleet-tools repo carries the change: commits 106f60f + d9d45af, live module sha-verified). The mcp_login known-red registration stays until its 2026-09-29 expiry as a belt for unguarded contexts; pool gates should now come back green on this test.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-194600-other-fleet-gate-etc-hosts-guard.json",
+ "session": {
+  "worker": "fleet-infra-hosts-guard (wave-5)",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-d50c26b3/01a0e45f-7879-7461-9cb4-d5362fada2a0.jsonl"
+ },
+ "timestamp": "2026-09-27T19:46:00Z"
+}
