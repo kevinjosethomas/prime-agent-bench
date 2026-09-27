@@ -1,0 +1,337 @@
+{
+ "id": "20260927-025000-startup-catalog-stats-borrow-syscall",
+ "axis": "startup",
+ "hypothesis": "The remaining COLD roster scan cost at the #2879+#2882 settled heads (~44ms/1000, ~207ms/4096 sessions, row-oracle-identical to the merged records) decomposes into: a typed-parse floor that still materializes owned strings (type/id/timestamp per line) and Value trees (message role/provider/model/timestamp, name/state/provider/modelId/thinkingLevel) the fold reads once or discards; a per-line Vec allocation (capacity line.len()+17) inside advance_tail that keeps only 16 bytes; and a syscall side that opens every file TWICE (the bounded header gate's open+read+close, then the fold's open), stats every file ~5x, and eagerly stats the mtime the modified-fallback chain almost never reads. All three are removable without changing a row byte.",
+ "approach": "Baseline-first decomposition on the pinned base 4d57eb082 (the then-current origin/rust tip; territory files verified unchanged vs 4ed68f6e9 where the census source was read): (A) a diagnostic census example (untracked, VM-only) over the real fixture (100/1000/4096 tiers, 177,798 lines): per-tier parse-only floors for the current owned struct, a scalar-Cow variant, the full-borrow candidate, serde IgnoredAny (the irreducible JSON-walk floor) and a full Value parse; IO-only and open+fstat-only loops over the fold's own 64KiB read loop; advance_tail Vec-vs-in-place micro; role-read micro; a cur-vs-bor differential over every line (parse acceptance both directions, every fold-read field, per-file fold states) plus line/byte/escape census. (B) strace -cf syscall census on one cold pass at 1000 sessions, base vs candidate. (C) the candidate: commit 1 borrows the entry (Cow scalars + raw-span object fields with parse-at-use reads preserving Value::as_str/as_u64 semantics and the model_change abort arm verbatim; advance_tail in-place with a rolling-reference lockstep test; a 38-row raw-JSON shape matrix test pinning every borrowed read to the full-parse read, acceptance analysis for the rows the typed parse rejects, and end-to-end fold-level differential vs the legacy full-parse reference); commit 2 shares one open between the gate and the fold (with the TOCTOU narrowing disclosed in the doc comment: the double-open judged one file and folded another if a replace raced between opens; the shared handle pins both to the same inode) and reads the listing stat lazily (only when the modified fallback chain reaches it; the existing fallback tests pin every arm of the chain).",
+ "parity_notes": "Row/wire parity: every arm, slot, and pass produced the identical oracle (legacy checksums 762089/893085/4336641 and row sha256 ccc76960.../8f41e882.../40258404... at 100/1000/4096) across the 3-arm ABBA (18 probe runs), the settled-head pair (18 probe runs), and the baseline (same B binary). The census differential ran the current-vs-borrowed acceptance/field/fold-state comparison over all 177,798 real lines with ZERO divergence in either direction (escaped type/id/timestamp counts 0; roles all strings; 0 non-string text blocks). Borrow semantics are Value-identical by construction: Cow<str> accepts any JSON string (owned fallback when escaped - the same rows the owned String accepted), raw spans accept any JSON shape exactly as Option<Value> did, and raw_string/raw_u64 return None for non-string/non-number spans exactly where Value::as_str/as_u64 returned None; the model_change abort arm keeps its exact two-step None (absent OR non-string aborts). The in-place advance_tail produces byte-identical windows (rolling-reference lockstep test across keep-cut/short-roll/empty/multibyte regimes). The single-open TOCTOU NARROWING is disclosed: previously the gate judged file A and the fold could open a replacement B that landed in between; now both judge/fold the same inode - strictly closer to the writer model, disclosed for reviewer scrutiny. The lazy mtime only defers the stat the modified-fallback chain reads: or_else keeps the chain order (last_activity >0, then header timestamp, then mtime) and the existing fallback tests (message-timestamps-win, impossible-calendar-date, epoch-zero) pin every arm. SessionInfo rows, JSONL bytes, wire/API, replay, streaming catalog, resume/torn-tail semantics untouched; the fold is stack-local. Fixture integrity: perf-many-sessions-real.tar.gz verified against its manifest (1099/1100 rows clean; the ONE mismatch is the documented stale-manifest row 100/01a0dad3 whose tar bytes hash 39fca708... exactly as both merged catalog lanes documented); 4096 tier = the shipped perf-many-sessions-4096.tar.gz (4081/4096 files byte-match 1000-tier files, 15 unique); aggregate sha256 over all 5196 files 0acfd4a8... (hash method: sorted per-tier byte concatenation). FIXTURE DISCLOSURE (cross-lane): my 4096 tier is the SHIPPED tarball; cross-lane 4096 comparisons remain INVALID per the catalog-second-parse disclosure; all pair evidence here is internally valid (same fixture both arms, row oracle).",
+ "base": {
+  "revision": "4d57eb0826f874879c17cd31124b5759a8a5b582",
+  "note": "origin/rust tip at pair time (post-#2894); the settled-head pair re-runs against pristine 1f45bd860 (the tip at fold time, 11 upstream commits later, lane files verified unchanged: session_store.rs/session_scan.rs/session_store_info_tests.rs diff empty; #2899's catalog-scan heap work lives in supervisor.rs, not the roster fold)"
+ },
+ "branch": "lane/hillclimb-catalog-stats",
+ "commits": [
+  "c43923a058b6d1e19ec80ce3bcbef5223c33ab25f",
+  "0c5c78313de2c9da1cced2be65be57cd0f52c5118",
+  "0dd118fc19b5e10bdfcbff8af6e865f82693406d",
+  "c032b68d48315ad7fc6817583d283513e7aad63f"
+ ],
+ "build": {
+  "sandbox_id": "f1iq61rustqh0e6xken8cgfl",
+  "toolchain": "rustup 1.98.1",
+  "arm_binaries_sha256": {
+   "B_base_4d57eb082": "3b15402c4dd70364e2312c048f918f4a81868bcd5d4a6179a4a5680b0ecfedc8",
+   "C1_fold_machinery_c43923a05": "bed1a28c411dbfb2ca6977f4ff8d30a986f6b67e0dd5e0b527d048e1b9f94f0c",
+   "C2_head_0dd118fc1": "2b75f21c5de849f78c01bae3c5cd6aad085768fd6ddaed46927a67f0c46fd074",
+   "B2_pristine_tip_1f45bd860": "be77fe21242b23bb9799fc879ea32c5eab501c34f0c9fd712a5b18a9627e78a3",
+   "C2S_fold_head_c032b68d4": "ac5aeaa5e26eed14aae991dba793b8de4695efde2fbf584cf6a7c8adfaf48dba"
+  },
+  "probe_note": "timing probe = pa-daemon example catalog_scan_probe3 (untracked on the VM; identical source both arms: list_sessions, 7 passes, legacy length-sum checksum + sha256 row oracle; passes-configurable for the strace single-pass census). BINARY-NONDETERMINISM NOTE (the fleet lesson, re-confirmed): the probe was rebuilt at every arm/head and shas asserted before every slot; C1's probe binary was byte-stable across its test-only fixups in this campaign, but every content-changed tree produced new bytes - arm-exact binaries are the evidence, prior-head shas are historical."
+ },
+ "gates": {
+  "fmt": "PASS at the final pre-fold head 0dd118fc1 AND at the fold head c032b68d4 (cargo fmt --all --check, clean tree; a first VM rustfmt pass was reviewed before porting back - the formatted diff was checked to touch only lane regions)",
+  "clippy": "PASS at 0dd118fc1 AND c032b68d4 (cargo clippy --workspace --all-targets -- -D warnings, 0 errors; findings during the cycle (unused import after the gate refactor, unused mut, used_underscore_binding in the matrix test, map_or/is_some_and, redundant slicing/closure) all fixed)",
+  "test": "PASS at 0dd118fc1 AND c032b68d4: pa-daemon --lib info_tests GREEN (incl. the new borrowed-metadata shape matrix: 38 raw-JSON rows, row-level differential + acceptance analysis + fold-level legacy-reference differential + abort-row files); pa-daemon --lib session_store:: + session_scan:: GREEN (incl. the new rolling-reference tail lockstep test and the existing 54 session_store tests, #2882's content matrix, and the fallback-chain tests). Workspace full-suite/shards NOT run on the VM by this lane; CI at the PR head is the real shard gate per fleet practice."
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "primary_run_3arm_abba": {
+   "design": "B C1 C2 B C1 C2 B C1 C2 (9 slots; 3 cold trials per arm, no same-arm adjacency at wraparound; sha-asserted atomic swap before every slot; noop CPU calibration + loadavg at every boundary; fleet advisory v0.9 io-gate (>=40 isolated fresh+sync_all+rename @0.5s + >=20 repeat-fsync) pre/mid/post; page-cache warmup after the pre gate)",
+   "base": "4d57eb082 (B=3b15402c...), C1=c43923a05 (bed1a28c...), C2=0dd118fc1 (2b75f21c...)",
+   "suites": {
+    "catalog.100.cold_ms": {
+     "B": [
+      30.775,
+      30.737,
+      30.802
+     ],
+     "C1": [
+      28.539,
+      28.842,
+      29.665
+     ],
+     "C2": [
+      28.235,
+      28.545,
+      28.533
+     ],
+     "p50": {
+      "B": 30.775,
+      "C1": 28.842,
+      "C2": 28.533
+     },
+     "delta_pct": {
+      "C1_vs_B": -6.3,
+      "C2_vs_B": -7.3
+     },
+     "regression": false,
+     "checksum": 762089,
+     "row_sha256": "ccc76960603443a4f2c8ee429ec321941cd6a05f71c9c733df97cbf67435c437"
+    },
+    "catalog.1000.cold_ms": {
+     "B": [
+      44.562,
+      43.143,
+      42.628
+     ],
+     "C1": [
+      54.823,
+      40.825,
+      40.698
+     ],
+     "C2": [
+      39.509,
+      40.508,
+      40.322
+     ],
+     "p50": {
+      "B": 43.143,
+      "C1": 40.825,
+      "C2": 40.322
+     },
+     "delta_pct": {
+      "C1_vs_B": -5.4,
+      "C2_vs_B": -6.5
+     },
+     "regression": false,
+     "outlier_note": "C1 slot2 1000-tier cold 54.823 is a disclosed transient (flush-regime epoch; slots 5/8 agree at 40.825/40.698; medians robust)",
+     "checksum": 893085,
+     "row_sha256": "8f41e88269f375d5423d4c67b35c03345dfcb042187d31cf7a487cd0954b9f65"
+    },
+    "catalog.4096.cold_ms": {
+     "B": [
+      203.567,
+      210.502,
+      208.626
+     ],
+     "C1": [
+      193.594,
+      192.608,
+      212.101
+     ],
+     "C2": [
+      188.502,
+      188.809,
+      185.738
+     ],
+     "p50": {
+      "B": 208.626,
+      "C1": 193.594,
+      "C2": 188.502
+     },
+     "delta_pct": {
+      "C1_vs_B": -7.2,
+      "C2_vs_B": -9.7
+     },
+     "regression": false,
+     "outlier_note": "C1 slot9 4096-tier cold 212.101 disclosed (same class as B's spread; median robust)",
+     "checksum": 4336641,
+     "row_sha256": "40258404fe569c2aeda1b9d8682142b26c964f98d4540fa8c6ac1d20aa99f7e6"
+    },
+    "catalog.warm_p6_ms": {
+     "B": [
+      0.434,
+      4.335,
+      19.442
+     ],
+     "C1": [
+      0.435,
+      4.069,
+      19.761
+     ],
+     "C2": [
+      0.426,
+      3.391,
+      16.706
+     ],
+     "note": "warm medians per slot at 100/1000/4096; the warm path is scan-state-cache dominated; C2's warm improvement at 1000/4096 tracks the saved gate open+close per file; no claim"
+    }
+   },
+   "io_regime": "Fleet advisory v0.9 io-gates at pre/mid/post: ALL DEGRADED (fresh-write p50 19-31ms, stall-rate 80-100%, max 34-59ms; repeat-fsync same class; host baseline p50 19.264ms established pre-regime) - the fleet-wide flush regime documented by perf-write-regime-fast was active for the whole campaign; the timing legs are CACHED READS (gate cached-read class healthy 1.2-1.3ms per 50 files), loadavg 0.07-0.54, noop calibrations 368-370ms stable; the flushed-write regime does not touch the read path per the advisory; every leg is labeled with the regime state."
+  },
+  "settled_head_pair_load_bearing": {
+   "design": "BCCBBC after the fold (B2 = pristine tip 1f45bd860 be77fe212...; C2S = fold head c032b68d4 ac5aeaa5...; post-fold re-diff of lane files: empty)",
+   "suites": {
+    "catalog.100.cold_ms": {
+     "B2": [
+      30.464,
+      31.391,
+      30.147
+     ],
+     "C2S": [
+      28.702,
+      28.86,
+      28.164
+     ],
+     "p50": {
+      "B2": 30.464,
+      "C2S": 28.702
+     },
+     "delta_pct": -5.8,
+     "regression": false,
+     "checksum": 762089,
+     "row_sha256": "ccc76960603443a4f2c8ee429ec321941cd6a05f71c9c733df97cbf67435c437"
+    },
+    "catalog.1000.cold_ms": {
+     "B2": [
+      42.923,
+      42.927,
+      45.135
+     ],
+     "C2S": [
+      40.202,
+      39.634,
+      40.661
+     ],
+     "p50": {
+      "B2": 42.927,
+      "C2S": 40.202
+     },
+     "delta_pct": -6.3,
+     "regression": false,
+     "checksum": 893085,
+     "row_sha256": "8f41e88269f375d5423d4c67b35c03345dfcb042187d31cf7a487cd0954b9f65"
+    },
+    "catalog.4096.cold_ms": {
+     "B2": [
+      202.087,
+      202.99,
+      202.432
+     ],
+     "C2S": [
+      188.063,
+      187.722,
+      189.013
+     ],
+     "p50": {
+      "B2": 202.432,
+      "C2S": 188.063
+     },
+     "delta_pct": -7.1,
+     "regression": false,
+     "checksum": 4336641,
+     "row_sha256": "40258404fe569c2aeda1b9d8682142b26c964f98d4540fa8c6ac1d20aa99f7e6"
+    },
+    "catalog.warm_p6_ms": {
+     "B2": [
+      0.423,
+      3.947,
+      18.081
+     ],
+     "C2S": [
+      0.394,
+      3.45,
+      17.606
+     ],
+     "note": "warm medians per slot at 100/1000/4096; no claim (cache-dominated)"
+    }
+   },
+   "io_regime": "pre/post gates DEGRADED (flush class; cached reads healthy) - same labeling as the ABBA"
+  },
+  "baseline_reproduction": {
+   "note": "the B arm reproduces the merged #2879+#2882 candidate class within ~1% (their published 100: 30.78 / 1000: 44.11 / 4096: 209.4 at b99cecedf-era trees; this lane's B at 4d57eb082/1f45bd860: 30.8/43.1-42.9/203.6-202.4 with the identical row oracle; the drift is upstream churn + VM variance, not the fold) and the FIRST baseline trial at 4d57eb082 (colds 244.0/242.1/832.5ms) is INVALID for the class: page-cache-cold (first fixture touch after VM boot) + the DEGRADED flush regime; disclosed and excluded from all claims; trials 2-3 of that run (31.408/43.876/212.757 and 31.069/44.615/206.826) are the valid scan-state-cold values and match the ABBA B arm."
+  },
+  "extra": {
+   "census_decomposition_at_base": {
+    "note": "diagnostic-only census (untracked example; per-tier sums over the real fixture; stage Instant overhead disclosed; the ABBA is load-bearing)",
+    "tiers": {
+     "100": {
+      "files": 100,
+      "lines": 20234,
+      "msg_lines": 10569,
+      "guarded": 3276,
+      "parse_ms": {
+       "cur": 16.46,
+       "scalar_cow": 15.51,
+       "bor": 13.9,
+       "ignored_floor": 9.04,
+       "value_full": 44.4
+      },
+      "fold_ms": {
+       "cur": 22.46,
+       "bor": 20.94
+      },
+      "guarded_ms": {
+       "cur": 3.37,
+       "bor": 3.32
+      },
+      "tail_ms": {
+       "vec": 0.57,
+       "inplace": 0.04
+      },
+      "io_only_ms": 5.77,
+      "openstat_only_ms": 0.19
+     },
+     "1000": {
+      "files": 1000,
+      "lines": 26481,
+      "msg_lines": 12856,
+      "guarded": 5556,
+      "parse_ms": {
+       "cur": 19.54,
+       "scalar_cow": 18.7,
+       "bor": 16.46,
+       "ignored_floor": 10.4,
+       "value_full": 50.2
+      },
+      "fold_ms": {
+       "cur": 27.64,
+       "bor": 25.64
+      },
+      "guarded_ms": {
+       "cur": 4.17,
+       "bor": 4.11
+      },
+      "tail_ms": {
+       "vec": 1.13,
+       "inplace": 0.08
+      },
+      "io_only_ms": 7.77,
+      "openstat_only_ms": 1.11
+     },
+     "4096": {
+      "files": 4096,
+      "lines": 130083,
+      "msg_lines": 63809,
+      "guarded": 25509,
+      "parse_ms": {
+       "cur": 101.13,
+       "scalar_cow": 98.57,
+       "bor": 86.73,
+       "ignored_floor": 56.51,
+       "value_full": 262.2
+      },
+      "fold_ms": {
+       "cur": 142.11,
+       "bor": 126.92
+      },
+      "guarded_ms": {
+       "cur": 20.32,
+       "bor": 21.83
+      },
+      "tail_ms": {
+       "vec": 4.43,
+       "inplace": 0.42
+      },
+      "io_only_ms": 34.13,
+      "openstat_only_ms": 4.5
+     }
+    },
+    "answers_to_the_brief": {
+     "typed_parse_floor": "19.5ms/1000 = 10.4ms irreducible serde JSON walk (IgnoredAny; the fold's accept/reject contract pays it per line) + 9.1ms struct materialization the borrow reclaims 3.1ms of (16.5ms borrowed floor; scalar Cow alone reclaims 0.8ms; the raw-span message fields the rest)",
+     "stats_syscalls": "13,573 syscalls per cold pass at 1000 sessions, 10.126ms strace-internal time: statx ~5/file (dir-pass stat, generation fstat, eager stats_mtime fstat, 2 certification stats), openat/close 2+2/file (the gate+fold DOUBLE-OPEN), read 2.4/file, lseek 1/file; NO O(1)-counter-shaped redundant userspace count remained after #2879 - the remaining stats work is the identity/race-guard structure the TS contract requires",
+     "candidate_syscall_census": "at the candidate: statx 3964 (-1000, the lazy mtime), openat 1005 and close 1005 (-1000 each, the single-open), read/lseek unchanged, total 10,560 (-3,013 syscalls/pass, -22%)"
+    },
+    "role_read_micro_ms_1000": {
+     "cur_value_as_str": 19.88,
+     "bor_from_str": 17.19,
+     "bor_fast_path": 16.79,
+     "note": "the fast-path unescape variant measured +0.4ms more at 1000/4096 but was NOT taken (idiomatic from_str<Cow> only); documented as a follow-up option"
+    },
+    "differential": "cur-vs-bor acceptance/field/fold-state: 0 divergences on all 177,798 lines at all 3 tiers (both directions); abort counts equal (0); escaped type/id/timestamp counts 0; roles: assistant 7525 / user 1298 / toolResult 4033 at 1000, 0 missing, 0 non-string"
+   },
+   "composition_with_merged_lanes": "the cold catalog scan across the three merged/borrow lane steps at 1000 sessions: catalog-cold's published base ~70ms (their VM) -> #2879+#2882 ~44ms -> this lane's settled pair 42.9 -> 40.2ms on the same fixture at 100/1000 (row oracle identical); composed class vs the pre-#2879 base is roughly -43% same-VM-class at 1000 (cross-VM class-level statement only)"
+  }
+ },
+ "validity_notes": "cold = pass 0 of a fresh probe process (empty scan-state cache, warm page cache); warm = passes 1-6. All 54 probe runs (3 arms x 3 slots x 3 tiers x 7 passes + settled pair 18 runs) carry the identical row oracle per tier. The flush-regime gates were DEGRADED throughout (fleet-wide; per the write-regime advisory the regime does not touch the cached-read legs, and the noop calibrations + loadavgs are quiet); every leg is labeled with the regime state per the advisory. The 4096-tier cross-lane comparison stays INVALID (second-parse's disclosure); this record's 4096 evidence is internally valid. #2899's catalog-scan-heap allocation return lives in supervisor.rs and does not touch the roster fold; the fold's post-fold re-diff was empty.",
+ "status": "PR pending (lane branch pushed: lane/hillclimb-catalog-stats at c032b68d4, retarget-ready)"
+}
