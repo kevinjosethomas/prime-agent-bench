@@ -1,0 +1,239 @@
+{
+ "id": "20260927-151500-startup-rpc-surface-baseline-decompose",
+ "axis": "startup",
+ "hypothesis": "The RPC stdio surface (PR #2801 stub S5; crates/pa-daemon/src/rpc/ + the pa-cli --mode rpc entry) has zero fleet perf numbers. Its create/resume flows ride the same engine seams the staged lanes own (the in-process pa-core create_session equivalents of the daemon facade's ensure_core_session->build_session->adopt_built_session), so the file-pass/lock-cycle findings apply there too; the baseline decomposes its cold-open/resume/create cost classes per fixture shape, the durable writes per RPC command, and the lock cycles per fresh RPC session (do the #2932/#2941 auth+settings consolidations apply on this path?), and compares each class against the TUI->daemon->worker equivalent on the same VM \u2014 the delta is the surface's own cost.",
+ "approach": "MEASUREMENT ONLY, no product change (baseline lane; the record is the deliverable). Pinned tip 4df41f66a (HEAD churn during the lane: #2744 runtime/kernel hardening, #2763 daemon-restart wait, #2942/#2943 test/pa-tui-only \u2014 all off rpc/ or comment-only vs my territory; the baseline pins the build). VM r9bfra2rhhe1m4a53dy5g2bk (hillclimb-perf-rpc-baseline, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1), cargo build --release --locked --workspace rc=0, binary sha ad74c51e05a15a561a3f3c16c1dc6b16d2c30e4c1d63089248d4a22babc20abe (221974544 bytes). Bench harness deployed on the VM (product.yaml binary+revision pinned to the VM build; settle OK; kernel venv warm at bench/global/rust). Fixtures rebuilt on-VM, shas matching the fleet-known values: session-10mib-compacted 97beb5eb... (rows 10984, retained 105047B, firstKeptEntryId 00002a61), stock session-10mib dadaecfc... (7391 rows). REAL assembly path, offline mock provider (prime-inference/mock-1 via models.json + bench mock_provider, the spawn-latency lane contract; zero network inference). Driver: rpc_probe.py (per-trial fresh agent dir/home/tmp/cwd; scrubbed env + venv-env.json; per-trial fixture prehash assert on resume; loadavg quiet gate; product-only zombie sweep; nonblocking os.read frame pump, 10ms windows + per-window response match; per-command wall receipts). Legs (same-VM sequential, A-B-B-A interleave per class, binary sha asserted per block, I/O advisory v1.0 preflights before every block + pre/post): FRESH: A=compare.cold_start harness TUI legs x8 vs B=--mode rpc fresh x8; RESUME: A=session.cold_open_10mib_compacted x8 (sentinel-validated) vs B=--mode rpc --resume compacted-fixture x8; STOCK: A=session.cold_open_10mib x8 vs B=--mode rpc --resume stock-fixture x8; NO-SESSION attribution leg x6; CENSUS x5 (strace -ff -f -tt, structure-only, INVALID for timing): 3x fresh first-turn + 2x resume; lock census via the settings-lane parser pattern (mkdir/rmdir pairs on *.lock dirs, 20ms clock_nanosleep retries, same-process racing pairs) + per-command durable-write windows anchored to the strace time-of-day; TUI-equivalent legs are the gold-standard harness suites (their historical comparators; probe grid 0.5s/2ms disclosed).",
+ "parity_notes": "No product source changed in any phase; frozen parity untouched (no session-JSONL/wire/prompt/TUI bytes touched; the RPC surface was only exercised as a black box over its own stdio). The engine seams owned by the staged lanes (agent_engine.rs/model.rs/create.rs) were measurement-only territory. The bench harness + mock provider are offline verification harnesses, not product. Two harness-behavior artifacts were found and fixed during the campaign, both MINE, both disclosed: (1) the driver's first read loop parked parsed frames behind a full 60s pump window (a false '60s per command stall' \u2014 the bisection harness proved the surface answers in 50-250ms; the product was never at fault); (2) a 0.2s pump-window quantization inflated every per-command wall by up to +200ms and the ready walls similarly (fixed to 10ms windows; all timing legs re-run after the fix \u2014 the numbers below are the corrected re-run).",
+ "base": {
+  "revision": "4df41f66a3731b8302a4d0d62d4712db8d8a3128",
+  "note": "pinned per the frozen-evidence rule; origin/rust churned during the lane (#2744/#2763/#2942/#2943) \u2014 none touch rpc/ (verified per head move); #2755's print_runtime.rs delta was comment-only"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "r9bfra2rhhe1m4a53dy5g2bk (hillclimb-perf-rpc-baseline, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "ad74c51e05a15a561a3f3c16c1dc6b16d2c30e4c1d63089248d4a22babc20abe",
+  "binary_bytes": 221974544,
+  "build_seconds": 103,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); standing operator disposition class; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0 at launch), per-block binary sha asserted (ad74c51e... unchanged throughout), A-B-B-A interleave per fixture class, I/O advisory v1.0+v1.1 preflight before every block + pre/post (PHASE MODEL; every block labeled with its pre-block probe class)",
+  "io_regime": "io-pre = FAST (A_p50 0.82ms, one 43.5ms op, M-by-letter); the host then flipped to a ~40ms fresh-write-rename regime for the whole campaign (A_p50 39-44ms on EVERY isolated op, stall-rate 100%, and 5% of repeat-fsync ops hitting the same ~40ms wall \u2014 per v1.1 rule (B) the reference-class lifting = trap/regime event, not the state machine; two brief fast windows reappeared mid-campaign). All absolute numbers are regime-labeled; the A-B-B-A interleave balances the regime across both arms, so the per-class DELTAS are the primary evidence.",
+  "rpc_cold_open_spawn_to_first_response_ms": {
+   "fresh_persisted": {
+    "trials": 8,
+    "p50": 21.3,
+    "min": 20.4,
+    "max": 22.2,
+    "values": [
+     20.4,
+     20.6,
+     20.7,
+     21.0,
+     21.7,
+     21.8,
+     22.0,
+     22.2
+    ]
+   },
+   "no_session_attribution": {
+    "trials": 6,
+    "p50": 18.4,
+    "min": 18.3,
+    "max": 20.7,
+    "note": "assembly without the persisted manager/lease"
+   },
+   "resume_10mib_compacted": {
+    "trials": 8,
+    "p50": 134.6,
+    "min": 99.3,
+    "max": 181.9,
+    "values": [
+     99.3,
+     128.5,
+     131.0,
+     133.2,
+     136.1,
+     164.7,
+     168.2,
+     181.9
+    ]
+   },
+   "resume_10mib_stock_no_boundary": {
+    "trials": 8,
+    "p50": 186.6,
+    "min": 182.8,
+    "max": 193.1,
+    "values": [
+     182.8,
+     185.4,
+     186.1,
+     186.3,
+     186.8,
+     187.0,
+     190.9,
+     193.1
+    ]
+   },
+   "attribution": "fresh 21.3ms = process+assembly+first response (no-session 18.4ms -> the persisted manager+fresh-lease costs ~3ms); compacted resume adds ~113ms (guard+10MiB scan+windowed context build); stock no-boundary adds ~165ms (full parse of 7391 rows; SessionFile parse class) \u2014 both resume classes IN-PROCESS, no retained-transcript replay pipeline"
+  },
+  "tui_equivalents_launch_to_ready_ms_harness_suites": {
+   "fresh_cold_start": {
+    "trials": 8,
+    "p50_range": "311.75-325.33",
+    "first_paint_ms": "54.8-67.0",
+    "note": "compare.cold_start; the TUI number carries the harness 0.5s probe grid + the daemon+worker pipeline"
+   },
+   "resume_10mib_compacted": {
+    "trials": 8,
+    "p50": 307.0,
+    "min": 299.4,
+    "max": 407.6,
+    "sentinel": "all 8 validated"
+   },
+   "resume_10mib_stock": {
+    "trials": 8,
+    "p50": 777.9,
+    "min": 716.6,
+    "max": 842.7,
+    "note": "the retained-transcript replay pipeline dominates the no-boundary shape"
+   }
+  },
+  "surface_delta_vs_tui_same_vm": {
+   "fresh": "RPC 21.3ms vs TUI ~311-325ms (the in-process engine skips the daemon+worker pipeline entirely)",
+   "resume_compacted": "RPC 134.6ms vs TUI 307.0ms",
+   "resume_stock": "RPC 186.6ms vs TUI 777.9ms (the stock/no-boundary class is the RPC surface's biggest structural win: full parse in-process vs the TUI retained-transcript replay pipeline)"
+  },
+  "per_command_ms_arrival_accurate_n16": {
+   "get_state_warm": {
+    "p50": 50.3,
+    "min": 50.2,
+    "max": 50.6
+   },
+   "get_messages": {
+    "p50": 50.9,
+    "min": 50.2,
+    "max": 52.4
+   },
+   "get_session_stats": {
+    "p50": 50.5,
+    "min": 50.2,
+    "max": 51.0
+   },
+   "set_thinking_level": {
+    "p50": 50.4,
+    "min": 50.2,
+    "max": 50.7
+   },
+   "set_session_name_durable_row": {
+    "p50": 89.9,
+    "min": 50.9,
+    "max": 92.6,
+    "note": "the +40ms is the durable row write on this host's ~40ms fresh-write regime"
+   },
+   "set_auto_compaction_settings_write": {
+    "p50": 42.0,
+    "min": 39.7,
+    "max": 51.5
+   },
+   "set_follow_up_mode_settings_write": {
+    "p50": 41.2,
+    "min": 37.4,
+    "max": 51.4
+   },
+   "cycle_model_row_plus_settings": {
+    "p50": 259.3,
+    "min": 179.6,
+    "max": 554.9
+   },
+   "get_available_models_registry_refresh": {
+    "p50": 773.9,
+    "min": 268.8,
+    "max": 1611.7,
+    "note": "WRITES models.json (the registry cache persist: open_wronly+rename+fsync in the census window) \u2014 a durable write on a nominally-read command"
+   },
+   "prompt_admission_return_after_accepted": {
+    "p50_pr1": 55.9,
+    "p50_pr2": 55.3,
+    "note": "the mock turn completes inside the admission window; turn events stream immediately"
+   },
+   "new_session_replacement_create": {
+    "p50": 24.8,
+    "min": 22.5,
+    "max": 29.0,
+    "note": "WARM replacement (the factory re-assembly + the new session's kernel boot on a warm venv); ONE cold-state observation of 10823ms in the first battery (pre-driver-fix run) \u2014 the cold second-kernel-boot class; the warm p50 is the steady-state replacement cost"
+   },
+   "switch_session_replacement_open_10mib_compacted": {
+    "p50": 82.1,
+    "min": 79.0,
+    "max": 84.7,
+    "n": 8
+   },
+   "eof_stdin_close_to_exit": {
+    "p50": 31.4,
+    "note": "the EOF settle path"
+   }
+  },
+  "lock_census_per_fresh_rpc_trial_strace": {
+   "settings_json_lock": {
+    "cycles": 14,
+    "hold_ms_p50": 0.453,
+    "hold_ms_max": 42.687,
+    "racing_pairs_same_process": 0,
+    "retry_sleeps_20ms": 0,
+    "note": "the trial's total: the cold-open assembly reads + the replacement re-assembly reads + the 4 explicit settings-writing battery commands; hold p50 sub-ms, one max at the host's ~40ms wall"
+   },
+   "auth_json_lock": {
+    "cycles": 4,
+    "hold_ms_p50": 194.0,
+    "hold_ms_max": 201.9,
+    "racing_pairs_same_process": 0,
+    "retry_sleeps_20ms": 0,
+    "note": "the assembly + replacement assemblies hold the auth lock ~194-201ms per cycle (the model resolution + registry work under the lock) \u2014 the heaviest lock class on the surface"
+   },
+   "prompt_turns": "ZERO auth/settings lock cycles in the pr1/pr2 command windows \u2014 the #2932/#2941 consolidations FULLY apply on the RPC path: the per-turn lock cost is 0; the lock cost is per-connection/per-replacement, not per-turn",
+   "census_answer": "YES \u2014 the auth+settings consolidations apply on the RPC path; a fresh RPC session pays 4 auth + 14 settings lock cycles per TRIAL (assembly + explicit writes + replacements), 0 per turn; no 20ms retry sleeps, no same-process racing pairs (single-client surface)"
+  },
+  "durable_writes_per_command_census": {
+   "cold_open_fresh": "7 open_wronly + 11 writes + 1 rename (the fresh session file create + the lease owner.json + telemetry rows)",
+   "cold_open_resume": "9 open_wronly + 17 writes + 1 rename + 3 fdatasync (adds the lease/window fsyncs on the resume path)",
+   "set_session_name": "1 session-jsonl durable row (write+rename)",
+   "set_auto_compaction/set_follow_up_mode": "1 settings.json write+rename each (1 fsync on one)",
+   "cycle_model": "session model_change row + settings write + fsync",
+   "get_available_models": "models.json write+rename+fsync (the registry cache persist \u2014 see candidate)",
+   "prompt_first_turn_fresh": "1 session-jsonl append +fsync + the turn's row writes (~20 writes)",
+   "prompt_turn_resume": "~22 writes + 3 fdatasync",
+   "new_session": "the new session file + lease writes (~27 writes, 4 renames)",
+   "switch_session": "the opened file's lease + row writes (~16 writes, 3 renames)",
+   "eof": "the settle's final rows"
+  },
+  "per_response_floor": "a uniform ~50ms floor on every post-assembly command response (read commands 50.2-50.6ms; 10ms measurement windows, so ~40-50ms is real surface latency, not quantization) \u2014 the surface's own dispatch/response cost class; attribution left open (the LineWriter mpsc+stdout writer task path is the candidate mechanism; the auth-lock holds (~194ms) are assembly-time, separate from this floor)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Two driver-side measurement artifacts found and fixed mid-campaign (both disclosed in parity_notes; all timing numbers are from the post-fix re-run). The TUI arm's numbers are the gold-standard harness suites with their 0.5s/2ms probe grids \u2014 the arms' measurement contracts differ (the RPC side is arrival-accurate to 10ms; the harness side is its historical contract), so the deltas are structural and one-directional, not a like-for-like paired microsecond comparison. The ~40ms fresh-write regime (trap class per advisory v1.1 rule B) sat over the whole campaign; the interleaved arms balance it; the durable-write command costs (ssn ~+40ms over floor, sam/sfm ~40ms) are regime-labeled. The one cold-state new_session observation (10823ms) predates the driver fix and carries the 60s-window code; the warm p50 (24.8ms) is from the corrected runs \u2014 the cold-vs-warm replacement split is real (the second kernel boot's cold class) but the 10.8s single observation is not a clean number; flagged, not load-bearing.",
+  "evidence": "hillclimb/archives/rpc-baseline/rpc-baseline-evidence.tar.gz (sha 7390857a71825f601987143e61fbd7aba4d571ee812900b88e6cf27a1df2fdb8; VM legs state, all receipts, census strace logs + analyses, probes)"
+ },
+ "candidates_reported_only": [
+  "get_available_models persists models.json on every call (open_wronly+rename+fsync, 773.9ms p50) \u2014 a durable write + registry re-compose on a nominally-read command; TS-parity check first (does TS modes/rpc refresh+persist the same way?), then a candidate lane if the persist is avoidable",
+  "the ~50ms per-response floor on every command (uniform across read commands; the LineWriter mpsc+stdout writer task path is the candidate mechanism) \u2014 needs a mechanism probe before any lane",
+  "the auth-lock hold class (~194-201ms per cycle, 4 cycles per trial) \u2014 the model resolution + registry work under the auth lock; a smaller hold window (load-then-lock) is the pattern the auth-lock lane used, applied to the RPC assembly path",
+  "the cold second-kernel-boot class on the first whole-session replacement after boot (one 10.8s observation vs 24.8ms warm) \u2014 characterization-only; the kernel-venv warm path already exists (#2857/#2884 lineage)"
+ ],
+ "outcome": "baseline-complete (honest record; no product change, no PR \u2014 measurement-only lane per the brief; the record is the deliverable)",
+ "decision": "Baseline delivered: the RPC surface's cost map is decomposed per class, the TUI-equivalent deltas measured on the same VM, the lock census answers the consolidation question (YES \u2014 0 per-turn cycles; the cost is per-connection/per-replacement), the durable-write census maps every command, and the candidates are reported-only for the orchestrator's queue. The surface is CHEAP: 21ms fresh cold-open, 135-187ms resume of 10MiB fixtures, 25ms warm replacements, 31ms EOF settle \u2014 and structurally cheaper than the TUI->daemon->worker path on every fixture class (the stock/no-boundary class by 4.2x).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-151500-startup-rpc-surface-baseline-decompose.json",
+ "session": {
+  "worker": "perf-rpc-baseline",
+  "session_dir": "~/.prime/agent/sessions/01a0e2b8-313e-7014-b969-c426c7e9dd9c.jsonl"
+ },
+ "timestamp": "2026-09-27T15:15:00Z"
+}
