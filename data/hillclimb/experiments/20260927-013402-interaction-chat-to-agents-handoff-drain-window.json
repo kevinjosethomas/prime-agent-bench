@@ -17,7 +17,8 @@
   "3d8e5ef09 test(pa-cli): the kitty-release editor probe waits for the painted cell",
   "c5001c904 test(pa-cli): the kitty-release harness reaps the pty child on panic paths too",
   "971837d8c test(pa-cli): the kitty-release exit drives the CSI-u escape form",
-  "3882b144d fold 0038c3f72 (PR head; post-fold re-diff vs merge-base = exactly the 3-file lane delta)"
+  "3882b144d fold 0038c3f72 (PR head; post-fold re-diff vs merge-base = exactly the 3-file lane delta)",
+  "527cad7a4 fold fcf306e2b (TRUE FINAL PR HEAD; post-fold re-diff vs merge-base = the same 3-file lane delta)"
  ],
  "build": {
   "sandbox_id": "cfv8vv7vbuhyiebjh0fv6ycm",
@@ -26,11 +27,15 @@
   "final_head_bin_base_sha256": "0eaf80c95a656b9126193f478445d0a40033d22c3d59ac0a5fc2c5423e5ad53e",
   "prefold_bin_cand_sha256": "a1f9f824937a6d3aff1ae5d72df893d33795a379a80c77c517f858165f17867c",
   "prefold_bin_base_sha256": "1755d097bd40ac47b760eec7056e4b6bcd58b8b8900e0af376ee6a012e8e50b3",
-  "note": "the fmt/clippy fixes after 056f02833 are test-file-only: the pre-fold candidate binary a1f9f824 is byte-identical across 056f02833..c5001c904"
+  "note": "the fmt/clippy fixes after 056f02833 are test-file-only: the pre-fold candidate binary a1f9f824 is byte-identical across 056f02833..c5001c904",
+  "final_pr_head": "527cad7a492af7ce52816d479a971dcb7b48df2d",
+  "final_pr_head_bin_cand_sha256": "648edeb6fd74a75224fd11800523cd626299abce01c54d46e7df95e6e98867d7",
+  "final_pr_head_bin_base_sha256": "910ccf7f88b32fd89b9fd6cdfd8247760da63619a94e95c081e8bf15f6cb4329"
  },
  "gates": {
   "folded_head": "fmt PASS both arms; clippy PASS both arms; full cargo test --workspace both arms. Shared failures (both arms, standing container-env family): packages::tests git/npm flows x6 + browser::tests opener x1. cand-only: kernel::bootstrap::venv::tests::probe_memo_misses_on_out_of_band_venv_mutation - PASSES 3/3 isolated at the cand head and 2/2 at base, and the pa-core code is byte-identical on both arms (the lane delta is pa-tui + a pa-cli test): environment/timing flake, not candidate-caused. base-only: tui_prompt_stash_restores_a_pasted_image_with_the_draft (the registered flake family). The NEW kitty_release_handoff_e2e PASSES at the fold head (2/2).",
-  "prefold_pair_shas": "cand(056f02833) fmt/clippy failed on the NEW TEST FILE only (fixed at 1e5cb24bd+, binary-identical); the same 7 env flakes fail both arms; base had 1 additional flake (tui_refused_submit...)"
+  "prefold_pair_shas": "cand(056f02833) fmt/clippy failed on the NEW TEST FILE only (fixed at 1e5cb24bd+, binary-identical); the same 7 env flakes fail both arms; base had 1 additional flake (tui_refused_submit...)",
+  "true_final_head": "fmt+clippy PASS both arms (VM); full workspace tests both arms. cand-only: supervisor_restart_loop_leaves_no_orphan_workers (fd_lifecycle_e2e) - 2/3 cand + 2/2 base ISOLATED passes, pa-daemon code byte-identical on both arms, an EAGAIN spawn race under the regime epoch (not candidate-caused). base-only: NONE, but DISCLOSED: the base arm's interactive_daemon_e2e WEDGED 30+min on tui_submit_outlived_by_switch_stays_silent_on_the_new_session with a stuck daemon+2-workers trio - killed to free the gate (recorded as signal 9)."
  },
  "measurements": {
   "method": "same-vm-sequential ABBA; pty driver; 5ms poll grid; raw arrays from parsed trial JSONL",
@@ -222,6 +227,85 @@
       "orc": -53.9
      },
      "note": "the small fixture's B arm landed mostly on the ~56ms bimodal mode in this pair (median-mode artifact, not a mechanism difference: the same arm read 67.9 p50 in the full pair); C is flat at 14ms in both pairs"
+    },
+    "true_final_head (base fcf306e2b vs cand 527cad7a4, B,C,C,B x5 x2, 40/40 valid)": {
+     "baseline": {
+      "small": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 68.0,
+       "values_ms": [
+        55.7,
+        55.8,
+        56.0,
+        67.8,
+        68.0,
+        68.0,
+        68.1,
+        68.2,
+        68.6,
+        68.6
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 61.6,
+       "values_ms": [
+        55.6,
+        55.6,
+        55.7,
+        55.8,
+        55.9,
+        67.3,
+        67.5,
+        67.6,
+        67.6,
+        67.9
+       ]
+      }
+     },
+     "candidate": {
+      "small": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 14.0,
+       "values_ms": [
+        13.8,
+        13.9,
+        13.9,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.0,
+        14.5
+       ]
+      },
+      "orc_5.1MB_compacted": {
+       "trials": 10,
+       "valid": 10,
+       "p50_ms": 13.9,
+       "values_ms": [
+        13.8,
+        13.8,
+        13.8,
+        13.8,
+        13.9,
+        13.9,
+        13.9,
+        13.9,
+        14.0,
+        14.0
+       ]
+      }
+     },
+     "delta_p50_ms": {
+      "small": -54.0,
+      "orc": -47.7
+     },
+     "note": "the orc B median splits its bimodal modes (5x~55.8, 5x~67.5); the small B median sits on the ~68 mode. C is flat 13.8-14.5 - the class is unchanged at the true final head"
     }
    }
   },
@@ -247,7 +331,33 @@
       "C": 6036
      }
     },
-    "note": "byte-count parity EXACT across arms on both fixtures in both pairs (+1 byte between pairs = the 0038c3f72-series upstream frames)"
+    "note": "byte-count parity EXACT across arms on both fixtures in both pairs (+1 byte between pairs = the 0038c3f72-series upstream frames)",
+    "true_final_head": {
+     "orc": {
+      "B_modes": [
+       6037,
+       7016,
+       7484
+      ],
+      "C_modes": [
+       6010,
+       6037,
+       7016,
+       7457
+      ]
+     },
+     "small": {
+      "B_modes": [
+       4116,
+       6031
+      ],
+      "C_modes": [
+       4116,
+       6031
+      ]
+     },
+     "note": "the arms share the same byte-count MODE SETS; the per-trial bucket correlates with LAUNCH TIMING under the regime epochs (fast launches paint extra splash frames ~+979B), not with the arm - disclosed instead of claimed exact-p50 parity at this boundary"
+    }
    },
    "reverse_leg_agents_to_tail_p50_ms": {
     "final_head": {
@@ -279,7 +389,8 @@
     "loadavg": "pre 1.48/2.94/3.09 -> mid 0.64-0.84 -> post 0.70/1.50/2.41 (pre-fold); final-head legs ran between a HEALTHY preflight and a DEGRADED post probe",
     "preflight_v09": "pre1 MARGINAL (fresh p50 1.04ms vs the 2x0.50ms baseline constant - a baseline-calibration artifact: the constant came from burst probes, this host's isolated-op baseline is ~1.0ms; ZERO stalls, max 2.62ms) -> pre2 HEALTHY (fresh p50 0.82, max 1.08, 0 stalls; fsync p50 0.61, max 0.84) -> legs",
     "post_probe": "OVERALL=DEGRADED - a fresh fleet epoch onset caught at the end; the last small-fixture C rev-legs (24.9/30.9ms) mark the onset inside the final trials; ALL measured chat_to_agents values stayed in-band (max 15.1)",
-    "prefold_dual_class": "fresh+rename DEGRADED ~330ms p50 the whole pre-fold window (the same class read 0.39ms p50 during the healthy baseline window); fsync p50 0.18-0.26ms with isolated 327-383ms stalls. Leg insensitivity: the chat->agents leg does no fresh-file+rename on its path and the B arm held its tight 67.7/67.9 plateau (matching the healthy-window 68.0 baseline) across all 30 B trials inside the same degraded window"
+    "prefold_dual_class": "fresh+rename DEGRADED ~330ms p50 the whole pre-fold window (the same class read 0.39ms p50 during the healthy baseline window); fsync p50 0.18-0.26ms with isolated 327-383ms stalls. Leg insensitivity: the chat->agents leg does no fresh-file+rename on its path and the B arm held its tight 67.7/67.9 plateau (matching the healthy-window 68.0 baseline) across all 30 B trials inside the same degraded window",
+    "true_final_head_preflight": "pre1 HEALTHY at the calibrated isolated-op baselines (fresh 1.0 / fsync 0.8) - the calibration-artifact class from the previous boundary is fixed; post probe DEGRADED (fresh epoch onset at the end; all chat_to_agents values in-band, max 15.1; the per-trial pty_bytes/launch buckets mark the onset)"
    }
   }
  },
@@ -288,12 +399,29 @@
   "notes": "prefold pair 60/60 valid, final-head pair 40/40 valid, zero errors, zero precondition fails; per-slot sha asserts (launcher + payload) all matched; the instrumented throwaway build and the gate-lint iteration builds never ran timing legs"
  },
  "outcome": "POSITIVE - chat->agents 68ms -> 14ms p50 (-79%) at both the pre-fold and folded-head pairs, flat and tight on the candidate; the 50ms attribution proven by 12/12 zero-event full-window drains; kitty-release contract locked by the new real-pty e2e at the PR head",
- "decision": "PR OPEN #2916 (no merge - awaiting orchestrator numeric review + both adversarial reviewers at the final PR SHA + standing dispositions)",
+ "decision": "PR #2916 OPEN at 527cad7a4 - routed to BOTH adversarial reviewers with the full CI state; awaiting their explicit sha-bound verdicts + operator disposition of the two disclosed reds (benchmark non-applicability + the shard-4 interactive_daemon_e2e wedge)",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2916",
  "record_path": "data/hillclimb/experiments/20260927-013402-interaction-chat-to-agents-handoff-drain-window.json",
  "session": {
   "worker": "perf-drain-idle-fast",
   "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-1562ac02/01a0dff3-e391-743b-983a-6bb876456665.jsonl"
  },
- "timestamp": "2026-09-27T01:34:16Z"
+ "timestamp": "2026-09-27T01:34:16Z",
+ "github_ci_at_pr_head_527cad7a4": {
+  "pass": [
+   "fmt",
+   "check + clippy (workspace)",
+   "test shard 1/4",
+   "test shard 2/4",
+   "test shard 3/4",
+   "Cursor Bugbot",
+   "Macroscope - Correctness Check",
+   "loc",
+   "request"
+  ],
+  "fail_benchmark": "the STANDING NON-APPLICABLE check (TS/main harness npm ci EUSAGE; never called pass; awaits operator disposition)",
+  "fail_test_shard_4": "DISCLOSED RED: shard 4 wedged 45min inside pa-cli#test:interactive_daemon_e2e with a stuck daemon+2-workers trio (job timeout kill; later units incl. kitty_release_handoff_e2e never ran). The SAME wedge reproduced on the VM BASE arm - interactive_daemon_e2e is byte-identical on both arms, so the wedge is NOT candidate-caused; it sits in the fcf306e2b upstream series (the #2913 exit-flush streaming change's territory). Needs operator disposition; the lane's new e2e PASSES in both VM full-suite runs (2/2 at both fold heads).",
+  "note": "origin/rust moved to 1f45bd860 (styling-only) AFTER the final fold; the PR head 527cad7a4 folds fcf306e2b - disclosed to the reviewers and the orchestrator"
+ },
+ "updated": "2026-09-27T02:57:06Z"
 }
