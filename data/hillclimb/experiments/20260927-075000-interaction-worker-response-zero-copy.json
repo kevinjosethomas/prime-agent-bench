@@ -252,9 +252,9 @@
   ],
   "notes": "byte-oracle arms regime-independent (banked separately): routed msgs (9,474,074B) / append (79B) / header + direct msgs payload byte-identical b==c==a2; state/attach identity-leaf sets (6/16 paths) == A/A control with zero new paths; splice oracle byte-exact on the candidate. I/O regime: chronic DEGRADED 07:05-08:18Z (fresh p50 26-43ms, 100% stall), window broke MARGINAL 08:18:45Z (1.026ms/2.5%), then flapped ~1.0ms<->40ms on a 1-2min cadence through the ABBA (probe files + per-leg brackets retained); calibration 1.04-1.12s across 14 samples; claimed metrics are fsync-free response ops + RSS/HWM (regime-insensitive); append/burst fsync-bound numbers labeled not-claimable. goal_turn_end_loop_runs_to_completion env-only failure fails identically on the clean base (verified in-place on this VM)."
  },
- "outcome": "candidate-positive: worker steady RSS after MB-class responses -38.4MB/-20.4% (get_messages) and -45.9MB/-23.2% (attach) on canon-10mib with FULL leg-level separation (and -12.2% at 150k); routed response wall -15..-23% at 450k/10MiB (FULL separation on canon + 450k msgs); worker CPU/op -14..-25%; VmHWM attach arms 0/12 raises vs base 4/12; small-response path flat",
+ "outcome": "MERGED: PR #2935 squash 58eda04c4 on origin/rust (auth-lock #2932 merged in between; the worker response path is zero-copy end-to-end with the #2897 supervisor splice). Claimed at reviewed head e807683cf: canon-10mib full leg-level separation (routed get_messages -17.2%, attach slim -21.9%/legacy -23.1%, worker CPU/op 70->60 jiffies, worker steady RSS after msgs -38.4MB/-20.4% and after attach -45.9MB/-23.2%); VmHWM attribution arms 0/12 candidate raises vs 3-4/12 base (the per-response transient no longer sets new highs); synth-450k msgs -15.3% full sep, attach -20.5/-22.3%, CPU -25%, RSS -16.9%; synth-150k RSS -12.2% full sep (wall directional-only, not claimed); header RTT flat; fsync-bound append/burst NOT claimed (regime-labeled); synth150k c#1 leg excluded (self-reported orchestrator-side probe overlap)",
  "decision": null,
- "pr_url": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2935",
  "record_path": "data/hillclimb/experiments/20260927-075000-interaction-worker-response-zero-copy.json",
  "session": {
   "worker": "perf-worker-clone-fast",
@@ -360,5 +360,13 @@
    "other_tests": "all green in the gate run (the full per-target results are in the gate verdict/log)"
   },
   "release_binary_sha256": "a65bb7dd335255e248588d27692fe2843d08c0b704ef3e07151283915cf95e81 (unchanged across every lane head - all cfg(test)-only deltas after the mechanism commit)"
+ },
+ "merged": true,
+ "merged_squash_sha": "58eda04c4",
+ "review": {
+  "numeric": "orchestrator re-confirmed at e807683cf",
+  "parity_adversary_fast": "EXPLICIT sha-bound APPROVE at e807683cf (claim-by-claim verification: restored frozen test diffed byte-identical at merge-base+head; protocol.rs additive; consumed-write-path hunks verified; splice compatibility; A/A-control methodology)",
+  "parity_adversary_2_fast": "EXPLICIT sha-bound APPROVE at e807683cf (independent frozen-test re-diff; self-pulled CI; VmHWM arm read as the mechanism signature)",
+  "operator_dispositions": "benchmark infra-class red (sandbox-created-zero-trials, rerun refused) under the standing authorization; mcp_login expired known-red freshly triaged (3/3 isolation at base+head, CI shards green at the same head)"
  }
 }
