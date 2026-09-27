@@ -37,7 +37,7 @@
  "gates": {
   "fmt": "pass (fleet_gate rc 0 at 4623cc6a4 and e238a0952 cycles)",
   "clippy": "pass (fleet_gate rc 0 after two pack-test findings fixed: untyped Vec::new in an assert + a shadowed view helper + unused mut closure - zero-warning posture restored; the 6 vendor/crossterm clippy warnings are PRE-EXISTING at the base tip, verified by base-tip clippy run, and tolerated upstream)",
-  "test": "fleet_gate full-suite: fmt+clippy GREEN; cargo test rc 101 with exactly ONE failure: mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - KNOWN-RED EXPIRED (daemon-timing rotating family, red only alongside the compaction pair under full-suite co-scheduling; passes 3/3 standalone focused at the lane head; GitHub CI workspace shards green on the same heads per the entry) - DISCLOSED for operator disposition, not a pa-tui red (my diff touches 3 pa-tui view files); fleet_review GREEN blockers 0 (one advisory: layout.rs 372->521 LoC crosses the ~500 advisory line - RowPack/EntryRows are cohesive with EntryLayout in the layout-cache module). Remaining CI red: the standing NON-APPLICABLE public TS benchmark workflow (0 Rust trials; standing operator disposition, never called pass)."
+  "test": "fleet_gate full-suite: fmt+clippy GREEN; cargo test rc 101 with exactly ONE failure: mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - KNOWN-RED EXPIRED (daemon-timing rotating family, red only alongside the compaction pair under full-suite co-scheduling; passes 3/3 standalone focused at the lane head; GitHub CI workspace shards green on the same heads per the entry) - DISCLOSED for operator disposition, not a pa-tui red (my diff touches 3 pa-tui view files); fleet_review GREEN blockers 0 (one advisory: layout.rs 372->521 LoC crosses the ~500 advisory line - RowPack/EntryRows are cohesive with EntryLayout in the layout-cache module). Remaining CI red: the standing NON-APPLICABLE public TS benchmark workflow (0 Rust trials; standing operator disposition, never called pass). GitHub CI at the binding SHA e238a0952: test shards 1-4 ALL PASS (shard 4 first run hit the runner's 45-min wall - infra timeout annotation, natural-green rerun 10m17s, the third PR in the class per the orchestrator), test summary PASS, fmt + check/clippy + request + loc + author checks SUCCESS; only red = 'benchmark' (standing NON-APPLICABLE public TS workflow, 0 Rust trials, standing operator disposition)."
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -307,7 +307,8 @@
      1.05
     ],
     "drift_pct": 0.6
-   }
+   },
+   "evidence_tarball": "/home/ubuntu/hillclimb/fixtures/scroll-retain-evidence.tar.gz sha256 5b4bbd2e045461fa5333621f8231dd71ba1415bbd6eb67f7b21ef24b1a55b66c (75 files: baseline matrix, both ABBA generations, censuses, oracles, probe branches' raw output)"
   }
  },
  "validity": {
@@ -317,7 +318,7 @@
   ],
   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (rm+cp.new+mv after the stale-copy lesson; every phase records bins.sha256 + a post-ABBA sha re-assert), fresh fixture copy per trial with in-trial canonical prehash assert, pre/mid/post CPU calibration (drift 0.6%), I/O regime recorded with the advisory v0.9 dual-class gates (this VM's fresh-write class DEGRADED throughout - disclosed; deterministic primary claims unaffected). Evidence repeated at TWO head generations (4d57eb082/414a101d2 and 1f45bd860/d0c3f8770, spanning the #2913 streamed-exit-flush and #2911 touch folds) with consistent deltas and full B/C separation at 10MiB/2MiB; the 40MiB ready-state case is a pad-pack story (no walk growth) where the cand realized -35MB in 2-of-3 final trials with one straggler (freed-page return variance, disclosed). The 604,519 walk-added-span and +71.7MB figures in the tui-memory record reproduce here as +64.6MB heap growth at the merged-#2895 tip (the delta is the memory lane's own md-cache fragment removal). Two zombie sentinel-stuck probe TUIs (97% CPU spinners from a killed phase) contaminated one bench-suite window before detection - the load-gate caught them ('compile:/root/bin-probe'), all affected legs (the first scroll_typing attempt) were rerun on the cleaned VM; every RSS/census/oracle number reported here was produced by the trial's own process (deterministic self-smaps/statm reads) and is unaffected by co-resident spinners, but the contamination window is disclosed for the record. mcp_login known-red-expired disclosed under gates. Bench suite rows carry the swap-logged binary shas (the bench's vendored versions metadata is stale on this VM - superseded by oracle/st-swaplog.txt)."
  },
- "outcome": "candidate-ready (PR #2921 open at head e238a0952; fleet_pr GREEN; CI + reviewer routing in progress)",
+ "outcome": "candidate-ready; PR #2921 open at binding SHA e238a0952 (standing decision); CI complete (all Rust checks green); fleet_review GREEN; both adversarial reviewers routed with the completed rollup; awaiting verdicts",
  "decision": null,
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2921",
  "record_path": "data/hillclimb/experiments/20260927-042000-memory-tui-scroll-retain-packed.json",
