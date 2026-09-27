@@ -13,7 +13,8 @@
   "7554d44c0 (fold: origin/rust 4d57eb082)",
   "b56e90e2c (candidate, pre-fold)",
   "9839dd60e",
-  "ae4355af7 (fmt+docs nits; PR head)"
+  "ae4355af7 (fmt+docs nits; PR head)",
+  "ce5627bbd (final fold of origin/rust c94637534; FINAL PR HEAD)"
  ],
  "build": {
   "sandbox_id": "vmj48uvxq7k7wa9xiay6y6d4 (16c/32GB ubuntu:22.04)",
@@ -22,7 +23,9 @@
    "probe_46c1cdff4": "4491ed86699a8a0ddb1679e80c71236222ada9977d99e4018b7d6ae210965355",
    "base_4d57eb082": "c6fd38bf2b975e742a46b5d6baa6c72c318b408a8d7f6ef3e779e0cabcb068be",
    "cand_7554d44c0": "e07254193c6634cebd41c380dcf8b9d28a13ab4bbd925e808a1052225bf2ad9e",
-   "cand_9839dd60e": "35f91341f4d26c08e3163c738dbe6fc321e10f63c85e86e6709cf351c928ce68"
+   "cand_9839dd60e": "35f91341f4d26c08e3163c738dbe6fc321e10f63c85e86e6709cf351c928ce68",
+   "cand_ce5627bbd_final": "5a41797a53f833767d209078d648c87eec46874bd618af9c474ee58363495998",
+   "base_c94637534_final": "0b64f9b86966595bcf964a88b42bf651159bfb25bfb81ce63d5dba132e13dee0"
   },
   "binary_bytes": {
    "base_4ed68f6e9": 213491304,
@@ -34,7 +37,8 @@
  "gates": {
   "fmt": "pass at ae4355af7 (two nits fixed in 9839dd60e/ae4355af7; gate gate_1790468381 red on the pre-fix head 9839dd60e)",
   "clippy": "pass (gate_1790468381 rc 0 at 9839dd60e; missing_errors_doc fixed in the same nit commit)",
-  "test": "workspace at PR head ae4355af7 (gate_1790469964): fmt PASS, clippy PASS, 1 red mcp_login (VM-DNS env; fresh triage: solo-reproduced identically on pristine merge-base 4d57eb082 in the same gate VM - same DNS failure, 3 passed/1 failed/0.02s - not lane-caused; the panel_expand e2e flake from one earlier run did not recur)"
+  "test": "workspace at PR head ae4355af7 (gate_1790469964): fmt PASS, clippy PASS, 1 red mcp_login (VM-DNS env; fresh triage: solo-reproduced identically on pristine merge-base 4d57eb082 in the same gate VM - same DNS failure, 3 passed/1 failed/0.02s - not lane-caused; the panel_expand e2e flake from one earlier run did not recur)",
+  "test_final_head_ce5627bbd": "fmt PASS, clippy PASS (gate_1790470943); test 2 reds both triaged fresh in the same gate VM: mcp_login VM-DNS (identical solo on merge-base) + worker::turn_stream abort_and_send_queued (passes solo at head AND base - co-scheduling flake). GitHub CI on ce5627bbd: fmt/clippy/test shards/summary/loc SUCCESS, benchmark FAILURE (documented non-applicable TS check), Bugbot/Macroscope NEUTRAL (zero unresolved threads), mergeable."
  },
  "measurements": {
   "method": "same-vm-sequential",
@@ -538,15 +542,46 @@
     "immunity_evidence": "strace census of the TUI process tree (fsync,fdatasync,sync,rename,renameat,renameat2,openat, whole TUI lifetime at 40k rows): ZERO fsync-family calls (90 traced lines, all openat) - the measured exit window is flush-path-free by construction; CPU spin calibration stable 0.045-0.052s pre/post every trial; legs are paired-interleaved (A/B same window) so any common-mode regime effect cancels; absolute walls carry the DEGRADED label."
    },
    "pre_fold_pair_4ed68f6e9": "HISTORICAL (superseded by the folded-head pair): base spike +123.7MB vs cand +23.8MB at 40k, byte shas identical; the folded-head pair shows cand spike 0.0MB (the flush now fits under the resume-load VmHWM)",
-   "oracle_sha_note": "flush sha256 in the byte_oracle suites is the 16-hex prefix printed by the driver; flush_bytes match exactly (436919 / 2180555 / 8737151) and the full byte streams are archived per leg (raw.pt in the trial dirs, tar in fixtures/exit-flush/); the tmux scrollback oracle independently verifies the full flushed content (byte-identical modulo tmux's own dead-pane timestamp line)"
+   "oracle_sha_note": "flush sha256 in the byte_oracle suites is the 16-hex prefix printed by the driver; flush_bytes match exactly (436919 / 2180555 / 8737151) and the full byte streams are archived per leg (raw.pt in the trial dirs, tar in fixtures/exit-flush/); the tmux scrollback oracle independently verifies the full flushed content (byte-identical modulo tmux's own dead-pane timestamp line)",
+   "final_head_anchor_ce5627bbd": {
+    "note": "post-fold re-anchor at the true final head (per numeric-review requirement)",
+    "byte_oracle": {
+     "2k": "47674d77...",
+     "10k": "ebd06658...",
+     "40k": "84dd7ab3...",
+     "identical_base_vs_cand": true
+    },
+    "rss_spike_40k": {
+     "base": [
+      85.7,
+      85.6
+     ],
+     "cand": [
+      0.0,
+      0.0
+     ],
+     "separation": "full (one cand leg 0.19MB in the solo trio)"
+    },
+    "rss_spike_2k_cand_mb": 0.06,
+    "rss_spike_10k_cand_mb": 0.0,
+    "kill_switch_leg": {
+     "flush_bytes": 98,
+     "spike_mb": 0.0
+    },
+    "pyte_2k_pair_spike_mb": {
+     "base": 5.2,
+     "cand": 0.4
+    },
+    "io_regime_during_legs": "DEGRADED (class A p50 82.8ms 100% stalls max 225.6ms; probes before/after recorded; measured window flush-path-free by strace census)"
+   }
   }
  },
  "validity": {
   "excluded": [],
   "notes": "All PTY trials valid (TUI exit code 0, needle sighted, calibration drift <15%); byte-oracle sha identical on every leg; kill-switch legs excluded from perf deltas (contrast only); pyte 10k/40k baseline legs labeled: the exit-guard watchdog fires there (flush truncation risk when the drain outlasts the deadline - see slow_drain_regime_finding); the probe build was used for decomposition only (its timing marks are not in any perf delta); the 40k 'rows' label = 32,286 rendered rows (seed 8800 message pairs, 2.76MB session JSONL)."
  },
- "outcome": "in-progress (PR open; awaiting numeric review + both adversarial reviewers on the final head + operator disposition; NO merge by this lane)",
- "decision": "pending orchestrator numeric review",
+ "outcome": "pr-open-reviewers-requested (numeric review ACCEPTED @ ae4355af7; final-head evidence posted; both adversarial reviewers requested on ce5627bbd; NO merge by this lane)",
+ "decision": "orchestrator numeric review: ACCEPTED (PR #2913). Awaiting explicit APPROVE from both adversarial reviewers on ce5627bbd + operator disposition of the known-red state. No merge by the lane.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2913",
  "record_path": "data/hillclimb/experiments/20260927-010500-interaction-exit-flush-bounded-stream.json",
  "session": {
