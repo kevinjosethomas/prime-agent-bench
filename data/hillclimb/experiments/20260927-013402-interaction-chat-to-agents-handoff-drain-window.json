@@ -399,8 +399,8 @@
   "excluded": [],
   "notes": "prefold pair 60/60 valid, final-head pair 40/40 valid, zero errors, zero precondition fails; per-slot sha asserts (launcher + payload) all matched; the instrumented throwaway build and the gate-lint iteration builds never ran timing legs"
  },
- "outcome": "POSITIVE - chat->agents 68ms -> 14ms p50 (-79%) at both the pre-fold and folded-head pairs, flat and tight on the candidate; the 50ms attribution proven by 12/12 zero-event full-window drains; kitty-release contract locked by the new real-pty e2e at the PR head",
- "decision": "PR #2916 OPEN at 527cad7a4 - routed to BOTH adversarial reviewers with the full CI state; awaiting their explicit sha-bound verdicts + operator disposition of the two disclosed reds (benchmark non-applicability + the shard-4 interactive_daemon_e2e wedge)",
+ "outcome": "MERGED - PR #2916 squash-merged as 571dde77c on origin/rust (perf(pa-tui): handoff drains park on observed input, not a fixed wait - chat-to-agents -79%), 2026-09-27 under the standing authorization: orchestrator numeric review ACCEPTED + BOTH adversarial reviewers' EXPLICIT SHA-bound APPROVEs at 527cad7a492af7ce52816d479a971dcb7b48df2d + Kevin's disposition of the CI reds (the benchmark non-applicability standing class + the interactive_daemon_e2e solo-hang wedge ruled not accurate for the merge bar; its root-cause continues with the bisect worker as an upstream item)",
+ "decision": "MERGED 571dde77c",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2916",
  "record_path": "data/hillclimb/experiments/20260927-013402-interaction-chat-to-agents-handoff-drain-window.json",
  "session": {
@@ -424,5 +424,6 @@
   "fail_test_shard_4": "DISCLOSED RED: shard 4 wedged 45min inside pa-cli#test:interactive_daemon_e2e with a stuck daemon+2-workers trio (job timeout kill; later units incl. kitty_release_handoff_e2e never ran). The SAME wedge reproduced on the VM BASE arm - interactive_daemon_e2e is byte-identical on both arms, so the wedge is NOT candidate-caused; it sits in the fcf306e2b upstream series (the #2913 exit-flush streaming change's territory). Needs operator disposition; the lane's new e2e PASSES in both VM full-suite runs (2/2 at both fold heads).",
   "note": "origin/rust moved to 1f45bd860 (styling-only) AFTER the final fold; the PR head 527cad7a4 folds fcf306e2b - disclosed to the reviewers and the orchestrator"
  },
- "updated": "2026-09-27T02:57:06Z"
+ "updated": "2026-09-27T06:55:50Z",
+ "squash_sha": "571dde77c6b21644f19690fc371c940f27ef81a5"
 }
