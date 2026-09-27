@@ -115,6 +115,10 @@ def main():
                            ["confirm2-n100-C-1", "confirm2-n100-C-2"])
     confirm3_n100 = paired(["confirm3-n100-B-0", "confirm3-n100-B-3"],
                            ["confirm3-n100-C-1", "confirm3-n100-C-2"])
+    confirm4_n100 = paired(["confirm4-n100-B-0", "confirm4-n100-B-3"],
+                           ["confirm4-n100-C-1", "confirm4-n100-C-2"])
+    confirm5_n100 = paired(["confirm5-n100-B-0", "confirm5-n100-B-3"],
+                           ["confirm5-n100-C-1", "confirm5-n100-C-2"])
     regime = []
     for line in (RUNS / "abba-regime-watch.jsonl").read_text().splitlines():
         line = line.strip()
@@ -161,6 +165,8 @@ def main():
             "final_pair_1507d399b_lineage_n1": confirm2_n1,
             "final_pair_1507d399b_lineage_n100_SUSPECT_contaminated": confirm2_n100,
             "final_gated_pair_1507d399b_lineage_n100": confirm3_n100,
+            "folded_pair_013e40a4a_lineage_n100": confirm4_n100,
+            "folded_pair_4d57eb082_lineage_n100_rebind_head": confirm5_n100,
         },
         "regime": {
             "fsync_probe": "4KB fdatasync x20 per probe, 20s cadence during ABBA",

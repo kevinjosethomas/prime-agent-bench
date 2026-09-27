@@ -67,8 +67,15 @@ record = {
        "mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - classified ACTIVE "
        "KNOWN-RED (rotating daemon-timing flake family, citations auto-attached, NOT a lane red); "
        "verdict RED_KNOWN_REDS = not merge evidence per the fleet rule.",
-   "full_suite_vm_gate_4becda49a": "gate_1790458149 armed at the settled head; verdict appended to the "
-       "PR thread when it lands (same classification rules)."},
+   "full_suite_vm_gate_4becda49a": "gate_1790458149: fmt/clippy GREEN, workspace test rc=101 with EXACTLY ONE "
+       "failure = the registered rotating mcp_login known-red flake (auto-cited), zero unknown failures "
+       "(RED_KNOWN_REDS = not merge evidence).",
+   "full_suite_vm_gate_e61c5f2e3": "gate_1790464516: FULLY GREEN (fmt+clippy+workspace test, ZERO failures) on "
+       "the folded combined tree at the 013e40a4a lineage.",
+   "full_suite_vm_gate_828beb5e7_REBIND_HEAD": "gate_1790466471: FULLY GREEN (fmt+clippy+workspace test, ZERO "
+       "failures) on the folded combined tree at the 4d57eb082 lineage - merge-grade evidence at the re-bind head.",
+   "github_ci_at_4becda49a": "FULLY GREEN per both adversarial reviewers (fmt, check+clippy, shards 1-4/4, test "
+       "summary, Bugbot, Macroscope; only red = the standing non-applicable TS benchmark, operator disposition)."},
  "measurements": BASE["measurements"],
  "decomposition": {
    "sup_cpu_per_append_fit": "base: a=515us + b=21.2us*N fits N=1/10/50/100 within 4% at both trials; candidate: b drops to ~5.9us*N (clone share ~15us of the 21us per session per append)",
@@ -90,7 +97,11 @@ record = {
               "3289.7/3844.2) -> candidate 1587.2us (legs 1524.7/1649.7) = -55.5%. The base's "
               "per-append CPU is higher at the newer tip for BOTH binaries (~+35%, consistent "
               "with larger upstream event payloads); the mechanism delta holds across all "
-              "clean pairs.",
+              "clean pairs. AT THE FINAL RE-BIND HEAD (fold of tip 4d57eb082 -> 828beb5e7): "
+              "append1 base 2687.7us (legs 2664.3/2711.1) -> candidate 1081.1us (legs "
+              "1075.7/1086.5) = -59.8%; append2 -60.0% (the tightest legs of the campaign; "
+              "both binaries returned to the ~2690/~1080 band at this lineage, with the "
+              "intermediate-tip +35% cost shift not present at 4d57eb082).",
    "secondary_none": "wall/latency: NO CLAIM - append wall and p50/p95 are dominated by "
                      "the fdatasync barrier + storage regime. N=1 CPU: NO CLAIM (B/C "
                      "ranges overlap at every lineage).",
@@ -144,9 +155,25 @@ record = {
               "first pair - the product's durability class (fdatasync on a growing "
               "file under 100-way concurrency) samples neither probe class cleanly; "
               "latency legs are DIAGNOSTIC-ONLY everywhere in this record",
-   "calibration": "fixed 32MB sha256 work: min 0.017s across all 24 runs; single-sample "
-                  "max spikes to 0.021-0.036s in 4 runs (I/O-window turbulence); CPU "
-                  "legs unaffected (B legs stable 2563-2728us across both windows)."},
+   "calibration": "fixed 32MB sha256 work: min 0.017s across all runs; single-sample max "
+                  "spikes to 0.021-0.036s in a few runs (I/O-window turbulence); CPU legs "
+                  "unaffected (B legs stable 2658-2740us at the final lineage).",
+   "advisory_v0_9_compliance": "perf-write-regime-fast advisory applied: (a) the confirm-series leg gates "
+                  "used 20-op dual-class p50 probes - the advisory's underdetection limitation is disclosed; "
+                  "(b) retroactive classification of the re-bind-head pair (confirm5): 3 of 4 legs HEALTHY "
+                  "(both classes 0% stalls >15ms: repeat p50 0.14-0.24ms, fresh p50 0.22-0.35ms, max 0.56ms); "
+                  "leg B-3's window had the fresh class degraded (p50 140.7ms, 100% stalls) while the repeat "
+                  "class stayed clean (0.21ms, 5% stalls) - and B-3's CPU legs stayed in-band (2711/2740 vs "
+                  "B-0's 2664/2658), mechanistically consistent with the advisory's flush-path-only picture "
+                  "AND with the append path riding the repeat class; (c) post-pair preflight (>=40 isolated "
+                  "fresh+sync_all+rename @0.5s spacing + 20 repeat): window DEGRADED (fresh stall-rate 100%, "
+                  "p50 141.6ms = ~354x this host's known-good; repeat p50 0.23ms, 5% stalls, one 135.7ms) - "
+                  "no further timing legs taken; (d) probe script left at /root/preflight.py on the VM; "
+                  "thresholds applied host-relative (known-good fresh ~0.4ms, repeat ~0.2ms on this host).",
+   "vm_coordination": "perf-subscriber-registry-fast (the follow-up lane this record names) sequenced its own "
+                  "ABBA behind this lane's legs on the shared measurement VM (its driver stopped at 0 legs on "
+                  "first contact; VM-FREE sent after the re-bind pair + the DEGRADED-window warning).",
+ },
  "evidence": {
    "runner": "scripts/concurrent_io_curve.py + scripts/concurrent_io_analyze.py + "
              "scripts/build_concurrent_io_record.py (bench hillclimb)",
@@ -164,13 +191,13 @@ record = {
    "per-connection event arm serializes from the shared Value. The change mirrors the "
    "worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers "
    "deref back to owned Values so test assertions are unchanged in meaning."),
- "decision": "PAIRED WIN on the mechanism (-62% supervisor CPU per event at N=100 in "
-             "clean windows at the 7064d039 lineage, reproduced twice; -55.5% on the "
-             "clean gated pair at the settled head 1507d399b/4becda49a where the base "
-             "itself got ~35% more expensive per event; plus the stability observation "
-             "favoring the candidate under turbulence). Parent disposition: OPEN THE "
-             "PR - opened via fleet_pipeline with the scoped claim. No merge: numeric "
-             "review + BOTH adversarial reviewers on the settled PR head + effective "
-             "conditions + standard dispositions remain the bar.",
+ "decision": "PAIRED WIN on the mechanism, evidenced at FOUR upstream lineages: -62% twice at "
+             "7064d039; -55.5% at the 1507d399b settled head; -59.9%/-62.6% at the 013e40a4a fold; "
+             "-59.8%/-60.0% at the 4d57eb082 re-bind fold (tightest legs). BOTH adversarial reviewers "
+             "EXPLICITLY APPROVED at 4becda49a; per their binding stale-base conditions the lane folded "
+             "twice more (e61c5f2e3, 828beb5e7) with byte-identical mechanism re-diffs and FULLY GREEN "
+             "full-suite gates at both folded heads; re-bind requests at 828beb5e7 are out. The "
+             "orchestrator's numeric review ACCEPTED. Merge is the parent's under the standing "
+             "authorization (operator dispositions: benchmark non-applicability + flake registrations).",
 }
 print(json.dumps(record, indent=1, sort_keys=True))
