@@ -1462,6 +1462,13 @@
   "vm_coordination": "perf-subscriber-registry-fast (the follow-up lane this record names) sequenced its own ABBA behind this lane's legs on the shared measurement VM (its driver stopped at 0 legs on first contact; VM-FREE sent after the re-bind pair + the DEGRADED-window warning)."
  },
  "review": {
+  "merge_bar_state": {
+   "merge": "parent's under the standing authorization, on the operator dispositions",
+   "numeric_review": "ACCEPTED",
+   "operator_dispositions_pending": "benchmark non-applicability; mcp_login + a_bang registrations",
+   "reviewer_1": "EXPLICIT APPROVE re-bound @ 828beb5e7 (effective)",
+   "reviewer_2": "EXPLICIT APPROVE re-bound @ 828beb5e7 (effective)"
+  },
   "numeric_review_orchestrator": {
    "verdict": "ACCEPTED at 4becda49a (then the re-bind cycle ACCEPTED)"
   },
@@ -1470,7 +1477,11 @@
    "verdict": "EXPLICIT APPROVE at 4becda49a (effective); re-bind request at 828beb5e7 delivered; fold condition = upstream-only + byte-identical mechanism + clients.rs watch item"
   },
   "reviewer_1_rebind": {
-   "status": "request delivered at 828beb5e7 with full CI state; verdict pending"
+   "a_bang_shard": "reviewer's registered family, 9th fleet occurrence at the identical line (bash_bang_headless.rs:863:22); satisfies the green-or-registered-flake condition WITHOUT a rerun; occurrence appended to the operator registration evidence set",
+   "conditions": "SHA-bound to 828beb5e7; merge gate remainder = reviewer #2 re-bind (ALSO EFFECTIVE), orchestrator numeric review (ACCEPTED), operator dispositions (benchmark non-applicability; a_bang registration with this occurrence; mcp_login registration per reviewer #2)",
+   "head_freeze": "head frozen per the standing rule - any further fold re-triggers the standard re-verification + the clients.rs watch",
+   "verdict": "EXPLICIT APPROVE RE-BOUND to 828beb5e71a99f45d8996db249f46964017199d2 (effective)",
+   "verification": "own line-for-line comparison: 65/65 changed lines IDENTICAL between the 828beb5e7 lane diff (merge-base 4d57eb082) and the approved 4becda49a diff; folds upstream-only; clients.rs watch item untriggered"
   },
   "reviewer_2_parity_adversary_2_fast": {
    "github_ci_at_4becda49a": "FULLY GREEN (reviewer's own pull) except the standing TS benchmark",
