@@ -1,0 +1,108 @@
+{
+ "id": "20260927-093000-interaction-warm-durable-append-regime",
+ "axis": "interaction",
+ "lane": "warm-durable-append (perf-warm-durable-append-fast)",
+ "hypothesis": "The warm-turn ack->user_row spread (model-resolve-cache record 20260927-013300 reported-only #2) includes the durable-append fdatasync; characterize how much of the spread is REGIME (the fleet's flush trap) vs MECHANISM (the phase's durable-write structure), then a behavior-preserving candidate only if the decomposition shows mechanism-side waste (redundant fsyncs / unbatched appends on the same file); the fresh-write durability class and the per-row session-append fdatasync are the product's contract and are never weakened; honest negative if the spread is pure regime.",
+ "source_finding": "20260927-013300-interaction-model-resolve-cache-auth-inproc-lock.json reported-only #2: the warm-turn ack->user_row spread includes the durable-append fdatasync; the single 401.8ms base-arm stall in the confirmation leg was that regime's signature",
+ "approach": "(1) BASELINE DECOMPOSITION at origin/rust e6e7a26e4 (build 357ee4ad, one VM hillclimb-perf-warm-durable-append ubuntu:22.04 16c/32GB): the bench compare.msg_send mock-regime protocol replicated verbatim (model-resolve-cache lane driver, extended to 4-turn sessions so turns 2-4 are warm); 36 warm turns across 3 paced passes + 6 timing-off control turns + 23 strace-censused warm turns (lean -T -y filter; census/durations evidence only, never phase timing); advisory v1.0 dual-class preflights (probe_v09: 40 isolated fresh+sync_all+rename @0.5s + 20 repeat-fsync, host-relative) at every leg boundary + a continuous isolated product-shape append+fdatasync sidecar probe @2s labeling every turn; (2) REGIME-vs-MECHANISM attribution from the phase census + strace durations; (3) candidate: batch the queue-checkpoint journal pair (queue-snapshot record + busy record) into ONE open+write+fsync, then same-VM sha-asserted ABBA (A-B-B-A x3 rounds, 18 warm turns/arm) + census delta + parity oracles.",
+ "parity_notes": "Frozen surfaces untouched: session JSONL rows byte-identical across arms (role/type sequences asserted), RLM wire, prompts, TUI output; the worker recovery journal's on-disk line sequence is IDENTICAL between the sequential and batched forms (unit test with recorded_at normalization + the ABBA's in-product journal parity oracle across 6 trials/arm); the batch is all-or-nothing durable (both records durable before the checkpoint returns; the documented 'verdict never publishes over an unpersisted snapshot' invariant is preserved and strengthened); durability is NEVER weakened - the session append's per-row sync_data fdatasync is untouched; TS parity: TS worker-recovery-journal record = ONE append+fsync per changed record; the queue-snapshot record is Rust-native (queue-lane recovery), so the batch keeps the Rust file's bytes while halving the flush count toward the TS shape. The measured mock path (prime-inference/mock-1 via bench vendored mock_provider SSE, queue-matched 4-turn fixture) replicates the campaign's compare.msg_send provider path; the driver's typed prompt carries the probe-prefix leftover 'Zq7bench hello' exactly as the bench harness's own erase_all semantics leave it - same protocol class as every msg_send row; disclosed.",
+ "base": {
+  "revision": "e6e7a26e4ed9c5bb051df2fedccd270eba946c33 (origin/rust at lane create; base binary sha256 357ee4ad929394603610e9fb0dd30bd257eefdb05b46dd83212664cad6667f13)"
+ },
+ "branch": "lane/perf-warm-durable-append",
+ "commits": [
+  {
+   "sha": "e8de6b8fa89ba4e0edd7a145b8ccde4ff01e932a",
+   "note": "candidate at the pre-fold base (ABBA binary ca1da941 built from this tree)"
+  },
+  {
+   "sha": "da487a9d699687031875f2d9e9fc196ddfb784ea",
+   "note": "fold of origin/rust 631fe82d6 (fleet_fold GREEN; re-diff = exactly the lane delta)"
+  },
+  {
+   "sha": "18ef9a1eb2914624d3f79ff58f33f3b302b10d87",
+   "note": "PR head: test-only rustfmt of the new test call sites (release binary unchanged)"
+  }
+ ],
+ "build": {
+  "vm": "hillclimb-perf-warm-durable-append (xbccd3agq3id3tbvbbmupfa0)",
+  "base_binary_sha256": "357ee4ad929394603610e9fb0dd30bd257eefdb05b46dd83212664cad6667f13",
+  "candidate_binary_sha256": "ca1da941ca3d375226cbb6d20360a2f24a2e61c5d0ce0de18c2b30e59b28374a (source e8de6b8fa; the PR head 18ef9a1eb adds test-only rustfmt - release binary identical)"
+ },
+ "gates": {
+  "gate_1790497201_823935": "RED at pre-amend head 08576e58b: clippy 6 pedantic findings (too_many_arguments, needless_return, doc_markdown, redundant_clone, cloned_ref_to_slice_refs x2) - ALL fixed in e8de6b8fa",
+  "gate_1790497296_823935": "at e8de6b8fa: fmt RED (5 test-call-site rustfmt findings, fixed test-only at 18ef9a1eb); clippy GREEN; test rc=101 on 4 co-scheduling flakes (hb-snapshot-fallback, fd-count, acp-attached, mcp_login expired known-red) - all 4 triaged SOLO-GREEN at 18ef9a1eb on the lane VM",
+  "gate_1790499175_823935": "at the PR head 18ef9a1eb: fmt GREEN, clippy GREEN, test rc=101 on exactly ONE failure - mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating (KNOWN-RED EXPIRED mcp_login_worker_begin_login_gating, DNS-mode 'Name or service not known'); fresh triage SOLO-GREEN at the exact head (0.36s); the 3 flakes from the prior run all GREEN in this re-gate",
+  "benchmark_ci": "GitHub PR benchmark check: the standing non-applicability disposition (TS harness) - never called pass",
+  "github_ci_rollup": "PR #2936 at 18ef9a1eb: fmt SUCCESS; check+clippy(workspace) SUCCESS; test shards 1-4/4 SUCCESS + partition-audit summary SUCCESS (shard 4/4 infra-CANCELLED mid-run in the first pass - its 8/8 reported units green, partition audit failed on unreported units; the --failed rerun completed it to full SUCCESS; rerun discipline 1+1, no test ever failed); loc SUCCESS; Cursor Bugbot SUCCESS; Macroscope Correctness SUCCESS; contribution gate SUCCESS; benchmark check FAILURE = the standing TS-harness non-applicability disposition (never called pass)",
+  "fleet_review": "review_1790501262_823935: mechanical fmt+clippy GREEN; 1 blocker = the same expired known-red (disposition set attached); 2 advisories = stale_base (standing operator policy: PRs hold at reviewed SHAs; the lane's post-fold re-diff vs its folded base is EXACTLY the 2-file delta) and journal.rs file-size 943 LoC (advisory-only, never blocking)"
+ },
+ "measurements": {
+  "method": "same-VM sequential battery + ABBA on hillclimb-perf-warm-durable-append (xbccd3agq3id3tbvbbmupfa0, ubuntu:22.04 16c/32GB/80GB, rustup 1.98.1); bench compare.msg_send mock-regime protocol replicated verbatim (model-resolve-cache driver extended to 4-turn sessions; turns 2-4 warm); PI_REQUEST_TIMING on for phase extraction; binary sha asserted per trial; per-trial journal copies + session files for the parity oracles",
+  "baseline_at_e6e7a26e4": {
+   "warm_turns_n": 36,
+   "ack_to_user_row_ms": {
+    "p50": 2.33,
+    "min": 0.97,
+    "max": 40.65,
+    "bands": "<=3ms: 20/36; 3-10ms: 10/36; 10-20ms: 2/36; >20ms: 4/36"
+   },
+   "controls_timing_off": {
+    "n": 6,
+    "p50": 1.41,
+    "min": 0.81,
+    "max": 2.8
+   },
+   "phase_census_strace": "per warm turn: session file 2 writes + 2 fdatasyncs (user row 0.30-1.9ms observed, assistant row 0.30-2.0ms); worker recovery journal 4 writes + 4 fsyncs (admission pair + settle pair; 0.17-0.94ms healthy floors); agent.jsonl 5 request-timing appends (production: timing off; bounded by the controls); ack->user_row contains exactly journal fsync #1 + journal fsync #2 + the user-row fdatasync (the TUI ack is the local render, #2868)",
+   "tail_attribution": "3 strace-covered tails: 32.63ms phase = journal fsync#1 31.94ms (busy-record fsync 0.47ms); 157.53ms = fsync#1 153.09ms (fsync#2 2.60ms); 516.48ms = fsync#1 470.32ms (fsync#2 42.50ms); the session user-row fdatasync amortized to 0.30-0.47ms in ALL THREE (rides the pipeline the stalled journal fsync primes) - the tail is NOT the durable-append fdatasync"
+  },
+  "regime_calendar_context": {
+   "preflights": "probe_v09 at pre/mid1/mid2/mid3/post (baseline battery) and c2pre/c2post + ABBA pre/mid1/mid2/mid3/post: ALL CLASS=D - isolated fresh+sync_all+rename stall-rate 100%, p50 26.1-51.1ms, max 205.8-256.9ms; burst repeat-fsync p50 0.16-0.26ms (5% stall) - the calendar's class divergence, chronic incident band",
+   "sidecar_product_shape": "isolated open(O_APPEND)+write(4KB)+fdatasync @2s cadence: 100% of samples >15ms (p50 25.6-31.3ms, min 24.1ms, max 111.1ms first sample) across the whole battery - the host's isolated-op trap while the product's phase clusters amortize",
+   "context_disclosure": "the battery opened right after the 1.4GB cargo build (Dirty 244MB first sample; the first sidecar fdatasync 111ms); the writeback drained but the isolated-op trap persisted the whole session - chronic window context disclosed; host-relative per advisory v1.0"
+  },
+  "regime_vs_mechanism_verdict": "the spread's TAIL (>20ms, 4/36; and the mid-band partial hits) is REGIME - the isolated-op trap piercing the phase's write cluster at its FIRST sync; the phase's sync COUNT (3: two unbatched journal appends + the session append) is the mechanism-side structure, and TS parity is ONE journal fsync per admission (the queue-snapshot record is Rust-native) - the named waste class 'unbatched appends on the same file'",
+  "abba_at_e8de6b8fa": {
+   "design": "A=base 357ee4ad (e6e7a26e4), B=cand ca1da941 (e8de6b8fa); A-B-B-A x3 rounds x 4-turn trials, 18 warm turns/arm, sha asserted per trial; sidecar + preflights throughout (host CLASS=D all legs, labeled)",
+   "warm_ack_to_user_row_ms": {
+    "A_p50": 1.65,
+    "A_min": 1.02,
+    "A_max": 52.82,
+    "B_p50": 1.505,
+    "B_min": 0.75,
+    "B_max": 55.93,
+    "paired_rounds_A_minus_B_ms": [
+     1.08,
+     0.215,
+     -0.1
+    ],
+    "tails": "A 3/18 >=15ms; B 2/18 >=15ms - both arms tail-hit the same regime windows (disclosed, no tail claim)"
+   },
+   "census_delta": "A journal = 4 writes + 4 fsyncs per warm turn (2 per checkpoint); B = 2 writes + 2 fsyncs (1 per checkpoint); session writes/fdatasyncs identical; the pure-regime residual demonstrated on the candidate: cs-B turn3's single batched journal fsync paid a 51.17ms trap (first-sync exposure remains); the base's SECOND-sync exposure (0.47/2.60/42.50ms in the three strace tails; 5.57ms in cs-A turn4) is structurally removed",
+   "parity": "journal line sequences IDENTICAL across arms (6 trials/arm, recorded_at + per-trial ids normalized - the in-product batched-vs-sequential byte oracle); session role/type sequences identical; all trials completed; mock request logs queue-matched every turn"
+  }
+ },
+ "validity": {
+  "controls": "timing-off controls bound the request-timing log writes (6 warm turns p50 1.41ms, floor-consistent)",
+  "protocol": "msgsettle/model-resolve-cache protocol lineage verbatim; probe-prefix leftover 'Zq7bench hello' disclosed (same erase_all class)",
+  "strace_rule": "strace-covered trials are census/anatomy evidence only, never phase-timing evidence; the timing claims come from unstraced trials",
+  "rerun_discipline": "gate reds: 1+1 then stop - two full-suite gates run (e8de6b8fa, 18ef9a1eb) + solo triage of every distinct red at the exact head; no green-fishing",
+  "disclosed_reds": [
+   "mcp_login expired known-red (DNS mode, solo-green at the head)",
+   "wave_b10_heartbeat_snapshot_fallback, supervisor_fd_count_stable_across_session_cycles, acp_daemon_attached_reports_autonomous_accounting_and_limit_stop_reason (co-scheduling flakes, all solo-green at the head and green in the final gate)"
+  ],
+  "frozen_surfaces": "session JSONL rows identical across arms; RLM wire, prompts, TUI output untouched; the journal's on-disk bytes identical to the sequential form (unit oracle + in-product ABBA oracle)",
+  "durability": "NEVER weakened: every checkpoint record durable before the turn proceeds (one fsync instead of two, all-or-nothing); the session append's per-row sync_data untouched"
+ },
+ "outcome": "POSITIVE (mechanism-side waste removed; regime tail disclosed as NOT fixed). The decomposition attributed the warm-turn ack->user_row spread: the TAIL is REGIME - the host's isolated-op flush trap piercing the phase's write cluster at its FIRST sync (3 strace-covered tails: the first journal fsync paid 31.9/153.1/470.3ms while the durable-append fdatasync amortized to 0.30-0.47ms in ALL THREE - the source finding's framing that the spread 'includes the durable-append fdatasync' is refined: the fdatasync is the phase's CHEAPEST sync in trapped windows; the journal fsyncs pay). The MECHANISM-side waste the brief names was confirmed and removed: the admission checkpoint's two journal records (queue-snapshot + busy verdict) were unbatched appends on the same file paying 2 fsyncs where 1 all-or-nothing fsync preserves bytes, order, and the documented verdict-never-over-unpersisted-snapshot invariant. ABBA at e8de6b8fa (A=base, B=cand, 18 warm turns/arm, host CLASS=D all legs, labeled): warm ack->user_row p50 1.65 -> 1.505ms; census delta = the structural claim: journal 4 writes + 4 fsyncs per warm turn -> 2 + 2 (1 fsync per checkpoint); journal line sequences IDENTICAL across arms in-product; session rows identical; the pure-regime residual demonstrated ON the candidate (cs-B turn3: the single batched fsync paid a 51.17ms trap - first-sync exposure remains by design of the storage regime, disclosed); the SECOND-sync exposure the base paid (0.47/2.60/42.50ms in the three strace tails; 5.57ms in cs-A turn4) is structurally removed. The regime-vs-mechanism answer for the record: the spread's tail is regime (cluster-piercing isolated-op trap); the mechanism contributes the sync COUNT (3 per phase at base, 2 after the fix; TS parity = 1 journal fsync) and the floor it costs.",
+ "decision": "Lane evidence complete at the PR head 18ef9a1eb (PR #2936): baseline decomposition (36 warm turns + 23 censused) + regime attribution (3 strace-covered tails; sidecar + dual-class preflights, host chronically CLASS=D, post-build context disclosed) + candidate + same-VM sha-asserted ABBA with the census delta and in-product parity oracles + full-suite gates (fmt/clippy GREEN; the single expired known-red mcp_login disclosed with a fresh solo-green triage at the exact head; the 3 co-scheduling flakes from the prior gate run each solo-green and all green in the final gate + GitHub CI) + GitHub CI rollup complete at the head (shard-4 infra cancellation rerun per discipline; benchmark = standing non-applicability). Both adversarial reviewers (parity-adversary-fast, parity-adversary-2-fast) routed with the completed CI rollup + the disposition set; merge-bar verdicts pending at record-commit time; the record updates through the merge. Reported-only for future lanes: (1) the phase's residual syncs (1 batched journal fsync + the session fdatasync) still expose the first-sync trap in incident windows - a regime question, not a mechanism one; (2) the settle tail's compact (rewrite+sync_all+rename) immediately follows the settled checkpoint's batched append - a possible future consolidation candidate (higher crash-window risk, out of scope here); (3) journal.rs at 943 LoC carries the reviewer's advisory-only split suggestion.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2936",
+ "record_path": "data/hillclimb/experiments/20260927-093000-interaction-warm-durable-append-regime.json",
+ "session": {
+  "worker": "perf-warm-durable-append-fast"
+ },
+ "timestamp": "2026-09-27T10:30:00Z",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/warm-durable-append/ (evidence-baseline.tar.gz sha256 7080fad79cb39487c557dd437e70e6ef4fa5f88831ac4d4e5fa7a54205d06f47, 29 members; evidence-abba.tar.gz sha256 8ee6b0c84c7f7a082ae1b2ea98455090a730120018c0beb380f6e80b8ee2de8d, 24 members; analysis JSONs; drivers + benchvendored mock)"
+ }
+}
