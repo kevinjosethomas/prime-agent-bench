@@ -1,0 +1,158 @@
+{
+ "id": "20260927-213500-interaction-model-resolve-authmemo-candport",
+ "axis": "interaction",
+ "hypothesis": "TS #2479 (stale perf PR, partially superseded) carries 4 unclaimed mechanisms for the rust port: (a) registry.rs get_available's per-model has_configured_auth (the per-model candidate-fingerprint rebuild at the filter loop), (b) registry.rs get_rlm_searchable_models' per-model get_auth_status, (c) AuthStorage candidate hashing (the per-has_auth SHA-256 fingerprint rebuild of auth-source candidates), (d) the private Prime Inference authorization-cache re-parse per resolution touchpoint. At the tip the RPC get_available_models handler builds a FRESH registry and awaits the refresh chain per call, so every call pays (a)+(c)+(d) (and (b) on the find_models path). Porting all four via per-provider memos (a,b), a material-keyed candidate memo (c, TS authCandidateMemos), and a stat-identity parse snapshot (d, TS CatalogFileIdentity) cuts the per-call resolution CPU classes with zero observable-behavior change (frozen surfaces: the gam response payload byte-identical).",
+ "approach": "PHASE 0 RECONSTRUCTION (lane reboot after a model-endpoint outage; session = rsi-triage on glm-5.3-high-throughput): the predecessor's probe stdout was lost with its session; the durable state was recovered (bin-A-tip 34c7fd875c staged, VM tree tip+candidate fmt-clean with clippy finished, mr_probe + abba_driver + fixtures, worktree off a5235b123) and the decompose legs RE-RUN clean. The predecessor's candidate had 3 of the 4 mechanisms; the missing AuthStorage candidate memo was ported (reuse_auth_source_candidate: keyed by the hashed material itself - runtime key, stored identity+value material with the value-lazy marker, env identity+api_key re-read per call, fallback api_key; reuse skips only the SHA-256 work; stale checks run against the memoized candidate). PHASE 1 DECOMPOSE (mr_probe, VM-only, never committed; both arms built from the exact tip/cand sources, probe shas 15ecc9db/6c8ec07d; two agent-dir fixtures: bench = models.json->mock + empty private cache, ent = +60-entry fingerprint-matched private cache, PRIME_API_KEY=sk-bench PRIME_TEAM_ID=bench-team). PHASE 2 CANDIDATE GATES on the lane VM: fmt --all --check rc=0, clippy --workspace --all-targets -D warnings rc=0 (after two authoring fixes: a ?-in-closure error and one uninlined_format_args), build --release --locked rc=0, and the post-probe workspace rebuild reproduced the staged candidate binary BYTE-IDENTICALLY (9ced73a51d). PHASE 3 ABBA on the RPC surface (A=tip 34c7fd875c, B=tip+5549facde 9ced73a51d): A-B-B-A x2, 8 blocks, each = 1 fresh-process trial (get_state ready-wait, 8s settle, 16 get_available_models calls), unlink-then-copy staging with sha asserts pre/post every block, io-probe v1.0 before every block, raw response bytes+sha per call. PHASE 4 FLEET GATE on head 5549facde (RED, 4 members, all triaged: my own new test's premise wrong -> fixed in ae611e7fe; kernel_restore_guards x2 + tui_prime_login_escape SOLO-GREEN = the standing co-scheduling family), FOLD org/rust 07f42eaa3 into the lane (GREEN, no conflicts, post-fold re-diff byte-identical hunk-by-hunk on all 3 files), RE-GATE on the folded head 7d87e6296.",
+ "parity_notes": "The port preserves every observable behavior: (1) the per-provider memos live INSIDE single get_available/get_rlm_searchable_models calls on &self (no mutation possible mid-call), so each call probes exactly as before but once per provider instead of once per model - the stale-aware has_auth semantics (a marked credential is not 'configured'; available_candidate skips stale-matched candidates) are asserted by the fixed regression test; (2) the private-cache snapshot pins only a successful parse bracketed by one stat identity (dev/ino/mtime_ns/len), unpins on failed reads, and the write path's atomic rename supersedes by identity - the TS CatalogFileIdentity shape; (3) the candidate memos are keyed by the hashed material itself, so a changed env value/stored credential/fallback value rebuilds (the supersession regression test drives a stale marking through env-value changes both directions); (4) FROZEN SURFACES proven by oracle: the gam response is BYTE-IDENTICAL across arms and trials (0 of 16 call-indexes with >1 distinct sha256 across all 8 trials; the +1 byte at gam10+ is the echoed request-id length, the known driver artifact); no wire/schema/prompt/session-JSONL/TUI byte touched (3 files in pa-core).",
+ "base": {
+  "revision": "a5235b123c7c4465ec4c9f1c29704aef5b57d7b8 (origin/rust at lane start)",
+  "note": "the brief said tip 5cf45d4d (28 merges); origin/rust had advanced (splits moving); the three touched files (pa-core/src/models/registry.rs, pa-core/src/models/private_auth.rs, pa-core/src/auth/manager.rs) are in NO moving split series; the gate flagged base_state stale (tip d3d4e5ca9->07f42eaa3 while the lane ran) -> fleet_fold 07f42eaa3 appended, post-fold re-diff byte-identical, re-gate on the folded head 7d87e6296"
+ },
+ "branch": "lane/perf-revive-2479",
+ "commits": [
+  {
+   "sha": "5549facde0760b79184b2c485625c4248dab8a3a",
+   "subject": "perf(pa-core): provider auth answers once per provider and the private PI authorization cache parses once per file identity (TS #2479)"
+  },
+  {
+   "sha": "ae611e7fec5a28dbb3ed76874580a7dd821ce757",
+   "subject": "test(pa-core): the stale-provider memo test asserts the tip's stale-aware has_auth"
+  },
+  {
+   "sha": "7d87e62962723bbda2889f3864027ae28805e8b4",
+   "subject": "Merge branch 'rust' of https://github.com/PrimeIntellect-ai/prime-agent into lane/perf-revive-2479 (fold of org/rust 07f42eaa3)"
+  }
+ ],
+ "build": {
+  "sandbox_id": "ivt417l0kqyy5skvg97h6rgi (hillclimb-perf-revive-2479, ubuntu:22.04 16c/32GB/100GB vm=True, network_access=True)",
+  "baseline_binary_sha256": "34c7fd875ca6d8cf095d9569992ca53734c428913bfa44c47c9c06556db98392 (tip a5235b123, 222815760 bytes)",
+  "candidate_binary_sha256": "9ced73a51d0902df21e591c2d6c68a6a4ad73990cef01a88129a4bbb96423802 (tip + 5549facde, 222818520 bytes; BYTE-REPRODUCED by the post-probe workspace rebuild)",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0 both arms"
+ },
+ "gates": {
+  "fmt": "GREEN (VM cargo fmt --all --check rc=0; fleet gate fmt rc=0 on both heads)",
+  "clippy": "GREEN (VM cargo clippy --workspace --all-targets -- -D warnings rc=0; fleet gate clippy rc=0 on both heads)",
+  "test": "GATE1 gate_1790546015_945232 on 5549facde: RED 4 members, ALL TRIAGED - (1) models::registry::tests::rlm_searchable_models_gate_one_stale_provider_across_its_models FAILED REPRODUCIBLY (my own new test's premise was wrong: the tip's has_auth is stale-aware - available_candidate skips stale-matched candidates - so a stale-marked provider's models are gated from get_available too; the memo preserves exactly those semantics; fixed in ae611e7fe, green solo + the whole models:: module 44/0); (2)+(3) kernel_restore_guards::partial_restore_keeps_the_fuller_on_disk_payload_through_the_dispose_flush + ::restored_functions_run_against_live_namespace_globals SOLO-GREEN 6/0 on the exact head content (the standing co-scheduling family from gate_1790531716); (4) tui_prime_login_escape_keeps_the_default_team_status SOLO-GREEN 12/0 (same co-scheduling class). GATE2 gate_1790547790_945232 on the folded head 7d87e6296 (base_state folded, merge-base == tip 07f42eaa3): fmt rc=0, clippy rc=0, test rc=101 with ONLY the two kernel_restore_guards members - the same standing family: SOLO-GREEN on the exact pa-core content (the tip delta a5235b123..07f42eaa3 touches only pa-daemon/pa-tui - the split series - so the folded head's pa-core is byte-identical to the triaged tree), red only under the pool VM's parallel full-suite load; my new test and the TUI member GREEN in the same full-suite run. Local legs: lane VM fmt/clippy/build green; targeted solo runs green (models:: 44/0, auth::manager 12/0, kernel_restore_guards 6/0, clipboard_auth_commands_e2e 12/0).",
+  "benchmark_ci": "PR head CI pending at record-push (the standing non-applicable TS-harness benchmark class is operator-dispositioned and never called pass)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA (A=tip bin-A, B=candidate bin-B), 2 rounds x A-B-B-A blocks; io-probe v1.0 before every block; per-call wall + raw response bytes+sha",
+  "decompose": {
+   "mr_probe": "VM-only uncommitted probe bin (crates/pa-core/src/bin/mr_probe.rs, removed before gates), both arms from the exact sources; per-round components + one class line per run; fixtures: bench (empty private cache) and ent (60-entry private cache, fingerprint-matched)",
+   "census": "bench: n_models=154 n_providers=32 n_avail=111 n_authed=112; ent: n_models=214 n_avail=171 (the 60 private models authorized); payload 59956/86296 bytes; 1 authed provider (prime-inference via env)",
+   "class_lines_per_pass_over_full_census": {
+    "tip": {
+     "per_model_has_us": {
+      "bench": 160,
+      "ent": 243
+     },
+     "per_model_status_us": {
+      "bench": 155,
+      "ent": 237
+     },
+     "memo_filter_us": {
+      "bench": 7,
+      "ent": 8
+     }
+    },
+    "cand": {
+     "per_model_has_us": {
+      "bench": "54 (clean rerun; a first run showed 255 contaminated by a transient that also produced a 2221us serde outlier - both samples disclosed)",
+      "ent": 76
+     },
+     "per_model_status_us": {
+      "bench": 51,
+      "ent": 77
+     },
+     "memo_filter_us": {
+      "bench": 6,
+      "ent": 7
+     }
+    },
+    "verdict": "the AuthStorage candidate memo cuts the per-model probe classes 66-69% (has 160->54, 243->76; status 155->51, 237->77) - the per-has_auth SHA-256 candidate-build elimination; the per-provider memo filter shape runs 6-8us/pass, ~95% under the per-model class"
+   },
+   "per_round_components_p50_us": {
+    "tip_bench": {
+     "reg": 80,
+     "priv_load": 112,
+     "avail": 16,
+     "serde": 200,
+     "payload": 267,
+     "search": 45,
+     "privread": 1
+    },
+    "cand_bench": {
+     "reg": 85,
+     "priv_load": 112,
+     "avail": 15,
+     "serde": 204,
+     "payload": 273,
+     "search": 44,
+     "privread": 1
+    },
+    "tip_ent": {
+     "reg": 91,
+     "priv_load": 161,
+     "avail": 20,
+     "serde": 268,
+     "payload": 377,
+     "search": 60,
+     "privread1": 20,
+     "privread2": 18
+    },
+    "cand_ent": {
+     "reg": 95,
+     "priv_load": 162,
+     "avail": 19,
+     "serde": 275,
+     "payload": 390,
+     "search": 57,
+     "privread1": 20,
+     "privread2": 19
+    }
+   },
+   "honest_findings": [
+    "the per-model classes the TS PR targeted are real at the tip (~1.0-1.1us/model/pass on the full census) and the two memos cut them 66-95% (candidate memo + per-provider memo shape) - the CPU-side mechanism claim, probe-proven",
+    "the in-product filter paths at the tip are already partially short-circuited (the private-gate clause precedes the auth probe), so get_available costs only ~16-20us and get_rlm_searchable ~45-60us; the per-call component deltas are ~1-3us at this 214-model/32-provider/1-authed-provider fixture shape",
+    "the private-cache stat-identity snapshot eliminates the read+parse (~20us at 60 entries) but the rust port must CLONE the cached value per hit (TS returned the object by reference); the clone costs ~the parse at this file size - net ~0 at 60 entries; the win grows only as far as parse outpaces clone",
+    "load_private_authorization_from_cache is dominated by load_models() (the catalog re-merge), not the parse - the snapshot does not move priv_load",
+    "NO WALL CLAIM on the RPC surface: the per-call mechanism delta (~1-3us) is unresolvable under the ~55ms dispatch floor (see abba_paired)"
+   ]
+  },
+  "abba_paired": {
+   "arms": "A=tip a5235b123 (bin-A 34c7fd875ca6...), B=tip+5549facde (bin-B 9ced73a51d09...)",
+   "design": "2 rounds x (A,B,B,A), each block 1 trial x 16 get_available_models calls (fresh RPC process, entitlements fixture: PRIME_API_KEY=sk-bench PRIME_TEAM_ID=bench-team + 60-entry private cache, 8s post-create settle), sha-asserted unlink-then-copy staging pre/post every block, io-probe v1.0 before every block, raw response bytes+sha per call",
+   "steady_state_gam2_16_ms": {
+    "A_p50": 55.058,
+    "A_n": 60,
+    "B_p50": 54.87,
+    "B_n": 60,
+    "delta": "-0.19ms at p50 (-0.34%), within the +-0.7ms block-p50 spread: NO measurable per-call difference on this surface; the point estimate leans B-faster, consistent with the ~1-3us component estimate, but unresolvable under the ~55ms dispatch floor (the rpc-response-floor record's class); NO REGRESSION"
+   },
+   "first_call_gam0_ms": {
+    "A_median": 55.23,
+    "B_median": 55.31,
+    "note": "the boot warm (#2953) serves the first call from warm caches on both arms; no first-call delta expected"
+   },
+   "byte_oracle": {
+    "gam_response": "IDENTICAL across all 8 trials and both arms at every call index: 0 of 16 call-indexes had >1 distinct sha; gam0=60043 bytes, gam15=60044 (the +1 is the echoed request-id length, the known driver artifact)",
+    "staging": "staged_sha==arm sha and post-trial post_sha==arm sha on all 8 blocks"
+   },
+   "io_regime": "MIXED: blk1-A/blk2-B HEALTHY (fresh p50 1.2-1.3ms, stall 2.5%), blk3-B..blk8-A in a ~170ms fresh-write D-class window (stall 100%, fresh p50 167-174ms, fsync p50 mostly 163-176ms at 80% stall; blk6-B's fsync sub-leg 0.28ms) - the uniform reference-class lift per the advisory is a REGIME LABEL, not a leg blocker; the A-B-B-A interleave balances it (each arm: 1 healthy + 3 D-class blocks); the gam call path is disk-free (warm caches, socket response) so per-call wall was unaffected by the flip"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Same-VM sequential ABBA with sha-asserted atomic swaps (unlink-then-copy, staged+post shas recorded per block); loadavg<1.0 gate + product-only zombie sweep before every trial; the io-probe v1.0 ran before every block and is disclosed per block (the mid-battery regime flip is labeled, interleave-balanced, and did not touch the measured path); the response raw line includes the echoed request id (the +1 byte at gam10+, driver artifact); one cand-bench class-line sample was contaminated by a transient and was re-run clean - both samples disclosed; the probe binary was removed from the tree before every gates leg and the final workspace rebuild reproduced the staged binary byte-identically; the fleet gate ran on a pooled rust:1-bookworm VM (kill-verified claim/release, /etc/hosts guard OK per v1.4.6)."
+ },
+ "outcome": "in-progress (record pushed at PR-open; merge pending the orchestrator bar)",
+ "decision": "PLACEHOLDER (the orchestrator's numeric review + adversarial reviewers + CI rollup at PR; the lane's evidence: mechanism classes cut 66-95% CPU-side, byte-identical responses, no wall delta claim, no regression, gate reds all triaged)",
+ "pr_url": "PLACEHOLDER",
+ "evidence": "hillclimb/archives/revive-2479/revive-2479-evidence.tar.gz (sha256 4eb8a0ec33921458797d3fe1e70774f691c0b770dc5e4da3d0967305412f03c2, 37 files: 5 probe outputs + probe build logs, abba-results.json + driver log, the driver/probe/fixtures/VM scripts, 8 triage logs, the lane-VM gates outputs, both fleet-gate runs' verdicts+logs+manifest)",
+ "record_path": "data/hillclimb/experiments/20260927-213500-interaction-model-resolve-authmemo-candport.json",
+ "session": {
+  "worker": "rsi-triage",
+  "session_dir": "see conversation log"
+ },
+ "timestamp": "2026-09-27T21:35:00Z"
+}
