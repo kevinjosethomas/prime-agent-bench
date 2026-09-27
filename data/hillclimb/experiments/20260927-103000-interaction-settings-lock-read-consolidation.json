@@ -111,7 +111,7 @@
   "pr_head": "a6ea27d21a2bb9f389f5009a82a25982b5999a00",
   "squash_sha": "451216e6d7465231a2d8afb7ad29073e4f460a05",
   "squash_subject": "perf(pa-core): consolidate settings-lock reads - 32 lock cycles per first turn to 2 (#2941)",
-  "merged_at": "2026-09-27T04:48:06-07:00Z",
+  "merged_at": "2026-09-27T11:48:06Z",
   "reviews": {
    "numeric": "orchestrator ACCEPTED at a6ea27d21",
    "parity-adversary-fast": "EXPLICIT APPROVE on a6ea27d21 (all eight claims verified incl. their own greps; the C5 same-ns edge attacked with the FULL non-test settings.json writer census: every production writer renames (new inode) - pa-core with_lock->atomic_write temp+sync_all+rename_onto, TS settings-manager.ts:390 writeFileAtomicSync, pa-cli mcp_command through with_lock; mcp_login's fixture writer is #[cfg(test)]-gated - so the same-ino prerequisite is unreachable from any workspace writer; the external-editor same-length-within-1ns class = the #2932 accepted-with-note ruling; C3 exactly ONE production read() caller manager.rs:928 load_scope; C4 zero functional cross-nesting between the auth and settings cache registries)",
