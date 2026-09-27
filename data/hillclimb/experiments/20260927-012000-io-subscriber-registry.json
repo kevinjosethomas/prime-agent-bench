@@ -100,7 +100,7 @@
     "notes": "Driver run-dir reuse bug found and disclosed: my leg() reused the sr-<tag>-<N>-<role> path per role, so leg 1 of each role was overwritten when leg 2 ran; legs B-1 (1145.3/1026.7) and C-1 (1036.1/932.6) are scalars extracted from the parsed result.json BEFORE deletion (printed from the raw JSON at 00:47/00:52Z), while B-2/C-2 retain full raw files (pulled archive). Both legs of each role validate with matching digests; the pair means use all four legs. The N=1 legs each landed in brief HEALTHY windows (the chronic DEGRADED stretch broke at 01:25 and 01:29/01:32); their within-role spread (30-70%) reflects single-session noise, not binary effects.",
     "regime_label": "clean-window steady-MARGINAL-low (0% stalls, max<=8.5ms, fresh p50 2.1-2.4x known-good) with per-leg HEALTHY classification; absolute walls not comparable across hosts or regimes per the advisory."
   },
-  "outcome": "in-review (PR #2914 open at folded head 2677fc146; no merge - numeric review + BOTH adversarial reviewers + standing dispositions remain the bar)",
+  "outcome": "merged",
   "evidence": {
     "archive": "/home/ubuntu/hillclimb/archives/perf-subscriber-registry/sr-evidence-final.tgz (sha256 4b5355a2d600969097c7185ad67b7327f58a37e682778275d481c08b9aa3358d, 85943569 bytes: full raw trial trees for all 8 legs + N=1 partial pulls + smoke oracle jsons + regime probe jsonl + progress + logs); plus sr-evidence.tgz (early pull, 4995337 bytes) with the B-2/C-2 raw result.json files",
     "parity_case": "/home/ubuntu/hillclimb/subscriber-registry/ts-parity-case.md",
@@ -109,7 +109,7 @@
     "runner": "concurrent_io_curve.py (bench hillclimb, sha 0cd875c7... = VM copy) + sr-abba.sh driver",
     "triage": "triage VM qciqkab2o3vxupgh23dten16 (hillclimb-sr-triage, ubuntu:22.04, rustup 1.98.1): solo A/B rerun results + known_reds renewal evidence"
   },
-  "timestamp": "2026-09-27T02:20:00Z",
+  "timestamp": "2026-09-27T02:10:00Z",
   "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2914",
   "github_ci_at_head_143cfd427": {
     "completed_rollup": {
@@ -140,5 +140,10 @@
     },
     "triage_ab_matrix": "base fcf306e2b x3 iterations: compaction_abort_e2e 2/2, supervisor_e2e 12/12 | head 143cfd427 x3 iterations: compaction_abort_e2e 2/2, supervisor_e2e 12/12 | zero failures across all 12 suites (raw: triage-results.txt on the triage VM, archived below)",
     "no_base_repro_in_the_wild": "the tip fcf306e2b own CI (run 36285768027) is fully green; the other open PRs shard 3/4 (2916/2915/2912) are green - the red did not reproduce anywhere else, consistent with a rare boot-race window on one CI runner"
+  },
+  "merge": {
+    "squash_sha": "950c3f6cc (perf(pa-daemon): per-session subscriber registry - send-time attached check, sup CPU -20% at N=100 (#2914))",
+    "merged_at": "2026-09-27T02:0xZ under the standing authorization: numeric review re-confirmed at 143cfd427 + BOTH adversarial reviewers EXPLICIT APPROVE on the frozen head (parity-adversary-fast, parity-adversary-2-fast) + operator dispositions (benchmark non-applicability; mcp_login expiry; the two renewed family registrations - all disclosed in this record)",
+    "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2914"
   }
 }
