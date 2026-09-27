@@ -260,5 +260,77 @@
   "worker": "perf-worker-clone-fast",
   "session_dir": "lane-worker-clone"
  },
- "timestamp": "2026-09-27T08:37:00.000000+00:00"
+ "timestamp": "2026-09-27T08:37:00.000000+00:00",
+ "final_head": {
+  "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2935",
+  "fold": "a42fdacd7 = merge of org/rust 631fe82d6 over 19831585a (--no-ff, append-only); post-fold lane-vs-merge-base diff byte-identical to the candidate diff (sha 7705c1f209c10e7f)",
+  "head": "436cf0c0bc2ea6a50b136e95ada5fbcb6e4ca13f",
+  "head_fix_history": [
+   "b33bf2529: fmt - the new framing test's write_frame call form (CI rustfmt diff)",
+   "83ac4c4c2: fmt - the response-path call forms (VM cargo fmt at the exact head)",
+   "e7ed63685: clippy empty_line_after_doc_comments exposed that the new-test insert had REPLACED the upstream response_line_serializes_in_the_ts_key_order oracle (the frozen TS-key-order pin) leaving its doc comment orphaned; the test is RESTORED verbatim from 9b62f26af - the lane's protocol.rs test suite is 773 passed / 1 failed (env-only goal_turn_end_loop, base-verified) with BOTH the restored reference test and the new response_line_bytes oracle present",
+   "e1e2b4663: fmt - the restored test doc comment's first-line indent",
+   "436cf0c0b: fmt - single trailing newline at file end"
+  ],
+  "gate_rc_masking_disclosure": "the lane's VM gates script used `cmd | tail; echo $?` - the pipe masked the real rc (tail's 0), letting the first two fmt misses and the orphaned-doc clippy error slip past the lane gate; the script is hardened (pipefail + direct rc capture) and every rc quoted for the final head was captured unmasked on the VM",
+  "exact_head_verification_436cf0c0b": {
+   "fmt_rc": 0,
+   "clippy_workspace_d_warnings_rc": 0,
+   "pa_types_pa_daemon_tests": "773 passed / 1 failed / 6 ignored - goal_turn_end_loop_runs_to_completion is env-only and fails identically on the clean base (verified in-place)",
+   "release_binary_sha256": "a65bb7dd335255e248588d27692fe2843d08c0b704ef3e07151283915cf95e81 - IDENTICAL across the candidate commit, the folded head, and all cfg(test)-only fmt/clippy-fix heads (measured, not assumed)"
+  },
+  "final_head_confirmation_pair": {
+   "note": "folded binary (bin-cand-a42fdacd7, sha a65bb7dd == the ABBA candidate binary byte-for-byte) vs the measured base 9b62f26af, b,c,b,c on canon-10mib, per-leg v1.0 I/O brackets recorded (regime flapped DEGRADED/MARGINAL through the pair)",
+   "routed_get_messages_wall_leg_medians_ms": {
+    "baseline": [
+     72.52,
+     97.65
+    ],
+    "candidate": [
+     65.54,
+     64.3
+    ],
+    "separation": "FULL - candidate's worst leg beats base's best leg"
+   },
+   "routed_attach_slim_wall_leg_medians_ms": {
+    "baseline": [
+     73.38,
+     87.72
+    ],
+    "candidate": [
+     66.93,
+     53.59
+    ],
+    "separation": "FULL"
+   },
+   "routed_attach_legacy_wall_leg_medians_ms": {
+    "baseline": [
+     69.22,
+     84.41
+    ],
+    "candidate": [
+     67.83,
+     53.66
+    ],
+    "separation": "FULL"
+   },
+   "worker_rss_after_msgs_leg_medians_kb": {
+    "baseline": [
+     203104,
+     170388
+    ],
+    "candidate": [
+     132976,
+     130824
+    ],
+    "delta_mb_median": -55.0
+   },
+   "routed_header_p50_ms": {
+    "baseline": 0.03,
+    "candidate": 0.03,
+    "claim": "flat"
+   }
+  },
+  "binary_identity_argument": "the confirmation pair's binary IS the ABBA candidate binary (sha a65bb7dd both) and the exact-head rebuild at 436cf0c0b reproduces the same sha, so the paired evidence carries to the reviewed head by direct binary identity"
+ }
 }
