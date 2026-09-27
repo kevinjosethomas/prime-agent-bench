@@ -1,0 +1,166 @@
+{
+ "id": "20260927-080500-interaction-slow-drain-exit-guard",
+ "axis": "interaction",
+ "hypothesis": "The exit-guard watchdog's FORCE_QUIT_AFTER_MS=1500 deadline (armed at the second Ctrl+C or the exit decision) fires mid-flush on a terminal that drains the exit flush slower than the deadline: the flush is the frozen scrollback contract (8.74MB at 32,286 rows) and a slow consumer (~0.5-2MB/s, the pyte/laggy-ssh class) makes it outlast the deadline, so the watchdog force-quits a HEALTHY drain - printing 'shutdown stalled; forced exit.' (a port-only message; TS has no watchdog and simply waits for its writes), killing the process with 64-82% of the flush unwritten (truncated scrollback), and queueing the restore bytes mid-stream. A drain-aware guard - the writer reports progress per completed flush chunk, the release tail and the resume hint report theirs, and the watchdog holds its fire while progress landed within a grace window - keeps the hard 1500ms ceiling for the genuinely-stalled/wedged case while letting a healthy slow drain finish byte-identically.",
+ "approach": "BASELINE+DECOMPOSE at the pristine tip 9b62f26af (VM k42tudjwymnw31950u1thlhg, 16c/32GB ubuntu:22.04): extended exit-flush-lane pty bench (slowdrain_exit_bench.py: raw/pyte consumers + rate-limited raw reader at 2MB/s/1MB/s/0.5MB/s, exact PTY byte capture, exit-window-anchored flush segment sha, watchdog-message detection + byte-ordering, FIFO level trace via FIONREAD at 5ms, per-process RSS/VmHWM at 50ms, pre/mid/post calibration) x seeds {2k=0.44MB,10k=2.18MB,40k=8.74MB flush}; strace -f -tt census on the fired legs (write/exit_group timeline). TS parity first: TS tui.ts/interactive-mode.ts verified - NO watchdog, NO forced exit, NO stall message (handleCtrlC 2nd press = async shutdown; slow writes just wait; EXIT_HINT_DURATION_MS=2000 only gates the hint). CANDIDATE (lane/hillclimb-slow-drain-exitguard, base 9b62f26af, folded e6e7a26e4): exit_guard.rs gains EXIT_PROGRESS_GRACE_MS=500 + a process-global progress stamp (Mutex<Option<Instant>>) fed by pub note_exit_progress(); the watchdog's fire condition becomes force_quit_due(deadline passed AND progress stale > grace); spawn_watchdog holds per 25ms poll slice; view.rs CHUNK_BYTES 256KiB->32KiB (a completed 32KiB chunk lands within the 500ms grace for any drain >= ~65KB/s) + feeds after every chunk write (FlushSink::feed chunk boundary, finish append-tail, finish repaint); exit_restore.rs terminal_release_tail feeds after the cursor-show execute and the final flush; pa-cli interactive_mode.rs print_resume_hint feeds after the hint print (the composition root's 300ms pre-exit delay sits inside the grace of the fresh stamp). New real-pty e2e (pa-cli slow_drain_exit_guard_e2e.rs, the kitty-release harness pattern: the test binary re-executes itself in child mode against a mock supervisor over a pty with setsid+TIOCSCTTY, paced master reads at 96KB/s): the slow leg asserts the whole transcript flushes with no forced exit and the restore tail lands last; the stalled leg (2.5s dead consumer mid-flush) asserts the fire structurally (the forced restore's second alt-screen leave + the flush cut + exit 0). ABBA: base vs cand, same VM, sequential, sha-asserted atomic binary swaps, 2 interleaved rounds x {byte-oracle raw 2k/10k/40k + defect legs 40k@2MB/s,40k@1MB/s,10k@1MB/s,40k-pyte + hardening stall legs 40k@2MB/s stall 2.5s + 2k-pyte byte oracle + kill-switch}; fold to e6e7a26e4 (f72d3475c, post-fold re-diff = the lane's 6-file delta exactly; the rider on kitty_release_handoff_e2e dissolved into upstream's own fix) + final-head anchors at the folded boundary (base2=e6e7a26e4 vs cand2=f72d3475c) + tmux real-terminal scrollback oracle at the folded head.",
+ "parity_notes": "TS-FIRST: TS has NO exit-guard watchdog at all (packages/tui/src/tui.ts + coding-agent interactive-mode.ts: handleCtrlC's second press runs the async shutdown(); there is no forced exit and no 'shutdown stalled' string anywhere in the TS tree) - the port's watchdog is documented hardening for the wedged-loop case (issue #138). On a HEALTHY slow drain TS simply waits for its writes; the candidate restores exactly that (hold on observed progress) while keeping the port's hardening: the 1500ms ceiling still fires with no progress for a grace window (the wedged loop - the case the guard was built for), and a stalled drain (dead consumer) fires with the same message and exit code 0. The user-visible 'Prime Agent: shutdown stalled; forced exit.' line and its trigger semantics are unchanged text and unchanged for the genuine-stall case; it no longer prints on a healthy drain. The flushed byte stream is the frozen scrollback contract: IDENTICAL base-vs-cand on every non-fired leg (40k/10k/2k raw + 2k pyte, shas e284469e/b690d465/e3d55950) and IDENTICAL across drain rates on the candidate (the slow legs' flush sha == the raw legs' flush sha); the tmux real-terminal scrollback at 10k is 1863/1864 lines byte-identical across arms (the only differing line is tmux's own dead-pane timestamp). The exit tail still restores the terminal (tail_after_flush on every non-fired leg; the e2e asserts the restore follows the last flushed row). Disclosed floor: with 32KiB chunks + 500ms grace, drains slower than ~65KB/s read as stalled and force-quit (deliberate: the port's 1500ms contract outranks an unbounded wait; TS would wait indefinitely - the ceiling is the operational escape hatch for the wedged case, same class as the PRIME_AGENT_TUI_EXIT_FLUSH kill-switch ruling). Disclosed: a stalled drain that fires still truncates the flush (the fire is committed at decision time; the restore writes queue behind the writer's blocked chunk on the stdout lock - strace-proven). Disclosed rider history: the tip 9b62f26af pa-cli test target did NOT compile (the #2916 squash dropped kitty_release_handoff_e2e's restore_dock_focus init, a fold-time heal lost on squash); carried as a 1-line disclosed rider per the #2748 precedent and dissolved at the fold when upstream's own fix (e6e7a26e4) superseded it.",
+ "base": {
+  "revision": "9b62f26af (decompose + ABBA pair base; fold at e6e7a26e4)",
+  "rebased_revision": "e6e7a26e4 (fold f72d3475c = the PR head; post-fold re-diff = the 6-file lane delta)"
+ },
+ "branch": "lane/hillclimb-slow-drain-exitguard",
+ "commits": [
+  "793f62445 perf(pa-tui): the exit guard holds its force-quit while the exit path drains - slow terminals keep the whole scrollback flush",
+  "238f8a53f test(pa-cli): the slow-drain e2e asserts the forced fire structurally",
+  "f72d3475c fold rust base e6e7a26e4",
+  "fc218a944 fold rust base 631fe82d6",
+  "dc65bb64c fmt: the slow-drain e2e needles and the watchdog's progress read (TRUE FINAL PR HEAD)"
+ ],
+ "build": {
+  "sandbox_id": "k42tudjwymnw31950u1thlhg (16c/32GB ubuntu:22.04)",
+  "binary_sha256": {
+   "base_9b62f26af": "905c5d6c233a1722dec7efa7ae3c49f39b4c04c626fb35b4cb1f6ec303239d47",
+   "cand_238f8a53f": "45eea1ee015a40c8dabe59eaa96f8d9e6ba6ffbc5fcfa272b428a5412669f9b1",
+   "base2_e6e7a26e4": "bd3d881c0e5cbccbc5fa3639c8ffb70de04837da8a808dab5f758c4807906019",
+   "cand2_f72d3475c": "a0d805912ff59c96528ade94838555a748e13886ee5342f057bb72fde0bd7756",
+   "cand4_dc65bb64c": "cfa6cbe3ae71f06f6547bbc7c230f5a1fe74b53070be1457618839a7764e75ec"
+  },
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "base_arm_631fe82d6": "fmt PASS; clippy PASS; full cargo test --workspace: 10 reds, ALL registered families, fresh-classified in the same gate VM (pa-core packages git/npm x6 = container env, no nodejs/opener; pa-daemon worker::tests::goal_turn_end_loop_runs_to_completion = the registered sandbox kernel-bridge failure; rlm_spawn_replacement_e2e::concurrent_spawns = the registered daemon-timing family; pa-tui browser::tests::the_opener = registered container env; interactive_daemon_e2e::tui_refused_submit = the registered PTY supervisor-socket race family). None touch the lane's files.",
+  "cand_arm_8420bb050_true_final_head": "fmt PASS; clippy -D warnings (CI-fidelity) PASS; full cargo test --workspace: 9 reds = a strict SUBSET of the base arm's set (the same registered families; the flaky tui_refused_submit passed on this run); zero cand-only reds; the lane's new e2e (slow_drain_exit_guard_e2e) and all exit_guard/view/exit_restore tests PASS",
+  "gate_fidelity_note": "the first cand-arm clippy run used the bare cargo clippy (no -D warnings) and missed 3 CI-level lints (doc backticks, unchecked Duration subtraction x2) that CI's -D warnings caught at dc65bb64c; fixed in 8420bb050 (doc/test-only; release-path code unchanged) and the VM clippy gate rerun with -D warnings at the true head \u2014 the VM clippy gate now matches CI flags",
+  "fmt_fix_note": "the cand arm's first gate (fc218a944) failed fmt (2 rustfmt shapes); fixed in dc65bb64c; binary rebuilt + re-anchored at each settled head (dc65bb64c -> 8420bb050: anchor legs identical at every head)",
+  "ci_on_pr_head_8420bb050": "fmt PASS, loc PASS, request PASS, check+clippy (workspace, -D warnings) PASS, ALL 4 test shards PASS, test summary PASS, Cursor Bugbot PASS, Macroscope PASS, author PASS; benchmark FAILURE = the documented non-applicable TS check (the same class #2913's CI carried)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA; pty driver; sha-asserted atomic binary swaps; exact byte capture; pre/mid/post calibration",
+  "baseline_decompose_9b62f26af": {
+   "defect": "on healthy slow drains the 1500ms exit-guard fires MID-FLUSH: 40k@2MB/s exit 2014-2018ms, flush TRUNCATED to 3,148,169B/11,653 rows (36% of 8,737,061B); 40k@1MB/s -> 1,574,003B (18%); 40k pyte -> 2,885,330B (33%); 10k@1MB/s -> 1,574,775B (72%); 'shutdown stalled; forced exit.' present in every fired capture; exit code 0",
+   "strace_mechanism": "the watchdog's restore writes WIN the PTY FIFO race at a flush-chunk boundary (the writer is in its encode gap when space frees): force_quit's ~21B restore + 44B message land mid-stream, exit_group(0) kills the process while the writer holds the remaining chunks unwritten. SECOND mechanism: force_quit's writes contend on std::io::stdout()'s process-global lock - the main thread's blocked chunk write HOLDS it, so the watchdog's restore waits for the lock (observed 1.22s futex wait in the e2e stall leg) and lands only when the writer's current write returns. The pre-#2913 single-write flush 'held priority' (the watchdog starved until the whole flush drained, no truncation in 3/3); the chunked flush loses that accidental protection",
+   "watchdog_fire_windows": "fired legs exit at press2+1586..1671ms (the 1500ms deadline + arm/jitter); stall legs (consumer dead 2.5s): fire during the stall, restore+message queue behind the full FIFO, exit observed right after the drain resumes",
+   "rate_limit_model": "rate-limited pty reads (token-bucket at the master) reproduce the consumer classes: raw ~12MB/s, pyte 1.5-2MB/s, ratelimit 0.5/1/2MB/s; the FIONREAD trace shows the FIFO pinned full while the writer streams (level-only drain-awareness cannot see flow through a pinned pipe - the writer-side progress stamp is the reliable signal)"
+  },
+  "suites": {
+   "exit_guard.slow_drain_byte_oracle_raw": {
+    "flush_sha256": {
+     "40k": "e284469e (8,737,061B / 32,285 rows)",
+     "10k": "b690d465 (2,180,465B / 8,057 rows)",
+     "2k": "e3d55950 (436,829B / 1,620 rows)"
+    },
+    "identical_base_vs_cand": "ALL legs (ABBA 2 rounds + final-head anchors at e6e7a26e4 AND at 631fe82d6): identical at every size, both arms",
+    "note": "the flush byte stream is unchanged by the 32KiB chunking (identical shas) and identical across drain rates on the candidate (the slow legs' sha == the raw legs' sha)"
+   },
+   "exit_guard.slow_drain_defect": {
+    "base_fired_and_truncated": "8/8 defect legs (2 rounds x {40k-rl2m, 40k-rl1m, 10k-rl1m, 40k-pyte} + final-head anchors at both boundaries): watchdog fires at 1972-2033ms, flush cut to 1.57-3.15MB of 8.74MB (or 1.57MB of 2.18MB), message present, leaves=2, exit 0",
+    "cand_holds": "10/10 healthy slow-drain legs (same matrix): NO fire, NO message, full 8,737,061B flush with sha == the raw-leg sha, leaves=1, tail_after_flush, exit 0; walls = the drain time (40k@2MB/s 4973-5008ms, 40k@1MB/s 9244-9248ms, 10k@1MB/s 2840-2843ms, 40k-pyte 5173-5311ms)"
+   },
+   "exit_guard.hardening_stall": {
+    "base": "fires 2/2 rounds + anchors (wall 2986-2999ms, flush cut at 262,203B, message present)",
+    "cand": "fires 2/2 rounds + anchors (wall 2912-2914ms, flush cut at 32,961B = the 32KiB chunk granularity, message present), exit 0",
+    "note": "the hard 1500ms ceiling survives drain-awareness: a genuinely stalled drain still fires with the same message and exit code"
+   },
+   "exit_guard.normal_drain_perf": {
+    "exit_wall_40k_raw_ms": {
+     "base": [
+      1003.9,
+      1010.1
+     ],
+     "cand": [
+      997.8,
+      1015.6
+     ]
+    },
+    "exit_wall_10k_raw_ms": {
+     "base": [
+      859.3,
+      859.2
+     ],
+     "cand": [
+      853.9,
+      855.3
+     ]
+    },
+    "exit_wall_2k_raw_ms": {
+     "base": [
+      816.9,
+      815.5
+     ],
+     "cand": [
+      816.2,
+      819.1
+     ]
+    },
+    "delta_pct": {
+     "40k": -0.03,
+     "10k": -0.54,
+     "2k": 0.18
+    },
+    "flush_wall_40k_raw_ms": {
+     "base_p50": 606.2,
+     "cand_p50": 606.0
+    },
+    "exit_cpu_40k_raw_ms": {
+     "base": [
+      170,
+      180
+     ],
+     "cand": [
+      170,
+      160
+     ]
+    },
+    "rss_spike_mb": {
+     "base": [
+      0.0,
+      0.0,
+      0.5
+     ],
+     "cand": [
+      0.0,
+      0.0,
+      0.3
+     ]
+    },
+    "verdict": "no regression: the 32KiB chunking costs nothing measurable on the fast path (the exit-flush lane's zero-spike flush is preserved)"
+   },
+   "exit_guard.kill_switch": {
+    "cand_ks0": {
+     "flush_bytes": 8,
+     "wall_ms": 818.1,
+     "note": "PRIME_AGENT_TUI_EXIT_FLUSH=0 intact"
+    }
+   },
+   "tmux_scrollback_oracle_folded_head": {
+    "cand_10k": {
+     "scrollback_lines": 1864,
+     "scrollback_sha256": "52cfbd7bc24a11bd37ac32b22cb275940dc7fc5e92cf6cc943d611cd81b74aab",
+     "tail_transcript_row_present": true
+    },
+    "base_10k": {
+     "scrollback_lines": 1864,
+     "scrollback_sha256": "8147586469fd13dbcb7fe0182429ec9f797617d7bb7a20fd242c99ee93ee8de6",
+     "tail_transcript_row_present": true
+    },
+    "note": "1863/1864 lines byte-identical across arms; the ONLY differing line is tmux's own 'Pane is dead (status 0, <timestamp>)' annotation"
+   },
+   "e2e_ci_pa_cli": {
+    "a_slow_drain_flushes_the_whole_transcript_without_forcing_the_exit": "PASS locally at the re-folded head (14-18s): full transcript flush (first+last rows), no forced exit, restore tail after the last row, exit 0",
+    "a_stalled_drain_still_fires_the_force_quit": "PASS locally at the re-folded head (~4.5s): the fire asserts structurally (second alt-screen leave + flush cut at the stall + exit 0; the stall message goes through the test binary's libtest stderr capture - the REAL binary's message is asserted by the VM bench legs)"
+   }
+  },
+  "extra": {
+   "io_regime_classification": {
+    "advisory": "fleet measurement advisory v1.0 (host-relative)",
+    "preflight_before": "DEGRADED (class A fresh p50 25.56ms, stall-rate 100% >15ms, max 34.23ms; class B fsync p50 0.65ms MARGINAL)",
+    "preflight_after": "DEGRADED (class A p50 31.59ms max 168.63ms; class B p50 0.63ms max 36.51ms)",
+    "immunity_evidence": "the TUI exit path is flush-free by the exit-flush lane's strace census (zero fsync-family calls in the TUI lifetime) and my change adds no I/O; the binary observables (fired flags, byte shas, RSS) are regime-immune; legs are paired-interleaved on one VM so common-mode cancels; absolute walls carry the DEGRADED label",
+    "calibration": "spin calibration 44.33ms pre / 44.74ms post (<1% drift); per-leg pre/post spins 0.043-0.045s stable"
+   },
+   "upstream_churn_folds": "fold 1 at e6e7a26e4 (f72d3475c; #2925's RowPack/trim changes verified NOT to move the flush bytes - identical shas pre/post fold); fold 2 at 631fe82d6 (fc218a944; the #2928 session_ui split + the tip's kitty-fixture compile-fix heal); post-fold re-diff vs origin/rust = exactly the 6-file lane delta, second-parent shas asserted"
+  }
+ },
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2937",
+ "outcome": "PENDING REVIEW: PR #2937 open at head 8420bb050 (both adversarial reviewers routed with the completed CI rollup + both VM gate verdicts; merge bar = orchestrator numeric review + both SHA-bound APPROVEs + operator dispositions)"
+}
