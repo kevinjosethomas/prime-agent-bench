@@ -92,11 +92,12 @@
   "test": "rc 101 = the SOLE failure mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating, a known_reds.json entry EXPIRED 2026-09-26 (daemon-timing flake family, rotating member under full-workspace co-scheduling; GitHub CI shards green on same heads historically) - FRESH TRIAGE: solo 3/3 rc=0 at the PR head (--release) + 3/3 rc=0 at the folded base (--release) + 3/3 rc=0 at the head profile-matched DEBUG (test verified 1-passed in the pa-daemon lib harness in every run); disposition: the flake class, NOT a lane red (the worker-clone lane precedent)",
   "vm_full_gate": "gate_1790506819_850466 at the org branch head a6ea27d21, base_state folded, 905 pa-core tests passed incl. the 3 new cache tests",
   "fleet_review": "GREEN, 0 blockers, 1 advisory (history_narration on a comment phrasing) - disposition: justified in the PR body; the comment-only reword commit ebbb247a7 was DROPPED to keep the head sha-bound",
-  "ci_rollup_disclosure": "TO BE APPENDED when the PR's GitHub CI completes"
+  "ci_rollup_disclosure": "COMPLETED CI ROLLUP AT a6ea27d21a2bb9f389f5009a82a25982b5999a00 (run 36315960826 tests + 36315960749 benchmark, all checks non-pending):\n- MANDATORY ALL GREEN: 'fmt' PASS (18s); 'check + clippy (workspace)' PASS (1m56s); 'test shard 1/4' PASS (8m20s); 'test shard 2/4' PASS (7m59s); 'test shard 3/4' PASS (7m14s); 'test shard 4/4' PASS (9m26s); 'test summary' PASS (6s). NOTE: the gate's expired-known-red (mcp_login worker_begin_login) did NOT fire in any shard - consistent with its co-scheduling flake class + the solo triage.\n- 'request' PASS (22s); 'loc' PASS (7s); 'Cursor Bugbot' PASS (4m35s); 'Check pull request author' PASS; 'Check issue author' skipping (bot); 'Macroscope - Correctness Check' skipping (standard).\n- 'benchmark' FAILURE (5m52s): the INFRA class, NOT the historical npm ci EUSAGE class - the harness now runs Prime sandboxes; the MAIN leg completed fully (install 3/3, measure 10/10, runtime 10/10, transport 10/10, ui 3/3) but the PR leg never measured (pr sandbox wn3ksm7eh590nxasnommd2jj created at 11:32:31, zero pr: trials in the log); verdict line 'Benchmark partial: failed or incomplete; see saved report and transcripts' + exit 1. Precedent: the worker-clone lane's CI rollup (bench repo dbdd983 lineage) - 'shards green, benchmark red disclosed (pr-side leg never measured, infra class), operator disposition requested'. OPERATOR DISPOSITION REQUESTED on this class."
  },
  "session": {
   "worker": "perf-settings-lock-fast",
   "session_dir": "~/.prime/agent/sessions/ (this session)"
  },
- "timestamp": "2026-09-27T11:35:00Z"
+ "timestamp": "2026-09-27T11:35:00Z",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2941"
 }
