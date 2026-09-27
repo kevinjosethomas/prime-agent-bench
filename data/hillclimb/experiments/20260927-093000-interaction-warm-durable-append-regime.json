@@ -105,5 +105,11 @@
  "evidence": {
   "local": "/home/ubuntu/hillclimb/fixtures/warm-durable-append/ (evidence-baseline.tar.gz sha256 7080fad79cb39487c557dd437e70e6ef4fa5f88831ac4d4e5fa7a54205d06f47, 29 members; evidence-abba.tar.gz sha256 8ee6b0c84c7f7a082ae1b2ea98455090a730120018c0beb380f6e80b8ee2de8d, 24 members; analysis JSONs; drivers + benchvendored mock)"
  },
- "vm_disposition": "hillclimb-perf-warm-durable-append (xbccd3agq3id3tbvbbmupfa0) DELETED 2026-09-27 after archive verification: evidence-baseline.tar.gz sha256 7080fad79cb39487c557dd437e70e6ef4fa5f88831ac4d4e5fa7a54205d06f47 (29 members) + evidence-abba.tar.gz sha256 8ee6b0c84c7f7a082ae1b2ea98455090a730120018c0beb380f6e80b8ee2de8d (24 members) + the raw bundles (wda-trials.tar.gz 389536e8..., wda-census2-bundle.tar.gz 9538cff3..., wda-abba-bundle.tar.gz e570e554...) - all sha-verified and extraction-verified locally before deletion; the binary shas (base 357ee4ad..., cand ca1da941...) are recorded in this record"
+ "vm_disposition": "hillclimb-perf-warm-durable-append (xbccd3agq3id3tbvbbmupfa0) DELETED 2026-09-27 after archive verification: evidence-baseline.tar.gz sha256 7080fad79cb39487c557dd437e70e6ef4fa5f88831ac4d4e5fa7a54205d06f47 (29 members) + evidence-abba.tar.gz sha256 8ee6b0c84c7f7a082ae1b2ea98455090a730120018c0beb380f6e80b8ee2de8d (24 members) + the raw bundles (wda-trials.tar.gz 389536e8..., wda-census2-bundle.tar.gz 9538cff3..., wda-abba-bundle.tar.gz e570e554...) - all sha-verified and extraction-verified locally before deletion; the binary shas (base 357ee4ad..., cand ca1da941...) are recorded in this record",
+ "merge": {
+  "pr": 2936,
+  "squash_sha": "de0373b2cf6a46b256e3a361be58a8a1228c9b21",
+  "merged_at": "2026-09-27T10:27:12Z"
+ },
+ "status": "CLOSED-MERGED"
 }
