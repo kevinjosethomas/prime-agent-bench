@@ -339,6 +339,26 @@
    "cursor_bugbot": "SUCCESS",
    "loc": "SUCCESS",
    "benchmark": "FAILURE - DISCLOSED RED, operator disposition requested: the benchmark job's PR-side leg never started measuring (pr sandbox created 09:04:02Z, ZERO pr install/measure trials logged before the job's partial exit; main-side trials all completed) - the infra failure class (sandbox-created-but-no-trials), not a performance signal; the lane's own paired ABBA + final-head confirmation pair is the measurement evidence; the job cannot be rerun (GitHub: 'job cannot be rerun')"
-  }
+  },
+  "reviewed_head": "e807683cfacf6cb01e0b4187ee855d26255e5a8b",
+  "refold": "second append-only fold at the clean boundary: merge of org/rust 73e4f2013 over 436cf0c0b -> e807683cf; post-fold lane-vs-merge-base delta = exactly the lane's 5 files (+257/-24, candidate + fmt/restored-test fixes); the earlier stale-base gate RED was superseded per the stale-head-gate rule",
+  "ci_rollup_e807683cf": {
+   "fmt": "SUCCESS",
+   "check_clippy_workspace": "SUCCESS",
+   "test_shards_1_to_4": "SUCCESS",
+   "test_summary": "SUCCESS",
+   "cursor_bugbot": "SUCCESS",
+   "loc": "SUCCESS",
+   "benchmark": "FAILURE - DISCLOSED, same infra class at both heads: the benchmark job creates the pr sandbox then logs ZERO pr-side install/measure trials before its partial exit (main-side trials complete) - sandbox-created-but-no-trials; GitHub reports the job cannot be rerun; operator disposition requested and accepted into the disposition set"
+  },
+  "vm_gate_e807683cf": {
+   "fmt_rc": 0,
+   "clippy_workspace_rc": 0,
+   "test_rc": 101,
+   "sole_failure": "mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - the EXPIRED known-red (daemon-timing flake family) fired again in the full --workspace co-scheduled run",
+   "fresh_triage": "isolation runs on the measurement VM: 3/3 PASS at the clean base 73e4f2013 AND 3/3 PASS at the lane head e807683cf; GitHub CI workspace shards (same head, co-scheduled) all green - the co-scheduling flake family, not lane-caused; full gate log retained",
+   "other_tests": "all green in the gate run (the full per-target results are in the gate verdict/log)"
+  },
+  "release_binary_sha256": "a65bb7dd335255e248588d27692fe2843d08c0b704ef3e07151283915cf95e81 (unchanged across every lane head - all cfg(test)-only deltas after the mechanism commit)"
  }
 }
