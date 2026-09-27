@@ -1446,6 +1446,13 @@
   "method": "same-vm-sequential ABBA (B C C B per N) + baseline curve"
  },
  "parity_notes": "Frozen surfaces untouched: session JSONL bytes, durability (1 fdatasync/append unchanged), wire frames, routing decisions, ring capacity, recv order. The session_semantics_digest is identical between base and candidate at every N (4195cad0 @ N=1, 85607aee @ N=100) and all 24 runs validate every oracle (structure, custom-row semantics, resume prefix preservation, fixture semantics). Internal-only change: the broadcast carries (ClientRouting, Arc<Value>) and the per-connection event arm serializes from the shared Value. The change mirrors the worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers deref back to owned Values so test assertions are unchanged in meaning.",
+ "pr": {
+  "base": "rust @ 4d57eb0826f874879c17cd31124b5759a8a5b582",
+  "head_sha": "828beb5e71a99f45d8996db249f46964017199d2",
+  "number": 2896,
+  "opened": "2026-09-26T22:17Z at 4becda49a via fleet_pipeline pr_1790461039; folded to e61c5f2e3 (fold_1790466206-pre) then 828beb5e7 (fold_1790466206)",
+  "url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2896"
+ },
  "regime": {
   "advisory_v0_9_compliance": "perf-write-regime-fast advisory applied: (a) the confirm-series leg gates used 20-op dual-class p50 probes - the advisory's underdetection limitation is disclosed; (b) retroactive classification of the re-bind-head pair (confirm5): 3 of 4 legs HEALTHY (both classes 0% stalls >15ms: repeat p50 0.14-0.24ms, fresh p50 0.22-0.35ms, max 0.56ms); leg B-3's window had the fresh class degraded (p50 140.7ms, 100% stalls) while the repeat class stayed clean (0.21ms, 5% stalls) - and B-3's CPU legs stayed in-band (2711/2740 vs B-0's 2664/2658), mechanistically consistent with the advisory's flush-path-only picture AND with the append path riding the repeat class; (c) post-pair preflight (>=40 isolated fresh+sync_all+rename @0.5s spacing + 20 repeat): window DEGRADED (fresh stall-rate 100%, p50 141.6ms = ~354x this host's known-good; repeat p50 0.23ms, 5% stalls, one 135.7ms) - no further timing legs taken; (d) probe script left at /root/preflight.py on the VM; thresholds applied host-relative (known-good fresh ~0.4ms, repeat ~0.2ms on this host).",
   "calibration": "fixed 32MB sha256 work: min 0.017s across all runs; single-sample max spikes to 0.021-0.036s in a few runs (I/O-window turbulence); CPU legs unaffected (B legs stable 2658-2740us at the final lineage).",
@@ -1453,5 +1460,28 @@
   "probe_correction": "per fleet correction, the 4KB repeat-fdatasync probe does not sample the fresh-write+sync_all+rename class; both classes were probed (scripts/dual_probe.py output in re-pair-regime.jsonl / abba-regime-watch.jsonl)",
   "re_pair": "repeat-class p50 0.17ms at probe time but product append p50 3x the first pair - the product's durability class (fdatasync on a growing file under 100-way concurrency) samples neither probe class cleanly; latency legs are DIAGNOSTIC-ONLY everywhere in this record",
   "vm_coordination": "perf-subscriber-registry-fast (the follow-up lane this record names) sequenced its own ABBA behind this lane's legs on the shared measurement VM (its driver stopped at 0 legs on first contact; VM-FREE sent after the re-bind pair + the DEGRADED-window warning)."
+ },
+ "review": {
+  "numeric_review_orchestrator": {
+   "verdict": "ACCEPTED at 4becda49a (then the re-bind cycle ACCEPTED)"
+  },
+  "reviewer_1_parity_adversary_fast": {
+   "github_ci_at_4becda49a": "FULLY GREEN (reviewer's own pull) except the standing TS benchmark",
+   "verdict": "EXPLICIT APPROVE at 4becda49a (effective); re-bind request at 828beb5e7 delivered; fold condition = upstream-only + byte-identical mechanism + clients.rs watch item"
+  },
+  "reviewer_1_rebind": {
+   "status": "request delivered at 828beb5e7 with full CI state; verdict pending"
+  },
+  "reviewer_2_parity_adversary_2_fast": {
+   "github_ci_at_4becda49a": "FULLY GREEN (reviewer's own pull) except the standing TS benchmark",
+   "verdict": "EXPLICIT APPROVE at 4becda49a (effective)"
+  },
+  "reviewer_2_rebind": {
+   "conditions": "SHA-bound to 828beb5e7; operator dispositions (benchmark + mcp_login + a_bang registrations); needs reviewer #1 re-bind on same SHA + operator red-gate disposition",
+   "github_ci_at_rebind_head": "fmt, check+clippy, test shards 1/2/4, Bugbot, loc, request ALL SUCCESS; shard 3 red ONLY on the registered a_bang family (pa-tui, structurally not lane-caused - lane diff is pa-daemon only); benchmark = standing non-applicable",
+   "process_note": "tip moved past the new merge-base again (03835ee65 at their pull); merge should SETTLE a head (operator dispatches at 828beb5e7 accepting merge-base distance, or authorizes one more mechanical fold+re-bind; avoid endless fold-chase) - operator's call",
+   "verdict": "EXPLICIT APPROVE RE-BOUND to 828beb5e7 (effective)",
+   "verification": "own two-patch comparison: 6-file delta vs merge-base 4d57eb082 CONTENT-BYTE-IDENTICAL to the approved 4becda49a delta (only blob-hash index lines + hunk position offsets differ); clients.rs watch item untriggered (mod clients; still unwired)"
+  }
  }
 }
