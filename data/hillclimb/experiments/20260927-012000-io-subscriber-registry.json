@@ -106,8 +106,39 @@
     "parity_case": "/home/ubuntu/hillclimb/subscriber-registry/ts-parity-case.md",
     "smoke_oracle": "/home/ubuntu/hillclimb/subscriber-registry/smoke_registry.py + sr-smoke-base.json + sr-smoke-cand.json",
     "regime_probe": "/home/ubuntu/hillclimb/subscriber-registry/sr_regime_probe.py",
-    "runner": "concurrent_io_curve.py (bench hillclimb, sha 0cd875c7... = VM copy) + sr-abba.sh driver"
+    "runner": "concurrent_io_curve.py (bench hillclimb, sha 0cd875c7... = VM copy) + sr-abba.sh driver",
+    "triage": "triage VM qciqkab2o3vxupgh23dten16 (hillclimb-sr-triage, ubuntu:22.04, rustup 1.98.1): solo A/B rerun results + known_reds renewal evidence"
   },
-  "timestamp": "2026-09-27T01:35:00Z",
-  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2914"
+  "timestamp": "2026-09-27T02:20:00Z",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2914",
+  "github_ci_at_head_143cfd427": {
+    "completed_rollup": {
+      "benchmark": "FAIL (standing NON-APPLICABLE red: TS/main harness npm pre-build failure; fleet disposition pending - never read as a perf regression)",
+      "fmt": "PASS",
+      "check + clippy (workspace)": "PASS",
+      "loc": "PASS",
+      "request": "PASS",
+      "test shard 1/4": "FAIL (tool_result_entries_persisted_and_streamed)",
+      "test shard 2/4": "PASS",
+      "test shard 3/4": "FAIL (wedged_worker_abort_acks_immediately_and_declares_terminal)",
+      "test shard 4/4": "PASS",
+      "test summary": "FAIL (aggregates the shard reds)",
+      "Cursor Bugbot": "pending",
+      "Macroscope Correctness": "skipping"
+    },
+    "disclosure_note": "Both shard reds postdate my original reviewer request window (the request carried the VM gate state only) and were found by the reviewers; both are disclosed here per the standing CI-state-carriage instruction.",
+    "shard_1_tool_result_entries": {
+      "failure_mode": "stats assertion at supervisor_e2e.rs:1964: totalMessages Number(3) vs 4 (get_session_stats raced the persisted stream)",
+      "family": "REGISTERED rotating flake tool_result_entries_persisted_and_streamed (the #2727 event-forwarding family residual; entry valid through 2026-09-27 at the time of the red, renewed 2026-09-28 with this occurrence appended)",
+      "rerun": "SOLO-GREEN 3/3 at head 143cfd427 AND pristine base fcf306e2b on one machine; green in the full-suite VM gate at the head (gate_1790472924 per-test line: tool_result_entries ... ok)"
+    },
+    "shard_3_wedged_worker_abort": {
+      "failure_mode": "create failed: \"Session worker is not connected\" (compaction_abort_e2e.rs:767 = WORKER_NOT_CONNECTED at test startup, BEFORE any compaction/abort/event flow; the sibling abort test green on the same shard)",
+      "family": "the previously-registered compaction_abort_pair_wedged_worker rotating family (entry expired 2026-09-26, hence looked new; RENEWED 2026-09-28 with this triage evidence)",
+      "rerun": "SOLO-GREEN 3/3 at head 143cfd427 AND pristine base fcf306e2b on one machine (triage VM qciqkab2o3vxupgh23dten16, toolchain 1.98.1: compaction_abort_e2e 2/2 and supervisor_e2e 12/12 in all six iterations); green in the full-suite VM gate at the same head (gate_1790472924 per-test line: wedged_worker_abort ... ok)",
+      "structural": "the failing assertion is the worker BOOT/CONNECT admission path (untouched by the registry diff); the failure predates any event-delivery machinery"
+    },
+    "triage_ab_matrix": "base fcf306e2b x3 iterations: compaction_abort_e2e 2/2, supervisor_e2e 12/12 | head 143cfd427 x3 iterations: compaction_abort_e2e 2/2, supervisor_e2e 12/12 | zero failures across all 12 suites (raw: triage-results.txt on the triage VM, archived below)",
+    "no_base_repro_in_the_wild": "the tip fcf306e2b own CI (run 36285768027) is fully green; the other open PRs shard 3/4 (2916/2915/2912) are green - the red did not reproduce anywhere else, consistent with a rare boot-race window on one CI runner"
+  }
 }
