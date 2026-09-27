@@ -1,0 +1,554 @@
+{
+ "id": "20260927-215500-startup-rpc-coldkernel-second-boot",
+ "axis": "startup",
+ "hypothesis": "Source: rpc-baseline record 20260927-151500 candidate 4 \u2014 the RPC new_session replacement was observed paying ~10.8s ONE-SHOT cold (24.8ms warm), hypothesized as the cold second-kernel-boot class: the first session's create prewarms its kernel (prewarm_ipython_kernel=Some(true)), but an in-process session replacement (new_session/switch_session/fork all route through the same replace/replace_locked factory seam) spawns a SECOND kernel generation. The lane decomposed: is the 10.8s the python venv materialization, the ipykernel boot, or the kernel handshake; is the cost per-process one-shot or per-kernel; which replacement flavors pay it; what is the worst-case bound; and does any trivial TS-parity-true fix show.",
+ "approach": "CHARACTERIZATION ONLY at pinned tip a5235b123 (origin/rust; lane worktree perf-rpc-coldkernel stayed clean \u2014 measurement-only on the kernel files per the armed-lanes coordination rule; no product branch, no PR). VM tt7na70uko6zdl121dyvylv1 (hillclimb-perf-rpc-coldkernel, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1 per fleet recipe), cargo build --release, binary sha 34c7fd875ca6d8cf095d9569992ca53734c428913bfa44c47c9c06556db98392 asserted before AND after the whole battery (unchanged). Driver rpc_coldkernel_probe.py: per-trial fresh agent dir/home/tmp/cwd, scrubbed env + venv-env.json, per-trial fixture prehash assert (session-10mib-compacted 97beb5ebb2f5db6a61ca700e08b509be62092388b06d8e7e790d9da78c7351d8, 10491521B), loadavg<1.0 quiet gate, product-only zombie sweep by explicit pid list, 10ms frame pump windows, per-command wall receipts, /proc watcher (100ms) for kernel/uv/pip/probe lifetimes, strace -ff -f census support. Offline mock provider prime-inference/mock-1 at 127.0.0.1:8890 (the spawn-latency lane contract; zero network inference). Battery (same-VM sequential, I/O advisory v1.0 preflights pre/mid1/mid2/mid3/post, phase-labeled): LEG A warm-census n=6 (fresh session, full command census incl. 3x new_session + switch_session + fork, 2-3s settles, shared warm venv); LEG B warm-immediate n=6 (resume 10MiB fixture, new_session/switch/fork/new_session/new_session back-to-back at 0.15s settle); LEG C-LATE n=2 (per-trial FRESH kernel venv, replacement 25s after spawn \u2014 venv settled); LEG C-EARLY n=3 (per-trial FRESH venv, replacement 1.0s after ready \u2014 racing the materialization); then 5 strace census trials (ce0/ce1 cold-early, cl0 cold-late, cw0 warm-census, ci0 warm-immediate) with per-tid analyzer. TS anchor: /home/ubuntu/hillclimb/vms/rpc-coldkernel-ts-anchor.md (read-only /home/ubuntu/prime-agent-ts; 48 validated absolute path:line citations).",
+ "parity_notes": "No product source changed anywhere; frozen surfaces untouched (RPC exercised as a black box over stdio). The TS anchor fixes the reference semantics for this class: (a) one IpythonKernelProvisioner (one kernel process) per AgentSession \u2014 a replacement generation is a fresh session and spawns a second kernel, same shape as Rust (agent-session.ts:1691, :10810-10828); (b) the new_session/switch_session/fork response wall awaits the OLD session's teardown (old kernel snapshot flush + drain + graceful shutdown, 5s-capped) but NEVER the new kernel's boot \u2014 the replacement session's prewarm is fire-and-forget (rpc-mode.ts:480, agent-session-runtime.ts:474-496, agent-session.ts:10906-10908, ipython.ts:385-388); (c) cold venv: concurrent boots join the in-flight ensureKernelPython promise or contend on the on-disk bootstrap lock with a post-acquire re-check \u2014 one materialization, each kernel still its own process (bootstrap.ts:1027-1036, :999-1003); (d) TS aborts a mid-boot kernel on dispose (raceStartupWithAbort repl-manager.ts:341; not-yet-running skips the snapshot flush). Rust matches (a)(b)(c) \u2014 measured here: fresh kernel generation per replacement, background boot, walls carrying only old-kernel teardown, walls flat across sequential replacements. ONE divergence on (d), documented in-tree as intentional (provisioner.rs:510-525 raced_dispose) \u2014 see measurements.zombie_boot_on_raced_dispose. NO CANDIDATE taken, per the brief's trivial-TS-parity bar: the zombie-boot fix (racing an abort into do_start) touches the kernel start/teardown seam = armed-lane measurement-only territory; the in-tree comment frames the current behavior as deliberate; there is no wall/regression to win (all cost is background). EOF exit parity is true (main.rs:9 exits without awaiting background boots; TS runRpcMode returns at EOF with the ensure un-awaited) \u2014 liveness finding only.",
+ "base": {
+  "revision": "a5235b123c7c4465ec4c9f1c29704aef5b57d7b8",
+  "note": "origin/rust tip at lane start (agent_engine.rs split 8/11 #2934 head; 28 hillclimb merges); the lane pinned this build for all legs (binary sha asserted pre+post battery)"
+ },
+ "branch": "hillclimb (bench repo, record + evidence archive only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "tt7na70uko6zdl121dyvylv1 (hillclimb-perf-rpc-coldkernel, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "34c7fd875ca6d8cf095d9569992ca53734c428913bfa44c47c9c06556db98392",
+  "binary_bytes": null,
+  "build_seconds": null,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release (workspace)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0 at launch), binary sha asserted pre+post battery (34c7fd87... unchanged), I/O advisory v1.0 probes pre/mid1/mid2/mid3/post (both classes per block: n=40 ISOLATED fresh+sync_all+rename @0.5s spacing + n=50 repeat-fsync; phase-labeled at every leg boundary), /proc watcher (100ms samples) for kernel/uv/probe lifetimes, strace -ff -f census x5 (structure-only, timing INVALID under strace)",
+  "io_regime": "io-pre/mid2 = the known ~40ms fresh-write-rename host regime (FRESH_ISOLATED p50 39.5-39.7ms, stall-rate 100%, reference-class lifting per v1.1 rule B); io-mid1/mid3/post = brief FAST windows (p50 0.95-1.10ms, stall15 2-5/40); FSYNC verdict REGIME-HEALTHY on ALL five blocks (p50 0.09-0.15ms, stall20 <=1/50, one-off 38.9-40.1ms maxima inside the 40ms regime). Characterization lane, no cross-arm delta required: the probes bound the noise envelope \u2014 every replacement wall is >=100x below the smallest regime event; in-leg stalls would be visible at the 100x margin and none appear.",
+  "replacement_command_walls_ms_per_leg": {
+   "warm-census": {
+    "trials": 6,
+    "venv": "shared warm (rpc-shared-kvenv, #2857 probe memo present)",
+    "command": {
+     "st2": {
+      "flavor": "get_state",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 10.3,
+      "min_ms": 10.2,
+      "max_ms": 10.4,
+      "values_ms": [
+       10.2,
+       10.3,
+       10.3,
+       10.3,
+       10.3,
+       10.4
+      ]
+     },
+     "ssn": {
+      "flavor": "set_session_name",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 51.6,
+      "min_ms": 16.9,
+      "max_ms": 55.2,
+      "values_ms": [
+       51.7,
+       51.6,
+       52.4,
+       49.9,
+       55.2,
+       16.9
+      ]
+     },
+     "stl": {
+      "flavor": "set_thinking_level",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 10.4,
+      "min_ms": 10.4,
+      "max_ms": 10.5,
+      "values_ms": [
+       10.4,
+       10.4,
+       10.4,
+       10.4,
+       10.5,
+       10.4
+      ]
+     },
+     "pr1": {
+      "flavor": "prompt",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 14.0,
+      "min_ms": 13.0,
+      "max_ms": 27.0,
+      "values_ms": [
+       13.0,
+       13.9,
+       14.2,
+       27.0,
+       14.8,
+       13.1
+      ]
+     },
+     "ns1": {
+      "flavor": "new_session #1",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 39.1,
+      "min_ms": 38.6,
+      "max_ms": 45.7,
+      "values_ms": [
+       39.0,
+       40.4,
+       38.6,
+       38.6,
+       45.7,
+       39.3
+      ]
+     },
+     "ns2": {
+      "flavor": "new_session #2",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 41.1,
+      "min_ms": 38.9,
+      "max_ms": 44.8,
+      "values_ms": [
+       40.7,
+       39.9,
+       44.8,
+       38.9,
+       43.1,
+       41.5
+      ]
+     },
+     "ns3": {
+      "flavor": "new_session #3",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 43.2,
+      "min_ms": 38.3,
+      "max_ms": 46.9,
+      "values_ms": [
+       46.6,
+       38.3,
+       45.9,
+       40.5,
+       39.6,
+       46.9
+      ]
+     },
+     "sw1": {
+      "flavor": "switch_session (10MiB fixture)",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 38.9,
+      "min_ms": 37.1,
+      "max_ms": 44.9,
+      "values_ms": [
+       38.6,
+       37.1,
+       39.5,
+       39.2,
+       38.5,
+       44.9
+      ]
+     },
+     "fk1": {
+      "flavor": "fork (first user entry)",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 78.5,
+      "min_ms": 77.1,
+      "max_ms": 94.7,
+      "values_ms": [
+       78.1,
+       77.1,
+       85.3,
+       78.5,
+       78.6,
+       94.7
+      ]
+     },
+     "eof_gm": {
+      "flavor": "get_messages (EOF check)",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 10.5,
+      "min_ms": 10.4,
+      "max_ms": 10.5,
+      "values_ms": [
+       10.5,
+       10.4,
+       10.5,
+       10.5,
+       10.5,
+       10.4
+      ]
+     }
+    }
+   },
+   "warm-immediate": {
+    "trials": 6,
+    "venv": "shared warm (rpc-shared-kvenv, #2857 probe memo present)",
+    "command": {
+     "ns1": {
+      "flavor": "new_session #1",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 61.9,
+      "min_ms": 34.1,
+      "max_ms": 90.3,
+      "values_ms": [
+       37.7,
+       34.9,
+       87.8,
+       34.1,
+       90.3,
+       86.1
+      ]
+     },
+     "sw1": {
+      "flavor": "switch_session (10MiB fixture)",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 92.4,
+      "min_ms": 90.7,
+      "max_ms": 97.0,
+      "values_ms": [
+       96.6,
+       93.4,
+       90.7,
+       97.0,
+       91.3,
+       91.4
+      ]
+     },
+     "fk1": {
+      "flavor": "fork (first user entry)",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 136.8,
+      "min_ms": 134.2,
+      "max_ms": 141.7,
+      "values_ms": [
+       134.2,
+       141.7,
+       136.9,
+       136.8,
+       137.8,
+       134.6
+      ]
+     },
+     "ns2": {
+      "flavor": "new_session #2",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 36.0,
+      "min_ms": 35.2,
+      "max_ms": 37.3,
+      "values_ms": [
+       35.9,
+       35.6,
+       35.2,
+       37.2,
+       37.3,
+       36.2
+      ]
+     },
+     "ns3": {
+      "flavor": "new_session #3",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 35.1,
+      "min_ms": 33.6,
+      "max_ms": 38.5,
+      "values_ms": [
+       37.3,
+       38.5,
+       33.6,
+       34.2,
+       34.7,
+       35.4
+      ]
+     },
+     "st2": {
+      "flavor": "get_state",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 10.4,
+      "min_ms": 10.3,
+      "max_ms": 10.5,
+      "values_ms": [
+       10.4,
+       10.4,
+       10.3,
+       10.4,
+       10.5,
+       10.3
+      ]
+     },
+     "pr1": {
+      "flavor": "prompt",
+      "trials": 6,
+      "ok_all": true,
+      "p50_ms": 14.6,
+      "min_ms": 14.1,
+      "max_ms": 17.2,
+      "values_ms": [
+       14.1,
+       14.4,
+       17.2,
+       14.2,
+       14.8,
+       17.1
+      ]
+     }
+    }
+   },
+   "cold-late": {
+    "trials": 2,
+    "venv": "per-trial FRESH kvenv (wiped pre-trial; warm uv cache)",
+    "command": {
+     "ns1": {
+      "flavor": "new_session #1",
+      "trials": 2,
+      "ok_all": true,
+      "p50_ms": 58.5,
+      "min_ms": 58.4,
+      "max_ms": 58.6,
+      "values_ms": [
+       58.6,
+       58.4
+      ]
+     },
+     "ns2": {
+      "flavor": "new_session #2",
+      "trials": 2,
+      "ok_all": true,
+      "p50_ms": 35.2,
+      "min_ms": 30.4,
+      "max_ms": 40.0,
+      "values_ms": [
+       40.0,
+       30.4
+      ]
+     },
+     "sw1": {
+      "flavor": "switch_session (10MiB fixture)",
+      "trials": 2,
+      "ok_all": true,
+      "p50_ms": 94.3,
+      "min_ms": 93.7,
+      "max_ms": 94.9,
+      "values_ms": [
+       93.7,
+       94.9
+      ]
+     },
+     "st2": {
+      "flavor": "get_state",
+      "trials": 2,
+      "ok_all": true,
+      "p50_ms": 10.7,
+      "min_ms": 10.7,
+      "max_ms": 10.7,
+      "values_ms": [
+       10.7,
+       10.7
+      ]
+     }
+    }
+   },
+   "cold-early": {
+    "trials": 3,
+    "venv": "per-trial FRESH kvenv (wiped pre-trial; warm uv cache)",
+    "command": {
+     "ns1": {
+      "flavor": "new_session #1",
+      "trials": 3,
+      "ok_all": true,
+      "p50_ms": 58.8,
+      "min_ms": 55.7,
+      "max_ms": 62.5,
+      "values_ms": [
+       55.7,
+       58.8,
+       62.5
+      ]
+     },
+     "sw1": {
+      "flavor": "switch_session (10MiB fixture)",
+      "trials": 3,
+      "ok_all": true,
+      "p50_ms": 103.6,
+      "min_ms": 93.0,
+      "max_ms": 107.0,
+      "values_ms": [
+       103.6,
+       107.0,
+       93.0
+      ]
+     },
+     "ns2": {
+      "flavor": "new_session #2",
+      "trials": 3,
+      "ok_all": true,
+      "p50_ms": 36.8,
+      "min_ms": 36.5,
+      "max_ms": 39.7,
+      "values_ms": [
+       36.5,
+       39.7,
+       36.8
+      ]
+     },
+     "st2": {
+      "flavor": "get_state",
+      "trials": 3,
+      "ok_all": true,
+      "p50_ms": 10.5,
+      "min_ms": 10.5,
+      "max_ms": 10.6,
+      "values_ms": [
+       10.6,
+       10.5,
+       10.5
+      ]
+     }
+    }
+   }
+  },
+  "wall_headline": "across 17 leg trials x up to 6 replacement generations each, NO replacement command wall exceeded 142ms; max observed = fork of the 10MiB fixture in warm-immediate (141.7ms \u2014 the target-session parse class, matching the rpc-baseline resume numbers, NOT kernel state); new_session p50 39.1ms warm-steady-state / 58.5-58.8ms cold-venv legs; all 88 leg commands returned ok=true.",
+  "per_kernel_boot_cost_class": {
+   "execve_to_ready_ms_census": {
+    "n_kernels": 24,
+    "p50_ms": 92.5,
+    "min_ms": 66.9,
+    "max_ms": 118.7,
+    "per_census_tag_ms": {
+     "cw0": [
+      92.9,
+      89.9,
+      92.2,
+      95.4,
+      99.5,
+      98.2
+     ],
+     "ci0": [
+      75.3,
+      92.2,
+      66.9,
+      68.1,
+      67.5,
+      92.7
+     ],
+     "cl0": [
+      110.9,
+      68.6,
+      90.3,
+      75.1
+     ],
+     "ce0": [
+      114.0,
+      97.7,
+      97.9,
+      73.1
+     ],
+     "ce1": [
+      118.7,
+      99.5,
+      92.9,
+      79.2
+     ]
+    },
+    "note": "python -m rlm.repl execve -> '{\"event\":\"ready\"}' frame on fd 3 \u2014 the product hands the kernel a dedicated pipe fd, NOT stdout/stderr (the first analyzer pass looked for fd1/2 writes and found none; corrected to fd3; every census kernel wrote the ready frame). Strace-inflated upper bounds. First boot on a fresh venv pays an import premium (ce0/ce1 kernel-1 114.0/118.7ms vs 66.9-99.5ms later); warm venv identical class (cw0 89.9-99.5ms).",
+    "import_storm": "250-300 openat per boot (kernel python import phase)"
+   },
+   "venv_materialization_one_shot": {
+    "non_strace_uv_window_ms": {
+     "cold-early": [
+      711,
+      814,
+      911
+     ],
+     "cold-late": [
+      710,
+      606
+     ],
+     "note": "first->last uv process per trial (/proc watcher, 100ms quantization); WARM UV_CACHE_DIR, so this is materialization-sans-download. Phases (ce0 execs): uv python install 3.11 -> uv venv <kvenv> --python 3.11 --seed -> uv pip install runtime+dill+extras (uv build-cache python subprocesses) -> uv pip install --editable skills (build-cache pythons + git rev-parse HEAD probes)"
+    },
+    "strace_ce0": "uv python install t=0.111s; uv venv 0.175s; uv pip install runtime 0.244s (build-cache pythons 0.352-0.468s); uv pip install --editable skills 0.841s (build-cache pythons + git rev-parse 1.198-1.246s); settles ~1.9s under strace; venv-path-touching syscalls n=2673 (openat 16285 total, mkdir 2110 = the fresh venv tree, rename 1404 = uv install phases, fdatasync 4 = marker/lock durability); product-side write p50 0.015ms",
+    "one_shot_semantics": "per venv dir: the first boot materializes and writes .bootstrap-version; concurrent/queued boots JOIN the in-flight ensure (all four sessions' kernels spawned in a burst at venv-ready in ce0); the marker guards re-materialization"
+   },
+   "venv_ready_probe": {
+    "span_ms": [
+     99,
+     107,
+     66
+    ],
+    "note": "python -c RUNTIME_READY_CHECK. CAUTION for /proc classifiers: the check string contains 'import rlm.repl as _repl' (bootstrap/venv.rs:327), so arg-substring 'kernel' classifiers MISLABEL probes as kernels \u2014 the ce0 census proves it (tid14704 = analyzer-classified probe, watcher-classified kernel). One probe per venv dir; on-disk memo #2857 (.runtime-probe-memo.json) \u2014 warm census legs show ZERO probe processes."
+   },
+   "kernel_generation_per_replacement": {
+    "warm_census_trial": "6 kernel processes for 6 session generations (initial prewarm + ns1 + ns2 + ns3 + sw1 + fk1) \u2014 a FRESH kernel per generation, none reused, matching the TS anchor (one provisioner+kernel per AgentSession; replacement = new session)",
+    "warm_immediate_trial": "6 kernel processes for 6 generations; ~200ms replacement cadence catches kernels mid-boot or just-booted and disposes them (the raced_dispose path)",
+    "cold_leg_trial": "5 kernel-classified events = 4 kernel generations + 1 venv-ready probe (mislabel above)",
+    "one_shot_answer": "the one-shot is the VENV (per venv dir), NOT the kernel: sequential replacements in one process each pay a fresh ~67-119ms BACKGROUND boot and never a second materialization; ns1/ns2/ns3 walls are flat (39.1/41.1/43.2ms warm-census; 58.5/35.2/94.3 cold-late)"
+   }
+  },
+  "c_early_decomposition_the_10823ms_question": {
+   "verdict": "NOT REPRODUCIBLE at tip a5235b123 \u2014 closed as an artifact of the pre-fix driver. The source observation (rpc-baseline candidate 4, 10823ms cold new_session) predates that lane's 60s-pump-window driver fix; the source record's own validity note already flagged it ('not a clean number; flagged, not load-bearing'). The corrected driver at this tip measures the true class:",
+   "cold_early_ns1_walls_ms": [
+    55.7,
+    58.8,
+    62.5
+   ],
+   "cold_late_ns1_walls_ms": [
+    58.4,
+    58.6
+   ],
+   "true_mid_materialization_census": "ce0/ce1: ns1 issued 1.0s after ready while the venv chain was still running (settles ~1.9s under strace) \u2014 ns1 walls 134.7/132.3ms (strace-inflated; non-strace class 56-63ms): the teardown of a PRE-SPAWN startup returns immediately; the wall never waits for the venv",
+   "decomposition_answer": "the replacement wall = old-kernel teardown (running kernel: snapshot flush + graceful exit, ~10-50ms; mid-boot kernel: immediate dispose-return) + new session construction + rebind. All three hypothesized cost classes sit BEHIND the wall in the background prewarm: venv materialization (one-shot per venv dir), ipykernel boot (67-119ms), handshake (ready frame write <1ms; the kernel's fd3 writes p50 ~0.015ms). None lands on any replacement wall at this tip; the remaining boot wait joins on the session's first ipython tool call \u2014 the TS-parity contract (TS anchor Q2/Q6)."
+  },
+  "zombie_boot_on_raced_dispose": {
+   "code": "crates/pa-core/src/kernel/provisioner.rs:510-525 (run_startup raced_dispose) + :639-652 (the pre-start abort check covers only the boot-permit queue; a startup already inside do_start is not abortable) + crates/pa-core/src/kernel/manager/startup.rs do_start (a dispose landing mid-venv-wait does not stop the resolve->spawn->handshake sequence; the only post-resolve check is the manager-state Shutdown flag, which the provisioner-level dispose does not set for a not-yet-parked manager)",
+   "observed_ce0": "session1's kernel spawned at census t=1.968s \u2014 ~0.6s AFTER session1 was already replaced by ns1 (ns1 END t=1.365s) \u2014 booted (ready +114.0ms), then the raced_dispose teardown flushed its snapshot (2 kernel-state renames, first 46.3ms after ready) and exited 0. ce1 identical (spawn 1.96s, ready +118.7ms, flush 45.8ms after ready). The queued replacement sessions' kernels (generations 2/3/4) then spawned in a burst at ~2.17-2.20s (all joined on the same venv ensure; ready +97.7/97.9/73.1ms).",
+   "observed_non_strace": "legC-early trial1 shows a kernel-labeled event consistent with a zombie boot completing ~140ms after the ns1 wall; 100ms /proc quantization prevents per-attempt attribution \u2014 the census is the authoritative observation.",
+   "cost_class": "background-only: one wasted kernel boot per mid-boot replacement (worst case venv-cold: bounded by materialization + boot), plus a sub-200ms background delay to the NEXT sessions' kernel readiness while the zombie occupies the venv-resolution window. ZERO wall impact across all 22 census + 17 leg trials. TS aborts this work (repl-manager.ts:341 raceStartupWithAbort; not-yet-running kernel skips the snapshot flush) \u2014 the divergence is DOCUMENTED IN-TREE as intentional at provisioner.rs:510-525 ('the Rust boot completes and the teardown follows here with the same policy')."
+  },
+  "exit_liveness_eof": {
+   "rust": "crates/pa-cli/src/main.rs:9 std::process::exit(code) after main_with_runtime returns at stdin EOF \u2014 background kernel boots and in-flight venv materialization are never awaited",
+   "observed": "stdin_close_to_exit_ms 31.4-31.7ms across all leg trials (the EOF path DOES settle a LIVE kernel: every final-session census kernel flushed a snapshot and exited 0 \u2014 the #2942/#2949 exit-gate settle bound); but an exit landing MID-materialization leaves a partial venv (no .bootstrap-version marker), so the next boot re-materializes \u2014 predecessor-verified on this VM (warm3.sh: exit during materialization -> no usable venv)",
+   "ts_parity": "true \u2014 TS runRpcMode likewise returns at EOF with the background ensure un-awaited; the marker+bootstrap-lock guards the partial venv the same way. Liveness finding, no wall impact, no candidate."
+  },
+  "eof_settle_ms": {
+   "values": [
+    31.5,
+    31.4,
+    31.4,
+    31.4,
+    31.4,
+    31.4
+   ],
+   "note": "stdin close -> process exit, legA trials (all legs identical 31.4-31.7ms); includes the final kernel's snapshot flush + the exit-gate settle bound"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Honest-negative discipline: the lane set out to reproduce a flagged cold class and could not; every wall measured is >=100x below the claimed 10.8s. Census timings are structure-only (strace overhead inflates; the boot spans are upper bounds). The /proc watcher's arg-substring kernel classifier mislabels venv-ready probes as kernels (RUNTIME_READY_CHECK contains 'import rlm.repl as _repl', bootstrap/venv.rs:327) \u2014 the ce0 census tid14704 proves it; kernel counts per trial are corrected using the census ground truth (warm legs 6/6 events = 6 kernels 0 probes; cold legs 5 events = 4 kernels + 1 probe). Non-strace cold-early legs landed POST-materialization (the warm-cache venv chain finished 0.9-1.1s, ahead of the 1.0s post-ready sleep) \u2014 the TRUE mid-materialization observations are the ce0/ce1 census trials (ns1 issued while the uv chain was still running); their walls are strace-inflated but two orders below the claim. legC-early trial 2's 14.38s trial wall includes the pre-spawn loadavg quiet-gate wait (driver overhead, not product). Watcher event times carry 100ms quantization; command walls are arrival-accurate at 10ms pump windows. The battery ran once end-to-end with sha asserts; no rerun was needed (rerun discipline 1+1 not triggered \u2014 no reds, no anomalies to chase).",
+  "evidence": "hillclimb/archives/rpc-coldkernel/rpc-coldkernel-evidence.tar.gz (sha 87484b18a887fc9510bbe05cc3e98b7f52f562c5eae57432248362c637706470; VM-side sha match verified before VM deletion; battery driver log with per-leg sha asserts, all leg receipts with command walls + proc_events + frames, census per-tid strace traces + analyses, io probe outputs)"
+ },
+ "outcome": "characterization-complete (honest negative on the source record's 10.8s cold second-kernel-boot class; no product change, no PR \u2014 the record is the deliverable per the brief)",
+ "decision": "The cold second-kernel-boot class is CLOSED at tip a5235b123: no RPC replacement flavor (new_session/switch_session/fork), warm or cold-venv, steady-state or mid-materialization, ever pays kernel boot or venv materialization on its response wall \u2014 max 142ms across 17 trials (the 10MiB fork parse class); the source 10.8s observation is attributed to the pre-fix rpc-baseline driver (its own record flagged it not-clean) and is not a product class. The replacement wall is old-kernel teardown + build + rebind; the second kernel is per-generation, boots in the background (67-119ms execve->ready, venv one-shot 0.6-0.9s warm-cache, probe memoized per venv) and joins on the first ipython call \u2014 exactly the TS contract (anchor Q2/Q6). Two findings are left for the kernel-surface owner, both documented and neither a wall regression: (1) the raced_dispose zombie boot (Rust completes a mid-boot boot then tears it down; TS aborts \u2014 provisioner.rs:510-525, background-only cost, worst case one wasted boot + sub-200ms next-session kernel-readiness delay); (2) EOF exit never awaits in-flight venv materialization (parity-true liveness note; a partial venv re-materializes on next boot). No candidate meets the #2953 trivial-TS-parity bar: the zombie-boot fix is a real cancellation change on armed-lane territory with zero wall benefit.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-215500-startup-rpc-coldkernel-second-boot.json",
+ "session": {
+  "worker": "perf-kernel-cold-fast (reboot of the lane's predecessor sub-4a178fd0/session 01a0e45f-7144 which died in the glm-5.3-fast endpoint outage mid-collection; the battery job be274621 and the predecessor's evidence download were durable \u2014 the reboot verified the archive sha against the VM before continuing)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-0d8b856c/01a0e4b9-793e-72b1-9323-13c3f0f21da3.jsonl"
+ },
+ "timestamp": "2026-09-27T21:55:00Z"
+}
