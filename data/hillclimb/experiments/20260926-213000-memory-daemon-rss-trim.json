@@ -363,13 +363,19 @@
   "excluded": [],
   "notes": "Per-trial fixture prehash asserted (fresh inode copies; the resumed copy grows by bookkeeping rows post-trial as designed). Single-driver guards active per arm; the sha-asserted swap sequence is in the driver logs (SWAPPED_TO lines). The first ABBA (abba, pre-fix) pooled round-1/round-2 into per-arm dirs (round 1 overwritten) - superseded by the per-round-dir reruns (abba2/abba3/abba4). The census instrument build (3792b6bf...) is a THROWAWAY env-gated build (PRIME_DR_CENSUS), never on the lane branch; the VM tree was reset to the tip after each instrument/candidate build. cold_start sidecar has no per-proc rows (the benchmark's rss capture does not bind the patched rss_tree seam) - disclosed. The compaction_arms threshold test's standalone base failures are recorded as the flake's evidence, not measured as a metric."
  },
- "outcome": "pair-positive at the FINAL HEAD 8d8c767a6 (merge-base 4ed68f6e9): the supervisor-side trim cuts the daemon's routed-relay retained heap -54.3% (113.9 -> 52.1 MiB) and the catalog-scan residue -31.3% (73.9 -> 50.8), full separation on every phase at every base; TUI flow unchanged; fmt+clippy green; symmetric-flake ledger attached",
- "decision": "PR #2899 open at lane head a8dfc00c1 (merge-base c94637534; the zero-copy-base verification pair supersedes the 4ed68f6e9 final-head pair for magnitude; both labeled): final-head pair -54.3% relay / -31.3% catalog with full separation; merge bar = orchestrator numeric review (ACCEPTED 2026-09-26 for the 1507d399b pair; the final-head pair supersedes with the same class) + BOTH reviewer APPROVEs on the final PR sha + operator disposition of disclosed reds (benchmark non-applicability, the compaction_arms threshold pre-existing flake, the load flakes)",
+ "outcome": "merged",
+ "decision": "MERGED as 824d6118a on origin/rust (#2899). Evidence lineage: full separation on every phase across FIVE bases; pre-zero-copy -49..-58% (HISTORICAL, superseded by #2897's relay together with this trim), zero-copy base -13..-26%; TUI no-regression at every base; clients.rs re-homing watch item carried (the #2878 split's future `mod clients;` flip re-homes the write-path hunks).",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2899",
  "record_path": "data/hillclimb/experiments/20260926-213000-memory-daemon-rss-trim.json",
  "session": {
   "worker": "perf-daemon-rss-fast",
   "session_dir": null
  },
- "timestamp": "2026-09-26T21:30:00.000000+00:00"
+ "timestamp": "2026-09-26T21:30:00.000000+00:00",
+ "merge": {
+  "squash_sha": "824d6118a2e488fa635b0ef1b65c4978e6032f9c",
+  "pr": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2899",
+  "merged_at": "2026-09-27 (squash content verified = the lane delta vs merge-base c94637534: +40/-15, supervisor.rs only, all 3 hunks present incl. both zero-copy arms)",
+  "merge_bar": "orchestrator numeric review (accepted across the cycle) + BOTH reviewers' EXPLICIT APPROVEs re-bound and effective at the final SHA a8dfc00c1 + CI green at the head (fmt/check+clippy/4/4 shards/test summary SUCCESS; benchmark = standing non-applicable red) + operator dispositions of the registered red classes"
+ }
 }
