@@ -1,0 +1,71 @@
+{
+ "id": "20260927-085200-interaction-exit-gate-hang-remediation",
+ "axis": "interaction",
+ "lane": "perf-exitgate-hang (wave-5 remediation: the interactive_daemon_e2e exit-gate hang family)",
+ "hypothesis": "TRIAGE-PROVEN FAMILY (record 20260927-043000, bench 6c5ea95): the headless exit gate (pa-tui interactive.rs) waits for the full settle with NO timeout; a /switch racing the still-in-flight submit round trip strands a settle member and the run parks in run_interactive's block_on forever (30-45min CI job wedges, no failure name). ROOT-CAUSE ANALYSIS (this lane): the strand is the prompt/turn-end pairing watermark (session_ui.rs order_prompt_request): expected_turn_end = last_prompt_turn_end.max(turn_ends_seen)+1 counts ends the pane's subscription can never deliver \u2014 the outlived submit's turn_end is dropped by the switch (the detach retires the old subscription; the stale-session guard filters late copies), so the post-switch submit's expected end is inflated by one; when its own turn_end beats its ack to the client (worker acks at admission while the scripted instant turn streams in parallel; the events channel and the request channel are independent client-side tasks), the ack's re-arm gate (turn_ends_seen < expected) arms turn_active against a watermark no future end can reach \u2014 turn_active latches forever with the whole trio idle. FIX: (a) bound the headless settle (HEADLESS_SETTLE_TIMEOUT_MS=60s; a stuck member fails the run with the member named \u2014 HeadlessSettle.blockers()); (b) rebase the watermark at every attach (initial, /switch, supersede rebind): each submit reserves the next end the mounted subscription will deliver.",
+ "ts_parity": "TS shutdown() has NO settle wait (stop -> dispose -> process.exit(0); in-flight submits dangle; inputSubmissionsPending drains in handleSubmit's own finally \u2014 the generation guards gate UI application, not the bookkeeping). The unbounded settle is a Rust headless-harness gap (the headless verifier has no TS counterpart), not a parity delta. The watermark itself is port-only (TS's single event loop cannot lose an end); its rebase enforces the pairing invariant the port needs (ends the pane can see), converging to TS semantics (the loader state follows the mounted session's event stream). Blast radius: UiMode::Headless is test-harness-only (34 uses, all pa-cli e2e + pa-tui unit); terminal runs never see HeadlessDone so the gate AND the bound are unreachable in real TUI (the exit_guard owns the live exit); user-visible effect in real TUI: none.",
+ "approach": "Two files: crates/pa-tui/src/session_ui.rs (TurnEndWatermark extracted type: next_expected/note_turn_end/end_already_seen/rebase; attach_session rebases at the streaming resync; order_prompt_request/apply_prompt_outcome/TurnEnded use the type) and crates/pa-tui/src/interactive.rs (HeadlessSettle snapshot: the gate's 12 members, settled()==the old gate, blockers() names them; the gate breaks on settled(); HEADLESS_SETTLE_TIMEOUT_MS=60_000 bound armed at HeadlessDone, bail! with the members named on expiry). Unit tests: turn_end_watermark_tests (1:1 pairing on one subscription incl. the complete-turn-before-ack window; the switch latch replay \u2014 the post-switch submit's ack must not re-arm a turn that already ended; the rebase == fresh-pane uniform-shift oracle) + the_headless_settle_names_every_stuck_member (settled==old gate; every member named; the wedge member names 'a turn still active'). Behavior-preserving: same-session watermark decisions identical (uniform shift), green headless runs never reach the bound (settles are ms; the bound arms only after HeadlessDone; terminal runs never arm it), the suite's frame assertions (the frozen-surface oracle) stay green.",
+ "base": {
+  "revision": "e6e7a26e4ed9c5bb051df2fedccd270eba946c33 (lane parent; origin/rust tip at lane start)"
+ },
+ "branch": "lane/perf-exitgate-hang",
+ "commits": [
+  "499ad7e34dea1a2cef49530019be451edc1beb1d",
+  "f4e6ba1af6fb67d7489ec06105b99f2d106c0b56"
+ ],
+ "vm": "mjbtcsaue6ui2i8klx3silo9 (hillclimb-exitgate-hang, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1 +fmt/clippy; record /home/ubuntu/hillclimb/vms/exitgate-hang.json)",
+ "matrix": "THREE arms on the same VM (interleaved, exact CI unit cargo test --locked -p pa-cli --test interactive_daemon_e2e, per-trial timeout 180s, sha-asserted, leftover-kill pre-trial, lean trio capture on wedges): base e6e7a26e4, cand f4e6ba1af (bound+rebase), bound-only (cand minus the rebase \u2014 the diagnostic arm). PHASE 1 (bound-only): run until the first settle-bound red \u2014 the bound's proof + the in-the-wild member identification (predicted: 'a turn still active'). PHASE 2 (base vs cand interleaved): the wedge rate at the tip (re-triage at the settled lane base per the family registration's caveat) vs the cand (0 wedges + 0 bound-reds expected). I/O advisory v1.0 probes at matrix boundaries (both classes).",
+ "gates": {
+  "crates_gate_head_f4e6ba1af": "GREEN (fleet pool slot 1, rust:1-bookworm 1.98.1: fmt rc=0; clippy -p pa-tui -p pa-cli --all-targets -D warnings rc=0; cargo test -p pa-tui -p pa-cli --no-fail-fast rc=0, zero failures; verdict gate_1790496601_825752)",
+  "matrix_vm_build_clean": "fmt x3 rc=0, suite-build x3 rc=0, clippy base/cand rc=0 (the bound-only evidence arm's dead_code clippy red disclosed \u2014 not a shipping build)",
+  "full_gate": "PENDING at the folded head (the session_ui split series is at 10/14 and moving; fold at the settled boundary then full VM gate per the stale-base rule)"
+ },
+ "outcome": "phase-2 COMPLETE; lane evidence closed pending the settled-boundary fold + full gate + PR",
+ "session": "perf-exitgate-hang child",
+ "timestamp": "2026-09-27T08:52:00Z",
+ "trial_matrix": {
+  "vm": "mjbtcsaue6ui2i8klx3silo9 (ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1 +fmt/clippy + gdb)",
+  "unit": "cargo test --locked -p pa-cli --test interactive_daemon_e2e (the exact CI shard-4/4 unit), solo suite, default test threads (16), per-trial timeout 180s (green wall 15.1-17.0s -> an unambiguous wedge cap), interleaved base,cand,base,cand..., sha-asserted per trial, leftover-kill before every trial, lean trio capture on wedges",
+  "arms": {
+   "base": "e6e7a26e4ed9c5bb051df2fedccd270eba946c33 (lane parent; origin/rust tip at lane start)",
+   "cand": "f4e6ba1af6fb67d7489ec06105b99f2d106c0b56 (lane head: bound + watermark rebase)",
+   "bound_only_evidence_arm": "cand minus the watermark rebase (NOT a shipping build; the bound's diagnostic arm; suite test-build rc=0, clippy dead_code disclosed)"
+  },
+  "phase1_bound_only": {
+   "trials": 3,
+   "wedges": 0,
+   "settle_bound_reds": 1,
+   "greens": 0,
+   "flake_fails": 2,
+   "result": "TRIAL 3: tui_submit_outlived_by_switch_stays_silent_on_the_new_session FAILED in 98.4s with 'interactive run: the headless run's settle did not complete within 60000ms of the plan's completion: A TURN STILL ACTIVE' \u2014 the wedge converted into an attributable red naming the stuck member; the other 31 tests green in the same run. THE IN-THE-WILD MEMBER IDENTIFICATION: turn_active latched, exactly the watermark-latch mechanism predicted from the 14 triage wedges. Trials 1-2: the known render-timing flake family (tui_prompt_stash_restores_a_pasted_image_with_the_draft), disclosed."
+  },
+  "phase2_base_vs_cand": {
+   "base": {
+    "trials": 30,
+    "wedges": 3,
+    "wedge_trials": [
+     15,
+     19,
+     29
+    ],
+    "settle_bound_reds": 0,
+    "greens": 23,
+    "flake_fails": 4,
+    "green_walls_s": "15.1-17.0"
+   },
+   "cand": {
+    "trials": 30,
+    "wedges": 0,
+    "settle_bound_reds": 0,
+    "greens": 26,
+    "flake_fails": 4,
+    "green_walls_s": "15.1-16.8"
+   },
+   "claim": "The family RE-VERIFIED at the lane parent tip (3 unbounded hangs, 10%, 95% CI ~2-26%; trials 15/19/29, all 180s-cap + capture) and is GONE at the candidate (0 wedges AND 0 settle-bound reds in the same interleaved window; rule-of-three upper bound ~10% at this n). One-sided Fisher 3/30 vs 0/30: p=0.119 (disclosed: NOT significant alone at this n \u2014 same framing as the triage's own rate disclosure). The causal proof is mechanistic, not rate-only: (a) the bound-only arm's diagnostic red names the exact member the latch analysis predicted; (b) the unit-level watermark oracle proves the rebase removes the latch arithmetic and is a uniform shift for every same-session sequence; (c) at cand a stuck member of ANY kind can only appear as a settle-bound red (the bound fires within 60s of plan completion) \u2014 0 in 30 trials.",
+   "flake_symmetry": "4 vs 4 fast flake-fails (all ~15.5-16.3s walls, the registered render-timing family, rotating member tui_prompt_stash_restores_a_pasted_image_with_the_draft named in 6/8 rows; 2 rows have an uncaptured FAILED name in the parser \u2014 same fast-named-failure class, disclosed). No non-flake red outside the wedge family at either arm.",
+   "wedge_rate_drift": "all 3 base wedges sat mid-to-late in the matrix (trials 15, 19, 29 of 60) \u2014 consistent with the triage's late-window drift observation; the interleaved design cancels it between arms."
+  },
+  "regime_disclosure": "I/O advisory v1.0, both probe classes at matrix boundaries + final: repeat-fsync p50 0.14ms (healthy) with isolated maxima 103-113ms (the no-ceiling trap class, never clustered); fresh+sync_all+rename p50 100.4->107.4ms (the persistent marginal/degraded class on this host class, steady across the matrix \u2014 ambient, cancels between arms). The wedge is a hang-repro, NOT a timing leg: green walls 15.1-17.0s are 10x under the 180s cap.",
+  "evidence": "/home/ubuntu/hillclimb/exitgate/exitgate-matrix.tar.gz (sha256 41c5501b26a96f4ed7d7ae76c0416344991d6b6aa3d8d4f59001c1cce69977cf; 210 entries: per-trial logs, trials.jsonl x2, notebooks, the settle-red log, 3 base-wedge trio captures)"
+ }
+}
