@@ -241,7 +241,7 @@
  },
  "timestamp": "2026-09-27T01:52:35Z",
  "evidence": {
-  "local": "/home/ubuntu/hillclimb/fixtures/model-resolve-cache/ (baseline-evidence.tar.gz sha256 f4bacc54222b76ecf00890cacf78355110173d0c660dac81df2140031da2424a: 29 baseline trials + trace.json per trial, analysis-baseline.json, 3 strace logs, driver+fixtures; pair-evidence.tar.gz sha256 afa1645d1a07853f5a9ac55dd02e624b8f7082d86adf6d0412607dcbb67b3d55: 24 ABBA trials + analysis-pair.json + 2 cand strace logs + probe logs + drivers)",
+  "local": "/home/ubuntu/hillclimb/fixtures/model-resolve-cache/ (baseline-evidence.tar.gz sha256 f4bacc54222b76ecf00890cacf78355110173d0c660dac81df2140031da2424a: 29 baseline trials + trace.json per trial, analysis-baseline.json, 3 strace logs, driver+fixtures; pair-evidence.tar.gz sha256 afa1645d1a07853f5a9ac55dd02e624b8f7082d86adf6d0412607dcbb67b3d55: 24 ABBA trials + analysis-pair.json + 2 cand strace logs + probe logs + drivers); confirm-evidence.tar.gz sha256 fe99f4443e0da164e08e5f5d3ff51461566c42ed42826479c14e09dd0d2c9451 (12 confirmation ABBA trials at the PR head edc27ca70 + strace-an-cand1b/2b + cand strace logs at the head)",
   "vm": "rl05a0redaks9b1yrhomurre (retained until review closes)"
  },
  "merged": {
@@ -254,6 +254,7 @@
    "parity-adversary-fast": "EXPLICIT APPROVE on edc27ca70",
    "parity-adversary-2-fast": "EXPLICIT APPROVE on edc27ca70"
   },
-  "dispositions": "benchmark non-applicability (standing 0/0 TS red); mcp_login expired-entry (fresh triage: solo-pass at head, DNS mode, pre-patch citations); ranked_hits active known-red (auto-cited)"
+  "dispositions": "benchmark non-applicability (standing 0/0 TS red); mcp_login expired-entry (fresh triage: solo-pass at head, DNS mode, pre-patch citations); ranked_hits active known-red (auto-cited)",
+  "post_merge_cleanup": "worktree + lane branch retired; VM deleted after archive verification (all three evidence tarballs sha-verified locally)"
  }
 }
