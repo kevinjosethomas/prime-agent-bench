@@ -1445,6 +1445,14 @@
   },
   "method": "same-vm-sequential ABBA (B C C B per N) + baseline curve"
  },
+ "merged": {
+  "archive_verified": true,
+  "dispositions": "registered classes only: benchmark non-applicability + mcp_login and a_bang registrations (occurrences appended to evidence stacks)",
+  "merged_at": "2026-09-27 (parent settlement decision per reviewer #2's process note: dispatch at 828beb5e7 accepting merge-base distance rather than fold-chase)",
+  "post_merge_note": "upstream moved past the merge with #2901 (SS3 supervisor split - adoption/register) and #2897 (supervisor-relay zero-copy); the clients.rs Arc-wrap watch item stays documented for whenever mod clients; wires",
+  "squash_sha": "06f07d119",
+  "status": "MERGED"
+ },
  "parity_notes": "Frozen surfaces untouched: session JSONL bytes, durability (1 fdatasync/append unchanged), wire frames, routing decisions, ring capacity, recv order. The session_semantics_digest is identical between base and candidate at every N (4195cad0 @ N=1, 85607aee @ N=100) and all 24 runs validate every oracle (structure, custom-row semantics, resume prefix preservation, fixture semantics). Internal-only change: the broadcast carries (ClientRouting, Arc<Value>) and the per-connection event arm serializes from the shared Value. The change mirrors the worker-side EventPump's existing Arc<OutboundFrame> pattern. cfg(test) helpers deref back to owned Values so test assertions are unchanged in meaning.",
  "pr": {
   "base": "rust @ 4d57eb0826f874879c17cd31124b5759a8a5b582",
@@ -1464,6 +1472,7 @@
  "review": {
   "merge_bar_state": {
    "merge": "parent's under the standing authorization, on the operator dispositions",
+   "merged": "YES @ squash 06f07d119",
    "numeric_review": "ACCEPTED",
    "operator_dispositions_pending": "benchmark non-applicability; mcp_login + a_bang registrations",
    "reviewer_1": "EXPLICIT APPROVE re-bound @ 828beb5e7 (effective)",
