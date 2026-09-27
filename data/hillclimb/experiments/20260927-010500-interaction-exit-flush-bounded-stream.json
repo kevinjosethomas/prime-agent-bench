@@ -580,13 +580,14 @@
   "excluded": [],
   "notes": "All PTY trials valid (TUI exit code 0, needle sighted, calibration drift <15%); byte-oracle sha identical on every leg; kill-switch legs excluded from perf deltas (contrast only); pyte 10k/40k baseline legs labeled: the exit-guard watchdog fires there (flush truncation risk when the drain outlasts the deadline - see slow_drain_regime_finding); the probe build was used for decomposition only (its timing marks are not in any perf delta); the 40k 'rows' label = 32,286 rendered rows (seed 8800 message pairs, 2.76MB session JSONL)."
  },
- "outcome": "both-reviewers-approved (PR #2913 @ ce5627bbd): orchestrator numeric review ACCEPTED; parity-adversary-fast EXPLICIT APPROVE (source-level decision-tree verification incl. the shrink case; kill-switch ruled an OPERATIONAL rollback switch, not a supported user surface); parity-adversary-2-fast EXPLICIT APPROVE (byte-oracle set called the right instrument). Awaiting operator dispositions (benchmark non-applicability + the two fresh-triaged flake registrations) - merge by the orchestrator only.",
- "decision": "orchestrator numeric review ACCEPTED + BOTH adversarial reviewers EXPLICIT APPROVE on ce5627bbd. Remaining: operator dispositions of the known-red state before merge. Kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 documented per reviewer ruling as an operational rollback switch (operational-escape-hatch class), not a supported user surface.",
+ "outcome": "MERGED: PR #2913 squash-merged into origin/rust as fcf306e2b3e6ff74311635db0bbbfe0e2f8687d4 (perf(pa-tui): stream the exit/suspend main-screen flush - zero exit RSS spike, byte-identical output). Verified: the squash carries exactly the lane's three pa-tui files (203+/90-). Both adversarial reviewers EXPLICIT APPROVE on ce5627bbd; orchestrator numeric review ACCEPTED; dispositions were the registered classes.",
+ "decision": "MERGED by the orchestrator under the standing authorization after both reviewers' APPROVE. Kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 remains the operational rollback switch (reviewer ruling: operational-escape-hatch class, not a supported user surface).",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2913",
  "record_path": "data/hillclimb/experiments/20260927-010500-interaction-exit-flush-bounded-stream.json",
  "session": {
   "worker": "perf-exit-flush-fast",
   "session_dir": "~/.prime/agent/sessions (see conversation log)"
  },
- "timestamp": "2026-09-27T00:47:13Z"
+ "timestamp": "2026-09-27T00:47:13Z",
+ "merged_sha": "fcf306e2b3e6ff74311635db0bbbfe0e2f8687d4"
 }
