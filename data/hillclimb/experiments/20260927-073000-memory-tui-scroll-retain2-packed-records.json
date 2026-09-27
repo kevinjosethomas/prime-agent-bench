@@ -1,0 +1,219 @@
+{
+ "id": "20260927-073000-memory-tui-scroll-retain2-packed-records",
+ "axis": "memory",
+ "hypothesis": "The remaining post-#2921/#2925 packed-storage retention is the per-span records themselves: 20-byte records (offset u32 + len u32 + inline 12-byte Style) where the offset is structurally derivable (the blob is contiguous: a row's spans read as running lengths from the row's own blob offset) and the style repeats (renderer-palette-bounded; the census measured at most 6 distinct styles per entry). Storing (len u32, style-id u32) 8-byte records + a per-pack style table + a RowStart{offset,first} row index should cut the retained records ~40% of the packed total (census-projected -7.55MB at the 10MiB walk tail) with byte-identical output on every path (the range-expansion oracle is the proof instrument; the per-span SGR merge-rejection stands untouched).",
+ "approach": "(1) CENSUS FIRST (probe-only build lane/hillclimb-tui-scroll-probe2, tip e6e7a26e4 + #2925): packed-aware census on the canonical fixtures (10MiB dadaecfc, 2MiB d12e7daa, 40MiB 85be402f; PA_TUI_CENSUS_FILE kick phases ready/idle20/pgup100/topwalk800/topwalk2600/tail/idle_final/idle_final_trim; probe binary sha 07bbb78ec... PROBE-labeled). Verdicts: (i) RECORDS: 10MiB walk tail 13,503,560B records (675,178 x 20B; 5,076 slots; blob 9,260,600B; index 353,236B; cand heap tail 45.9MB rss 79.3); distinct-styles histogram max 6 (3:2857, 4:1664, 5:140, 6:415; style tables 221,004B), span-len distribution 100% <=127B (le7:509,515 / le15:96,305 / le31:5,758 / le63:3,053 / le127:60,547); sizing decision (len u32, style-id u32)=8B records + RowStart 8B/row + per-pack style table, projections rec8 5,401,424B / rec6(u16 style) 4,051,068B / varint-len+u32-style 3,375,890B measured and the denser variants DECLINED (u16 needs a >65535-style fallback path; varint adds cursor-decode complexity to the per-frame expansion hot path for ~1-2MB). (ii) TRANSIENTS (class a honest negative): uncacheable (unc) visits/rows/spans = 0 across ALL walk phases on ALL THREE fixtures (a settled replay never exercises the streaming path; transcript-tail renders are 0-row; splash renders only on 2MiB walks); zero retained mass, zero churn -> no product change (the uncacheable EntryRows::Fresh path stays frozen; packing it would add per-frame cost on the streaming path for zero retention benefit). (iii) 40MiB STRAGGLER: persists at the NEW tip post-#2925 in the census trial (ready rss 202.0, heap 126.4MB including ~60MB free-resident pages; smaps: 37MB+17.4MB big-anon regions = the pack's mmap'd arrays; the pad pack 436,246 spans x 20B records 8.72MB + blob 17.45MB + index 0.58MB). Mechanism: replay-time heap interleaving (chat-tree growth between per-frame streaming renders leaves live chunks interleaved with the per-frame transients' holes; malloc_trim returns only the top) - an allocator artifact outside the storage change's reach; ABBA 6+6 trials measure the distribution. (2) PRODUCT CHANGE (lane/hillclimb-tui-scroll-retain2 e6d1a18a2, 2 files +120/-22): view/layout.rs RowPack -> starts: Vec<RowStart{offset: u32, first: u32}> + spans: Vec<PackedSpan{len: u32, style: u32}> + styles: Vec<Style> (per-pack dedup by full Style equality, linear scan bounded by the renderer palette per the census); pack() keeps the #2925 Option refusal contract unchanged (style ids bounded by span count; per-span len bounded by the already-refused total content bound); range() derives running offsets from the row start and copies styles from the table. layout_tests.rs adds row_pack_expands_every_range_byte_exact_with_many_styles: 48 distinct styles, 70KB spans, multi-byte unicode, empty rows, empty spans, repeated styles - EVERY contiguous [from,to) range asserted equal (the range-expansion oracle as the proof instrument). Both pa-tui row_pack unit oracles PASS on the VM at the lane head (cargo test --release -p pa-tui row_pack: 2 passed).",
+ "parity_notes": "BYTE PARITY at FOUR instruments: (1) styled-frame dumps pa-tui-replay --frame 120x40 --color on canonical 10MiB+40MiB: base==cand sha256 48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841 (10MiB) and 75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d (40MiB) - the SAME frozen values the tui-memory and tui-scroll-retain lanes recorded (cross-generation reproduction). (2) exit-flush inline scrollback ANSI dumps (PROBE PA_TUI_FLUSH_DUMP tee, 10MiB, walk+nowalk, both arms): walk sha256 185546c8aeef0148d71d830f9a91991f432992e162d7e8c28bc86de4a91a9d18 base==cand (the same sha the tui-scroll-retain lane recorded at its final pair); nowalk sha256 227b31629b77d9d64c532862f0efde30e48f03ed941845b8db28d01014e8a3a2 base==cand. (3) unit oracles (exhaustive ranges incl. the 48-style table + 70KB spans). (4) interaction parity: back-walk keys 2750 (10MiB/40MiB) / 700 (2MiB) all trials both arms (identical transcript geometry); typing p50 (PTY echo instrument, 29-key token): base 3.674/3.702/3.856 vs cand 3.668/3.724/3.727ms - symmetric within the instrument noise; typing-while-scrolled (paused 200 PageUps): 10-key tokens base 3.678/3.716/3.765 vs cand 3.674/3.873/3.958 then FULL 29-key tokens base 3.942 vs cand 3.723 (the borderline 10-key reading inverted - noise, disclosed); typing_ok true all reported trials (one cand trial dropped keys - invalid row by the instrument's completeness rule, rerun clean per the 1+1 discipline); echo legs 1.17-1.41ms; top-walk 53.25-53.31s both arms (driver-bound 0.02s/key pacing). The bench compare.scroll_typing instrument could NOT run on this VM: the bundle's product.yaml pins ~/bench-cmp5/pa-rust-prefix (absent from the bundle; bench prep settle failed on it) and the reconstructed prefix launch did not reach input-ready (the trial env-gate also tripped on leftover census daemons - an infra failure, not a product red); typing parity was measured with the PTY echo instrument instead (the same within-pair symmetric parity check class the fleet standard mandates for timing legs). No wire, schema, prompt, or behavior change: the records are storage-only; the 8192-row post-pack trim gate (#2872/#2925 plumbing, drop-before-trim) is untouched.",
+ "base": {
+  "revision": "e6e7a26e4 (the lane-start tip; the FOLDED pair re-measures at base 3cb8c99d6 vs cand 8a1297e0e - annotations pending)"
+ },
+ "branch": "lane/hillclimb-tui-scroll-retain2",
+ "commits": [
+  "e6d1a18a2 (denser packed span records: style table + derived offsets, 8B/span; binary sha 07c3dd4b4628684cc92e2164f00eabbbffef8ab14b2adc866c9604c8a06dfd41)"
+ ],
+ "build": {
+  "sandbox_id": "yv56h06855zd1ksjaeq8p5wm (all measurements + builds; ubuntu:22.04 16c/32GB/120GB, rustup 1.98.1)",
+  "binary_sha256": {
+   "base_e6e7a26e4": "357ee4ad929394603610e9fb0dd30bd257eefdb05b46dd83212664cad6667f13",
+   "cand_e6d1a18a2": "07c3dd4b4628684cc92e2164f00eabbbffef8ab14b2adc866c9604c8a06dfd41",
+   "probe_base_c2883db7e": "07bbb78ecc931b23626eb29870a57437c02cec94fde78b626008cf321eb9b386 - PROBE-labeled, never a product baseline",
+   "probe_cand_510b056fe": "built from lane/hillclimb-tui-scroll-probe2cand for the exit-flush tee oracles only"
+  },
+  "binary_bytes": {
+   "base": 220836512,
+   "cand": 220331624
+  },
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (fleet_gate gate_1790508247_801363 rc 0 at the folded head 8a1297e0e; CI fmt green at the same head)",
+  "clippy": "pass (fleet_gate rc 0 at the folded head; two findings at the first head fixed pre-fold: the if-let style-dedup + two redundant test clones; CI clippy green at the same head)",
+  "test": "fleet_gate full-suite at the folded head: fmt+clippy GREEN; cargo test rc 101 with exactly ONE failure: mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating - KNOWN-RED EXPIRED (daemon-timing rotating family, red only alongside the compaction pair under full-suite co-scheduling; the same family the tui-scroll-retain lane disclosed at its merge) - DISCLOSED for operator disposition; GitHub CI workspace shards green on the same heads (shard 4 rerun pending at this writing)",
+  "benchmark_ci": "the standing NON-APPLICABLE public TS benchmark workflow (standing operator disposition, never called pass)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "tui_rss_walk2600_10mib": {
+    "baseline": {
+     "trials": 3,
+     "values_tail_rss_mb": [
+      79.8,
+      80.7,
+      81.1
+     ],
+     "p50_tail_rss_mb": 80.7,
+     "values_ready_rss_mb": [
+      61.8,
+      62.6,
+      63.1
+     ]
+    },
+    "candidate": {
+     "trials": 3,
+     "values_tail_rss_mb": [
+      72.7,
+      73.2,
+      73.6
+     ],
+     "p50_tail_rss_mb": 73.2,
+     "values_ready_rss_mb": [
+      61.3,
+      61.7,
+      61.8
+     ]
+    },
+    "delta_pct": -9.3,
+    "regression": false,
+    "separation": "full: max cand 73.6 < min base 79.8; walk growth +18.3 -> +11.4MB p50"
+   },
+   "tui_rss_walk2600_2mib": {
+    "baseline": {
+     "trials": 2,
+     "values_tail_rss_mb": [
+      39.6,
+      39.8
+     ],
+     "p50_tail_rss_mb": 39.7
+    },
+    "candidate": {
+     "trials": 2,
+     "values_tail_rss_mb": [
+      37.4,
+      38.3
+     ],
+     "p50_tail_rss_mb": 37.85
+    },
+    "delta_pct": -4.7,
+    "regression": false,
+    "separation": "full: max cand 38.3 < min base 39.6"
+   },
+   "tui_rss_walk2600_40mib": {
+    "baseline": {
+     "trials": 6,
+     "values_tail_rss_mb": [
+      165.6,
+      166.0,
+      166.0,
+      166.1,
+      166.1,
+      206.5
+     ],
+     "p50_good_class": 166.0,
+     "straggler_trials": 1
+    },
+    "candidate": {
+     "trials": 6,
+     "values_tail_rss_mb": [
+      161.0,
+      161.1,
+      161.5,
+      161.6,
+      161.9,
+      202.9
+     ],
+     "p50_good_class": 161.5,
+     "straggler_trials": 1
+    },
+    "delta_pct_good_class": -2.7,
+    "regression": false,
+    "separation": "good-class full: max cand 161.9 < min base 165.6; the freed-page-return straggler appears 1-of-6 on BOTH arms (base 206.5, cand 202.9) - a tip-level allocator artifact (replay-time heap interleaving), NOT introduced or fixed by this change; the records delta lands deterministically in BOTH classes (straggler delta -3.6MB)",
+    "note": "40MiB is the ready-state pad-pack case (the walk stays inside the pad sea; no growth on either arm)"
+   },
+   "census_structure_pair": {
+    "baseline_packed_tail_bytes": 23117396,
+    "candidate_packed_tail_bytes": 15368496,
+    "delta_bytes": -7748900,
+    "candidate_packed_detail": "records 5,401,424 (= 675,178 x 8B exactly) + blob 9,260,600 + starts index 706,472 + style tables 270,288 cap; same slots/spans/rows/content as base (5,076 / 675,178 / 83,233 / 9,260,600) - only the storage denser",
+    "candidate_heap_tail_mb": 33.1,
+    "baseline_heap_tail_mb": 45.9,
+    "note": "PROBE-labeled census numbers (kick-file census builds, never ships); the same-walk structure identical on both arms"
+   },
+   "typing_parity": {
+    "instrument": "PTY per-key echo latency (within-pair symmetric parity check)",
+    "typing_ms_p50": {
+     "base": [
+      3.674,
+      3.702,
+      3.856
+     ],
+     "cand": [
+      3.668,
+      3.724,
+      3.727
+     ]
+    },
+    "typing_scrolled_ms_p50": {
+     "base_10key": [
+      3.678,
+      3.716,
+      3.765
+     ],
+     "cand_10key": [
+      3.674,
+      3.873,
+      3.958
+     ],
+     "base_full29": [
+      3.942
+     ],
+     "cand_full29": [
+      3.723
+     ]
+    },
+    "typing_ok": "true all reported trials; one cand 10-key trial dropped keys (invalid row, rerun clean per 1+1)",
+    "bench_note": "compare.scroll_typing could not run on this VM (missing campaign prefix in the bundle + settle failure + env-gate trips on leftover census daemons) - typing parity measured with the PTY echo instrument; disclosed"
+   },
+   "byte_oracles": {
+    "styled_frame_10mib_sha256_both_sides": "48603280488e6c4472033e341273abfa2674d126d77b887bd618545d64404841",
+    "styled_frame_40mib_sha256_both_sides": "75cd4390440135e1d0c2ae1187eeea65a87f1c7dddcc10549fc8deaae7a3ff9d",
+    "exit_flush_walk_sha256_both_sides": "185546c8aeef0148d71d830f9a91991f432992e162d7e8c28bc86de4a91a9d18",
+    "exit_flush_nowalk_sha256_both_sides": "227b31629b77d9d64c532862f0efde30e48f03ed941845b8db28d01014e8a3a2",
+    "identical": true
+   },
+   "cpu_calibration_s_30m_loop": {
+    "pre": [
+     1.0747,
+     1.051,
+     1.0583
+    ],
+    "mid": [
+     1.043,
+     1.0564,
+     1.0558
+    ],
+    "post": [
+     1.0334,
+     1.0454,
+     1.0392
+    ],
+    "drift_pct": 1.3
+   },
+   "io_regime_v10": {
+    "fresh2_class": "DEGRADED throughout (pre p50 79.78ms stall15 100% max 378.50; post p50 128.30ms stall15 100% max 174.77) - the fleet flush-path regime (write-regime calendar); primary claims are RSS/census/oracle measures (deterministic); every timing leg is a within-pair symmetric parity check",
+    "fsync2_class": "pre p50 0.06ms (near-healthy), post p50 0.07ms max 132.89 (one stall) - marginal",
+    "phase_model": "applied: re-classified at every measurement leg boundary; no fixed-cycle prediction; no trap-ceiling assumption"
+   }
+  },
+  "extra": {
+   "fixture_prehash_per_trial": "fresh copy per trial, unique per-phase-arm-trial homes; 10MiB dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda, 2MiB d12e7daa97cac6db4a4c05e89c32dfbadff6e6023f46e31a319f264ac4c40ff0, 40MiB 85be402f49550b3b5b894c458bc3e5df0b14ea29ab0d719286c580b906274c94 asserted in-trial"
+  },
+  "validity": {
+   "excluded": [
+    "the FIRST ABBA pass (p1-p6 of run 1): cross-trial HOME reuse - the probe driver's per-trial home suffixes collided across phases (p3's 2MiB trial reused p1's 10MiB home: ready RSS 70.2 vs 34.9 in a fresh home; the window cache is generation-certified so the carrier is the home's persisted session/catalog state) - ALL trials of that run discarded and redone with unique per-phase-arm-trial homes",
+    "one cand typing trial (dropped keys, invalid by the instrument's completeness rule) - rerun clean per the 1+1 discipline, both rows kept in the local artifacts",
+    "the bench compare.scroll_typing rows on this VM (all er=True): the bundle lacks the campaign prefix (product.yaml pins ~/bench-cmp5/pa-rust-prefix), the reconstructed-prefix launch did not reach input-ready, and the env-gate tripped on leftover census daemons - infra, disclosed; typing parity re-measured with the PTY echo instrument"
+   ],
+   "notes": "Same-VM sequential ABBA, sha-asserted atomic binary swaps (rm+cp.new+mv, per-trial sha re-assert), fresh fixture copy per trial with in-trial canonical prehash assert, pre/mid/post CPU calibration (drift 1.3%), I/O advisory v1.0 dual-class regime recorded (fresh-write DEGRADED throughout - disclosed; deterministic primary claims unaffected), unique per-trial homes (the reuse lesson), no co-load during measurement (the census daemons reaped before the timing legs; the leftover-daemon env-gat trips are the bench-integration attempts, disclosed). HEAD MOVED during the lane (#2928, #2926, #2750, #2927, #2930, session_ui renumbering) - all diff-scanned: ZERO hunks in pa-tui view/ territory; the lane's single commit sits on e6e7a26e4 and appends onto any of them; the fold happens at the clean boundary with a post-fold hunk-by-hunk re-diff."
+  }
+ },
+ "outcome": "candidate-ready; PR #2939 open at binding SHA 8a1297e0e (folded at tip 3cb8c99d6); fleet_gate at the folded head: fmt+clippy GREEN, cargo test rc 101 with exactly ONE failure = mcp_login KNOWN-RED EXPIRED (daemon-timing rotating family; DISCLOSED for operator disposition, not a pa-tui red; my diff touches 2 pa-tui view files); GitHub CI at the head: fmt/clippy/shards 1-3 green, shard 4 rerun pending, benchmark = standing non-applicable TS red; folded-pair re-measurement (base 3cb8c99d6 vs cand 8a1297e0e) in flight - the record will be annotated",
+ "decision": null,
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2939",
+ "record_path": "data/hillclimb/experiments/20260927-073000-memory-tui-scroll-retain2-packed-records.json",
+ "session": {
+  "worker": "perf-tui-scroll-retain2-fast (GLM 5.3 Fast)",
+  "session_dir": "hillclimb wave-5 tui-scroll-retain2"
+ },
+ "timestamp": "2026-09-27T07:30:00+00:00"
+}
