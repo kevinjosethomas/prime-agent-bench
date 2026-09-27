@@ -234,5 +234,17 @@
   "worker": "perf-tui-scroll-retain2-fast (GLM 5.3 Fast)",
   "session_dir": "hillclimb wave-5 tui-scroll-retain2"
  },
- "timestamp": "2026-09-27T07:30:00+00:00"
+ "timestamp": "2026-09-27T07:30:00+00:00",
+ "reviewers": {
+  "binding_sha": "3d877c2adf05e48ce682e3ccd65badda8ab1d56a",
+  "numeric_review": "ACCEPTED (parent orchestrator) on the multi-generation paired evidence",
+  "parity_adversary_2_fast": "EXPLICIT APPROVE (SHA-bound, effective now): the successor holds every #2921 contract - the 8B records verified (offset derivation + style table; the frozen-SGR contract preserved: per-span boundaries still stored, no merging); the exhaustive range oracle ruled the right byte-exactness proof for the offset-derivation change; the u32-bounds analysis carried unchanged; the straggler handled better than #2921 (pooled 1/12 vs 3/12, Fisher p~0.6, no arm correlation); the RSS full separation both generations verified; the probe-build-mismatch catch ruled the kind of instrument-drift catch that keeps the oracle chain trustworthy; conditions: SHA-bound (head movement voids), operator dispositions for the benchmark non-applicability + the two co-scheduling flake triages",
+  "parity_adversary_fast": "PENDING",
+  "supplementary_sr2_reviews": "both spawned supplementary reviewers APPROVE (SHA-bound, source-and-evidence review) - additive per the orchestrator's gate ruling",
+  "operator_dispositions_pending": [
+   "benchmark non-applicability (standing)",
+   "mcp_login known-red expired-entry renewal",
+   "tui_prime_login_renders_the_inline_team_picker co-scheduling flake triage (focused-green at tip + first fold + final head)"
+  ]
+ }
 }
