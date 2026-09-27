@@ -331,6 +331,14 @@
     "claim": "flat"
    }
   },
-  "binary_identity_argument": "the confirmation pair's binary IS the ABBA candidate binary (sha a65bb7dd both) and the exact-head rebuild at 436cf0c0b reproduces the same sha, so the paired evidence carries to the reviewed head by direct binary identity"
+  "binary_identity_argument": "the confirmation pair's binary IS the ABBA candidate binary (sha a65bb7dd both) and the exact-head rebuild at 436cf0c0b reproduces the same sha, so the paired evidence carries to the reviewed head by direct binary identity",
+  "ci_rollup_436cf0c0b": {
+   "fmt": "SUCCESS",
+   "check_clippy_workspace": "SUCCESS",
+   "test_shards_1_3": "SUCCESS",
+   "cursor_bugbot": "SUCCESS",
+   "loc": "SUCCESS",
+   "benchmark": "FAILURE - DISCLOSED RED, operator disposition requested: the benchmark job's PR-side leg never started measuring (pr sandbox created 09:04:02Z, ZERO pr install/measure trials logged before the job's partial exit; main-side trials all completed) - the infra failure class (sandbox-created-but-no-trials), not a performance signal; the lane's own paired ABBA + final-head confirmation pair is the measurement evidence; the job cannot be rerun (GitHub: 'job cannot be rerun')"
+  }
  }
 }
