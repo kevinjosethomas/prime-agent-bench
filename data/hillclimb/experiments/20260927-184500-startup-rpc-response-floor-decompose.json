@@ -1,0 +1,146 @@
+{
+ "id": "20260927-184500-startup-rpc-response-floor-decompose",
+ "axis": "startup",
+ "hypothesis": "Wave-5 task from the rpc-baseline record's reported-only candidate 2: 'every RPC command pays a ~50.3-50.9ms response floor (read commands) while the daemon-worker path's equivalents are far cheaper; the candidate mechanism is the RPC surface's LineWriter (mpsc + writer task per response)'. Decompose the floor at the tip end-to-end with timing marks before any candidate; check the TS anchor (what TS's rpc stdio mode pays per response); then a bounded behavior-preserving candidate if the mechanism is a fixed poll/wake interval or a per-response task spawn, with paired ABBA on the rpc-baseline lane's driver contract.",
+ "approach": "MEASUREMENT ONLY, no product change (the floor was REFUTED as product latency; the record is the deliverable). Tip 13d5c0d78 (origin/rust at lane start; includes #2953's boot warm). VM ft2an7xlwuhzqlg7c85kj7w4 (hillclimb-perf-rpc-floor, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1), cargo build --release --locked --workspace rc=0, tip binary sha 5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574 (223183088 bytes; byte-identical to the rpc-models-persist lane's candidate-B build \u2014 the tip is the squash of that lane's commit onto 5395ce47d). DECOMPOSE: env-gated uncommitted probe patch (crates/pa-daemon/src/rpc/{mod,commands,session_commands}.rs, VM-only, tree restored and verified clean; probe binary sha 4c8a134b4a6f7612cf1b24c71a720830486a027eb58610c0583b117fa28ff222) with microsecond marks on EVERY response-path seam: stdin read -> parse -> dispatch spawn -> task start -> handler sub-seams (handle/agent.state/persistence/goal-driver) -> enqueue -> writer-task wake -> serialize -> stdout write_all -> flush. Driver: rpc_floor_probe.py (the rpc-baseline lane's per-trial contract: fresh agent dir/home/tmp/cwd, scrubbed env + venv-env.json, mock provider prime-inference/mock-1 via models.json on 127.0.0.1:8890, loadavg quiet gate, product-only zombie sweep, nonblocking os.read frame pump), legs burst/isolate/stream x2 with probe_v09 I/O preflights. CORRECTED MEASUREMENT: rpc_floor_v2.py (arrival-accurate read loop \u2014 scan for the response immediately after every consume; select only parks while nothing arrived), battery x4 on the tip binary + battery x2 on the probe binary (marks cross-check) + pipelined stream x2, probe_v09 preflights and phase labels per block. NO ABBA: no candidate exists to pair (the refutation removed the A/B axis); the falsification legs (pipelined stream, isolate spacing) serve as the mechanism proof.",
+ "parity_notes": "No product source changed in any phase; the probe patch was VM-only, uncommitted, and the tree was restored (git status clean verified) before the record; the probe binary was built, staged, and used only through its own shas. Frozen parity untouched (session-JSONL/wire/prompt/TUI bytes; responses raw-captured per command: the invariant-command responses gm1/stl1/sac1/sfm1/ssn1 are byte-identical across all 4 tip-battery trials). TS ANCHOR (checked first per the brief): TS modes/rpc/rpc-mode.ts writes every response SYNCHRONOUSLY in the command's own tick \u2014 output(await handleCommand(command)) -> writeRawStdout(serializeJsonLine(value)) -> process.stdout.write, NO queue, NO writer task, NO per-response spawn; per-response cost is the handler itself. The Rust surface's measured response path (mpsc handoff 3-10us p50 + writer-task wake->serialize->write->flush ~50us p50) is TS-parity class at ~0.1-0.2ms end-to-end \u2014 no divergence to close.",
+ "base": {
+  "revision": "13d5c0d781d28228ab95d60760e5e018d283083a (origin/rust at lane start; the task brief's 5cf45d4d was 28 merges stale \u2014 the lane pinned the live tip; #2953's boot warm is in the baseline per the brief)",
+  "note": "touched probe files crates/pa-daemon/src/rpc/* only, uncommitted and removed; not in the moving split series (agent_engine.rs 5/11, session_ui.rs 3/14, supervisor.rs 7/8)"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ft2an7xlwuhzqlg7c85kj7w4 (hillclimb-perf-rpc-floor, ubuntu:22.04 16c/32GB/100GB vm=True, network_access=True)",
+  "binary_sha256": "5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574 (tip); probe binary 4c8a134b4a6f7612cf1b24c71a720830486a027eb58610c0583b117fa28ff222 (uncommitted patch)",
+  "binary_bytes": 223183088,
+  "build_seconds": 104,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed; the probe patch was reverted before any gate)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); standing operator disposition class; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0), probe_v09 I/O preflights per block + mid/post + phase labels (PHASE MODEL, every block labeled), nonblocking os.read frame pump; decompose legs on the probe binary (PRIME_AGENT_RPC_TRACE=1), corrected legs on the pristine tip binary",
+  "io_regime": "MIXED with one flip: the v2 tip-battery window opened FAST (probe_v09 mid-campaign A_P50 0.83ms, stall-rate 2.5%, max 41.6ms), flipped to the ~40ms fresh-write D-class mid-campaign (post-tip-battery probe: A_STALL_RATE 100%, A_P50 40.27ms, max 44.6ms, CLASS=D), and returned to the mixed fast window by campaign end (post-v2-stream: stall-rate 5%, A_P50 0.82ms, max 47.2ms; pre-archive: stall-rate 2.5%, A_P50 0.88ms, max 39.5ms, CLASS=M). The write-class commands straddle the flip (bimodal, labeled per trial); the read commands are regime-immune (0.09-0.35ms in EVERY window).",
+  "response_path_decompose_get_state_p50_us_n32": {
+   "read->parsed": 5.0,
+   "parsed->dispatch_spawn": 1.0,
+   "dispatch_spawn->task_start": 19.5,
+   "task_start->gs_handle": 3.0,
+   "gs_handle->gs_agent_state": 4.0,
+   "gs_agent_state->gs_persist": 1.0,
+   "gs_persist->gs_goal_locked": 10.0,
+   "gs_goal_locked->gs_goal_read": 2.0,
+   "gs_goal_read->enqueued": 3.0,
+   "enqueued->wtask_recv_mpsc_handoff": 3.0,
+   "wtask_recv->wtask_serialized": 3.5,
+   "wtask_serialized->wtask_writeall": 5.0,
+   "wtask_writeall->wtask_flushed": 38.0,
+   "total_read->flushed": 98.0,
+   "note": "max seam 233us (gs_persist->gs_goal_locked once); the LineWriter path the baseline suspected (enqueue->wake->serialize->write->flush) totals ~49.5us p50 \u2014 MICROSECONDS, not the claimed ~50ms"
+  },
+  "artifact_mechanism": "The ~50ms per-response floor is the PROBE DRIVERS' own read-loop park, not product latency. Both the rpc-baseline lane's rpc_probe.py and the rpc-models-persist lane's rpc_probe_gam.py use select.select([fd], [], [], 0.05) inside a 10ms pump window and scan for the response only AFTER the window loop exits: when a response arrives early in the window (fast handler), the loop consumes it, then re-selects with no data pending and PARKS THE FULL 50MS SELECT TIMEOUT before the exit-boundary check runs and the scan finds the frame. The reported wall = product latency (0.1-0.5ms) + one full select park (50.3-50.6ms observed floor). My decompose driver used select(0.01) and measured the identical artifact at 10.2-10.5ms \u2014 the floor tracks the select timeout, not the product.",
+  "anomaly_fit": "Every per-command anomaly in both prior records fits the park: get_state/get_messages/get_session_stats/set_thinking_level (~50.2-50.6ms) = fast handlers parked; set_auto_compaction 42.0ms/set_follow_up_mode 41.2ms 'below the floor' = the ~40ms fresh-write landed past the 10ms window and was caught ON ARRIVAL; set_session_name 89.9ms = the durable-row write chain (~80ms in the baseline VM's whole-campaign ~40ms fresh-write-rename regime) spanned two windows (park + arrival); new_session 24.8ms and switch_session 82.1ms = assembly exceeding the window, caught on arrival, never parked; get_available_models gam-burst min 10.4ms = the >10ms awaited-refresh handler escaping the window; prompt admission 55.9ms = admission parked. The baseline record's assertion '~40-50ms is real surface latency, not quantization' is corrected: it IS quantization (the select park), the third driver-side measurement artifact disclosed on this surface.",
+  "falsification_legs": {
+   "pipelined_stream_8x_get_state": "8 commands sent in 0.07ms; ALL 8 responses arrive 0.5-2.5ms after send (send->last-response 0.62ms/2.40ms across trials) \u2014 a real per-response ~50ms product cost would take ~400ms sequential; the artifact does not survive pipelining, a product cost would",
+   "isolate_2s_spacing": "8 get_state calls at 2.0s spacing in one process: identical park per call (10.44-10.58ms with the select(0.01) driver) \u2014 the floor is the per-call read pattern, not a warm/cold/burst/regime effect"
+  },
+  "corrected_per_command_ms_arrival_accurate_tip_binary": {
+   "method": "rpc_floor_v2.py: scan-after-every-consume; per-trial fresh agent dir; battery = rdy + 8s settle + st1-16 get_state + gm1-16 get_messages + sts1-8 get_session_stats + stl1-8 set_thinking_level + sac1-4 set_auto_compaction + sfm1-4 set_follow_up_mode + ssn1-2 set_session_name + gam1-2 get_available_models + cycle_model + EOF; n=4 trials tip binary + n=2 trials probe binary (marks cross-check: driver wall 0.23ms p50 vs product read->write_all 0.105ms p50 vs pipe+driver-read 0.123ms p50 \u2014 the arrival-accurate driver measures what the marks say, within 0.1ms)",
+   "get_state": {
+    "n": 64,
+    "p50": 0.202,
+    "min": 0.138,
+    "max": 0.94,
+    "baseline_claimed": 50.3
+   },
+   "get_messages": {
+    "n": 64,
+    "p50": 0.165,
+    "min": 0.086,
+    "max": 0.249,
+    "baseline_claimed": 50.9
+   },
+   "get_session_stats": {
+    "n": 32,
+    "p50": 0.172,
+    "min": 0.091,
+    "max": 0.345,
+    "baseline_claimed": 50.5
+   },
+   "set_thinking_level": {
+    "n": 32,
+    "p50": 0.171,
+    "min": 0.103,
+    "max": 5.12,
+    "baseline_claimed": 50.4
+   },
+   "set_auto_compaction": {
+    "n": 16,
+    "p50": 20.834,
+    "min": 0.998,
+    "max": 43.195,
+    "regime_label": "bimodal across the fresh-write flip: fast class 1.0-1.6ms, D-class 40.2-44.5ms",
+    "baseline_claimed": 42.0
+   },
+   "set_follow_up_mode": {
+    "n": 16,
+    "p50": 1.279,
+    "min": 1.024,
+    "max": 41.906,
+    "regime_label": "same bimodal class",
+    "baseline_claimed": 41.2
+   },
+   "set_session_name": {
+    "n": 8,
+    "p50": 1.043,
+    "min": 0.793,
+    "max": 1.413,
+    "regime_label": "fast window; the D-class calls pay the host's ~40ms fresh-write-rename (the baseline VM's whole-campaign D regime made its 89.9ms p50 almost all regime + park)",
+    "baseline_claimed": 89.9
+   },
+   "get_available_models": {
+    "n": 8,
+    "p50": 4.561,
+    "min": 4.156,
+    "max": 9.944,
+    "note": "steady state on the #2953-boot-warmed registry (the awaited refresh chain ~5ms; the models-persist lane's own component-probe class)",
+    "baseline_claimed": "773.9 process-first (baseline) / 58.6 burst (persist lane)"
+   },
+   "cycle_model": {
+    "n": 4,
+    "p50": 2.666,
+    "min": 2.419,
+    "max": 46.52,
+    "regime_label": "model resolution + row + settings; the D-class call pays the write regime",
+    "baseline_claimed": 259.3
+   },
+   "eof_stdin_close_to_exit": {
+    "p50": 3.57,
+    "min": 3.2,
+    "max": 7.3,
+    "note": "the EOF settle path, arrival-accurate (4 trials)",
+    "baseline_claimed": 31.4
+   }
+  },
+  "driver_floor_control": "rpc_probe noop control (baseline record): 0.064-0.108ms; rpc_floor_v2 arrival-accurate floor: get_state p50 0.202ms \u2014 the corrected numbers sit at the true driver+pipe floor"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The decompose legs' driver-reported walls carry MY driver's own select(0.01) park (10.2-10.5ms) and are evidence only for the MECHANISM (park == select timeout) + the marks; all corrected numbers come from the arrival-accurate v2 driver. The probe binary adds 8-9 eprintln marks per get_state (~30-100us total) \u2014 its 0.23ms p50 driver wall bounds the pristine-tip cost above; the pristine tip measured 0.202ms p50 (faster, as expected). The write-class commands are regime-labeled per the phase model (the mid-campaign flip is visible per-trial in the raws); the read-class commands are regime-immune across all three io windows. Byte oracle: the invariant-command responses (gm1, stl1, sac1, sfm1, ssn1) are byte-identical across all 4 tip-battery trials (single distinct sha256 each). The launch_to_ready class (boot+assembly) was not the claim and was not re-measured beyond the rdy send->resp receipt (8.1-50.8ms across trials, page-cache dependent). No ABBA ran: the refutation removed the candidate axis \u2014 the falsification legs carry the mechanism proof instead. DISCLOSED harness artifact (mine): the probe-battery block reused the v2 trials root and its battery-00/01 labels, overwriting the tip battery's trials 0-1 raw/ directories (the tip receipts with per-command raw_sha256 \u2014 the oracle evidence \u2014 are complete in the result JSONs, downloaded before the collision; battery-02/03 tip raws intact; battery-00/01 raws in the archive are the probe battery's, content-identical response bytes).",
+  "evidence": "hillclimb/archives/rpc-floor/rpc-floor-evidence.tar.gz (sha256 42cb477f237b7158abf5a6502b6f8d5de6ffb1c42ac5052e5fd242768775166c, 105612 bytes; VM-side sha verified against the local copy BEFORE VM deletion; drivers both versions + probe patch + decompose leg results + corrected batteries + pipelined stream + io probes + raw response captures + mock script + binary shas + build logs)"
+ },
+ "outcome": "honest negative (the floor is REFUTED as product latency): the RPC stdio surface's post-assembly response path is ~0.10-0.22ms end-to-end p50 (read-class commands 0.09-0.35ms in every io window; the LineWriter mpsc+writer-task seam the baseline suspected totals ~50 MICROseconds p50) \u2014 TS-parity class, no candidate, no product change, no PR. The ~50ms floor in the rpc-baseline record (and the 50.4ms st2/stl figure carried in the rpc-models-persist record) is a driver measurement artifact: the probe drivers' select(0.05) park after frame consumption, before the response scan.",
+ "decision": "NO SHIP: there is no product floor to fix \u2014 implementing the baseline's proposed fix (the LineWriter path rework) would be optimizing a 50us seam against a nonexistent 50ms target (green-fishing). The deliverable is the corrected per-command table (get_state 0.20ms, get_messages 0.17ms, get_session_stats 0.17ms, set_thinking_level 0.17ms, set_session_name 1.04ms fast-class, gam 4.6ms steady, cycle_model 2.7ms fast-class) + the artifact mechanism + the driver fix pattern (scan after every consume) for every future lane on this surface. The rpc-baseline record's candidate 2 closes REFUTED; its candidates 3 (auth-lock hold class) and 4 (cold second-kernel-boot) were assembly-time classes (spawn->ready) and are NOT affected by the artifact \u2014 they stand. The rpc-models-persist record's 'steady_state_minus_floor_ms 8.2' decomposition line is corrected: the steady gam cost is the ~5ms refresh chain itself (no 50ms floor under it).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-184500-startup-rpc-response-floor-decompose.json",
+ "session": {
+  "worker": "perf-rpc-floor",
+  "session_dir": "see conversation log"
+ },
+ "timestamp": "2026-09-27T18:45:00Z"
+}
