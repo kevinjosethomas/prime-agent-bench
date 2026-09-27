@@ -26,6 +26,10 @@
   {
    "sha": "a959ca951",
    "note": "fold of origin/rust 46bebd050 (#2942: the interactive_daemon_e2e wedge root-kill \u2014 PDEATHSIG + orphan sweep + the 300s headless wall; test-only, off the lane's territory, zero overlap); re-diff vs 46bebd050 = still exactly the 2-file lane delta. HONEST DISCLOSURE: the release binary's BYTES differ across the test-only commits (cargo's metadata hashing re-links the bin on any source change, even cfg(test)-gated lines): ea7996210 -> 44eac226ba6f, a959ca951 -> e2e72058dc23; the semantic delta between those trees is test-only (verified by re-diff), and the FINAL confirmation pair re-ran the behavior at the exact final head (see measurements.final_confirmation_pair)"
+  },
+  {
+   "sha": "20cc0f359",
+   "note": "fold of origin/rust 778bcd628 (#2763: session opens wait through a daemon update restart + the failed-restart hint \u2014 pa-tui/pa-cli/pa-daemon update-restart surface; diff-scanned: ZERO overlap with the lane territory); re-diff vs 778bcd628 = still exactly the 2-file lane delta; the gate at this head: fmt GREEN, clippy GREEN, the journal oracles 9/9, the release build GREEN (binary sha256 41d9be4abd689a934f4fc6ae17f77bc53e0ef71a1abb00fef34c4e113e8dd6bb)"
   }
  ],
  "build": {
@@ -40,7 +44,7 @@
   "prhead_9df10de34_gate": "fmt RC 0 GREEN; clippy RC 0 GREEN; the pa-cli red SOLO-GREEN at the exact head",
   "finalhead_a959ca951_gate": "fmt RC 0 GREEN; clippy RC 0 GREEN; the release build GREEN (binary sha256 e2e72058dc23840df5d796cd2c2a2dcca4aee46e6f5cf94de190ce6cdcba0bdf); the journal unit oracles 9/9 GREEN at the exact head (5.06s); the byte-identity nuance: test-only commits re-link the binary (cargo metadata hashing), so the final pair re-ran behavior at the exact final-head binary rather than asserting byte identity",
   "journal_unit_oracles": "9 passed 0 failed at the candidate build (the 5 existing incl. the #2936 batched-vs-sequential byte oracle + settle_compacts_single_session, batched_settle_compacts_and_restores, unchanged_verdict_does_not_compact)",
-  "github_ci_rollup": "carried in the PR request per the #2914 lesson (the completed rollup attaches when the checks finish)",
+  "github_ci_rollup": "PR #2944 at the final head 20cc0f359: fmt PASS; check + clippy (workspace) PASS; test shards 1-4/4 PASS + test summary PASS; loc PASS; request PASS; Check pull request author PASS; Cursor Bugbot skipped; Macroscope Correctness passed at the first head (47s) and skipped on the re-run; benchmark check FAILURE = the standing TS-harness non-applicability disposition (never called pass, same class as every prior lane's record)",
   "carm_disclosure": "the C-arm probe variant (lane/perf-settle-tail-carm at 6ada5feed, gate-only WITHOUT the sync split) is BENCH-ONLY evidence, never for merge; it exists to price the redundant sync class in-product",
   "related_work": "#2942 (the interactive_daemon_e2e wedge root-kill) landed independently while this lane was at the fold \u2014 the exit-gate lane's triage seeded it and upstream hardened the suite this gate's disclosed flake ran in (PDEATHSIG + orphan sweep + the 300s headless wall); this lane's sole full-suite red was a co-scheduling flake in that suite, solo-green at the exact head, and the suite's new wall does not change this lane's evidence (no wedge was observed in any of this lane's 30+ trials; the settle-tail's compacts never appeared in any hang shape)"
  },
@@ -126,8 +130,9 @@
    "results": "A: completed, grows only, ZERO compacts seen, final journal 17 lines / 3841 bytes (the never-fire persists at the folded base); B: completed, compacts fire (4 seen in conf-b1; the 2ms watcher poll can merge adjacent events \u2014 the strace census carries exact counts), final journal 2 lines / 399 bytes (BOUNDED) \u2014 the folded candidate behaves exactly like the pre-fold candidate"
   },
   "final_confirmation_pair": {
-   "design": "A=bin-tip46 sha256 99d75c4df800c49f808b79f17dfbac14dd95d3fa4723475a520cd940817b3021 (origin/rust 46bebd050 \u2014 the current tip WITHOUT the lane change), B=bin-finalhead sha256 e2e72058dc23840df5d796cd2c2a2dcca4aee46e6f5cf94de190ce6cdcba0bdf (the PR head a959ca951); 2 trials per arm, sha asserted, one arm under strace",
-   "results": "A fin-a1/fin-a2: completed, journal grows only (9 and 7 append arrivals), ZERO compacts, final journal 17 lines / 3832 bytes (the never-fire persists at the current tip). B fin-b1/fin-b2: completed, the compacts fire (4 and 3 seen by the 2ms watcher), final journal 2 lines / 398 bytes (BOUNDED) \u2014 the exact final-head behavior oracle"
+   "design": "the exact-PR-head confirmation pair, re-run after EACH fold so the behavior oracle is always at the head the reviewers bind to. FINAL (at 20cc0f359): A=bin-tip778 sha256 80fe4d1c96a3d90be1f3de7c6631a550cf554f99cd7cfcad6a18f5ff371a5682 (origin/rust 778bcd628 \u2014 the current tip WITHOUT the lane change), B=bin-h3 sha256 41d9be4abd689a934f4fc6ae17f77bc53e0ef71a1abb00fef34c4e113e8dd6bb (the PR head 20cc0f359); 2 trials per arm, sha asserted, one arm under strace. Earlier pairs: at ea7996210 (foldbase cf1610a0594e vs foldhead 44eac226ba6f) and at a959ca951 (tip46 base 99d75c4df800 vs finalhead e2e72058dc23) \u2014 same verdict every time",
+   "results": "FINAL pair: A fin-a1/fin-a2: completed, journals grow only (9 and 6 append arrivals), ZERO compacts, final 17 lines / 3832 bytes per journal (the never-fire persists at the current tip). B fin-b1/fin-b2: completed, the compacts fire (3 and 2 seen), final 2 lines / 398 bytes per journal (BOUNDED). The never-fire/fires-and-bounds oracle is stable across every fold",
+   "byte_identity_note": "test-only or unrelated-surface folds re-link the release binary (cargo metadata hashing); the record does NOT claim byte identity across folds \u2014 it claims the behavior oracle re-verified at the exact head binary each time"
   }
  },
  "validity": {
