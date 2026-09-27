@@ -1,0 +1,168 @@
+{
+  "id": "20260927-075500-interaction-auth-lock-read-consolidation",
+  "axis": "interaction",
+  "hypothesis": "The ~36 auth.json lock cycles per fresh first turn (model-resolve-cache record 20260927-013300, reported-only; #2915 serialized same-process holders but the cycles remained) come from per-call AuthStorage rebuilds: every AuthStorage::create runs a full with_lock file-protocol cycle (exclusive-create openat, mkdir auth.json.lock, utimensat probe, read, rmdir) even when the document has not changed. TS keeps ONE AuthStorage per session-services instance (agent-session-services.ts:164, shared with ModelRegistry + McpManager) and serves getApiKey from its in-memory snapshot - zero per-turn lock cycles. A storage-layer read-through content cache (a pure-read trait arm, stat-validated per path) should collapse the per-call read cycles to one miss per process per document with byte-identical file-protocol behavior for every writer and the port's per-call freshness preserved (any external atomic-rename write changes the inode; an in-place rewrite moves the mtime).",
+  "approach": "Baseline decomposition first (no code changes): 31 trials on one VM at 9b62f26af (12 fresh 1-turn + 8 fresh 2-turn timing legs, controls, 3 strace legs, 2 diagnostic-build census legs with an env-gated pid/tid backtrace at FileAuthStorageBackend::with_lock; bench compare.msg_send mock-regime protocol replicated verbatim from the model-resolve-cache lane incl. 120x40 PTY, probe-input-ready, typed prompt, Enter->first-chunk ack, needle+600ms-stability settle, PI_REQUEST_TIMING on; I/O advisory v1.0 preflights at every leg boundary). Candidate = 2 commits: C1 the read-through cache (auth/storage.rs + manager.rs), C2 the settings same-process mutex (settings/storage.rs, the #2915 pattern). ABBA phase 1: 2-arm pair base vs C1 found a REGRESSION (+10.5ms p50, 3/6 stall legs); mechanism analysis attributed it to the settings storage's pre-existing same-process lock contention unmasked by removing the auth cycles' accidental pacing. ABBA phase 2: 3-ARM ATTRIBUTION (base / C1 / C1+C12=C12) with census pairs; ABBA phase 3: confirmation pair at the PR head (folded tip base e6e7a26e4 vs PR head 7d4dce037). Same-VM sequential, sha-asserted binaries per leg, order-balanced rounds, unique per-leg output paths, zombie sweeps.",
+  "parity_notes": "Frozen parity untouched: the file protocol (proper-lockfile mkdir/utimensat/stale-reclaim/rmdir), the 10x20ms retry structure, settings protocol, session JSONL, RLM wire, prompts, TUI behavior all unchanged. with_lock (every write and read-modify-write flow, incl. mcp_command's direct backend use) is byte-for-byte unchanged. The pure-read arm (AuthStorageBackend::read, default = the old with_lock read) is used ONLY by AuthStorage::reload. TS-parity case FIRST: TS constructs ONE AuthStorage per session services instance and reads its in-memory snapshot per turn (agent-session-services.ts:164, ModelRegistry.create(authStorage,...), new McpManager({authStorage,...})); the port mirrors the TS create() shape at ~45 call sites where TS reuses the single instance - the per-call rebuild is a port artifact with no TS counterpart benefit (each instance re-reads the same unchanged file). The stat-validated cache keeps the port's per-call freshness STRICTLY fresher than the TS snapshot instance (an external write invalidates on the next read; TS never re-reads). R8 preserved: fresh startup-chain resolutions see exactly what they see today (the stat identity guarantees byte-identity; the resolution call sites are untouched). Documented behavior delta: a cache hit now succeeds under a foreign lock holder while the document is unchanged (TS serves its snapshot in exactly that window); first reads in a process (cache misses) keep the old contention behavior. No callback re-entrancy: the read arm has no callback; the settings mutex is a leaf (every settings callback is a pure JSON transform - verified at all 6 production call sites).",
+  "base": {
+    "revision": "9b62f26af267a844d685cc3cd6c76cc526c1307a (decomposition + primary 3-arm base, the tip at lane start); e6e7a26e4ed9c5bb051df2fedccd270eba946c33 (confirmation-pair base, the folded tip)"
+  },
+  "branch": "lane/perf-auth-lock; PR head 7d4dce0371e31b3642f887145fbf5610e1e141f6 = e6e7a26e4 + 9b62f26af + C1 (6c522d7e8) + C2 (cbfbba559) + one append-only fold of org/rust e6e7a26e4; post-fold re-diff vs merge-base e6e7a26e4 = exactly 3 files (+275/-7), byte-identical to the pre-fold diff (hunk-by-hunk verified)",
+  "commits": [
+    {
+      "sha": "6c522d7e87137345d4fa5576891b185f24149c0e",
+      "subject": "perf(pa-core): consolidate auth-document reads through a validated cache"
+    },
+    {
+      "sha": "cbfbba5592b3b56c15b0145ebfe3937e239865d4",
+      "subject": "perf(pa-core): serialize same-process settings-lock holders (the #2915 pattern)"
+    },
+    {
+      "sha": "7d4dce0371e31b3642f887145fbf5610e1e141f6",
+      "subject": "PR head: one append-only fold of org/rust e6e7a26e4"
+    }
+  ],
+  "build": {
+    "sandbox_id": "jm9e45mqzhg53vyrmu7eikjr (16c/32GB ubuntu:22.04, glibc 2.35, rustup 1.98.1)",
+    "binary_shas": {
+      "base_9b62f26af": "f4e4efd24c8139826486d214c2c0d728b8c651d3f0af130c0ee1b087d27b684a",
+      "c1_6c522d7e8": "72aa61d83dfeeed9483073d86c1b439ef734103c5568f71352c9cd07731947db",
+      "c12_cbfbba559": "0439207ba8f15cacd9763ad55b13291bb4977aa72c3a1b15bdc3214a58fbe814",
+      "conf_base_e6e7a26e4": "357ee4ad929394603610e9fb0dd30bd257eefdb05b46dd83212664cad6667f13",
+      "conf_cand_7d4dce037": "af621001ed61435e1c79f250090c77f3d3632c80ae4b4529c793186bebe804f5"
+    },
+    "tip_verification": "base cloned+verified at 9b62f26af (git bundle ship, no GitHub auth in VM); folded-tip builds at e6e7a26e4 and 7d4dce037 verified; diag build 9435c7a1a (base + env-gated backtrace census, never shipped)"
+  },
+  "measurements": {
+    "method": "same-vm-sequential ABBA (2-arm, 3-arm attribution, confirmation pair), sha-asserted binaries per leg, fresh-session-per-trial, PI_REQUEST_TIMING on, order-balanced rounds, session-row + mock-request oracles per leg",
+    "baseline_decomposition_at_9b62f26af": {
+      "n": "31 trials (12 ft timing, 8 tt timing, 4 controls, 3 strace, 2 diag census, 2 warm)",
+      "auth_lock_cycles_per_fresh_first_turn": 36,
+      "auth_lock_cycles_2turn": 44,
+      "per_cycle": "hold p50 0.14-0.16ms (mkdir->rmdir), read lands 0.05ms after mkdir, ~10 syscalls/cycle, sum of holds 6.2-6.5ms/turn",
+      "call_site_map_diag_census": "resolve_registry_model_unchecked x16 (52%, model.rs:237 registry rebuilds), background catalog arms x4, worker construction x2 (agent_engine.rs:417, worker.rs:685), session build x2 (runtime_wiring.rs:167, mcp/mod.rs:531), TURN PATH x2 (run_model_turn + failover_candidates), TUI open x1 (build_tui_options), supervisor x2 (startup_refresh + hourly), get_model_catalog RPC x1",
+      "critical_path_split": "27 pre-submit / 5 in-window (hold sum 1.0-1.6ms) / 4 post; warm turn-2 adds ~7-8 cycles",
+      "timing_baseline_12ft": "submit->assistant_row p50 10.50ms (min 5.68 max 26.45, 1/12 slow-class 22ms), submit->reply_visible p50 30.35ms; turn2 assistant_row p50 20.92ms",
+      "io_regime": "fresh+sync_all+rename class DEGRADED-steady (p50 25-28.6ms all 5 probes, the fleet flush-trap regime); repeat-fsync class HEALTHY (p50 0.11-0.29ms); auth READ cycles are metadata ops (strace holds 0.14ms p50 - regime-insensitive); zero auth.json writes per turn"
+    },
+    "abba2arm_at_9b62f26af_vs_c1": {
+      "result": "REGRESSION FOUND (the honest negative that led to the mechanism): assistant_row p50 A 6.35ms -> B 16.83ms (+10.5ms); reply p50 30.15 -> 43.10; 3/6 cand legs pay a ~20ms-class stall vs 0/6 base; warm turn-2 unharmed",
+      "phase_attribution": "stalls at user_row->prompt_built 23.0ms (the 20ms retry signature), fb->assist 17.0ms, user_row 51.7ms",
+      "mechanism": "the settings storage's PRE-EXISTING same-process lock contention (no process mutex): the auth cycles' 150-300us same-process serialization was pacing the worker threads apart by accident; the read cache unmasks it"
+    },
+    "abba3arm_attribution_at_9b62f26af": {
+      "arms": "A=base 9b62f26af, C1=6c522d7e8 (auth cache), C12=cbfbba559 (auth cache + settings mutex); 6/arm fresh 1-turn (6 order-balanced rounds), 1/arm 2-turn, census strace pairs per arm",
+      "fresh_first_turn": {
+        "A": {
+          "assistant_row_p50_ms": 7.72,
+          "reply_p50_ms": 29.85,
+          "stall_legs_ge15ms": "1/6",
+          "assist_values": [
+            5.8,
+            7.2,
+            7.5,
+            7.9,
+            9.7,
+            25.4
+          ]
+        },
+        "C1": {
+          "assistant_row_p50_ms": 6.11,
+          "reply_p50_ms": 30.1,
+          "stall_legs_ge15ms": "2/6 (plus 3/6 in the 2-arm run: 5/12 combined - THE UNMASKING)",
+          "assist_values": [
+            5.0,
+            6.0,
+            6.1,
+            6.1,
+            25.9,
+            28.0
+          ]
+        },
+        "C12": {
+          "assistant_row_p50_ms": 6.24,
+          "reply_p50_ms": 28.75,
+          "stall_legs_ge15ms": "0/6",
+          "assist_values": [
+            5.9,
+            6.1,
+            6.2,
+            6.3,
+            11.8,
+            12.7
+          ],
+          "note": "the lowest reply p50, the tightest distribution, zero stalls"
+        }
+      },
+      "paired_deltas_c12_vs_a": "reply_visible per-round deltas [-20.5,-1.2,-2.3,+0.6,0.0,-1.6]: mean -4.2ms, median -1.4ms",
+      "census_strace_pairs": {
+        "A": "auth cycles 36/44; settings same-process overlaps 3+0; sleep20 1+0 (the pre-existing class)",
+        "C1": "auth cycles 2/2 (the cache works); settings overlaps 2+2; sleep20 1+1 (the unmasking)",
+        "C12": "auth cycles 2/2; settings overlaps 0+0; sleep20 0+0 (the mutex eliminates the class)"
+      },
+      "oracles": "session-row parity identical across arms; mock request log 216-217 bytes/1-turn, 496-497/2-turn per trial; all legs completed; I/O v1.0 preflights per boundary (fresh class M/D flush-trap windows; fsync class healthy 0.13-0.18ms; measured path in the healthy classes)"
+    },
+    "confirmation_pair_at_pr_head": {
+      "arms": "A2 = folded-tip base e6e7a26e4 (357ee4ad); B2 = PR head 7d4dce037 (af621001); same VM, same protocol, sha-asserted per leg, order-balanced (A2,B2,B2,A2) x3 = 6/arm fresh + 2/arm 2-turn + census pairs",
+      "fresh_first_turn": {
+        "A2": {
+          "assistant_row_p50_ms": 9.04,
+          "reply_p50_ms": 30.25,
+          "stall_legs_ge15ms": "2/6 (83.2/83.2 - the DEGRADED fresh-regime flush-trap class, A_P50 74-76ms in the probes; NOT the 20ms settings class)",
+          "assist_values": [
+            5.8,
+            6.3,
+            7.0,
+            11.1,
+            83.2,
+            83.2
+          ]
+        },
+        "B2": {
+          "assistant_row_p50_ms": 6.86,
+          "reply_p50_ms": 29.7,
+          "stall_legs_ge15ms": "1/6 (93.2 - flush-trap class)",
+          "assist_values": [
+            5.4,
+            5.6,
+            6.2,
+            7.6,
+            11.6,
+            93.2
+          ]
+        }
+      },
+      "census": "auth cycles A2 36/44 vs B2 2/2 (the collapse re-verifies at the PR head); settings same-process overlaps 0+0 BOTH arms (the C12 mutex structurally removes the class; the base arm's overlaps are timing-dependent and did not fire in these diagnostic legs)",
+      "conclusion": "the primary re-verifies at the PR head: assistant_row p50 9.04 -> 6.86ms (-24% at this regime window), reply p50 30.25 -> 29.70ms, auth cycles 36/44 -> 2/2, session-row parity identical, mock request oracle identical (216-217/496-497), all legs completed"
+    }
+  },
+  "validity": {
+    "excluded": [
+      "the first decomposition launch (31 trials, pyte missing in the VM venv - all trials rc=1 before any measured leg; relaunch after venv fix)",
+      "the second launch's warm/ft-r01..r04 legs (orphaned daemons from the pyte-failure run poisoned the socket paths: 'supervisor socket never appeared' + boot-reap shutdown signals; the fleet zombie-sweep lesson re-learned: sweep stale prime-agent processes by explicit PID list before every leg; no measured trial kept)",
+      "the pre-fold gate run gate_1790496435 (head cbfbba559, base_state=stale: the pool tree mixed #2925's pa-tui with the pre-#2925 test file -> E0063; the verdict itself carries the stale-head-gate rule; re-gated at the folded head)",
+      "strace/diag census legs (syscall-timeline + call-site attribution evidence only, never timing evidence)"
+    ],
+    "notes": "All ABBA trials completed with ack+settle validation; binary sha asserted per leg; single sequential driver with flock guard + per-leg zombie sweep; unique per-leg output paths (the subscriber-registry lesson); session rows byte-identical in type/role/content-shape sequences across arms; single-VM loadavg <= 2.0 throughout."
+  },
+  "outcome": "POSITIVE with a disclosed regression-discovery arc: the auth read-through cache collapses the per-fresh-first-turn auth.json lock cycles 36 -> 2 (census-verified at the pre-fold base, in the 3-arm attribution, and at the PR head), worth ~6ms/turn of lock-protocol wall cost on the session-open path and -1.5ms submit->assistant_row p50; the 2-arm ABBA honestly surfaced that the cache UNMASKS the settings storage's pre-existing same-process lock contention (the auth cycles' 150-300us same-process serialization was pacing worker threads apart by accident; the class existed in the base at 1/12 - the baseline decomposition's own 22ms slow dispatch) raising it to 5/12 stall legs; the #2915-pattern settings mutex (authorized companion) eliminates the class entirely (0 overlaps, 0 sleeps, 0 stall legs in the C12 arm) while keeping the cache's win: assistant_row p50 7.72 -> 6.24ms, reply p50 29.85 -> 28.75ms, stall legs 1/12 -> 0/6, distribution tight [5.9..12.7] vs [5.8..25.4]; confirmation at the PR head re-verifies (9.04 -> 6.86ms p50 at a DEGRADED-fresh window, auth cycles 36/44 -> 2/2).",
+  "decision": "Lane evidence complete at the PR head 7d4dce037 (PR #2932): the 3-arm attribution shows the unmasking mechanism AND the fix in one evidence set (A 1/12 stalls, C1 5/12 - the auth win visible at -1.6ms but the stall tail surfaces, C12 0/6 stalls + the lowest reply p50 + census 0/0/0/0). Claim scope: (1) auth-lock cycle consolidation 36 -> ~3 per fresh first turn across the process tree (1 miss per process per document + stat-validated hits), with byte-identical file protocol for all writers and the port's per-call freshness preserved; (2) the settings same-process contention class (pre-existing at base rate, unmasked by any auth-path speedup) removed by the #2915-pattern mutex. Reported-only for future lanes: settings.json is lock-cycled 32-43x per fresh first turn (per-call SettingsManager rebuilds - the same structural pattern as the auth finding; the mutex serializes but does not consolidate). Frozen parity surfaces untouched: session JSONL, RLM wire, prompts, TUI bytes, the file protocols.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2932",
+  "record_path": "data/hillclimb/experiments/20260927-075500-interaction-auth-lock-read-consolidation.json",
+  "session": {
+    "worker": "perf-auth-lock-fast",
+    "session_dir": "~/.prime/agent/sessions/ (this session)"
+  },
+  "timestamp": "2026-09-27T08:40:00Z",
+  "evidence": {
+    "local": "/home/ubuntu/hillclimb/fixtures/auth-lock/ (baseline-evidence.tar.gz sha256 b36a020c2b31da215202154a85d31c47709f1b20e17af73c77d20591903b8777: 31 baseline trials + strace + diag census + analysis; pair-evidence.tar.gz sha256 a131e8eb967afa9bd5598f6a4c50b324058dfb745160890aafc477b38d462352: the 2-arm ABBA (the regression discovery) + cand census validation; attribution-evidence.tar.gz sha256 f4c98c8a74d75a76898de7e41a4ca5a722c2ae66535887c2c4c027862d6034c1: the 3-arm attribution ABBA)",
+    "vm": "jm9e45mqzhg53vyrmu7eikjr (retained until review closes)"
+  },
+  "gates": {
+    "fmt": "GREEN (GitHub CI at PR head 7d4dce037, 'fmt' SUCCESS)",
+    "clippy": "GREEN (GitHub CI 'check + clippy (workspace)' SUCCESS at the PR head)",
+    "test": "GREEN (GitHub CI test shards 1-4 + test summary all SUCCESS at the PR head)",
+    "vm_full_gate": "PENDING (gate_1790496543 armed at the folded head; the earlier gate_1790496435 ran at the pre-fold head with base_state=stale - its E0063 was the upstream tip's #2751 double-applied restore_dock_focus initializer artifact mixing the pooled VM tree, healed upstream at 631fe82d6; the stale-head-gate rule required the re-gate)",
+    "ci_rollup_disclosure": "benchmark check FAILURE = the standing rust-PR non-applicability class: the benchmark harness runs 'npm ci' on the checked-out head and the rust tree has no root package-lock.json (EUSAGE); identical FAILURE on merged rust PRs #2919/#2921/#2916 (verified); 'request' SUCCESS, 'loc' SUCCESS, Bugbot SUCCESS, Macroscope NEUTRAL (standard), Contribution-gate SKIPPED (bot)"
+  }
+}
