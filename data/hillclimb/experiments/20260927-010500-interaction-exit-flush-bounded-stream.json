@@ -1,0 +1,557 @@
+{
+ "id": "20260927-010500-interaction-exit-flush-bounded-stream",
+ "axis": "interaction",
+ "hypothesis": "The exit-flush (TUI.stop -> exitFullscreen inline repaint; streaming lane's honest-negative handoff: 2.62MB to scrollback / ~2.0s wall / RSS 30.9->61.9MB at ~10k rows) holds the whole inline frame in memory at once - render_inline_frame materializes every row, take_flush_plan adds a full row-text Vec and a deep tail clone, write_flush_rows builds the whole ansi buffer before one write_all - so the exit/suspend flush pays an O(transcript) peak-RSS spike. A streaming flush that renders section-by-section and writes bounded chunks should keep the same byte stream (scrollback parity) with a bounded peak.",
+ "approach": "BASELINE+DECOMPOSE first at origin/rust 4ed68f6e9 (VM vmj48uvxq7k7wa9xiay6y6d4, 16c/32GB ubuntu:22.04): full-path PTY bench (supervisor->worker->TUI resume of synthesized transcript seeds 2k/10k/40k rows, exit-guard double Ctrl+C, exact PTY byte capture, per-process CPU/RSS/VmHWM sampling at 50ms, pre/mid/post spin calibration) x {raw-drain, pyte-fed} consumers x kill-switch legs; env-gated probe build (never ships: lane/hillclimb-exit-flush-probe 46c1cdff4) with phase timers + per-phase VmHWM; tmux real-terminal scrollback oracle. CANDIDATE (lane/hillclimb-exit-flush, commit b56e90e2c + fold 4d57eb082 + fmt nits, PR head ae4355af7): view.rs stream_flush_to replaces take_flush_plan/FlushPlan - renders the inline frame one section at a time (layout splash, per-entry render_entry, layout tail, render_dock) through a FlushSink that keeps the same Append/Repaint/identical decision tree against flushed_frame (exact-string diff base, updated identically), encodes rows via the same write_flush_rows, and writes 256KiB chunks; interactive.rs flush_to_main_screen calls it with Stdout. The flush path no longer populates the entry-layout cache (deterministic render_entry output, internal perf state only). ABBA at the folded head: base 4d57eb082 (build c6fd38bf) vs cand (build e07254193), 4 interleaved rounds x 3 seeds x raw + 2k-pyte, sha-asserted atomic binary swaps; final-head anchor legs (9839dd60e build 35f91341 vs same base); tmux scrollback oracle at the folded head; kill-switch legs on the candidate.",
+ "parity_notes": "Byte-identical flush output by construction (same rows, same encoder, same order, same decision tree) and by oracle: PTY flush-segment sha256 IDENTICAL base-vs-cand at every size (2k 47674d77..., 10k ebd06658..., 40k 84dd7ab3...; all 28 ABBA legs + 10 anchor legs); tmux real-terminal scrollback capture 1626/1627 lines byte-identical at 2k, the only differing line is tmux's own 'Pane is dead (status 0, <timestamp>)' annotation. flushed_frame semantics unchanged (exact-string diff, same next-flush Append/Repaint behavior - the ported view tests assert the byte-level append/repaint/identical cases incl. OSC-133 zone markers). The kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 path is untouched (env gate before the producer; anchor leg: 98B tail, no spike). No wire/schema/prompt change; exit/suspend share the same streaming primitive. Dropped entry-layout-cache population on the flush path is internal perf state: render_entry is deterministic, later frames byte-identical (a post-suspend first frame re-renders the visible window instead of cache-hitting). The slow-drain exit-wall is unchanged by design: the flush bytes are the frozen scrollback contract.",
+ "base": {
+  "revision": "4ed68f6e9 (baseline+decompose; ABBA pair at folded base 4d57eb082)",
+  "rebased_revision": "4d57eb082 (origin/rust tip at fold time; tip has since moved - lane folds at PR boundary per policy)"
+ },
+ "branch": "lane/hillclimb-exit-flush",
+ "commits": [
+  "7554d44c0 (fold: origin/rust 4d57eb082)",
+  "b56e90e2c (candidate, pre-fold)",
+  "9839dd60e",
+  "ae4355af7 (fmt+docs nits; PR head)"
+ ],
+ "build": {
+  "sandbox_id": "vmj48uvxq7k7wa9xiay6y6d4 (16c/32GB ubuntu:22.04)",
+  "binary_sha256": {
+   "base_4ed68f6e9": "bf52193fb6f9ae3c45a66b7e3378f4ac6426f98e8c9e77608ee23a27a8d5c965",
+   "probe_46c1cdff4": "4491ed86699a8a0ddb1679e80c71236222ada9977d99e4018b7d6ae210965355",
+   "base_4d57eb082": "c6fd38bf2b975e742a46b5d6baa6c72c318b408a8d7f6ef3e779e0cabcb068be",
+   "cand_7554d44c0": "e07254193c6634cebd41c380dcf8b9d28a13ab4bbd925e808a1052225bf2ad9e",
+   "cand_9839dd60e": "35f91341f4d26c08e3163c738dbe6fc321e10f63c85e86e6709cf351c928ce68"
+  },
+  "binary_bytes": {
+   "base_4ed68f6e9": 213491304,
+   "cand_7554d44c0": 213945704
+  },
+  "build_seconds": 82,
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass at ae4355af7 (two nits fixed in 9839dd60e/ae4355af7; gate gate_1790468381 red on the pre-fix head 9839dd60e)",
+  "clippy": "pass (gate_1790468381 rc 0 at 9839dd60e; missing_errors_doc fixed in the same nit commit)",
+  "test": "workspace: 2 reds at 9839dd60e, both non-lane: mcp_login VM-DNS env red (fails identically on pristine base in the same VM class - fleet-documented) and agents_view_subagents_e2e panel_expand frame-wait (36s timeout, timing flake family; final-head gate re-run for the verdict; fresh triage if it recurs)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "exit_flush.rss_spike_2k": {
+    "baseline": {
+     "trials": 4,
+     "values_mb": [
+      5.1,
+      4.9,
+      4.9,
+      4.8
+     ],
+     "p50_mb": 4.9
+    },
+    "candidate": {
+     "trials": 4,
+     "values_mb": [
+      0.6,
+      0.3,
+      0.2,
+      0.4
+     ],
+     "p50_mb": 0.4
+    },
+    "delta_pct": -92.8,
+    "regression": false,
+    "separation": "full"
+   },
+   "exit_flush.cpu_ms_2k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      10.0,
+      20.0,
+      10.0,
+      20.0
+     ],
+     "p50_ms": 15.0
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      10.0,
+      10.0,
+      null,
+      10.0
+     ],
+     "p50_ms": 10.0
+    },
+    "delta_pct": -33.3,
+    "regression": false
+   },
+   "exit_flush.flush_wall_ms_2k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      425.7,
+      422.2,
+      431.7,
+      417.7
+     ],
+     "p50_ms": 423.9
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      416.1,
+      415.3,
+      420.6,
+      415.4
+     ],
+     "p50_ms": 415.8
+    },
+    "delta_pct": -1.9,
+    "regression": false
+   },
+   "exit_flush.byte_oracle_2k": {
+    "baseline_sha256": "47674d77934d7481",
+    "candidate_sha256": "47674d77934d7481",
+    "identical": true,
+    "flush_bytes": 436919
+   },
+   "exit_flush.rss_spike_10k": {
+    "baseline": {
+     "trials": 4,
+     "values_mb": [
+      22.7,
+      23.1,
+      22.9,
+      23.5
+     ],
+     "p50_mb": 23.0
+    },
+    "candidate": {
+     "trials": 4,
+     "values_mb": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "p50_mb": 0.0
+    },
+    "delta_pct": -100.0,
+    "regression": false,
+    "separation": "full"
+   },
+   "exit_flush.cpu_ms_10k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      60.0,
+      60.0,
+      60.0,
+      50.0
+     ],
+     "p50_ms": 60.0
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      40.0,
+      40.0,
+      40.0,
+      40.0
+     ],
+     "p50_ms": 40.0
+    },
+    "delta_pct": -33.3,
+    "regression": false
+   },
+   "exit_flush.flush_wall_ms_10k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      476.6,
+      473.1,
+      476.3,
+      481.5
+     ],
+     "p50_ms": 476.5
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      451.6,
+      455.5,
+      455.6,
+      459.8
+     ],
+     "p50_ms": 455.6
+    },
+    "delta_pct": -4.4,
+    "regression": false
+   },
+   "exit_flush.byte_oracle_10k": {
+    "baseline_sha256": "ebd0665851cca0c7",
+    "candidate_sha256": "ebd0665851cca0c7",
+    "identical": true,
+    "flush_bytes": 2180555
+   },
+   "exit_flush.rss_spike_40k": {
+    "baseline": {
+     "trials": 4,
+     "values_mb": [
+      82.6,
+      83.6,
+      82.7,
+      83.1
+     ],
+     "p50_mb": 82.9
+    },
+    "candidate": {
+     "trials": 4,
+     "values_mb": [
+      0.0,
+      0.1,
+      0.0,
+      0.0
+     ],
+     "p50_mb": 0.0
+    },
+    "delta_pct": -100.0,
+    "regression": false,
+    "separation": "full"
+   },
+   "exit_flush.cpu_ms_40k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      260.0,
+      270.0,
+      260.0,
+      260.0
+     ],
+     "p50_ms": 260.0
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      160.0,
+      160.0,
+      170.0,
+      170.0
+     ],
+     "p50_ms": 165.0
+    },
+    "delta_pct": -36.5,
+    "regression": false
+   },
+   "exit_flush.flush_wall_ms_40k": {
+    "baseline": {
+     "trials": 4,
+     "values_ms": [
+      695.9,
+      704.1,
+      698.1,
+      691.8
+     ],
+     "p50_ms": 697.0
+    },
+    "candidate": {
+     "trials": 4,
+     "values_ms": [
+      603.4,
+      606.8,
+      602.3,
+      599.9
+     ],
+     "p50_ms": 602.8
+    },
+    "delta_pct": -13.5,
+    "regression": false
+   },
+   "exit_flush.byte_oracle_40k": {
+    "baseline_sha256": "84dd7ab367875613",
+    "candidate_sha256": "84dd7ab367875613",
+    "identical": true,
+    "flush_bytes": 8737151
+   },
+   "exit_flush.rss_spike_2k_pyte": {
+    "baseline": {
+     "trials": 2,
+     "values_mb": [
+      5.0,
+      5.0
+     ]
+    },
+    "candidate": {
+     "trials": 2,
+     "values_mb": [
+      0.9,
+      0.3
+     ]
+    },
+    "note": "pyte-fed consumer regime (VT-parse-bound drain); 10k/40k pyte legs omitted: the 1500ms exit-guard watchdog fires there (pre-existing, see extra)"
+   }
+  },
+  "extra": {
+   "baseline_decompose_4ed68f6e9": {
+    "2k": {
+     "trials": 3,
+     "spike_values_mb": [
+      6.1,
+      6.2,
+      6.0
+     ],
+     "spike_p50_mb": 6.1,
+     "cpu_p50_ms": 20.0,
+     "flush_bytes": 436919,
+     "flush_rows": 1621,
+     "flush_wall_p50_ms": 420.0
+    },
+    "10k": {
+     "trials": 3,
+     "spike_values_mb": [
+      31.5,
+      31.2,
+      31.0
+     ],
+     "spike_p50_mb": 31.2,
+     "cpu_p50_ms": 70.0,
+     "flush_bytes": 2180555,
+     "flush_rows": 8058,
+     "flush_wall_p50_ms": 480.4
+    },
+    "40k": {
+     "trials": 3,
+     "spike_values_mb": [
+      109.1,
+      121.2,
+      120.0
+     ],
+     "spike_p50_mb": 120.0,
+     "cpu_p50_ms": 280.0,
+     "flush_bytes": 8737151,
+     "flush_rows": 32286,
+     "flush_wall_p50_ms": 730.7
+    }
+   },
+   "probe_phase_decompose_40k": {
+    "render_ms": 129.1,
+    "texts_ms": 9.3,
+    "diff_ms": 15.8,
+    "encode_ms": 67.8,
+    "write_ms": 38.9,
+    "plan_ms": 173.8,
+    "hwm_entry": 50.1,
+    "hwm_render": 132.7,
+    "hwm_texts": 136.8,
+    "hwm_plan": 161.9,
+    "hwm_encode": 170.8,
+    "spike_render_mb": 82.6,
+    "spike_texts_mb": 4.1,
+    "spike_plan_mb": 25.1,
+    "spike_encode_mb": 8.9
+   },
+   "probe_phase_decompose_10k": {
+    "render_ms": 31.2,
+    "texts_ms": 1.7,
+    "diff_ms": 3.4,
+    "encode_ms": 12.6,
+    "write_ms": 9.1,
+    "plan_ms": 38.5,
+    "hwm_entry": 29.7,
+    "hwm_render": 48.7,
+    "hwm_texts": 49.7,
+    "hwm_plan": 56.0,
+    "hwm_encode": 57.8,
+    "spike_render_mb": 19.0,
+    "spike_texts_mb": 1.0,
+    "spike_plan_mb": 6.3,
+    "spike_encode_mb": 1.8
+   },
+   "probe_phase_decompose_2k": {
+    "render_ms": 6.5,
+    "texts_ms": 0.4,
+    "diff_ms": 0.7,
+    "encode_ms": 2.6,
+    "write_ms": 3.6,
+    "plan_ms": 7.7,
+    "hwm_entry": 25.8,
+    "hwm_render": 30.2,
+    "hwm_texts": 30.4,
+    "hwm_plan": 31.6,
+    "hwm_encode": 32.3,
+    "spike_render_mb": 4.4,
+    "spike_texts_mb": 0.2,
+    "spike_plan_mb": 1.2,
+    "spike_encode_mb": 0.7
+   },
+   "final_head_anchor_rows": [
+    {
+     "tag": "cand3-2k-raw",
+     "flush_bytes": 436919,
+     "flush_sha256": "47674d77934d7481",
+     "spike_kb": 388,
+     "cpu_ms": 10.0,
+     "exit_wall_ms": 815.9
+    },
+    {
+     "tag": "cand3-10k-raw",
+     "flush_bytes": 2180555,
+     "flush_sha256": "ebd0665851cca0c7",
+     "spike_kb": 0,
+     "cpu_ms": 40.0,
+     "exit_wall_ms": 854.2
+    },
+    {
+     "tag": "cand3-40k-raw",
+     "flush_bytes": 8737151,
+     "flush_sha256": "84dd7ab367875613",
+     "spike_kb": 0,
+     "cpu_ms": 170.0,
+     "exit_wall_ms": 990.6
+    },
+    {
+     "tag": "base3-40k-raw-1",
+     "flush_bytes": 8737151,
+     "flush_sha256": "84dd7ab367875613",
+     "spike_kb": 85436,
+     "cpu_ms": 250.0,
+     "exit_wall_ms": 1082.4
+    },
+    {
+     "tag": "cand3-40k-raw-1",
+     "flush_bytes": 8737151,
+     "flush_sha256": "84dd7ab367875613",
+     "spike_kb": 0,
+     "cpu_ms": 170.0,
+     "exit_wall_ms": 990.0
+    },
+    {
+     "tag": "cand3-40k-raw-2",
+     "flush_bytes": 8737151,
+     "flush_sha256": "84dd7ab367875613",
+     "spike_kb": 0,
+     "cpu_ms": 160.0,
+     "exit_wall_ms": 994.2
+    },
+    {
+     "tag": "base3-40k-raw-2",
+     "flush_bytes": 8737151,
+     "flush_sha256": "84dd7ab367875613",
+     "spike_kb": 84056,
+     "cpu_ms": 250.0,
+     "exit_wall_ms": 1093.3
+    },
+    {
+     "tag": "cand3-40k-raw-ks0",
+     "flush_bytes": 98,
+     "flush_sha256": "aa4c90320449a270",
+     "spike_kb": 208,
+     "cpu_ms": null,
+     "exit_wall_ms": 819.9
+    },
+    {
+     "tag": "base3-2k-pyte",
+     "flush_bytes": 436919,
+     "flush_sha256": "47674d77934d7481",
+     "spike_kb": 4972,
+     "cpu_ms": 10.0,
+     "exit_wall_ms": 1034.0
+    },
+    {
+     "tag": "cand3-2k-pyte",
+     "flush_bytes": 436919,
+     "flush_sha256": "47674d77934d7481",
+     "spike_kb": 632,
+     "cpu_ms": 10.0,
+     "exit_wall_ms": 1028.2
+    }
+   ],
+   "tmux_scrollback_oracle_folded_head": {
+    "base_2k": {
+     "scrollback_lines": 1627,
+     "scrollback_sha256": "e6353bebe6538e6436a3cd3a2febb4e414be91d2da0fa7ecfb797ea48f6230b3",
+     "first_transcript_row_present": true,
+     "tail_transcript_row_present": true
+    },
+    "base_10k": {
+     "scrollback_lines": 1864,
+     "scrollback_sha256": "2bf70c494a1913ccdfe24ee16c8ca64ca16d9f5d8fe3454b1af077d26d1c28b9",
+     "first_transcript_row_present": false,
+     "tail_transcript_row_present": true
+    },
+    "cand_2k": {
+     "scrollback_lines": 1627,
+     "scrollback_sha256": "89c31a61a1a0055a996015239b0efdf432b98ec03164b93f428a244b1464d129",
+     "first_transcript_row_present": true,
+     "tail_transcript_row_present": true
+    },
+    "cand_10k": {
+     "scrollback_lines": 1864,
+     "scrollback_sha256": "8756c664d0aa056150838ea7d9142b0f6564796a66b3fcc9487607625ed33698",
+     "first_transcript_row_present": false,
+     "tail_transcript_row_present": true
+    },
+    "cand-ks0_2k": {
+     "scrollback_lines": 42,
+     "scrollback_sha256": "5423c87e8727ca0e3e8708ebf2b5f5b5fd32ef0184e98f012dffe525f9e3146d",
+     "first_transcript_row_present": false,
+     "tail_transcript_row_present": false
+    },
+    "cand-ks0_10k": {
+     "scrollback_lines": 42,
+     "scrollback_sha256": "96190f81eb0c9518509fec897a6aa69dc4e783102ff4e6af2d12395651efe6ea",
+     "first_transcript_row_present": false,
+     "tail_transcript_row_present": false
+    }
+   },
+   "slow_drain_regime_finding": "pyte-fed consumer (~1.5-2MB/s VT-parse-bound drain, models a laggy ssh terminal): 10k rows exit 1.94-1.96s - the 1500ms exit-guard watchdog (FORCE_QUIT_AFTER_MS) fired in 2/3 baseline trials; 40k rows exit 5.1-5.3s - watchdog fired 3/3, 'shutdown stalled; forced exit.' printed, and the 8.74MB flush still fully drained before the forced exit's restore bytes landed (PTY FIFO ordering: the watchdog's small writes queue behind the in-flight flush). The exit-within-2s contract is violated on slow drains by the flush bytes themselves - pre-existing, inherent to the frozen scrollback contract, unchanged by the candidate (same byte count).",
+   "what_the_flush_preserves": "tmux real-terminal oracle, default exit: the transcript tail persists in native scrollback (at 32,286 flushed rows tmux's 2000-line history keeps the last ~1890; first rows drop at 8058 rows already - the terminal's own bound). PRIME_AGENT_TUI_EXIT_FLUSH=0: 42 lines (splash + resume hint), transcript absent.",
+   "io_regime_classification": {
+    "advisory": "fleet measurement advisory v0.9 (perf-write-regime-fast)",
+    "preflight_before_post_fold_legs": {
+     "overall": "DEGRADED",
+     "class_a_fresh_sync_rename": {
+      "p50_ms": 69.0,
+      "stall_rate_pct": 77.5,
+      "max_ms": 141.2
+     },
+     "class_b_repeat_fsync": {
+      "p50_ms": 1.3,
+      "max_ms": 76.3
+     }
+    },
+    "preflight_after_legs": {
+     "overall": "DEGRADED",
+     "class_a_fresh_sync_rename": {
+      "p50_ms": 76.6,
+      "stall_rate_pct": 100.0,
+      "max_ms": 112.4
+     },
+     "class_b_repeat_fsync": {
+      "p50_ms": 75.1,
+      "max_ms": 89.2
+     }
+    },
+    "immunity_evidence": "strace census of the TUI process tree (fsync,fdatasync,sync,rename,renameat,renameat2,openat, whole TUI lifetime at 40k rows): ZERO fsync-family calls (90 traced lines, all openat) - the measured exit window is flush-path-free by construction; CPU spin calibration stable 0.045-0.052s pre/post every trial; legs are paired-interleaved (A/B same window) so any common-mode regime effect cancels; absolute walls carry the DEGRADED label."
+   },
+   "pre_fold_pair_4ed68f6e9": "HISTORICAL (superseded by the folded-head pair): base spike +123.7MB vs cand +23.8MB at 40k, byte shas identical; the folded-head pair shows cand spike 0.0MB (the flush now fits under the resume-load VmHWM)",
+   "oracle_sha_note": "flush sha256 in the byte_oracle suites is the 16-hex prefix printed by the driver; flush_bytes match exactly (436919 / 2180555 / 8737151) and the full byte streams are archived per leg (raw.pt in the trial dirs, tar in fixtures/exit-flush/); the tmux scrollback oracle independently verifies the full flushed content (byte-identical modulo tmux's own dead-pane timestamp line)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All PTY trials valid (TUI exit code 0, needle sighted, calibration drift <15%); byte-oracle sha identical on every leg; kill-switch legs excluded from perf deltas (contrast only); pyte 10k/40k baseline legs labeled: the exit-guard watchdog fires there (flush truncation risk when the drain outlasts the deadline - see slow_drain_regime_finding); the probe build was used for decomposition only (its timing marks are not in any perf delta); the 40k 'rows' label = 32,286 rendered rows (seed 8800 message pairs, 2.76MB session JSONL)."
+ },
+ "outcome": "in-progress (PR open; awaiting numeric review + both adversarial reviewers on the final head + operator disposition; NO merge by this lane)",
+ "decision": "pending orchestrator numeric review",
+ "pr_url": "pending (fleet_pipeline_pr opens it)",
+ "record_path": "data/hillclimb/experiments/20260927-010500-interaction-exit-flush-bounded-stream.json",
+ "session": {
+  "worker": "perf-exit-flush-fast",
+  "session_dir": "~/.prime/agent/sessions (see conversation log)"
+ },
+ "timestamp": "2026-09-27T00:47:13Z"
+}
