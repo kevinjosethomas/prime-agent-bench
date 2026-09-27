@@ -231,7 +231,7 @@
   ],
   "notes": "All ABBA trials completed=true with ack+settle validation; binary sha asserted per trial; mock request log: exactly one completion POST per turn (216-217 bytes redacted log line per 1-turn, 496-497 per 2-turn); session rows byte-identical in type/role/content-shape sequences across arms; single sequential driver with flock guard; single-VM loadavg <= 2.0 throughout."
  },
- "outcome": "POSITIVE, mechanism confirmed and fixed at its layer: the ~20ms fresh-session first-turn class (and the warm-turn admission variant) is same-process auth.json.lock contention between the admission thread and the turn thread's from-scratch model-resolution registry build - a Rust-port artifact (TS runs its sync auth lock single-threaded, so its 10x20ms retry only ever fires cross-process). A process-local per-path mutex around FileAuthStorageBackend::with_lock's existing critical section removes it: dispatch slow-class 8/16 -> 2/16, submit->assistant_row p50 26.3 -> 8.28ms (-18.0ms, -68%), submit->reply_visible p50 51.65 -> 29.85ms on the folded tip, with byte-identical cross-process retry semantics (the residual 2 slow turns are TUI-vs-worker cross-process contention, TS-parity by design). No parity surface touched: one file, +37/-2.",
+ "outcome": "POSITIVE, mechanism confirmed and fixed at its layer: the ~20ms fresh-session first-turn class (and the warm-turn admission variant) is same-process auth.json.lock contention between the admission thread and the turn thread's from-scratch model-resolution registry build - a Rust-port artifact (TS runs its sync auth lock single-threaded, so its 10x20ms retry only ever fires cross-process). A process-local per-path mutex around FileAuthStorageBackend::with_lock's existing critical section removes it: dispatch slow-class 8/16 -> 2/16, submit->assistant_row p50 26.3 -> 8.28ms (-18.0ms, -68%), submit->reply_visible p50 51.65 -> 29.85ms on the folded tip, with byte-identical cross-process retry semantics (the residual 2 slow turns are TUI-vs-worker cross-process contention, TS-parity by design). No parity surface touched: one file, +37/-2. [MERGED 2026-09-27: PR #2915 squash-merged into origin/rust as 7b8303abf 'perf(pa-core): serialize same-process auth-lock holders - first-turn slow-class 50% to 12% (#2915)' \u2014 merge executed by the orchestrator under standing authorization after both adversarial reviewers' EXPLICIT APPROVEs at edc27ca70 + accepted numeric review; dispositions were the registered classes.]",
  "decision": "Lane evidence complete at the PR head edc27ca70 (PR #2915): primary ABBA (folded tip 61d92a206) + confirmation ABBA at the PR head agree - the in-process auth-lock serialization removes the ~20ms same-process contention class (slow-class 8/16->2/16 then 5/12->1/12; submit->assistant_row p50 26.3->8.28ms then 25.3->8.1ms). The claim is scoped to same-process contention; cross-process contention (rare; TUI auth reads) retains the TS-parity retry by design. Reported-only findings: (1) auth.json is lock-cycled ~36x per fresh first turn (per-call AuthStorage rebuilds) - a consolidation candidate for a future lane, parity-sensitive; (2) the warm-turn ack->user_row spread includes the durable-append fdatasync - flush-regime sensitive per the fleet advisory; the single 401.8ms base-arm stall in the confirmation leg is that regime's signature.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2915",
  "record_path": "data/hillclimb/experiments/20260927-013300-interaction-model-resolve-cache-auth-inproc-lock.json",
@@ -243,5 +243,17 @@
  "evidence": {
   "local": "/home/ubuntu/hillclimb/fixtures/model-resolve-cache/ (baseline-evidence.tar.gz sha256 f4bacc54222b76ecf00890cacf78355110173d0c660dac81df2140031da2424a: 29 baseline trials + trace.json per trial, analysis-baseline.json, 3 strace logs, driver+fixtures; pair-evidence.tar.gz sha256 afa1645d1a07853f5a9ac55dd02e624b8f7082d86adf6d0412607dcbb67b3d55: 24 ABBA trials + analysis-pair.json + 2 cand strace logs + probe logs + drivers)",
   "vm": "rl05a0redaks9b1yrhomurre (retained until review closes)"
+ },
+ "merged": {
+  "pr": 2915,
+  "pr_head": "edc27ca708b82be4fb91ea82f9e330be8c8c1e31",
+  "squash_sha": "7b8303abf",
+  "merged_at": "2026-09-27T01:55:57Z",
+  "reviews": {
+   "numeric": "orchestrator ACCEPTED at edc27ca70",
+   "parity-adversary-fast": "EXPLICIT APPROVE on edc27ca70",
+   "parity-adversary-2-fast": "EXPLICIT APPROVE on edc27ca70"
+  },
+  "dispositions": "benchmark non-applicability (standing 0/0 TS red); mcp_login expired-entry (fresh triage: solo-pass at head, DNS mode, pre-patch citations); ranked_hits active known-red (auto-cited)"
  }
 }
