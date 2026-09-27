@@ -1,0 +1,145 @@
+{
+ "id": "20260927-113000-interaction-settle-tail-compact-consolidation",
+ "axis": "interaction",
+ "lane": "settle-tail compact consolidation (perf-settle-tail)",
+ "hypothesis": "The settle path's durable-sync anatomy at the tip was never decomposed (the warm-fsync record's census counted only the checkpoint appends): decompose the settle tail per-settle \u2014 the snapshot/verdict batched append, the all-idle compact's temp-write+sync_all+rename \u2014 against TS's settle/compact, then a candidate only if named waste emerges (an unbatchable pair that could ride one sync, or a redundant sync on the compact path); durability never weakened (the fresh-write class is the product's contract); honest negative if the anatomy is already minimal.",
+ "source_finding": "20260927-093000-interaction-warm-durable-append-regime.json reported-only: 'the compact's own sync classes were never decomposed; the durable sync anatomy of the settle (which syncs serialize, which amortize, how many per settle) is unmapped'; the record's settle-tail worker CPU read 0.0 across arms in the stream-rebaseline legs",
+ "approach": "(1) BASELINE DECOMPOSITION at origin/rust 3cb8c99d6 (base binary sha256 fed484c20c, one VM hillclimb-perf-settle-tail ubuntu:22.04 16c/32GB/80GB): the warm-fsync msgsettle mock-regime protocol replicated verbatim (the wda driver, extended with a recursive *.recovery.jsonl* watcher \u2014 append arrivals + compact swaps \u2014 and fixture-driven N-turn sessions); warmup 3 throwaway trials, 2 passes x 4 4-turn timing trials, 2 timing-off controls, 3 strace-censused trials (-f -tt -T -y lean filter, per-thread resume pairing, rename first-path attribution), the 24-turn growth leg + a hard-kill growth leg (the grown journal preserved), fresh-daemon adoption boots over grown(97-line)/long40x(3880-line)/compacted(2-line) journals, and the TS parity legs (official TS 0.9.6 under the SAME protocol, 2 timing + 2 strace-censused trials); advisory v1.0 dual-class preflights (probe_v09: 40 isolated fresh+sync_all+rename @0.5s + 20 repeat-fsync, host-relative) at every leg boundary + a continuous isolated product-shape sidecar @2s labeling every trial; (2) TS parity from worker-recovery-journal.ts + the TS settle path (recordWorkerRecoveryState / RECOVERY_CHECKPOINT_EVENTS) code-read + the censused TS anatomy; (3) candidate = the settle-tail compact consolidation (the post-insert all-idle gate + the compact's TS sync class), measured by a same-VM 3-arm attribution: A=base, B=candidate, C=gate-only (the naive fix that keeps the compact's sync_all) in A-B-C-C-B-A x2 rounds, sha-asserted unlink-then-copy binary swaps, 12 timing trials + 5 strace census arms.",
+ "parity_notes": "Frozen surfaces untouched: session JSONL rows identical across arms (role/type sequences asserted), RLM wire, prompts, TUI output bytes; the worker recovery journal's compacted bytes are the same records rewrite_records always wrote (the batched-vs-sequential byte oracle from #2936 still passes; the new unit oracles pin the settle-compaction, the batched-settle restore identity, and the unchanged-verdict no-compact). The fresh-write class (append write+fsync \u2014 every record durable before the caller proceeds) is UNTOUCHED: 9 journal fsyncs per 4-turn session in every arm. The compact is GC over already-durable records: a lost compact falls back to the append-only history, which replays identically (latest-per-session + latest-snapshot semantics unchanged; read_interrupted/latest_busy_recorded_at/queue restore unchanged). The Finalize seam now encodes each owner's sync class: RetryBusy (command journal, TS writeFileAtomicSync fsync:true) keeps its fsync+rename_onto; Synced (the Rust-native terminal-compaction journal, no TS counterpart) keeps its belt; Bare (the worker journal, TS worker-recovery-journal compact = writeFileSync+renameSync, NO fsync) is the TS shape \u2014 temp write+rename, no fsync. The CENSUSED TS anatomy confirms the TS compact class in-product: 1 rename (39us), 0 temp fsyncs. Disclosed TS-parity wrinkles: (a) TS records at EVERY RECOVERY_CHECKPOINT event (~9-10 appends+fsyncs per turn, 39 per 4-turn session \u2014 the Rust port's #2936-era checkpoint sites are deliberately leaner at 2 per turn, untouched here); (b) TS's busy computation holds true through turn_end/agent_end (its journal never goes idle in-session \u2014 the port's settle records busy=false, a deliberately tighter crash window), so TS's compact fires rarely in practice (once per session at the 'ready' record in the censused trials) while the port \u2014 with the TS gate mechanism over the port's own settle sites \u2014 compacts at every changed-idle settle; each compact is a 2-line page-cache write + a 31-50us rename (0 fsyncs), so the port's compaction is bounded-GC cost, and the port's journal is bounded where its own idle-at-settle evidence demands it. The probe-prefix leftover 'Zq7bench hello' protocol class from the warm-fsync lane carries over verbatim (disclosed, same erase_all class).",
+ "base": {
+  "revision": "3cb8c99d627da3d1ce211406d6017b4ed8ee9a24 (origin/rust at lane create; base binary sha256 fed484c20c4294f55d57c81ae04024dba0d9ff8df1868a2ae57e23099be20254)"
+ },
+ "branch": "lane/perf-settle-tail",
+ "commits": [
+  {
+   "sha": "d587c0870",
+   "note": "the candidate at the pre-fold base 3cb8c99d6 (ABBA binary sha256 37e0b806bfc6a4f0851d69a1f3ba52134798c699210f44b6cac04fbe11102f42 built from this tree); amended from 82a7fadc9 to fix a test-oracle assertion (the compact keeps the LATEST snapshot per session \u2014 the settle's lanes, not the admission's)"
+  },
+  {
+   "sha": "ea7996210",
+   "note": "fold of origin/rust 4df41f66a (#2941 settings-lock + #2755 provider surfaces; clean merge, zero territory overlap); post-fold re-diff vs 4df41f66a = EXACTLY the 2-file lane delta, verified hunk-by-hunk; confirmation pair at the fold: foldbase cf1610a0594e (still never compacts: 17 lines/3841B grown, 0 compacts) vs foldhead 44eac226ba6f (compacts fire: final 2 lines/399B bounded)"
+  },
+  {
+   "sha": "9df10de34",
+   "note": "test-only rustfmt of the new test call site (the fold gate's single fmt finding \u2014 the #2936 precedent class)"
+  },
+  {
+   "sha": "a959ca951",
+   "note": "fold of origin/rust 46bebd050 (#2942: the interactive_daemon_e2e wedge root-kill \u2014 PDEATHSIG + orphan sweep + the 300s headless wall; test-only, off the lane's territory, zero overlap); re-diff vs 46bebd050 = still exactly the 2-file lane delta. HONEST DISCLOSURE: the release binary's BYTES differ across the test-only commits (cargo's metadata hashing re-links the bin on any source change, even cfg(test)-gated lines): ea7996210 -> 44eac226ba6f, a959ca951 -> e2e72058dc23; the semantic delta between those trees is test-only (verified by re-diff), and the FINAL confirmation pair re-ran the behavior at the exact final head (see measurements.final_confirmation_pair)"
+  }
+ ],
+ "build": {
+  "vm": "hillclimb-perf-settle-tail (ddyasd84yvone5f3f31cxs4p, ubuntu:22.04 16c/32GB/80GB, rustup 1.98.1)",
+  "base_binary_sha256": "fed484c20c4294f55d57c81ae04024dba0d9ff8df1868a2ae57e23099be20254 (3cb8c99d6)",
+  "candidate_binary_sha256": "37e0b806bfc6a4f0851d69a1f3ba52134798c699210f44b6cac04fbe11102f42 (d587c0870)",
+  "carm_binary_sha256": "a2f92a8e8814dd48e352cf5b2882eca28ad44fed6fcb409fdee8377dfcdfa03e (6ada5feed, the gate-only C-arm probe variant, bench-only, never for merge)",
+  "folded_head_builds": "base 4df41f66a + candidate ea7996210 rebuilt at the fold for the confirmation pair + gates (see gates)"
+ },
+ "gates": {
+  "fold_ea7996210_full_gate": "fmt RED on exactly ONE finding (the new test call site's assert_eq line-width, fixed test-only at 9df10de34); clippy GREEN (-D warnings, whole workspace); test rc=101 on exactly ONE failure: pa-cli interactive_daemon_e2e::tui_prompt_stash_restores_a_pasted_image_with_the_draft ('the restored draft carries its image marker') \u2014 31 passed in its suite group; triaged SOLO at the exact head: GREEN (9.68s) \u2014 a co-scheduling flake in the suite upstream hardened the same day (#2942, related-work note), disclosed",
+  "prhead_9df10de34_gate": "fmt RC 0 GREEN; clippy RC 0 GREEN; the pa-cli red SOLO-GREEN at the exact head",
+  "finalhead_a959ca951_gate": "fmt RC 0 GREEN; clippy RC 0 GREEN; the release build GREEN (binary sha256 e2e72058dc23840df5d796cd2c2a2dcca4aee46e6f5cf94de190ce6cdcba0bdf); the journal unit oracles 9/9 GREEN at the exact head (5.06s); the byte-identity nuance: test-only commits re-link the binary (cargo metadata hashing), so the final pair re-ran behavior at the exact final-head binary rather than asserting byte identity",
+  "journal_unit_oracles": "9 passed 0 failed at the candidate build (the 5 existing incl. the #2936 batched-vs-sequential byte oracle + settle_compacts_single_session, batched_settle_compacts_and_restores, unchanged_verdict_does_not_compact)",
+  "github_ci_rollup": "carried in the PR request per the #2914 lesson (the completed rollup attaches when the checks finish)",
+  "carm_disclosure": "the C-arm probe variant (lane/perf-settle-tail-carm at 6ada5feed, gate-only WITHOUT the sync split) is BENCH-ONLY evidence, never for merge; it exists to price the redundant sync class in-product",
+  "related_work": "#2942 (the interactive_daemon_e2e wedge root-kill) landed independently while this lane was at the fold \u2014 the exit-gate lane's triage seeded it and upstream hardened the suite this gate's disclosed flake ran in (PDEATHSIG + orphan sweep + the 300s headless wall); this lane's sole full-suite red was a co-scheduling flake in that suite, solo-green at the exact head, and the suite's new wall does not change this lane's evidence (no wedge was observed in any of this lane's 30+ trials; the settle-tail's compacts never appeared in any hang shape)"
+ },
+ "measurements": {
+  "method": "same-VM sequential battery + 3-arm attribution on hillclimb-perf-settle-tail (ddyasd84yvone5f3f31cxs4p, ubuntu:22.04 16c/32GB/80GB, rustup 1.98.1); the warm-fsync msgsettle mock-regime protocol replicated verbatim (prime-inference/mock-1 via bench vendored mock_provider SSE, queue-matched 4-turn fixture, turns 2-4 warm); PI_REQUEST_TIMING on for the timing legs; binary sha asserted per trial; per-trial journal watcher + session file copies; strace -f -tt -T -y census (anatomy evidence only, never phase timing)",
+  "baseline_at_3cb8c99d6": {
+   "warm_turns_n": 24,
+   "warm_submit_to_settle_ms": {
+    "p50": 669.9,
+    "min": 664.6,
+    "max": 725.9
+   },
+   "warm_reply_visible_ms": {
+    "p50": 29.8,
+    "min": 27.4,
+    "max": 99.7
+   },
+   "warm_reply_to_settle_ms": {
+    "p50": 638.8,
+    "min": 626.3,
+    "max": 660.0
+   },
+   "controls_timing_off": {
+    "n": 6,
+    "warm_settle_p50": 668.1
+   },
+   "settle_anatomy_census": "per 4-turn session: journal 9 writes + 9 fsyncs + 9 closes (the create record + 4 admission batches + 4 settle batches, #2936-batched \u2014 2 journal fsyncs per warm turn), ZERO tmp events, ZERO renames: the all-idle compact NEVER FIRES (the pre-insert gate lets the session's own busy admission record block every settle's compaction); session file 8 writes + 8 fdatasyncs (user row 0.32-0.69ms, assistant row amortized); the first journal fsync of the trial paid the isolated-op trap (30.1ms in census-s1; 88-121ms in the afternoon ABBA censuses)",
+   "growth_anatomy": "single-session journals grow append-only: 17 lines / 3859 bytes per 4-turn session; 97 lines / 21609 bytes per 24-turn session (~900 B/turn); ZERO compaction events across every baseline trial; the 24-turn turn latency is flat across the session (p50 664.9ms, first 671.6, last 657.6 \u2014 the growth does not tax in-turn latency, only the respawn/open parse)",
+   "boot_legs": "fresh-daemon adoption boots over the same session's journal in three forms: grown (97 lines / 21.6KB) 45.8-51.0ms, long40x (3880 lines / 864KB, the growth trajectory bound) 45.8-50.9ms, compacted (2 lines) 40.7-51.0ms \u2014 the parse tax at these scales is BELOW the boot noise floor (honest: the growth is an unboundedness/parity defect, not a near-term boot cliff; the open-path parse is O(file) and the boot legs bound it at <=5ms for a 1000-turn-session-shaped file)",
+   "compact_anatomy_bench_context": "the live protocol fires zero compacts at base, so the compact's classes were censused bench-context: the product's own journal unit tests under strace -T -y \u2014 the compact = temp create + write (0.015-0.023ms, page cache) + sync_all (35.9ms / 36.9ms / 74.7ms under the trapped regime \u2014 isolated-op draws from the host's CLASS-D band) + rename; the append fsyncs in the same context: 0.26-0.43ms amortized, 34-73ms isolated (the same regime divergence)",
+   "ts_parity_legs": "official TS 0.9.6 under the SAME protocol: per 4-turn session journal 40 writes + 39 fsyncs + 1 rename (39us) + 0 temp fsyncs; TS records at EVERY RECOVERY_CHECKPOINT event (agent_start/turn_start/prompt_accepted/message_start/message_end x2-3/turn_end/agent_end \u2014 ~9-11 appends+fsyncs per turn, one per changed-operation record), its busy computation holds true through turn_end/agent_end (the journal never goes idle in-session), and its post-insert all-idle compact fired ONCE per session (at the 'ready' record): writeFileSync+renameSync \u2014 NO fsync, the compact sync class confirmed in-product; the trap pierced TS's event-by-event appends repeatedly (per-turn first-sync draws: 36.6-44.6ms in every turn window)"
+  },
+  "regime_calendar_context": {
+   "preflights": "probe_v09 at pre/mid1/mid2/mid3/post (baseline battery) + recov-pre/recov-post + abba-pre/mid1/mid2/post: ALL CLASS=D \u2014 the morning band: isolated fresh+sync_all+rename stall-rate 100%, p50 29.8-35.5ms, max 34.8-46.2ms; the afternoon band DEEPENED: abba-pre 15% stalls p50 0.85ms (a partial clear), then abba-mid/post 100% stalls p50 88.4-97.7ms, max 251.7-271.3ms; repeat-fsync burst p50 0.13-0.25ms (5% stalls) throughout \u2014 the calendar's class divergence, chronic incident band all day",
+   "sidecar_product_shape": "isolated open(O_APPEND)+write(4KB)+fdatasync @2s cadence through the whole battery (labels every trial with the host regime state)"
+  },
+  "regime_vs_mechanism_verdict": "the settle tail's BARRIER anatomy at base is already at the #2936 floor (2 journal fsyncs per warm turn, one per checkpoint batch \u2014 the honest-negative side: there is NO unbatched pair left on the settle path). The named waste is STRUCTURAL, in the task's own second class: (1) the compact NEVER RUNS on the dominant shape \u2014 a day-one port divergence (the all-idle gate evaluated PRE-insert; TS evaluates POST-insert), leaving the journal unbounded (~900 B/turn for the session lifetime); (2) where the compact runs (op-changes-at-idle, the give-up belt, and any gate-fixed form), its temp sync_all is a sync class TS's compact does not pay (TS: writeFileSync+renameSync, no fsync) \u2014 the 'redundant sync on the compact path'. The C-arm prices it in-product: 96.3-102.9ms per settle's compact fsync under the afternoon's deep trap band",
+  "abba_at_d587c0870": {
+   "design": "A=base fed484c20c (3cb8c99d6), B=cand 37e0b806b (d587c0870), C=gate-only a2f92a8e (6ada5feed); A-B-C-C-B-A x2 rounds = 12 trials, 3 warm turns each = 12 warm settles per arm counted (turns 2-4), sha asserted per trial (unlink-then-copy swaps), sidecar + preflights throughout (host CLASS=D all legs, the afternoon band labeled)",
+   "warm_submit_to_settle_ms": {
+    "A": {
+     "p50": 667.9,
+     "min": 664.7,
+     "max": 758.7,
+     "n_warm": 12
+    },
+    "B": {
+     "p50": 668.2,
+     "min": 664.8,
+     "max": 675.1,
+     "n_warm": 12
+    },
+    "C": {
+     "p50": 667.2,
+     "min": 665.1,
+     "max": 759.4,
+     "n_warm": 12
+    },
+    "paired_rounds_p50_A_B_C": [
+     [
+      667.9,
+      667.8,
+      667.2
+     ],
+     [
+      667.8,
+      670.1,
+      667.2
+     ]
+    ],
+    "verdict": "parity within noise in the driver-visible metric \u2014 the settle tail is POST-VISIBLE work (the settle checkpoint and its compaction run after the screen's last change; the 600ms stability window dominates the settle metric). NO latency claim is made; the arms' costs are compared at the syscall level (the census), which is where the mechanism lives"
+   },
+   "census_delta_per_4turn_session": {
+    "A_base": "journal 9 writes + 9 fsyncs + 0 tmp + 0 renames; final journal 17 lines / 3859 bytes (grown)",
+    "B_candidate": "journal 9 writes + 9 fsyncs + 4 tmp writes (page cache, 0 fsyncs) + 4 renames (0.031-0.050ms each \u2014 the compacts fire at every changed-idle settle, riding the TS sync class); final journal 2 lines / 401 bytes (BOUNDED)",
+    "C_gate_only": "journal 9 writes + 9 fsyncs + 4 tmp writes + 4 TMP FSYNCS (96.26 / 99.29 / 99.33 / 102.87ms \u2014 the redundant barrier the naive gate fix pays per settle under the trapped regime) + 4 renames; final journal 2 lines / 401 bytes",
+    "fresh_write_class": "9 journal fsyncs per session in EVERY arm \u2014 the append path is untouched"
+   },
+   "journal_state_oracle": "A: 17 lines/3859B after 4 turns (monotonic growth, zero compact events); B and C: 2 lines/401B (bounded); the watcher's compact counts (1-4 per trial) are 2ms-poll lower bounds \u2014 the final state and the strace census (4 renames per session) are the exact counts"
+  },
+  "confirmation_pair_at_the_fold": {
+   "design": "A=bin-foldbase cf1610a0594e (the fold base 4df41f66a), B=bin-foldhead 44eac226ba6f (the folded candidate ea7996210); 2 trials per arm, sha asserted; the final-head evidence pattern",
+   "results": "A: completed, grows only, ZERO compacts seen, final journal 17 lines / 3841 bytes (the never-fire persists at the folded base); B: completed, compacts fire (4 seen in conf-b1; the 2ms watcher poll can merge adjacent events \u2014 the strace census carries exact counts), final journal 2 lines / 399 bytes (BOUNDED) \u2014 the folded candidate behaves exactly like the pre-fold candidate"
+  },
+  "final_confirmation_pair": {
+   "design": "A=bin-tip46 sha256 99d75c4df800c49f808b79f17dfbac14dd95d3fa4723475a520cd940817b3021 (origin/rust 46bebd050 \u2014 the current tip WITHOUT the lane change), B=bin-finalhead sha256 e2e72058dc23840df5d796cd2c2a2dcca4aee46e6f5cf94de190ce6cdcba0bdf (the PR head a959ca951); 2 trials per arm, sha asserted, one arm under strace",
+   "results": "A fin-a1/fin-a2: completed, journal grows only (9 and 7 append arrivals), ZERO compacts, final journal 17 lines / 3832 bytes (the never-fire persists at the current tip). B fin-b1/fin-b2: completed, the compacts fire (4 and 3 seen by the 2ms watcher), final journal 2 lines / 398 bytes (BOUNDED) \u2014 the exact final-head behavior oracle"
+  }
+ },
+ "validity": {
+  "controls": "timing-off controls bound the request-timing log writes (6 warm turns p50 668.1ms, floor-consistent)",
+  "protocol": "warm-fsync/msgsettle/model-resolve-cache protocol lineage verbatim; the driver extends it with the journal watcher (read-only) and N-turn fixtures; the probe-prefix leftover disclosed (same erase_all class)",
+  "strace_rule": "strace-covered trials are census/anatomy evidence only, never phase-timing evidence; the timing numbers come from unstraced trials; the per-thread resume pairing bug class (cross-thread fsync duration mismatches under -f) was found and fixed in the census parser before any duration claims",
+  "regime_labels": "host-relative per advisory v1.0: CLASS=D all day (the morning 30ms band, a partial clear at abba-pre, the afternoon 88-97ms deep band); the C-arm's 96-103ms compact fsyncs are draws from the SAME labeled band its probes bracketed (disclosed as regime-amplified; the class removal is structural \u2014 0 fsyncs vs 4 per session regardless of regime)",
+  "disclosed": "the compact-anatomy leg is bench-context (the product's own journal unit tests under strace) because the live protocol fires zero compacts at base \u2014 disclosed as such; the boot-leg compacted/long40x journals are synthesized from the real grown file (exactly the records compact() writes / the growth trajectory bound), disclosed; the journal watcher's 2ms poll merges adjacent events (the strace census carries the exact counts); the driver settle metric cannot see post-visible work \u2014 no latency claim",
+  "frozen_surfaces": "session JSONL rows identical across arms; RLM wire, prompts, TUI output untouched; the journal's on-disk bytes: the compacted form is byte-identical to what rewrite_records always produced (the #2936 batched-vs-sequential byte oracle passes at the candidate; the new unit oracles pin the settle compaction, the restore identity, and the unchanged-verdict no-compact)",
+  "durability": "NEVER weakened: the fresh-write class (append write+fsync per record) is untouched in every arm; the compact's lost-sync fallback is the append-only history (identical replay); the crash matrix is unchanged pre/post \u2014 a crash before the settle append = the pre-settle busy evidence (correct 'uncertain'), between the append and the rename = the settled append-only form (correct), after the rename = the compacted form; the temp-file's ext4 rename heuristic carries the compact's data exactly as it carries TS's (the one strict strengthening Rust had over TS on this path \u2014 a belt on a GC op TS ships unbelted \u2014 is the named divergence being removed)"
+ },
+ "outcome": "POSITIVE (both named-waste classes confirmed, quantified, and removed; the barrier anatomy itself was already at the #2936 floor \u2014 the honest-negative side is explicit). (1) THE NEVER-FIRE: the worker recovery journal's all-idle gate ran BEFORE the record insert, so the session's own busy admission record blocked every settle's compaction on the dominant single-session shape \u2014 the compact NEVER fired and the journal grew append-only for the session's lifetime (censused: 17 lines/3.9KB per 4-turn session, 97 lines/21.6KB per 24-turn session, zero compaction events in every baseline trial; a day-one port divergence from TS's post-insert gate, f492609c6). The candidate restores the TS gate mechanism: the compaction fires at every changed-idle record and the journal stays bounded (2 lines/401B per session, censused in-product). (2) THE REDUNDANT SYNC ON THE COMPACT PATH: where the compact fires, its temp sync_all was a sync class TS's compact does not pay (TS: writeFileSync+renameSync \u2014 no fsync; confirmed in-product on TS 0.9.6: 1 rename at 39us, zero temp fsyncs). The C-arm (the naive gate fix that keeps the sync) priced the redundant class in-product: 96.26/99.29/99.33/102.87ms per settle's compact fsync under the host's labeled CLASS-D deep-trap band (36-75ms in the morning phase's bench-context draws; 0.3-0.5ms amortized in healthy windows) \u2014 while the candidate's compacts ride the TS class: 4 renames per 4-turn session at 31-50us, ZERO fsyncs. The fresh-write class is untouched in every arm (9 journal fsyncs per session), the #2936 batch intact. (3) THE HONEST NEGATIVE: the settle path's barrier count at base was already minimal (2 journal fsyncs per warm turn, one per #2936 checkpoint batch; there is NO unbatched pair left on the settle path \u2014 the task's first candidate class does not exist here); and the settle tail is POST-VISIBLE work (the driver-visible settle metric is parity across arms within noise: A 667.9 / B 668.2 / C 667.2ms p50) \u2014 NO latency claim is made; the value is structural: TS-parity behavior (bounded journals; the compaction the #2936 test comment already described), the redundant sync class removed where compacts fire, and the boot/open parse tax bounded (the grown-journal boot legs: 97-line and 3880-line journals boot within the noise floor of the 2-line journal \u2014 the growth was an unboundedness defect, not a near-term boot cliff; disclosed).",
+ "decision": "Lane evidence complete: baseline decomposition (the settle anatomy censused: 2 journal fsyncs per warm turn at base, zero compacts, the growth curve; TS's settle/compact anatomy censused in-product on the official 0.9.6 binary under the same protocol: ~9-10 event-per-record appends+fsyncs per turn \u2014 39 per 4-turn session \u2014 plus the post-insert-gate compact firing once per session at the 'ready' record with write+rename and no fsync) + the 3-arm attribution (A=base / B=candidate / C=gate-only, A-B-C-C-B-A x2, sha-asserted same-VM swaps, 12 warm settles per arm + 5 census arms) + the journal-state oracle (A: 17 lines grown; B/C: 2 lines bounded) + the byte/replay oracles (9/9 journal unit tests; session rows identical across arms) + the confirmation pairs at the fold AND at the exact final head (A=tip46 base 99d75c4d: still never compacts, 17 lines grown; B=final head e2e72058: compacts fire, 2 lines bounded) + the gates at the final head a959ca951 (fmt/clippy GREEN; the single full-suite red a co-scheduling flake in the #2942-hardened suite, solo-green at the exact head; the #2942 fold test-only with binary identity asserted). PR open at the lane head; the merge bar (the orchestrator numeric review + both adversarial reviewers' SHA-bound APPROVEs + the completed GitHub CI rollup + the operator dispositions of the disclosed reds) is requested with this record attached. The C-arm probe branch (lane/perf-settle-tail-carm) stays unmerged bench evidence.",
+ "related_record_note": "source finding: 20260927-093000-interaction-warm-durable-append-regime (the warm-fsync record, #2936) \u2014 its census counted only the checkpoint appends; this lane decomposed the settle tail the finding named. #2936's batch is NOT re-litigated (the fresh-write class and the checkpoint batching are untouched; this lane operates strictly on the compact path + the gate)."
+}
