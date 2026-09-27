@@ -580,8 +580,8 @@
   "excluded": [],
   "notes": "All PTY trials valid (TUI exit code 0, needle sighted, calibration drift <15%); byte-oracle sha identical on every leg; kill-switch legs excluded from perf deltas (contrast only); pyte 10k/40k baseline legs labeled: the exit-guard watchdog fires there (flush truncation risk when the drain outlasts the deadline - see slow_drain_regime_finding); the probe build was used for decomposition only (its timing marks are not in any perf delta); the 40k 'rows' label = 32,286 rendered rows (seed 8800 message pairs, 2.76MB session JSONL)."
  },
- "outcome": "pr-open-reviewers-requested (numeric review ACCEPTED @ ae4355af7; final-head evidence posted; both adversarial reviewers requested on ce5627bbd; NO merge by this lane)",
- "decision": "orchestrator numeric review: ACCEPTED (PR #2913). Awaiting explicit APPROVE from both adversarial reviewers on ce5627bbd + operator disposition of the known-red state. No merge by the lane.",
+ "outcome": "both-reviewers-approved (PR #2913 @ ce5627bbd): orchestrator numeric review ACCEPTED; parity-adversary-fast EXPLICIT APPROVE (source-level decision-tree verification incl. the shrink case; kill-switch ruled an OPERATIONAL rollback switch, not a supported user surface); parity-adversary-2-fast EXPLICIT APPROVE (byte-oracle set called the right instrument). Awaiting operator dispositions (benchmark non-applicability + the two fresh-triaged flake registrations) - merge by the orchestrator only.",
+ "decision": "orchestrator numeric review ACCEPTED + BOTH adversarial reviewers EXPLICIT APPROVE on ce5627bbd. Remaining: operator dispositions of the known-red state before merge. Kill-switch PRIME_AGENT_TUI_EXIT_FLUSH=0 documented per reviewer ruling as an operational rollback switch (operational-escape-hatch class), not a supported user surface.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2913",
  "record_path": "data/hillclimb/experiments/20260927-010500-interaction-exit-flush-bounded-stream.json",
  "session": {
