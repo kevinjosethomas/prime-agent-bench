@@ -1,0 +1,1305 @@
+{
+ "id": "20260927-140000-io-host-baseline-statemachine",
+ "axis": "io",
+ "lane": "hoststat (perf-host-baseline-fast, WAVE-5 probe-only)",
+ "hypothesis": "The write-regime calendar (20260927-054500, bench 8ec0ce2) found the fleet's hosts serving flush-path ops from discrete baseline states (fast ~0.7-1.1 / slow ~2.2-2.5 / lifted ~5ms) switching unsynchronized on minutes-to-hours scales, leaving every lane to anchor its I/O gates on ad-hoc best-dip baselines. Census question: on a fresh fleet of the STANDARD class (16c/32GB ubuntu:22.04), what is the state SET, dwell-time distribution, transition-rate structure, and cross-host (de)synchronization; is the state machine class-structured (which probe classes lift with it); and what KNOWN-GOOD baseline table (per host, per state, per class) should future lanes label their probe readings against. Infra characterization lane: NO product change, record-only.",
+ "approach": "3 fresh same-class VMs (hillclimb-hoststat-a/b/c, 16c/32GB/40GB ubuntu:22.04), probe_regime.py (the write-regime instrument, flock-guarded single instance): all 3 DENSE 0.5s ISOLATED fresh+sync_all+rename streams (advisory v1.0 class 1, continuous) + rich 30s samples (fresh4k/64k/256k+sync_all+rename, fresh4k+fdatasync+rename, fresh4k+rename-no-fsync control, append+fsync, repeat-fsync 4KB class 2, cached-read control, O_DIRECT control) with pre/post host counters (/proc/stat steal, meminfo Dirty/Writeback, vmstat, PSI, cgroup io.stat/io.psi/cpu.stat, raw diskstats). NO burst tests (self-induction settled by the source record; ambient census only). Duration 9000s (2.5h bounded: a per-host-state census, shorter than the write-regime 6h calendar). python3 apt install + launch window labeled NON-AMBIENT. Baseline series = median of NON-STALL (<=15ms) dense ops per 30s window; states = 1-D k-means in log space (centroids >=1.6x apart, >=4% of windows; validated on the write-regime raw data: reproduces its bands + its 0.793 stall-rate pearson exactly).",
+ "parity_notes": "Infra lane, record only: NO product code changed, no product build measured; frozen parity surfaces untouched by construction. All claims are about host/storage infrastructure.",
+ "base": {
+  "revision": "origin/rust 5cf45d4d at series time (anchor only; no product binary involved)"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_ids": {
+   "a": "ixaltlzlqrsg9f5qgb2bxiby (16c/32GB/40GB ubuntu:22.04)",
+   "b": "fwp2tpvx47a0c2pap4c532d5 (16c/32GB/40GB ubuntu:22.04)",
+   "c": "vyhb06d4nv4g0xxzv5ykmym1 (16c/32GB/40GB ubuntu:22.04)"
+  },
+  "series": "2026-09-27T11:30:31Z -> ~2026-09-27T14:00:31Z (9000s)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code)",
+  "clippy": "n/a",
+  "test": "n/a",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; standing disposition; never called pass"
+ },
+ "measurements": {
+  "method": "flock-guarded detached probe_regime.py; dense 0.5s isolated fresh+sync_all+rename (advisory v1.0 class 1) + 30s rich dual-class samples with counters; raw JSONL, no transcription; states from log-space k-means on 30s non-stall-median series",
+  "env": "cloud-hypervisor microVMs (same platform class as write-regime), ext4 on virtio root disk, cgroup 0::/ (root)",
+  "state_machine": {
+   "a": {
+    "series": {
+     "t0": "11:30:35",
+     "t1": "14:00:59",
+     "duration_h": 2.507,
+     "dense_n": 15954,
+     "samples": 266,
+     "windows": 301
+    },
+    "state_bands": {
+     "fast": [
+      0.724,
+      1.302
+     ],
+     "slow": [
+      1.827,
+      7.311
+     ]
+    },
+    "dwell": {
+     "fast": {
+      "episodes": 13,
+      "windows_total": 201,
+      "dwell_min_s": 30,
+      "dwell_med_s": 210,
+      "dwell_max_s": 2130
+     },
+     "slow": {
+      "episodes": 12,
+      "windows_total": 100,
+      "dwell_min_s": 30,
+      "dwell_med_s": 150,
+      "dwell_max_s": 930
+     }
+    },
+    "transitions": {
+     "fast->slow": 12,
+     "slow->fast": 12
+    },
+    "transition_rates_per_h": {
+     "fast->slow": 4.787,
+     "slow->fast": 4.787
+    },
+    "state_table": {
+     "fast": {
+      "band_p50_ms": [
+       0.724,
+       1.302
+      ],
+      "window_frac": 0.6678,
+      "fresh4k_dense_n": 10653,
+      "fresh4k_p50": 0.881,
+      "fresh4k_p50_nonstall": 0.879,
+      "fresh4k_p95": 3.097,
+      "fresh4k_max": 159.299,
+      "fresh4k_p90": 1.275,
+      "stall_rate_gt15": 0.0122,
+      "traps_gt100": 13,
+      "repeat_fsync_n": 1068,
+      "repeat_fsync_p50": 0.551,
+      "repeat_fsync_p95": 2.618,
+      "repeat_fsync_max": 97.803,
+      "fdatasync_p50": 0.649,
+      "append_p50": 0.589,
+      "fresh64k_p50": 0.819,
+      "fresh256k_p50": 1.014,
+      "nofsync_control_p50": 0.048
+     },
+     "slow": {
+      "band_p50_ms": [
+       1.827,
+       7.311
+      ],
+      "window_frac": 0.3322,
+      "fresh4k_dense_n": 5299,
+      "fresh4k_p50": 2.407,
+      "fresh4k_p50_nonstall": 2.401,
+      "fresh4k_p95": 8.666,
+      "fresh4k_max": 270.897,
+      "fresh4k_p90": 3.678,
+      "stall_rate_gt15": 0.0159,
+      "traps_gt100": 8,
+      "repeat_fsync_n": 528,
+      "repeat_fsync_p50": 0.566,
+      "repeat_fsync_p95": 2.737,
+      "repeat_fsync_max": 56.458,
+      "fdatasync_p50": 1.981,
+      "append_p50": 0.613,
+      "fresh64k_p50": 2.224,
+      "fresh256k_p50": 0.991,
+      "nofsync_control_p50": 0.051
+     }
+    }
+   },
+   "b": {
+    "series": {
+     "t0": "11:30:35",
+     "t1": "14:00:59",
+     "duration_h": 2.507,
+     "dense_n": 15953,
+     "samples": 266,
+     "windows": 301
+    },
+    "state_bands": {
+     "fast": [
+      0.713,
+      1.322
+     ],
+     "slow": [
+      1.988,
+      5.436
+     ]
+    },
+    "dwell": {
+     "fast": {
+      "episodes": 17,
+      "windows_total": 180,
+      "dwell_min_s": 30,
+      "dwell_med_s": 180,
+      "dwell_max_s": 1110
+     },
+     "slow": {
+      "episodes": 16,
+      "windows_total": 121,
+      "dwell_min_s": 30,
+      "dwell_med_s": 150,
+      "dwell_max_s": 1170
+     }
+    },
+    "transitions": {
+     "fast->slow": 16,
+     "slow->fast": 16
+    },
+    "transition_rates_per_h": {
+     "fast->slow": 6.383,
+     "slow->fast": 6.383
+    },
+    "state_table": {
+     "fast": {
+      "band_p50_ms": [
+       0.713,
+       1.322
+      ],
+      "window_frac": 0.598,
+      "fresh4k_dense_n": 9545,
+      "fresh4k_p50": 0.878,
+      "fresh4k_p50_nonstall": 0.876,
+      "fresh4k_p95": 3.066,
+      "fresh4k_max": 126.791,
+      "fresh4k_p90": 1.321,
+      "stall_rate_gt15": 0.0102,
+      "traps_gt100": 5,
+      "repeat_fsync_n": 954,
+      "repeat_fsync_p50": 0.554,
+      "repeat_fsync_p95": 1.464,
+      "repeat_fsync_max": 58.649,
+      "fdatasync_p50": 0.649,
+      "append_p50": 0.592,
+      "fresh64k_p50": 0.827,
+      "fresh256k_p50": 1.004,
+      "nofsync_control_p50": 0.047
+     },
+     "slow": {
+      "band_p50_ms": [
+       1.988,
+       5.436
+      ],
+      "window_frac": 0.402,
+      "fresh4k_dense_n": 6400,
+      "fresh4k_p50": 2.467,
+      "fresh4k_p50_nonstall": 2.458,
+      "fresh4k_p95": 8.486,
+      "fresh4k_max": 332.634,
+      "fresh4k_p90": 3.618,
+      "stall_rate_gt15": 0.0172,
+      "traps_gt100": 16,
+      "repeat_fsync_n": 642,
+      "repeat_fsync_p50": 0.556,
+      "repeat_fsync_p95": 2.797,
+      "repeat_fsync_max": 49.628,
+      "fdatasync_p50": 2.014,
+      "append_p50": 0.586,
+      "fresh64k_p50": 2.211,
+      "fresh256k_p50": 0.971,
+      "nofsync_control_p50": 0.048
+     }
+    }
+   },
+   "c": {
+    "series": {
+     "t0": "11:30:35",
+     "t1": "14:00:59",
+     "duration_h": 2.507,
+     "dense_n": 15954,
+     "samples": 266,
+     "windows": 301
+    },
+    "state_bands": {
+     "fast": [
+      0.725,
+      1.279
+     ],
+     "slow": [
+      1.568,
+      3.078
+     ]
+    },
+    "dwell": {
+     "fast": {
+      "episodes": 16,
+      "windows_total": 174,
+      "dwell_min_s": 30,
+      "dwell_med_s": 60,
+      "dwell_max_s": 2250
+     },
+     "slow": {
+      "episodes": 16,
+      "windows_total": 127,
+      "dwell_min_s": 30,
+      "dwell_med_s": 150,
+      "dwell_max_s": 1320
+     }
+    },
+    "transitions": {
+     "slow->fast": 16,
+     "fast->slow": 15
+    },
+    "transition_rates_per_h": {
+     "slow->fast": 6.383,
+     "fast->slow": 5.984
+    },
+    "state_table": {
+     "fast": {
+      "band_p50_ms": [
+       0.725,
+       1.279
+      ],
+      "window_frac": 0.5781,
+      "fresh4k_dense_n": 9222,
+      "fresh4k_p50": 0.889,
+      "fresh4k_p50_nonstall": 0.885,
+      "fresh4k_p95": 3.382,
+      "fresh4k_max": 137.726,
+      "fresh4k_p90": 1.324,
+      "stall_rate_gt15": 0.013,
+      "traps_gt100": 11,
+      "repeat_fsync_n": 930,
+      "repeat_fsync_p50": 0.556,
+      "repeat_fsync_p95": 2.473,
+      "repeat_fsync_max": 79.662,
+      "fdatasync_p50": 0.645,
+      "append_p50": 0.59,
+      "fresh64k_p50": 0.82,
+      "fresh256k_p50": 1.016,
+      "nofsync_control_p50": 0.048
+     },
+     "slow": {
+      "band_p50_ms": [
+       1.568,
+       3.078
+      ],
+      "window_frac": 0.4219,
+      "fresh4k_dense_n": 6723,
+      "fresh4k_p50": 2.428,
+      "fresh4k_p50_nonstall": 2.42,
+      "fresh4k_p95": 8.137,
+      "fresh4k_max": 267.703,
+      "fresh4k_p90": 3.524,
+      "stall_rate_gt15": 0.0123,
+      "traps_gt100": 10,
+      "repeat_fsync_n": 666,
+      "repeat_fsync_p50": 0.564,
+      "repeat_fsync_p95": 2.635,
+      "repeat_fsync_max": 117.283,
+      "fdatasync_p50": 2.031,
+      "append_p50": 0.611,
+      "fresh64k_p50": 2.162,
+      "fresh256k_p50": 1.006,
+      "nofsync_control_p50": 0.05
+     }
+    }
+   }
+  },
+  "known_good_baseline_table": {
+   "fast": {
+    "a": {
+     "band_p50_ms": [
+      0.724,
+      1.302
+     ],
+     "window_frac": 0.6678,
+     "fresh4k_dense_n": 10653,
+     "fresh4k_p50": 0.881,
+     "fresh4k_p50_nonstall": 0.879,
+     "fresh4k_p95": 3.097,
+     "fresh4k_max": 159.299,
+     "fresh4k_p90": 1.275,
+     "stall_rate_gt15": 0.0122,
+     "traps_gt100": 13,
+     "repeat_fsync_n": 1068,
+     "repeat_fsync_p50": 0.551,
+     "repeat_fsync_p95": 2.618,
+     "repeat_fsync_max": 97.803,
+     "fdatasync_p50": 0.649,
+     "append_p50": 0.589,
+     "fresh64k_p50": 0.819,
+     "fresh256k_p50": 1.014,
+     "nofsync_control_p50": 0.048
+    },
+    "b": {
+     "band_p50_ms": [
+      0.713,
+      1.322
+     ],
+     "window_frac": 0.598,
+     "fresh4k_dense_n": 9545,
+     "fresh4k_p50": 0.878,
+     "fresh4k_p50_nonstall": 0.876,
+     "fresh4k_p95": 3.066,
+     "fresh4k_max": 126.791,
+     "fresh4k_p90": 1.321,
+     "stall_rate_gt15": 0.0102,
+     "traps_gt100": 5,
+     "repeat_fsync_n": 954,
+     "repeat_fsync_p50": 0.554,
+     "repeat_fsync_p95": 1.464,
+     "repeat_fsync_max": 58.649,
+     "fdatasync_p50": 0.649,
+     "append_p50": 0.592,
+     "fresh64k_p50": 0.827,
+     "fresh256k_p50": 1.004,
+     "nofsync_control_p50": 0.047
+    },
+    "c": {
+     "band_p50_ms": [
+      0.725,
+      1.279
+     ],
+     "window_frac": 0.5781,
+     "fresh4k_dense_n": 9222,
+     "fresh4k_p50": 0.889,
+     "fresh4k_p50_nonstall": 0.885,
+     "fresh4k_p95": 3.382,
+     "fresh4k_max": 137.726,
+     "fresh4k_p90": 1.324,
+     "stall_rate_gt15": 0.013,
+     "traps_gt100": 11,
+     "repeat_fsync_n": 930,
+     "repeat_fsync_p50": 0.556,
+     "repeat_fsync_p95": 2.473,
+     "repeat_fsync_max": 79.662,
+     "fdatasync_p50": 0.645,
+     "append_p50": 0.59,
+     "fresh64k_p50": 0.82,
+     "fresh256k_p50": 1.016,
+     "nofsync_control_p50": 0.048
+    }
+   },
+   "slow": {
+    "a": {
+     "band_p50_ms": [
+      1.827,
+      7.311
+     ],
+     "window_frac": 0.3322,
+     "fresh4k_dense_n": 5299,
+     "fresh4k_p50": 2.407,
+     "fresh4k_p50_nonstall": 2.401,
+     "fresh4k_p95": 8.666,
+     "fresh4k_max": 270.897,
+     "fresh4k_p90": 3.678,
+     "stall_rate_gt15": 0.0159,
+     "traps_gt100": 8,
+     "repeat_fsync_n": 528,
+     "repeat_fsync_p50": 0.566,
+     "repeat_fsync_p95": 2.737,
+     "repeat_fsync_max": 56.458,
+     "fdatasync_p50": 1.981,
+     "append_p50": 0.613,
+     "fresh64k_p50": 2.224,
+     "fresh256k_p50": 0.991,
+     "nofsync_control_p50": 0.051
+    },
+    "b": {
+     "band_p50_ms": [
+      1.988,
+      5.436
+     ],
+     "window_frac": 0.402,
+     "fresh4k_dense_n": 6400,
+     "fresh4k_p50": 2.467,
+     "fresh4k_p50_nonstall": 2.458,
+     "fresh4k_p95": 8.486,
+     "fresh4k_max": 332.634,
+     "fresh4k_p90": 3.618,
+     "stall_rate_gt15": 0.0172,
+     "traps_gt100": 16,
+     "repeat_fsync_n": 642,
+     "repeat_fsync_p50": 0.556,
+     "repeat_fsync_p95": 2.797,
+     "repeat_fsync_max": 49.628,
+     "fdatasync_p50": 2.014,
+     "append_p50": 0.586,
+     "fresh64k_p50": 2.211,
+     "fresh256k_p50": 0.971,
+     "nofsync_control_p50": 0.048
+    },
+    "c": {
+     "band_p50_ms": [
+      1.568,
+      3.078
+     ],
+     "window_frac": 0.4219,
+     "fresh4k_dense_n": 6723,
+     "fresh4k_p50": 2.428,
+     "fresh4k_p50_nonstall": 2.42,
+     "fresh4k_p95": 8.137,
+     "fresh4k_max": 267.703,
+     "fresh4k_p90": 3.524,
+     "stall_rate_gt15": 0.0123,
+     "traps_gt100": 10,
+     "repeat_fsync_n": 666,
+     "repeat_fsync_p50": 0.564,
+     "repeat_fsync_p95": 2.635,
+     "repeat_fsync_max": 117.283,
+     "fdatasync_p50": 2.031,
+     "append_p50": 0.611,
+     "fresh64k_p50": 2.162,
+     "fresh256k_p50": 1.006,
+     "nofsync_control_p50": 0.05
+    }
+   }
+  },
+  "cross_host": {
+   "p50_series_lagged_pearson": {
+    "a~b": {
+     "-10": 0.1679,
+     "-9": 0.2027,
+     "-8": 0.1888,
+     "-7": 0.1737,
+     "-6": 0.1413,
+     "-5": 0.1339,
+     "-4": 0.1912,
+     "-3": 0.3041,
+     "-2": 0.3128,
+     "-1": 0.3862,
+     "0": 0.4881,
+     "1": 0.3106,
+     "2": 0.3432,
+     "3": 0.3567,
+     "4": 0.2985,
+     "5": 0.2884,
+     "6": 0.254,
+     "7": 0.1769,
+     "8": 0.1367,
+     "9": 0.1252,
+     "10": 0.1587
+    },
+    "a~c": {
+     "-10": 0.2862,
+     "-9": 0.2291,
+     "-8": 0.2826,
+     "-7": 0.3136,
+     "-6": 0.3453,
+     "-5": 0.3474,
+     "-4": 0.3608,
+     "-3": 0.4107,
+     "-2": 0.3425,
+     "-1": 0.329,
+     "0": 0.3648,
+     "1": 0.2828,
+     "2": 0.311,
+     "3": 0.3204,
+     "4": 0.2984,
+     "5": 0.2908,
+     "6": 0.3015,
+     "7": 0.2699,
+     "8": 0.3282,
+     "9": 0.3465,
+     "10": 0.3555
+    },
+    "b~c": {
+     "-10": 0.2659,
+     "-9": 0.2446,
+     "-8": 0.2646,
+     "-7": 0.293,
+     "-6": 0.3134,
+     "-5": 0.3485,
+     "-4": 0.3242,
+     "-3": 0.3372,
+     "-2": 0.2713,
+     "-1": 0.1991,
+     "0": 0.2436,
+     "1": 0.2087,
+     "2": 0.23,
+     "3": 0.2646,
+     "4": 0.2866,
+     "5": 0.3395,
+     "6": 0.382,
+     "7": 0.3702,
+     "8": 0.3631,
+     "9": 0.3357,
+     "10": 0.2858
+    }
+   },
+   "conditional_lift": {
+    "a~b": {
+     "p_v_lifted_given_u_lifted": 0.67,
+     "p_v_lifted_given_u_fast": 0.2687
+    },
+    "a~c": {
+     "p_v_lifted_given_u_lifted": 0.72,
+     "p_v_lifted_given_u_fast": 0.2736
+    },
+    "b~c": {
+     "p_v_lifted_given_u_lifted": 0.6033,
+     "p_v_lifted_given_u_fast": 0.3
+    }
+   },
+   "p50_series_pearson": {
+    "a~b": 0.4881,
+    "a~c": 0.3648,
+    "b~c": 0.2436
+   },
+   "stall_rate_pearson": {
+    "a~b": 0.8231,
+    "a~c": 0.8045,
+    "b~c": 0.791
+   },
+   "state_cooccurrence": {
+    "a~b": {
+     "same_state_windows": 214,
+     "of": 301,
+     "frac": 0.711
+    },
+    "a~c": {
+     "same_state_windows": 218,
+     "of": 301,
+     "frac": 0.7243
+    },
+    "b~c": {
+     "same_state_windows": 199,
+     "of": 301,
+     "frac": 0.6611
+    }
+   },
+   "state_cooccurrence_chance_independent": {
+    "a~b": 0.5329,
+    "a~c": 0.5262,
+    "b~c": 0.5153
+   },
+   "common_windows": 301,
+   "matched_trap_pairs_8s": {
+    "a~b": [
+     [
+      "11:34:50",
+      "11:34:51",
+      126.6,
+      126.7
+     ],
+     [
+      "11:35:12",
+      "11:35:12",
+      145.4,
+      136.5
+     ],
+     [
+      "12:03:41",
+      "12:03:41",
+      117.0,
+      161.7
+     ],
+     [
+      "12:05:38",
+      "12:05:33",
+      121.6,
+      151.1
+     ],
+     [
+      "12:05:38",
+      "12:05:39",
+      121.6,
+      322.1
+     ],
+     [
+      "12:05:39",
+      "12:05:33",
+      116.1,
+      151.1
+     ],
+     [
+      "12:05:39",
+      "12:05:39",
+      116.1,
+      322.1
+     ],
+     [
+      "12:05:52",
+      "12:05:48",
+      106.9,
+      325.4
+     ],
+     [
+      "12:05:52",
+      "12:05:52",
+      106.9,
+      332.6
+     ],
+     [
+      "12:06:07",
+      "12:06:07",
+      103.8,
+      209.9
+     ],
+     [
+      "12:06:07",
+      "12:06:08",
+      103.8,
+      127.2
+     ],
+     [
+      "12:06:33",
+      "12:06:33",
+      100.7,
+      120.8
+     ],
+     [
+      "12:07:43",
+      "12:07:49",
+      140.0,
+      109.3
+     ],
+     [
+      "12:07:48",
+      "12:07:49",
+      109.5,
+      109.3
+     ],
+     [
+      "12:29:18",
+      "12:29:18",
+      270.9,
+      119.3
+     ],
+     [
+      "13:04:18",
+      "13:04:19",
+      110.8,
+      106.0
+     ]
+    ],
+    "a~c": [
+     [
+      "11:35:12",
+      "11:35:12",
+      145.4,
+      145.4
+     ],
+     [
+      "12:03:41",
+      "12:03:41",
+      117.0,
+      110.3
+     ],
+     [
+      "12:05:38",
+      "12:05:33",
+      121.6,
+      105.0
+     ],
+     [
+      "12:05:38",
+      "12:05:38",
+      121.6,
+      103.0
+     ],
+     [
+      "12:05:39",
+      "12:05:33",
+      116.1,
+      105.0
+     ],
+     [
+      "12:05:39",
+      "12:05:38",
+      116.1,
+      103.0
+     ],
+     [
+      "12:05:52",
+      "12:05:47",
+      106.9,
+      137.7
+     ],
+     [
+      "12:05:52",
+      "12:05:51",
+      106.9,
+      116.3
+     ],
+     [
+      "12:06:33",
+      "12:06:33",
+      100.7,
+      109.4
+     ],
+     [
+      "12:07:43",
+      "12:07:43",
+      140.0,
+      107.2
+     ],
+     [
+      "12:07:43",
+      "12:07:48",
+      140.0,
+      101.9
+     ],
+     [
+      "12:07:48",
+      "12:07:43",
+      109.5,
+      107.2
+     ],
+     [
+      "12:07:48",
+      "12:07:48",
+      109.5,
+      101.9
+     ],
+     [
+      "12:29:18",
+      "12:29:18",
+      270.9,
+      119.1
+     ],
+     [
+      "12:49:01",
+      "12:49:01",
+      132.7,
+      109.3
+     ],
+     [
+      "12:55:22",
+      "12:55:22",
+      154.3,
+      109.2
+     ],
+     [
+      "12:58:19",
+      "12:58:14",
+      108.0,
+      161.6
+     ],
+     [
+      "12:58:19",
+      "12:58:19",
+      108.0,
+      156.7
+     ],
+     [
+      "12:58:35",
+      "12:58:30",
+      159.3,
+      154.1
+     ],
+     [
+      "12:58:37",
+      "12:58:30",
+      139.0,
+      154.1
+     ],
+     [
+      "13:04:18",
+      "13:04:18",
+      110.8,
+      267.7
+     ]
+    ],
+    "b~c": [
+     [
+      "11:35:12",
+      "11:35:12",
+      136.5,
+      145.4
+     ],
+     [
+      "12:03:41",
+      "12:03:41",
+      161.7,
+      110.3
+     ],
+     [
+      "12:05:20",
+      "12:05:23",
+      167.7,
+      125.1
+     ],
+     [
+      "12:05:23",
+      "12:05:23",
+      191.4,
+      125.1
+     ],
+     [
+      "12:05:29",
+      "12:05:23",
+      164.9,
+      125.1
+     ],
+     [
+      "12:05:29",
+      "12:05:33",
+      164.9,
+      105.0
+     ],
+     [
+      "12:05:33",
+      "12:05:33",
+      151.1,
+      105.0
+     ],
+     [
+      "12:05:33",
+      "12:05:38",
+      151.1,
+      103.0
+     ],
+     [
+      "12:05:39",
+      "12:05:33",
+      322.1,
+      105.0
+     ],
+     [
+      "12:05:39",
+      "12:05:38",
+      322.1,
+      103.0
+     ],
+     [
+      "12:05:48",
+      "12:05:47",
+      325.4,
+      137.7
+     ],
+     [
+      "12:05:48",
+      "12:05:51",
+      325.4,
+      116.3
+     ],
+     [
+      "12:05:52",
+      "12:05:47",
+      332.6,
+      137.7
+     ],
+     [
+      "12:05:52",
+      "12:05:51",
+      332.6,
+      116.3
+     ],
+     [
+      "12:06:23",
+      "12:06:23",
+      272.1,
+      119.1
+     ],
+     [
+      "12:06:33",
+      "12:06:33",
+      120.8,
+      109.4
+     ],
+     [
+      "12:07:49",
+      "12:07:43",
+      109.3,
+      107.2
+     ],
+     [
+      "12:07:49",
+      "12:07:48",
+      109.3,
+      101.9
+     ],
+     [
+      "12:29:18",
+      "12:29:18",
+      119.3,
+      119.1
+     ],
+     [
+      "13:04:19",
+      "13:04:18",
+      106.0,
+      267.7
+     ]
+    ]
+   },
+   "matched_trap_pair_counts": {
+    "a~b": 16,
+    "a~c": 21,
+    "b~c": 20
+   },
+   "traps_per_vm": {
+    "a": 21,
+    "b": 21,
+    "c": 21
+   },
+   "trap_census": {
+    "a": [
+     [
+      "11:30:54",
+      108.4
+     ],
+     [
+      "11:34:50",
+      126.6
+     ],
+     [
+      "11:35:12",
+      145.4
+     ],
+     [
+      "12:03:41",
+      117.0
+     ],
+     [
+      "12:05:38",
+      121.6
+     ],
+     [
+      "12:05:39",
+      116.1
+     ],
+     [
+      "12:05:52",
+      106.9
+     ],
+     [
+      "12:06:07",
+      103.8
+     ],
+     [
+      "12:06:33",
+      100.7
+     ],
+     [
+      "12:07:43",
+      140.0
+     ],
+     [
+      "12:07:48",
+      109.5
+     ],
+     [
+      "12:29:18",
+      270.9
+     ],
+     [
+      "12:29:44",
+      238.4
+     ],
+     [
+      "12:49:01",
+      132.7
+     ],
+     [
+      "12:55:22",
+      154.3
+     ],
+     [
+      "12:58:19",
+      108.0
+     ],
+     [
+      "12:58:35",
+      159.3
+     ],
+     [
+      "12:58:37",
+      139.0
+     ],
+     [
+      "13:04:18",
+      110.8
+     ],
+     [
+      "13:10:32",
+      102.7
+     ],
+     [
+      "13:13:52",
+      111.7
+     ]
+    ],
+    "b": [
+     [
+      "11:34:51",
+      126.7
+     ],
+     [
+      "11:35:12",
+      136.5
+     ],
+     [
+      "11:40:54",
+      112.3
+     ],
+     [
+      "12:03:41",
+      161.7
+     ],
+     [
+      "12:05:20",
+      167.7
+     ],
+     [
+      "12:05:23",
+      191.4
+     ],
+     [
+      "12:05:29",
+      164.9
+     ],
+     [
+      "12:05:33",
+      151.1
+     ],
+     [
+      "12:05:39",
+      322.1
+     ],
+     [
+      "12:05:48",
+      325.4
+     ],
+     [
+      "12:05:52",
+      332.6
+     ],
+     [
+      "12:06:07",
+      209.9
+     ],
+     [
+      "12:06:08",
+      127.2
+     ],
+     [
+      "12:06:23",
+      272.1
+     ],
+     [
+      "12:06:33",
+      120.8
+     ],
+     [
+      "12:07:49",
+      109.3
+     ],
+     [
+      "12:14:53",
+      119.4
+     ],
+     [
+      "12:20:16",
+      102.5
+     ],
+     [
+      "12:29:18",
+      119.3
+     ],
+     [
+      "12:42:58",
+      126.8
+     ],
+     [
+      "13:04:19",
+      106.0
+     ]
+    ],
+    "c": [
+     [
+      "11:35:12",
+      145.4
+     ],
+     [
+      "12:03:41",
+      110.3
+     ],
+     [
+      "12:05:23",
+      125.1
+     ],
+     [
+      "12:05:33",
+      105.0
+     ],
+     [
+      "12:05:38",
+      103.0
+     ],
+     [
+      "12:05:47",
+      137.7
+     ],
+     [
+      "12:05:51",
+      116.3
+     ],
+     [
+      "12:06:23",
+      119.1
+     ],
+     [
+      "12:06:33",
+      109.4
+     ],
+     [
+      "12:07:43",
+      107.2
+     ],
+     [
+      "12:07:48",
+      101.9
+     ],
+     [
+      "12:17:13",
+      116.3
+     ],
+     [
+      "12:17:24",
+      108.0
+     ],
+     [
+      "12:23:56",
+      102.8
+     ],
+     [
+      "12:29:18",
+      119.1
+     ],
+     [
+      "12:49:01",
+      109.3
+     ],
+     [
+      "12:55:22",
+      109.2
+     ],
+     [
+      "12:58:14",
+      161.6
+     ],
+     [
+      "12:58:19",
+      156.7
+     ],
+     [
+      "12:58:30",
+      154.1
+     ],
+     [
+      "13:04:18",
+      267.7
+     ]
+    ]
+   },
+   "state_transition_alignment_60s": {
+    "a~b": {
+     "transitions_u": 24,
+     "transitions_v": 32,
+     "aligned_within_60s": 14
+    },
+    "a~c": {
+     "transitions_u": 24,
+     "transitions_v": 31,
+     "aligned_within_60s": 13
+    },
+    "b~c": {
+     "transitions_u": 32,
+     "transitions_v": 31,
+     "aligned_within_60s": 26
+    }
+   }
+  },
+  "nonambient": "python3 apt install on all 3 VMs ~11:24-11:27Z + probe launch 11:30:31Z; first 3 min of each series labeled NON-AMBIENT (excluded from state/dwell claims)",
+  "phase_census_aligned_windows": {
+   "note": "3-host aligned 30s windows (301); 0=fast,1=slow; all-3-slow enriched 3.4x over independence => episode ONSETS cluster fleet-wide while steady dwells are per-host (the quantified nuance behind the calendar's 'unsynchronized')",
+   "all_fast": {
+    "observed": 0.3522,
+    "independence": 0.2271
+   },
+   "all_slow": {
+    "observed": 0.1993,
+    "independence": 0.0578
+   },
+   "mixed": 0.4485,
+   "distribution": {
+    "(0,0,0)": 106,
+    "(1,1,1)": 60,
+    "(0,0,1)": 41,
+    "(0,1,0)": 39,
+    "(1,0,0)": 19,
+    "(0,1,1)": 14,
+    "(1,0,1)": 13,
+    "(1,1,0)": 9
+   }
+  },
+  "series_totals": {
+   "hs-a": {
+    "dense_n": 15954,
+    "p50_ms": 1.018,
+    "p95_ms": 5.2,
+    "max_ms": 270.9,
+    "stall_pct_gt15": 1.34,
+    "traps_gt100": 21,
+    "traps_per_h": 8.4
+   },
+   "hs-b": {
+    "dense_n": 15953,
+    "p50_ms": 1.121,
+    "p95_ms": 5.46,
+    "max_ms": 332.6,
+    "stall_pct_gt15": 1.3,
+    "traps_gt100": 21,
+    "traps_per_h": 8.4
+   },
+   "hs-c": {
+    "dense_n": 15954,
+    "p50_ms": 1.161,
+    "p95_ms": 5.97,
+    "max_ms": 267.7,
+    "stall_pct_gt15": 1.27,
+    "traps_gt100": 21,
+    "traps_per_h": 8.4
+   },
+   "note": "identical trap COUNTS (21/21/21 at 8.4/h) with 16-21 matched pairs per host pair (<=8s): the trap process is fleet-synchronized and state-independent; NO multi-second traps in this 2.5h window (calendar's 19s twins remain sporadic extremes; max observed here 332.6ms)"
+  },
+  "conditional_state_coupling": {
+   "p_other_slow_given_slow": {
+    "a~b": 0.67,
+    "a~c": 0.72,
+    "b~c": 0.6033
+   },
+   "p_other_slow_given_fast": {
+    "a~b": 0.2687,
+    "a~c": 0.2736,
+    "b~c": 0.3
+   },
+   "reading": "a host is 2.0-2.6x more likely to be in its slow state while another host is slow; p50-series pearson 0.24-0.49 vs stall-rate pearson 0.79-0.82 on the SAME windows cleanly separates the two components"
+  }
+ },
+ "validity": {
+  "excluded": [
+   "apt python3 install windows and the first ~3 min after launch (install/launcher write noise; the write-regime record showed the same startup class labeled NON-AMBIENT)"
+  ],
+  "notes": "probes flock-guarded single instance (pgrep-verified each check); raw JSONL parsed, no transcription; VM clock offsets bounded by launcher_wall handshake (<2s); no product code involved; instrument validated against the write-regime 6h raw series BEFORE this series ran (band reproduction + 0.793 stall-rate pearson match)"
+ },
+ "outcome": "complete - per-host baseline state machine census delivered on the standard fleet class (3 fresh 16c/32GB ubuntu:22.04 microVMs, 2.51h, 15954 dense isolated fresh+sync_all+rename ops/VM + 266 rich dual-class samples/VM): (1) STATE SET = {fast, slow} on all 3 hosts in this window: fast p50 0.878-0.889ms (band 0.71-1.32, p90 1.3, p95 3.1-3.4), slow p50 2.407-2.467ms (2.7-2.8x the fast floor; p90 3.5-3.7, p95 8.1-8.7); no lifted ~5ms band this window (the calendar's lifted state remains documented; p50 >4x fast floor = beyond-census suspect, which covers it); (2) DWELL: episodes 0.5-37.5min, median 1-3.5min (fast) / 2.5min (slow), max 37.5min fast / 22min slow; transition rates 4.8-6.4/h per direction => a state flip every ~9-12.5min on average; (3) THE STATE MACHINE IS CLASS-STRUCTURED: repeat-fsync is STATE-INVARIANT (p50 0.551-0.566ms in BOTH states, all hosts), append+fsync ~0.59-0.61 and fresh256k+sync ~0.97-1.02 also invariant, nofsync-rename control 0.05 flat; ONLY the fresh-write-and-rename durability classes lift with the state (fresh4k 0.88->2.44, fresh64k 0.82->2.22, fresh4k+fdatasync 0.65->2.0); a single 'host baseline' number is WRONG - the known-good table must be per-state per-class; (4) STALL RATES stay HEALTHY-range in BOTH states (fast 1.02-1.30%, slow 1.23-1.72%): the state machine is a BASELINE property, not a stall property - the v1.0 stall-rate/max gates do not see it; only the baseline-lift rule does; (5) TRAP PROCESS (fleet-synchronized per-request flush traps) continues state-independent: exactly 21 traps>100ms/VM in 2.51h (8.4/h), max 332.6ms, stall-rate pearson 0.79-0.82 all 3 pairs, 16-21 matched instants per pair, no multi-second events this window; (6) CROSS-HOST: state sets per-host, episode onsets CLUSTER fleet-wide (all-3-slow 19.9% observed vs 5.8% independence = 3.4x enrichment; conditional P(slow|other slow) 0.60-0.72 vs P(slow|other fast) 0.27-0.30) while steady dwell phases remain unsynchronized - the calendar's 'unsynchronized' was right about dwells, with a quantified episode-phase coupling it could not see (its 6-op sample p50s were too noisy: same-window stall-rate pearson matched exactly, p50-series did not); (7) KNOWN-GOOD BASELINE TABLE delivered per host class + state + class (measurements.known_good_baseline_table): future lanes label probe readings against these documented bands instead of ad-hoc best-dip anchors (the subscriber-floor stopgap is superseded for this class).",
+ "decision": "Record-only lane (infra census; no product change, no PR, no merge). Advisory v1.1 ADDENDUM adopted for the fleet gate (v1.0 unchanged in its stall-rate/max/host-relative core): (A) PER-STATE PER-CLASS known-good bands: label every probe's fresh-class p50 with its state (16c/32GB class: fast 0.71-1.32ms, slow 1.57-3.08ms band p50 ~2.4-2.5; >4x fast floor (~3.5ms+) = beyond-census - label and treat as suspect, covers the historical lifted ~5ms state); the 2x-lift gate applies WITHIN the state band, not against the fast floor; (B) repeat-fsync is the STATE-INVARIANT reference: repeat-fsync p50 lifting >2x its own floor (0.55ms) is NOT the state machine - it is a trap/regime event (class-divergence gating); use it to distinguish state coupling (repeat flat, fresh lifted) from regime events (both classes hit); (C) DWELL-AWARE re-probe rule: baseline-lift-only MARGINAL (stall-rate still <=2%) = the host is in its slow state; label the leg slow-state and proceed if the measurement tolerates the 2.7x fresh floor, or wait >=10min for a state flip (flips 4.8-6.4/h; episodes 0.5-37.5min, median ~2.5min - v1.0's 2-5min re-probe usually lands in the same episode, so a persistent lift is expected, not anomalous); (D) the fleet-incident trap gates (stall-rate/max, phase-model re-classification at every leg boundary, no-ceiling labeling, never probe back-to-back) remain EXACTLY as v1.0. Parent may broadcast the addendum; the table lives in this record.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-140000-io-host-baseline-statemachine.json",
+ "session": {
+  "worker": "perf-host-baseline-fast (subagent)",
+  "session_dir": "~/.prime/agent/sessions/ (this lane session)"
+ },
+ "timestamp": "2026-09-27T14:02:32Z",
+ "advisory_v11_addendum": "Record-only lane (infra census; no product change, no PR, no merge). Advisory v1.1 ADDENDUM adopted for the fleet gate (v1.0 unchanged in its stall-rate/max/host-relative core): (A) PER-STATE PER-CLASS known-good bands: label every probe's fresh-class p50 with its state (16c/32GB class: fast 0.71-1.32ms, slow 1.57-3.08ms band p50 ~2.4-2.5; >4x fast floor (~3.5ms+) = beyond-census - label and treat as suspect, covers the historical lifted ~5ms state); the 2x-lift gate applies WITHIN the state band, not against the fast floor; (B) repeat-fsync is the STATE-INVARIANT reference: repeat-fsync p50 lifting >2x its own floor (0.55ms) is NOT the state machine - it is a trap/regime event (class-divergence gating); use it to distinguish state coupling (repeat flat, fresh lifted) from regime events (both classes hit); (C) DWELL-AWARE re-probe rule: baseline-lift-only MARGINAL (stall-rate still <=2%) = the host is in its slow state; label the leg slow-state and proceed if the measurement tolerates the 2.7x fresh floor, or wait >=10min for a state flip (flips 4.8-6.4/h; episodes 0.5-37.5min, median ~2.5min - v1.0's 2-5min re-probe usually lands in the same episode, so a persistent lift is expected, not anomalous); (D) the fleet-incident trap gates (stall-rate/max, phase-model re-classification at every leg boundary, no-ceiling labeling, never probe back-to-back) remain EXACTLY as v1.0. Parent may broadcast the addendum; the table lives in this record.",
+ "archive": "/home/ubuntu/hillclimb/archives/perf-hoststat/hoststat-evidence-20260927T140301Z.tar.gz sha256 fe558aaee42fde6159c43321e776fce359235b38ef93d2fc290ec5ab5e7485d9"
+}
