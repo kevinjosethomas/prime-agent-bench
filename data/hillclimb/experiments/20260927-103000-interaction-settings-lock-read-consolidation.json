@@ -105,5 +105,19 @@
   "parity-adversary-fast": "EXPLICIT APPROVE at a6ea27d21 (per-claim C1-C8 verdicts incl. their own greps: the full non-test settings.json writer census finds NO production in-place writer - every writer renames (new inode) so the same-ns edge's same-ino prerequisite is unreachable from workspace writers, the external-editor same-length-within-1ns class = the #2932 accepted-with-note ruling carried; exactly ONE production read() caller (manager.rs:928, load_scope); zero functional cross-nesting between the auth and settings cache registries; the frozen-surface diff = pa-core/src/settings only; the no-unmasking attributed to the #2915 mutex already in the base)",
   "parity-adversary-2-fast": "EXPLICIT APPROVE at a6ea27d21 (their own verified angles: the cache-hit-under-foreign-lock window = the #2932 convergence class for settings, strictly fresher than the TS load-once snapshot (the TS citations re-read directly incl. the in-memory getter reads); error-class parity incl. the platform-guard note (the non-(unix|windows) stat_identity stub returns None so the cache never hits there - the miss path always runs the full protocol); C8 proven by the diff)",
   "conditions": "both APPROVEs SHA-bound to a6ea27d21 (head movement voids); operator disposition of the benchmark infra class (pr-side leg never measured, main leg fully green - the worker-clone precedent) required before merge; the reviewers do not merge"
+ },
+ "merged": {
+  "pr": 2941,
+  "pr_head": "a6ea27d21a2bb9f389f5009a82a25982b5999a00",
+  "squash_sha": "451216e6d7465231a2d8afb7ad29073e4f460a05",
+  "squash_subject": "perf(pa-core): consolidate settings-lock reads - 32 lock cycles per first turn to 2 (#2941)",
+  "merged_at": "2026-09-27T04:48:06-07:00Z",
+  "reviews": {
+   "numeric": "orchestrator ACCEPTED at a6ea27d21",
+   "parity-adversary-fast": "EXPLICIT APPROVE on a6ea27d21 (all eight claims verified incl. their own greps; the C5 same-ns edge attacked with the FULL non-test settings.json writer census: every production writer renames (new inode) - pa-core with_lock->atomic_write temp+sync_all+rename_onto, TS settings-manager.ts:390 writeFileAtomicSync, pa-cli mcp_command through with_lock; mcp_login's fixture writer is #[cfg(test)]-gated - so the same-ino prerequisite is unreachable from any workspace writer; the external-editor same-length-within-1ns class = the #2932 accepted-with-note ruling; C3 exactly ONE production read() caller manager.rs:928 load_scope; C4 zero functional cross-nesting between the auth and settings cache registries)",
+   "parity-adversary-2-fast": "EXPLICIT APPROVE on a6ea27d21 (their own verified angles: the cache-hit-under-foreign-lock window = the #2932 convergence class for settings, strictly fresher than the TS load-once snapshot; error-class parity incl. the platform-guard note (the non-(unix|windows) stat_identity stub returns None so the cache never hits there - the miss path always runs the full protocol); C8 proven by the diff)"
+  },
+  "dispositions": "benchmark infra class (the MAIN leg fully measured, the PR-side sandbox created with ZERO trials - 'Benchmark partial'; the worker-clone precedent; operator dispositioned as the standing infra class at merge); expired known-red mcp_login::worker_begin_login_persists_creds_and_unlocks_gating triaged solo-green 3/3 at head+base (--release) + 3/3 at head (profile-matched debug), did not fire in any GitHub CI shard; fleet_review history-narration advisory justified (the comment-only reword dropped to keep the head sha-bound)",
+  "squash_content_verified": "the squash diff vs the pre-merge tip 3cb8c99d6 = exactly the 2 files (+219/-12), hunk-by-hunk identical to the lane delta a6ea27d21 (verified programmatically)"
  }
 }
