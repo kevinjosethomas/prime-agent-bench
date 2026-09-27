@@ -333,5 +333,5 @@
   }
  },
  "validity_notes": "cold = pass 0 of a fresh probe process (empty scan-state cache, warm page cache); warm = passes 1-6. All 54 probe runs (3 arms x 3 slots x 3 tiers x 7 passes + settled pair 18 runs) carry the identical row oracle per tier. The flush-regime gates were DEGRADED throughout (fleet-wide; per the write-regime advisory the regime does not touch the cached-read legs, and the noop calibrations + loadavgs are quiet); every leg is labeled with the regime state per the advisory. The 4096-tier cross-lane comparison stays INVALID (second-parse's disclosure); this record's 4096 evidence is internally valid. #2899's catalog-scan-heap allocation return lives in supervisor.rs and does not touch the roster fold; the fold's post-fold re-diff was empty.",
- "status": "PR pending (lane branch pushed: lane/hillclimb-catalog-stats at c032b68d4, retarget-ready)"
+ "status": "PR #2919 open (https://github.com/PrimeIntellect-ai/prime-agent/pull/2919, base rust, head c032b68d4); CI running; awaiting orchestrator numeric review + both adversarial reviewers on the final PR sha"
 }
