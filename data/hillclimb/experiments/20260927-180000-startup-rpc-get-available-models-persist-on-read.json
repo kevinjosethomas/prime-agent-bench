@@ -1,0 +1,115 @@
+{
+ "id": "20260927-180000-startup-rpc-get-available-models-persist-on-read",
+ "axis": "startup",
+ "hypothesis": "Wave-5 task from the rpc-baseline record's reported-only candidate 1: 'get_available_models on the RPC surface pays ~773.9ms per call BECAUSE it WRITES models.json every call (the registry cache persist - a durable write on a READ command)'. TS-parity-first, then baseline-decompose the write path at the current tip (when/where models.json is written per call, the write's size, the trigger, who reads it back), then the candidate per the parity finding, then paired ABBA on the RPC surface with the fresh-write class labeled.",
+ "approach": "PHASE 1 TS-PARITY: TS get_available_models (daemon-mode.ts:5125-5129 and in-process-agent-connection.ts:172) = await session.modelRegistry.refreshAvailableModels() on the SESSION'S LONG-LIVED registry; TS NEVER writes models.json (read-only user config; grep of the TS model-registry/auth paths: only reads + loadCustomModels). TS's refresh-chain disk writes are write-on-FETCH-SUCCESS only: PI live catalog writeCache(cachePath, payload) every successful fetch (prime-inference-model-catalog.ts:203-207; coalesced per cachePath via pendingRefreshes; offline short-circuit), private-authorization writePrivatePrimeAuthorizationCache only on a fingerprint-changing fetch success or a stale-TTL background refresh success (model-registry.ts:1052,1093), provider-catalog CatalogCache refresh('public',{force:false}) hour-gated (model-catalog-cache.ts). PHASE 2 RUST DECOMPOSE at origin/rust 5395ce47d (worktree lane/perf-rpc-models-persist, VM t86iotff0jv0u63uhp4ra0x8 hillclimb-perf-rpc-models-persist ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1, cargo build --release --locked --workspace rc=0, binary sha 8ab45e64cf72dd04af24daa10b1a000d0e3f97e3e88f4a9755aee1a62f67d649, 222770104 bytes): the RPC surface handler is rpc/model_commands.rs:165 get_available_models -> registry(state) (FRESH registry per call) + registry.refresh_available_models().await - the FULL TS-parity awaited chain; the DAEMON worker surface (state_getters.rs:311 handle_get_available_models -> worker_model_registry) and the ACP surface (acp/config_options.rs discover_available_models) are the port's instant no-refresh handlers (an internal divergence between the port's own surfaces). Census+audit+component-probe legs (rpc_probe_gam.py: per-trial fresh agent dir/home/tmp/cwd, scrubbed env + venv-env.json, loadavg quiet gate, product-only zombie sweep, 10ms nonblocking frame pump, per-gam-call file audit of the 4 models-cache-class files + full agent-dir census, response raw-byte capture; gam_probe.rs VM-only component bin; strace -ff -f -tt -T -yy census; probe_v09 I/O preflights per block). PHASE 3 CANDIDATE + ABBA: A-B-B-A interleave 2 rounds x 4 blocks, binary staging unlink-then-copy with sha asserts pre/post per block, io-probe before every block.",
+ "parity_notes": "The persist-on-read premise is REFUTED (three-level evidence): (1) CODE: the only writers of models-cache-class files are write-on-fetch-success paths - store_snapshot (pa-models/src/cache.rs:387 via write_atomic, provider-model-catalog.v1.json + prime-inference-models-cache.json) and write_private_prime_authorization_cache (pa-core/src/models/private_auth.rs:164, prime-inference-private-models.json); models.json itself is NEVER written by any product path (tests only). The port is ALREADY convergence option (a) persist-on-refresh-only, with the SAME contract as TS: write-on-success + CatalogCache CATALOG_REFRESH_INTERVAL_MS hour-gate (state carried by the process-shared catalog_for OnceLock map, matching TS's long-lived-registry gating) + 5-min PRIVATE_PRIME_AUTHORIZATION_CACHE_TTL_MS. (2) PER-CALL AUDITS: 141 steady-state get_available_models calls across 5 decompose trials -> ZERO file changes. (3) CENSUS (strace -yy, path-accurate): no write-flag opens on models.json-class paths in any steady gam window. The baseline record's 773.9ms p50 (n=16) was an artifact of the battery design: one gam per trial x 16 fresh processes = every measured call was a PROCESS-FIRST call paying the awaited refresh chain; the write the baseline census caught in one gam window (open_wronly+rename+fsync, substring-matched 'prime-inference-private-models.json' as 'models.json') was the process-first call's own store_snapshot persist landing inside its own window - once per process, not per call. THE REAL GAP the decompose exposed: the RPC surface fires NO boot-time registry refresh - TS session boot resolves the initial model through refreshAvailableModels (model-resolver.ts:543/636; the PI catalog fetch + cache writes ride it in the background) and the port's daemon worker mirrors exactly that from its create path (worker/create.rs:531-544, fire-and-forget tokio::spawn of refresh_available_models, comment cites the TS boot behavior) - but the RPC in-process assembly (rpc/mod.rs run_rpc_mode) never spawns it. FROZEN SURFACES: untouched (one file, crates/pa-daemon/src/rpc/mod.rs, +17/-1; no wire/schema/prompt/session-JSONL/TUI bytes). The candidate's parity claim, oracle-verified: the SAME cache files, byte-identical payload+etag+fingerprint (modulo the embedded fetchedAt/refreshedAt timestamps which ARE the refresh times), same write-on-success conditions, same cadence (hour-gate catalog, 5-min-TTL private), only started at session boot - and the gam response payload is BYTE-IDENTICAL across arms (158239 bytes, sha256 908424519bf398dd61c3072991da2e225a5a1aa97aeb5e79f8d1de66f0f642e9 on all 8 ABBA blocks, both arms).",
+ "base": {
+  "revision": "5395ce47dfd175b131086daca90609fa12367f9a (origin/rust at lane start)",
+  "note": "the task brief said tip 5cf45d4d (28 merges); origin/rust had advanced 28 commits to 5395ce47d by lane start; the lane branch is off 5395ce47d; the touched file crates/pa-daemon/src/rpc/mod.rs is NOT in the moving split series (agent_engine.rs 5/11, session_ui.rs 3/14, supervisor.rs 7/8)"
+ },
+ "branch": "lane/perf-rpc-models-persist",
+ "commits": [
+  {
+   "sha": "2329e625676de77f759008f2f1fa84ab2651e9d2",
+   "subject": "perf(pa-daemon/rpc): warm the model registry at RPC session boot - the first get_available_models pays the warm class, not the awaited fetch chain"
+  }
+ ],
+ "build": {
+  "sandbox_id": "t86iotff0jv0u63uhp4ra0x8 (hillclimb-perf-rpc-models-persist, ubuntu:22.04 16c/32GB/100GB vm=True, network_access=True)",
+  "baseline_binary_sha256": "8ab45e64cf72dd04af24daa10b1a000d0e3f97e3e88f4a9755aee1a62f67d649 (tip 5395ce47d, 222770104 bytes)",
+  "candidate_binary_sha256": "5a96671bbd54a7622da82e14fdc7a123fe2e16bf3bd2e28c74900ae96b114574 (tip + the one commit, 223183088 bytes)",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0 both arms",
+  "mechanism_smoke": "6s after boot with NO commands sent: bin-A (tip) = no cache files; bin-B (candidate) = provider-model-catalog.v1.json 454447B + prime-inference-private-models.json 120B (the boot spawn warmed the same caches the tip only writes on the first get_available_models)"
+ },
+ "gates": {
+  "fmt": "GREEN (VM cargo fmt --all --check rc=0)",
+  "clippy": "GREEN (VM cargo clippy --workspace --all-targets -- -D warnings rc=0)",
+  "test": "fleet gate gate_1790531716_895617 on the exact org head (full suite; verdict to be attached at PR) + local VM cargo test --workspace --release --locked (in flight at record time)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness (npm ci EUSAGE, missing package-lock); standing operator disposition class; never called pass"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA (A=tip bin-A, B=candidate bin-B), 2 rounds x A-B-B-A blocks, each block = 1 gam-burst trial (16 get_available_models calls in one process after an 8s post-create settle), binary staged via unlink-then-copy with sha asserts pre/post every block, io-probe (probe_v09: 40 isolated fresh+sync_all+rename @0.5s + 20 repeat-fsync) before every block, per-gam-call file audit + response raw-byte capture, host-relative I/O classification per fleet advisory v1.1",
+  "io_regime": "ALL 8 ABBA blocks ran in the ~50ms fresh-write D-class window (A_P50 50.37-55.31ms, stall-rate 100%, isolated-op max up to 396.5ms; repeat-fsync p50 0.17-0.28ms with 5% stall-rate) - the uniform reference-class lift per v1.1 rule (B) is a REGIME LABEL, not a leg blocker; the A-B-B-A interleave balances it across arms; no timing leg ran in a HEALTHY window. One regime flip observed mid-campaign in the first (aborted-driver) pass (D-class -> HEALTHY at r2-3) before the fixed driver re-ran all blocks inside the D window.",
+  "decompose_at_tip": {
+   "gam_first_call_process_first_ms": {
+    "cold_caches_burst1": 1295.8,
+    "warm_catalog_stale_private_ttl_burst2": 856.4,
+    "warm_catalog_stale_private_ttl_burst3": 948.0,
+    "note": "the process-first call pays the awaited refresh chain: provider-catalog fetch (454KB) + parse + store_snapshot write_atomic (the write the baseline census saw) + private-entitlements fetch + 120B private-cache write when cold; when the catalog disk snapshot is <1h old but the private cache TTL (5min) is stale, the call pays ONLY the private-entitlements network fetch (812-948ms, NO writes); a first drain-settled census trial reproduced the cold class at 1292ms"
+   },
+   "gam_steady_state_calls2_16": {
+    "n": 45,
+    "p50_ms": 58.6,
+    "min_ms": 10.4,
+    "max_ms": 82.1
+   },
+   "response_floor": {
+    "st2_stl_p50_ms": 50.4,
+    "note": "the uniform ~50ms post-assembly command floor (the baseline record's dispatch/response class; NOT this lane's territory)"
+   },
+   "steady_state_minus_floor_ms": 8.2,
+   "component_probe": {
+    "note": "VM-only uncommitted probe bin (gam_probe.rs, pa-core/src/bin, removed before gates) over the same agent-dir fixture, 16 rounds",
+    "plain_mode_steady": "auth 48-56us, registry build 382-439us (first construction 13.3ms), private-cache adopt 8-20us, get_available+serde of 390 models 1259-1311us, payload json 864-935us -> total ~2.6ms per call",
+    "refresh_mode_steady": "registry 1090-1135us, private-cache adopt 1309-1348us, FULL awaited refresh chain (warm hour-gated catalog + fresh-TTL private) 5130-5400us, get+serde 1310-1354us, payload 786-807us -> total ~9.8ms per call",
+    "n_avail": "390 (compiled/bundled state) / 396 (post-fetch), payload 158152-162372 bytes",
+    "verdict": "the steady-state per-call work is TS-parity class (TS re-reads auth.json + re-parses models.json + re-merges the catalog layers on every refreshAvailableModels call); NOT a candidate"
+   },
+   "write_census": {
+    "models_json": "NEVER written by any product path; read by every fresh registry (in-process, every process); cross-process consumers are every worker/CLI construction - the file is USER CONFIG, not regenerable cache",
+    "provider_catalog_cache": "written by store_snapshot on fetch success (write_atomic: temp+write+sync_all+rename, 454447B); once per process-hour (CatalogCache gate), triggered by the awaited refresh chain (first get_available_models per process, or the daemon worker's create spawn)",
+    "private_authorization_cache": "written on private-entitlements fetch success (120B, data:[] with the bench key); once per 5-min TTL window",
+    "pi_live_cache": "never written in these trials (the PI live fetch fails the coverage gate with the bench credentials; file absent in all trials)",
+    "regenerability": "all three cache files are regenerable last-good state: deleting them falls back to the bundled asset then the compiled 42-transport/110-PI-entry table until the next successful refresh (the no-cold-start chain's contract) - cache state, not user data"
+   }
+  },
+  "abba_paired": {
+   "arms": "A=tip 5395ce47d (bin-A 8ab45e64...), B=tip+2329e6256 (bin-B 5a96671b...)",
+   "design": "2 rounds x (A,B,B,A), each block 1 trial x 16 gam calls (first call + 15 steady-state), sha-asserted staging, io-probe per block, per-call file audits, raw response capture",
+   "first_call_gam1_ms": {
+    "A_values": [
+     1146.5,
+     1194.7,
+     1784.0,
+     734.2
+    ],
+    "A_p50": 1170.6,
+    "B_values": [
+     58.6,
+     59.7,
+     58.8,
+     59.0
+    ],
+    "B_p50": 58.9,
+    "delta": "A p50 1170.6ms -> B p50 58.9ms (-94.97%, 19.9x); every B trial lands in the steady-state class (the boot warm + hour-gate serves the first call from the warm caches)"
+   },
+   "steady_state_gam2_16_ms": {
+    "A_p50": 57.3,
+    "A_n": 56,
+    "B_p50": 57.4,
+    "B_n": 56,
+    "delta": "no regression (within noise; both arms carry the same ~50ms dispatch floor + ~8ms handler)"
+   },
+   "byte_oracle": {
+    "gam1_response": "IDENTICAL across all 8 blocks both arms: gam1 158239 bytes sha256 908424519bf398dd61c3072991da2e225a5a1aa97aeb5e79f8d1de66f0f642e9; gam2 identical too (sha256 fcd22a49837b...)",
+    "cache_files": "same sizes both arms (454447B provider catalog, 120B private); per-trial sha differs ONLY by the embedded fetchedAt/refreshedAt timestamps (verified: same url, same scope, same ETag W/\"8b6d6cc11b96b5b237ef70fa0f0f7e684afcf2390e15ddba20443e5cd88da935\", payload json-identical; private cache same fingerprint, same data, refreshedAt differs)",
+    "models_json": "never written by any arm (sha 0d6e9cc93c... unchanged in all trials)"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The ABBA's first-call class is network-fetch-dominated (the bench VM has internet: netcheck provider_catalog=200 @0.21s, pi_models=200 @0.19s); the write portion of the first call (~30-50ms on the ~50ms fresh-write regime) is a minority of the class, and the candidate changes NO write behavior (the same writes land at boot instead of on the first read; byte-oracle: identical payload+etag+fingerprint). The steady-state class carries the uniform ~50ms dispatch floor (the baseline record's separate candidate 2, mechanism-unprobed, not this lane's territory) - both arms pay it equally. gam-burst uses 16 calls in ONE process (the baseline battery's one-call-per-process design is exactly what misattributed the first-call class as a per-call cost). The response raw line includes the echoed request id (gam9=4 chars -> gam10=5 chars, the +1 byte at gam10 in every trial - driver artifact, not payload). The one-file patch is additive (a tokio::spawn of the same chain the daemon worker's create path already spawns); no moving-series file touched; no fold needed (the lane branched off the current tip and the tip did not move the touched file during the lane).",
+  "evidence": "hillclimb/archives/rpc-models-persist/rpc-models-persist-evidence.tar.gz (sha to be recorded at archive time; ABBA receipts + raw response files + io-probes + decompose legs + census strace + component probe + driver scripts + the smoke receipts)"
+ },
+ "outcome": "candidate validated: first get_available_models 1170.6ms p50 -> 58.9ms p50 (-94.97%) with byte-identical responses, identical cache bytes modulo refresh timestamps, zero write-behavior change, no steady-state regression; the persist-on-read premise refuted (persist-on-refresh-only is already the TS-convergent behavior at the tip)",
+ "decision": "SHIP the one-commit candidate (crates/pa-daemon/src/rpc/mod.rs, +17/-1: the RPC session boot mirrors the daemon worker's create-time fire-and-forget registry refresh - TS-parity-true, precedent-backed). The persist-axis task conclusion: NO change warranted - the port already persists on refresh only, exactly like TS; the baseline record's candidate 1 gets the decompose correction (per-process-first-call class, not per-read). Steady-state per-call work (~8ms over the 50ms floor) is TS-parity class - not a candidate.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-180000-startup-rpc-get-available-models-persist-on-read.json",
+ "session": {
+  "worker": "perf-rpc-models-persist",
+  "session_dir": "see conversation log"
+ },
+ "timestamp": "2026-09-27T18:00:00Z"
+}
