@@ -1,0 +1,102 @@
+{
+ "approach": "Archived cand-c.diff reapplied byte-clean at the current tip (blob-identity parent-exactness: the ENTIRE pa-daemon supervisor module is byte-identical between the source lane's e6e7a26e4 and this lane's measured base, incl. clients.rs blob 59bf9ac1b = the diff's index base; hunk-content verified after apply). Measured base = 4df41f66a (origin/rust at lane start; the tip moved 4x during the campaign \u2014 #2942 test-only, #2763 clients.rs update-restart site DISJOINT from cand-c's hunks, #2944 journal sync class, #2744 kernel/runtime, #2943 pa-tui-only \u2014 cand-c applies clean at every intermediate tip; no fold needed, no PR). REGIME CONTROL: arm T runs the identical driver with the trial root on a dedicated 8G tmpfs (/root/tr-tmpfs; this sandbox class gives /dev/shm only 485M \u2014 trap found and fixed pre-campaign) making the append phase CPU-saturated by construction; arm D keeps the disk root (ambient, labeled); arm T1 = tmpfs at N=1 (contention-free control). Driver byte-verified (concurrent_io_curve.py sha 0cd875c7 == the source lane's contract); pa-daemon binaries sha-asserted atomic swaps per leg; dual-class I/O probe before every leg (host-relative, v1.0 shape; anchor rep 0.737 / fresh 1.088 from the first calm window \u2014 the v1.1 fast-state class); pre/mid/post calibration; DEGRADED windows refuse legs (the anchor + all leg starts obeyed; the host sat in beyond-census DEGRADED fresh-allocation windows ~28-31ms for long stretches, correctly refused).",
+ "axis": "io",
+ "base": {
+  "binary_sha256": "1fb59d5779d7628f1991f01eed3b61aeed0721c8c6e4852c1844c90c42b35421 (base pa-daemon release, CARGO_INCREMENTAL=0)",
+  "revision": "4df41f66a3731b8302a4d0d62d4712db8d8a3128 (origin/rust at lane start; supervisor module blob-identical to the source lane's e6e7a26e4)"
+ },
+ "branch": "lane/perf-taskrun-merge @ 558fab3c1 (local; = 4df41f66a + cand-c.diff; NO PR opened \u2014 the pre-registered claim failed)",
+ "build": {
+  "base_binary_sha256": "1fb59d5779d7628f1991f01eed3b61aeed0721c8c6e4852c1844c90c42b35421",
+  "cand_binary_sha256": "1b0f6d2b6042ed6284f60375df2fbcf94599ef14c7dc5ef7264e990bc2585ed5",
+  "gates": "fmt+clippy RC 0 on the cand tree; wire oracle x2 per binary (all PASS); no full-suite gate run (no code shipped; the merge bar does not apply to a no-PR outcome)",
+  "sandbox_id": "vn8tiur1v66pqdw6d9tpo08q (16c/32GB ubuntu:22.04, rustup 1.98.1, CARGO_INCREMENTAL=0; deleted AFTER archive sha-verification)",
+  "toolchain": "rustup 1.98.1"
+ },
+ "commits": [
+  "558fab3c1 perf(pa-daemon): batch-drain coalescing of already-queued session-event frames (cand-c, archived diff reapplied at tip)"
+ ],
+ "decision": "honest negative per the pre-registered claim criterion; no PR opened; the merge bar's numeric+adversarial gates do not apply to a no-code outcome",
+ "evidence": {
+  "archive": "/home/ubuntu/hillclimb/taskrun-merge/tr-evidence-20260927.tgz (sha256 4e51deb81a8416d38caaf34273af718c517e3fe0499734ef4323a5c950af267a, 19398469 bytes: all 12 valid legs' result.json + all battery/leg logs + regime probe stream + host baseline + smoke oracle jsons + binary shas + the lane scripts + the failed b-1 leg log; VM-side archive sha verified against the downloaded copy BEFORE VM deletion)",
+  "parity_case": "wire-oracle jsons + frame-parity checks in the archive (tr-smoke-*.json)",
+  "pre_registration": "/home/ubuntu/hillclimb/taskrun-merge/PRE-REGISTRATION.md (written before any leg ran; the claim criterion and stop rules quoted verbatim in this record)",
+  "vm": "vn8tiur1v66pqdw6d9tpo08q (hillclimb-perf-taskrun-merge, 16c/32GB ubuntu:22.04) \u2014 deleted after archive verification"
+ },
+ "gates": {
+  "note": "no PR, no merge bar; product-code gates = compile+fmt+clippy+wire-oracle (all PASS); the full VM gate was never needed"
+ },
+ "hypothesis": "The subscriber-floor lane's honest negative left a precise successor question: cand-c (batch-drain coalescing of already-queued session-event frames into one write; 32-frame/256KiB caps; nothing pulled is dropped) merges the receiver-side parked-task cycle (park->schedule->poll->recv->serialize->write->park, ~15-40us per wake-event), and every clean pairing landed favorable but unresolvable in ambient regime drift (fast-fsync 1-leg pair -8.3% / -10.7us per append; N=100 append2 -3.1% with 4.3us cand-leg tightness vs 53.6us base spread). TASK: measure cand-c under REGIME CONTROL so the 15-40us mechanism ceiling can resolve above the noise \u2014 pre-registered arms, pre-registered claim criterion and stop rules, the regime labels as the independent variable.",
+ "id": "20260927-141500-io-taskrun-merge",
+ "lane": "taskrun-merge (perf-taskrun-merge-fast)",
+ "measurements": {
+  "arm_D_ambient_descriptive": {
+   "legs": "b-1 856.3/876.8 (walls 19.9/17.6s), c-2 1018.6/800.8 (15.6/15.6s), c-3 1054.7/742.8 (12.0/22.5s), b-4 1269.8/853.4 (8.6/22.9s \u2014 in-leg fastfsync-a1 flip)",
+   "note": "arm D reproduces the source lane's ambient pattern at the new tip: faster walls carry higher per-append CPU (b-4 append1 @8.6s wall = 1269.8 vs b-1 @19.9s = 856.3)",
+   "wall_matched": "append1: no clean wall-matched cross-role pair (base legs 19.9s vs cand 12.0-15.6s) -> no read; append2: b-4@22.9s vs c-3@22.5s = 853.4 vs 742.8 (-110.6us, -13.0%) and b-1@17.6s vs c-2@15.6s = 876.8 vs 800.8 (-76.0us, -8.7%) \u2014 regime-conditional observations in the SAME class as the source lane's -8.3% 1-leg pair; DISCLOSED AS OBSERVATIONS ONLY (arm D is descriptive by pre-registration; its naive append2 cells show range separation +93.3us but the wall labels show the contamination)"
+  },
+  "arm_T1_n1_control": {
+   "legs": "b-1 154.3/162.3, b-4 231.3/217.8, c-2 231.3/174.2, c-3 217.2/231.9 (all fastfsync, walls 0.05-0.10s)",
+   "read": "no separation in either phase (cand means +16.3%/+6.8% \u2014 within the source lane's documented 30-70% single-session noise, leg spreads 55-77us) \u2014 the pre-registered expectation (contention-free N=1 should not resolve the merge) HELD"
+  },
+  "arm_T_primary": {
+   "append1": {
+    "base": [
+     1464.1,
+     1512.2
+    ],
+    "base_spread_us": 48.1,
+    "cand": [
+     1466.4,
+     1482.7
+    ],
+    "cand_spread_us": 16.3,
+    "delta_pct": -0.9,
+    "delta_us": 13.6,
+    "mean_base": 1488.2,
+    "mean_cand": 1474.6,
+    "range_separation": false
+   },
+   "append2": {
+    "base": [
+     1337.8,
+     1385.7
+    ],
+    "base_spread_us": 47.9,
+    "cand": [
+     1369.4,
+     1335.3
+    ],
+    "cand_spread_us": 34.1,
+    "delta_pct": -0.7,
+    "delta_us": 9.4,
+    "mean_base": 1361.8,
+    "mean_cand": 1352.3,
+    "range_separation": false
+   },
+   "claim_cells": "append1: floor met (13.6>=10) but NO range separation; append2: NO separation AND below floor (9.4<10) -> PRE-REGISTERED CLAIM FAILS",
+   "legs": "b-1 FAILED (the source lane's disclosed worker-boot budget flake, verbatim class in resume1: 'session worker did not come up in time / connection reset by peer'; fresh triage: same-runroot c-2/c-3/b-4 passes within minutes exonerate binary+storage) -> exactly ONE rerun b-5 per stop rules (rc=0)",
+   "read": "the merge effect is directionally favorable (cand means lower in both phases) and cand legs are consistently TIGHTER (16-34us vs base 48us \u2014 the same tightness signature as the source lane), but the resolved effect (~9-14us/append) sits BELOW the 15-40us mechanism ceiling and below the between-leg noise, which did NOT collapse under regime control as hypothesized (base spreads stayed ~48us even at uniform walls)"
+  },
+  "method": "same-vm sequential ABBA per arm with sha-asserted atomic binary swaps, unique leg paths, digest oracle every leg, dual-class host probe before every leg, pre/mid/post calibration; arms D (disk ambient) then T (tmpfs, PRIMARY) then T1 (tmpfs N=1); arm T's failed b-1 leg got exactly ONE rerun (b-5) per the pre-registered stop rules",
+  "regime_control_verification": "arm T walls are uniform to within 190ms across ALL legs and phases (append1 6.62-6.77s, append2 6.59-6.71s) vs arm D's 8.58-22.87s scatter \u2014 the tmpfs control DID make the regime deterministic; all T/T1 legs labeled fastfsync by the wall tagger",
+  "sup_level_read": "tmpfs arm T measures ~1350-1500us/append vs ambient D ~740-1270 \u2014 the CPU-saturated regime carries ~60-75% MORE supervisor CPU per append than ambient, consistent with the source lane's fast-regime observation (~1170-1280 at e6e7a26e4); sup slices/append at T are 163-209 vs D's 83-150 (shorter slices, more preemption at max throughput)"
+ },
+ "outcome": "discarded",
+ "parity_notes": "Wire oracle (smoke_registry.py, the source lane's script byte-identical) TWICE per binary: base+cand both PASS (6 session_event frames to the attached client over 3 appends; ZERO unattached; ZERO late-attacher; ZERO post-detach; frame-shape parity base==cand after run-volatile normalization \u2014 epoch-ms message timestamps + per-boot 12-hex cursor generation ids, the same classes the source lane disclosed; cursor sequences 4,5,6 identical = D7 per-(session,connection) FIFO preserved). fmt+clippy RC 0 on the cand tree in the VM build. Frozen surfaces untouched (clients.rs only). Digest oracle per leg: all valid legs at N=100 digest 85607aee == the source lane's, all N=1 legs 4195cad0 == the source lane's \u2014 content-identical append semantics at the new tip; resume-prefix preservation all-pass on every valid leg.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-141500-io-taskrun-merge.json",
+ "session": {
+  "session_dir": "taskrun-merge lane (this session)",
+  "worker": "perf-taskrun-merge-fast"
+ },
+ "timestamp": "2026-09-27T14:15:00Z",
+ "validity": {
+  "excluded": [
+   "arm T leg b-1 (driver crash in resume1: the source lane's disclosed worker-boot budget flake; ONE rerun b-5 per the stop rules, PASSED rc=0 \u2014 no other legs added)",
+   "the failed b-1's partial tmpfs dir left no result.json and is naturally absent from the analysis (leg dirs are read by result.json presence)"
+  ],
+  "honest_negative": "The pre-registered claim FAILS: in arm T, append1 has the >=10us floor (13.6us) but NO 2v2 range separation, and append2 has neither (9.4us, overlapping). The task-run merge effect resolves to ~9-14us/append at N=100 under a perfectly uniform CPU-saturated regime \u2014 below the 15-40us mechanism ceiling, and the between-leg noise does NOT collapse under regime control (base spreads ~48us at 6.6s walls). cand-c's aggregate saving is real-looking but too small to claim at the driver's shape. The two prior regime-conditional observations (the source lane's -8.3% fast-fsync pair; this lane's arm-D wall-matched append2 pairs at -8.7%/-13.0%) STAY OBSERVATIONS \u2014 claiming them would be green-fishing. No PR; the record is the deliverable. The mechanism question is now CLOSED at this driver shape: neither ambient drift (source lane) nor deterministic saturation (this lane) gives the merge a resolvable win \u2014 a future lane would need a workload whose per-connection queues actually back up (bursty multi-frame publishes) rather than the driver's 2-frames-per-append trickle.",
+  "notes": "All 12 valid legs (D 4, T 4 after the 1+1 rerun, T1 4) passed digest identity (85607aee@N=100 / 4195cad0@N=1 \u2014 both == the source lane's) and resume-prefix preservation; every leg sha-asserted before AND after its run. The health gate refused leg starts in every DEGRADED window (this host sat in beyond-v1.1-census fresh-allocation windows ~28-31ms p50 \u2014 ~28x the fast floor \u2014 for stretches of 10-30min between ~2-4min calm phases; the anchor landed at 13:11Z, rep 0.737 / fresh 1.088 = the v1.1 fast-state class). The campaign finished under its v1.0 pre-registration; advisory v1.1 arrived mid-campaign and applies to future legs. Infrastructure disclosed: (a) anchor patience 6->40 tries (enforces the same strict zero-stall condition, only more patience), (b) the dedicated 8G tmpfs mount replacing /dev/shm (485M on this sandbox class) \u2014 same RAM-backed fsync-free regime, the controlled variable unchanged."
+ }
+}
