@@ -1,0 +1,181 @@
+{
+ "id": "20260927-215401-other-oauth-callback-known-red-renewal",
+ "axis": "other",
+ "lane": "oauthcb-renewal (wave-5 fleet-hygiene: the oauth_callback port-collision known-red re-triage + registration renewal; evidence + fleet-registry + bench-repo only - NO product change; session REBOOT after the glm-5.3-fast endpoint outage - the predecessor had completed the whole triage matrix and CI/pool censuses before dying; this session collected the still-alive VM's logs, verified every number against the artifacts, and applied the renewal + this record)",
+ "hypothesis": "The fleet known-reds entry mcp_oauth_callback_family (pattern 'oauth_callback') EXPIRED 2026-09-26 with a one-line 2026-09-24 classification ('port-collision co-scheduling family - fails identically on pristine base as a family-filter run; full lib green', evidence: pr #2729 gate run) and its member fired again in the mcplogin lane's co-scheduled run1 (13d5c0d78, 'ports 53700-53709 are all in use') - every expired match forces UNKNOWN/re-triage on the wave's gates. QUESTION: what is the exact mechanism, the trigger conditions, the observed rate per dispatch context (solo / family-filter / full-suite co-scheduled / CI), and is the family classification correct? The registration needs one authoritative renewal with current-tip evidence, a remedy design, and a reopen trigger.",
+ "approach": "(1) FRESH-VM triage at tip a5235b123c7c4465ec4c9f1c29704aef5b57d7b8 (VM v5evmdg73zktmj6dhmnctnzn, rust:1-bookworm 8c/32GB/100GB, toolchain 1.98.1 pinned, /etc/hosts well-formed - the healthy-resolver control): solo x5 RELEASE + x5 DEBUG of the member that actually reds (callback_flow_settles_code_and_state); then the family-filter characterization matrix on the 6-test module (debug default-threads N=20, release N=10, --test-threads=1 N=5 - the sequential-dispatch mechanism proof); then co-scheduled full-suite x2 with the exact gate env parity (kernel venv seeded runtime+skills, PRIME_AGENT_KERNEL_PYTHON/PA_E2E_KERNEL_PYTHON/PI_PACKAGE_DIR, CARGO_INCREMENTAL=0, cargo +1.98.1 test --workspace --no-fail-fast). (2) MECHANISM: source read of crates/pa-core/src/mcp/oauth_callback.rs - the sibling test binds the whole 10-port range by design, the victims unwrap; port-space geometry of the race. (3) POOL-ERA census: per-run scan of both pooled gate VMs' p3_test logs (the era timeline of the family across the fleet's own gate/review history). (4) CI census v2: every GitHub Actions 'CI' run since 2026-09-24 - run-level conclusions, per-shard conclusions, and the fetched shard-2 (pa-core#lib) logs of all non-success runs, grepped for module lines + the collision message. (5) FLEET VERDICT census: grep of all 646 verdict-carrying run dirs in /home/ubuntu/fleet-pipeline-runs. (6) REGISTRATION RENEWAL applied to known_reds.json (live module copy + the fleet-tools VC repo, entry-only diff, auto-citation verified).",
+ "verdict": "The family classification STANDS, now with the precise mechanism and rates: oauth_callback reds are a SAME-BINARY port-space race inside pa-core's mcp::oauth_callback tests - the sibling test all_candidates_bound_fails_clearly binds the full 10-port callback range 53700-53709 by design and holds it for its duration, so any same-binary test that concurrently calls CallbackServer::start().await.unwrap() panics on the product's DESIGNED error 'Could not start the OAuth callback server: ports 53700-53709 are all in use'. 3 direct unguarded victims (callback_flow_settles_code_and_state, error_callback_settles_none, unknown_route_is_404_without_settling) + falls_back_to_the_next_free_port as a transient-window victim (its own base-port blocker is guarded, but the sibling's mid-pass can hold the other 9 ports while it starts). Rates per dispatch context at tip a5235b123: SOLO 0/10 (5/5 release + 5/5 debug green, the member that reds), family-filter default-threads 14/20 debug (70%) + 4/10 release (40%), --test-threads=1 0/5 (the mechanism proof - sequential dispatch cannot co-schedule), full-suite co-scheduled x2 module 6/6 GREEN both runs (0 collision messages), CI 0/1531 runs (zero module failures, zero collision messages), pooled-VM era 1/109 module-run logs. Combined full-suite co-scheduled fleet rate 2/113 ~ 1.8% (pool era 1/109 + mcplogin-triage 1/2 + this lane 0/2). NOT environmental (the listener binds 127.0.0.1 numeric - no DNS leg, unlike mcp_login); NOT a code red; cargo runs test binaries sequentially so cross-binary collision is impossible - the family needs the module's own tests co-scheduled in one binary. Registration RENEWED (expiry 2026-10-01) with mechanism + rates + remedy design + reopen trigger; auto-citation verified.",
+ "mechanism": {
+  "the_range_holder": "all_candidates_bound_fails_clearly (crates/pa-core/src/mcp/oauth_callback.rs #[cfg(test)]): binds ALL 10 candidate ports 53700..53709 with a std::net::TcpListener::bind loop (filter_map over (0..CALLBACK_PORT_COUNT)), asserts the designed all-busy error, and holds every listener until test end - the full range is occupied for its whole duration.",
+  "the_victims": "callback_flow_settles_code_and_state, error_callback_settles_none, unknown_route_is_404_without_settling - each runs CallbackServer::start('Linear').await.unwrap(); start() scans the 10-port range and returns Err('Could not start the OAuth callback server: ports 53700-53709 are all in use. ...') when the sibling holds the range; the unwrap panics -> test FAILED. falls_back_to_the_next_free_port holds the BASE port as its own blocker (guarded: skips when the base is already held) but also unwraps start() - it is a victim only through the sibling's TRANSIENT mid-pass window (the sibling grabs the other 9 ports during its filter_map pass while the base is blocked, so start() sees all 10 busy). query_and_percent_decoding binds no port (pure string fns) and never reds; the range holder itself never reds (it asserts the error).",
+  "why_same_binary_only": "cargo executes test binaries one at a time and the CI shard script runs each test unit as its own cargo invocation, so only tests inside the SAME pa-core lib binary can overlap the range; the harness's default thread pool = vCPU count, which sets the collision probability (8c VM family-filter 70% debug; fewer/scattered dispatch = the full-suite ~1.8% and the 4-vCPU CI 0/1531).",
+  "failure_signature": "panicked at .unwrap() on CallbackServer::start with 'Could not start the OAuth callback server: ports 53700-53709 are all in use. Close other login attempts and retry.' - one line per victim; every observed red of this family carries it (14/14 red family-filter runs, the pooled-era review red, the mcplogin run1 red); zero reds without it."
+ },
+ "solo_matrix": {
+  "vm": "v5evmdg73zktmj6dhmnctnzn (fresh, rust:1-bookworm 8c/32GB/100GB, rustc 1.98.1 (48a229cea 2026-09-01), /etc/hosts well-formed (127.0.0.1 localhost + 192.0.2.1 prime.internal), getent localhost OK - the healthy-resolver control; the mcp_login DNS mode cannot fire here)",
+  "head": "a5235b123c7c4465ec4c9f1c29704aef5b57d7b8 (origin/rust at triage time)",
+  "pre_check": "all 10 candidate ports 53700-53709 FREE before the matrix",
+  "command": "cargo +1.98.1 test [--release] --locked -p pa-core --lib mcp::oauth_callback::tests::callback_flow_settles_code_and_state",
+  "release": {
+   "runs": 5,
+   "green": 5,
+   "each": "1 passed; 0 failed; 926 filtered out; finished in 0.00s"
+  },
+  "debug": {
+   "runs": 5,
+   "green": 5,
+   "each": "1 passed; 0 failed; 926 filtered out; finished in 0.00s"
+  },
+  "verdict": "SOLO-GREEN 10/10 at the tip - no code red; the member that reds in every fleet observation is green alone"
+ },
+ "family_filter_matrix": {
+  "method": "cargo +1.98.1 test [--release] --locked -p pa-core --lib mcp::oauth_callback (the 6-test module filter) with harness threads: default (8-vCPU VM) vs --test-threads=1; per run: rc, the collision message count, and the FAILED victim names",
+  "debug_default_threads": {
+   "runs": 20,
+   "red": 14,
+   "green": 6,
+   "collision_runs": 14,
+   "victim_tallies": {
+    "callback_flow_settles_code_and_state": 12,
+    "unknown_route_is_404_without_settling": 10,
+    "error_callback_settles_none": 9,
+    "falls_back_to_the_next_free_port": 5
+   },
+   "notes": "every red run carries >=1 'ports 53700-53709 are all in use' message (rc=101); up to 3 concurrent victims per run; all_candidates_bound_fails_clearly and query_and_percent_decoding never red"
+  },
+  "release_default_threads": {
+   "runs": 10,
+   "red": 4,
+   "green": 6,
+   "collision_runs": 4,
+   "victim_tallies": {
+    "falls_back_to_the_next_free_port": 1,
+    "unknown_route_is_404_without_settling": 1,
+    "callback_flow_settles_code_and_state": 2,
+    "error_callback_settles_none": 2
+   },
+   "notes": "red runs 1,3,5,7; the release build shortens the race window (40% vs 70%)"
+  },
+  "debug_test_threads_1": {
+   "runs": 5,
+   "red": 0,
+   "green": 5,
+   "collision_runs": 0,
+   "notes": "THE MECHANISM PROOF: sequential dispatch cannot co-schedule the range holder with a victim"
+  },
+  "verdict": "a load-DISTRIBUTION property of the test binary, not of the code: the red rate tracks harness parallelism and build mode exactly as the port-space race predicts"
+ },
+ "co_scheduled": {
+  "method": "cargo +1.98.1 test --workspace --no-fail-fast on the fresh VM (8c) with the gate env parity (kernel venv seeded runtime+skills, PRIME_AGENT_KERNEL_PYTHON/PA_E2E_KERNEL_PYTHON/PI_PACKAGE_DIR, CARGO_INCREMENTAL=0) - the exact gate command class; 158 test binaries; x2 back-to-back runs",
+  "run1": {
+   "rc": 101,
+   "duration_s": 1258,
+   "oauth_callback_module": "6/6 GREEN (all six status lines captured), 0 collision messages",
+   "pa_core_lib": "ok. 924 passed; 0 failed; 3 ignored (33.62s)",
+   "other_reds": "extension_runner integration binary: dead_sidecar_degrades_to_errors_not_panics; pa-daemon lib: 803 passed; 1 failed - worker::turn_stream_tests::abort_and_send_queued_acks_before_the_follow_up_delivery (rotating daemon/worker-timing tests, NOT this family; mcp_login green in the same runs - the healthy-resolver witness)"
+  },
+  "run2": {
+   "rc": 101,
+   "duration_s": 1189,
+   "oauth_callback_module": "6/6 GREEN, 0 collision messages",
+   "pa_core_lib": "ok. 924 passed; 0 failed; 3 ignored (32.08s)",
+   "other_reds": "pa-daemon lib: 803 passed; 1 failed - worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row"
+  },
+  "verdict": "the full-suite dispatch scatters the 6 module tests among 927 pa-core tests, so the observed full-suite rate is ~1.8% (2/113: pool era 1/109 + mcplogin-triage 1/2 + this lane 0/2) - real but rare; the family-filter and focused multi-crate batteries are where it bites (70%/40%)"
+ },
+ "pool_era_census": {
+  "method": "per-run scan of both pooled gate VMs' p3_test logs (slot-0 ykp6mbwtdtz17w58tayfa0yw: 95 logs, slot-1 bvwr5lk9t7jbsj3e5tc6x7im: 90 logs): module status lines counted per log, the collision message grepped per log",
+  "window": "2026-09-24 22:51:55Z -> 2026-09-27 19:27:49Z",
+  "module_run_logs": "109 of 185 (82 gates + 27 review batteries; the other 76 logs ran test selections without the module)",
+  "collision_occurrences": 1,
+  "the_one": "review_1790320147_3833119 (2026-09-25 07:09:07Z, pool slot-0, the review pool's pre-flight battery - cargo test -p pa-core -p pa-daemon -p pa-tui -p pa-types --no-fail-fast, a focused multi-crate run: ok=5 red=1 collision=1; the fleet verdict census shows it auto-classified to this entry pre-expiry; the same verdict carried 4 OTHER unknown reds - a high-pressure battery run)"
+ },
+ "fleet_verdict_census": {
+  "scope": "/home/ubuntu/fleet-pipeline-runs, 762 run dirs, 646 verdict-carrying",
+  "oauth_callback_mentions": "exactly 2: the review_1790320147_3833119 red (auto-classified by this entry pre-expiry) + gate_1790537269_902960 (the mcplogin lane's renewal verdict TEXT, not a red)",
+  "verdict": "across the fleet's own gate/review history the family fired exactly ONCE on the pooled VMs in the scanned era - consistent with the ~1.8% full-suite rate and the focused-battery amplification"
+ },
+ "ci_census": {
+  "method": "GitHub Actions 'CI' workflow (the port's tip-compiles-tests gate), every run since 2026-09-24 (runs.json + runs_early.json deduped by run id); pa-core#lib (the binary carrying mcp::oauth_callback::tests) lands in 'test shard 2/4' by the stable crc32 assignment (scripts/ci_test_shard.py - each test unit is its own cargo invocation, streamed to the job log; ubuntu-24.04 runner, 4 vCPU); run-level + shard-level conclusions for every run, and the shard-2 job log FETCHED and grepped for every non-success run whose shard-2 job exists",
+  "window": "2026-09-24T00:27:41Z -> 2026-09-27T19:44:46Z",
+  "totals": "1531 unique runs (rust pushes + lane/* PR heads)",
+  "run_level": {
+   "success": 611,
+   "non_success": 920
+  },
+  "shard2_of_non_success": {
+   "success": 300,
+   "cancelled": 256,
+   "no_job": 253,
+   "failure": 111
+  },
+  "logs_fetched": 367,
+  "direct_module_confirmations": "128 fetched shard-2 logs reached the pa-core#lib unit and carry the module's 6/6 '... ok' lines (plus 611 run-successes => all shards green, plus 300 non-success runs with shard-2 success); the other 236 fetched logs' jobs failed/cancelled BEFORE the pa-core#lib unit - the module never executed there, so no module red was possible; 3 job logs unavailable from the API",
+  "oauth_callback_failures": 0,
+  "collision_messages": 0,
+  "verdict": "the family NEVER fired in CI in the scanned window: 4-vCPU runners + sequential per-unit cargo dispatch scatter the module's tests enough that the 1.8%-class full-suite window collapses to zero observed; mechanism-consistent, and the immunity axis (CI) is part of the reopen trigger"
+ },
+ "registration_renewal": {
+  "registry": "/home/ubuntu/.prime/agent/fleet-tools/known_reds.json (the live copy fleet_pipeline.py _classify() auto-attaches from) + the fleet-tools VC repo /home/ubuntu/lane-worktrees/fleet-tools/known_reds.json - both updated with an ENTRY-ONLY diff (5 insertions, 3 deletions; the file's own JSON style preserved); VC repo commit a928a98",
+  "entry_id": "mcp_oauth_callback_family",
+  "pattern": "oauth_callback (unchanged; substring-matched against cargo test failure names - covers all 6 module test names)",
+  "classification_old": "port-collision co-scheduling family (fails identically on pristine base as a family-filter run; full lib green) - evidence: '2026-09-24 pa-core mcp::oauth_callback family evidence (pr #2729 gate run)', expiry 2026-09-26 (EXPIRED - every gate red was forced UNKNOWN/re-triage-required)",
+  "classification_new": "port-collision co-scheduling family (classification RENEWED 2026-09-27 with the precise mechanism - the family class STANDS): a same-binary port-space race inside pa-core's mcp::oauth_callback tests - the sibling test all_candidates_bound_fails_clearly binds the full 10-port callback range 53700-53709 by design (a std::net::TcpListener::bind loop held for the test's duration, crates/pa-core/src/mcp/oauth_callback.rs), so any same-binary test that concurrently calls CallbackServer::start().await.unwrap() panics on the product's DESIGNED error 'Could not start the OAuth callback server: ports 53700-53709 are all in use'. 3 direct unguarded victims (callback_flow_settles_code_and_state, error_callback_settles_none, unknown_route_is_404_without_settling) + falls_back_to_the_next_free_port (guarded base-port blocker; victim only through the sibling's transient mid-pass window). Fires ONLY under same-binary co-scheduling (cargo runs test binaries sequentially, so cross-binary collision is impossible): solo 0/10, --test-threads=1 0/5, family-filter 14/20 debug + 4/10 release, full-suite co-scheduled ~1.8% observed (2/113), CI 0/1531. NOT environmental (the callback listener binds 127.0.0.1 numeric - no DNS leg), NOT a code red",
+  "evidence_new": "2026-09-24 pa-core mcp::oauth_callback family evidence (pr #2729 gate run) | fired 2026-09-25 in the pooled review battery review_1790320147_3833119 (auto-classified by this entry pre-expiry) | RENEWED 2026-09-27 (oauth-callback-renewal wave-5 hygiene lane, fresh triage VM v5evmdg73zktmj6dhmnctnzn at tip a5235b123c7c4465ec4c9f1c29704aef5b57d7b8): SOLO 5/5 release + 5/5 debug of the member callback_flow_settles_code_and_state GREEN (each '1 passed; 926 filtered out', 0.00s; pre-run range sanity: all 10 candidates free); FAMILY-FILTER characterization (the 6-test module filter, default harness threads on the 8-vCPU VM): debug N=20 red=14 (70%, every red run carries the '53700-53709 are all in use' message; victims rotate: callback_flow_settles_code_and_state 12 runs, unknown_route_is_404_without_settling 10, error_callback_settles_none 9, falls_back_to_the_next_free_port 5; all_candidates_bound_fails_clearly NEVER red - it is the range-holder by design), release N=10 red=4 (40%), --test-threads=1 N=5 red=0 (sequential dispatch = no co-scheduling - the mechanism proof); CO-SCHEDULED full-suite x2 (gate env parity: kernel venv, cargo +1.98.1 test --workspace --no-fail-fast, 158 binaries): module 6/6 GREEN in BOTH runs, 0 collision messages (run1 dur 1258s RC=101, run2 dur 1189s RC=101 - the suite reds were OTHER rotating daemon/worker tests, not this family); POOL-ERA census (both pooled gate VMs' p3_test logs, 2026-09-24 22:51:55Z -> 2026-09-27 19:27:49Z): 109 module-run logs (82 gates + 27 review batteries), exactly 1 collision occurrence - review_1790320147_3833119 (2026-09-25 07:09Z, focused 4-crate review battery: ok=5 red=1 collision=1); FLEET VERDICT census (/home/ubuntu/fleet-pipeline-runs, 646 verdict-carrying runs): 'oauth_callback' in exactly 2 verdicts - the review_1790320147 red + a non-red textual mention (the mcplogin lane's renewal verdict); CI census (GitHub Actions CI workflow, 1531 unique runs 2026-09-24T00:27:41Z -> 2026-09-27T19:44:46Z, pa-core#lib = 'test shard 2/4' by stable crc32, ubuntu-24.04 4-vCPU runners, each test unit its own sequential cargo invocation): 611 run-success (all-shards green => module green) + 300 non-success runs with shard-2 success + 128 fetched non-success shard-2 logs directly carrying the module's 6/6 '... ok' lines = ZERO oauth_callback failures, ZERO '53700-53709' messages in ANY fetched log (367 fetched; the other 236 non-success shard-2 jobs failed/cancelled before the pa-core#lib unit - the module never executed there; 3 job logs unavailable); combined full-suite co-scheduled rate 2/113 ~ 1.8% (pool 1/109 + mcplogin-triage 1/2 + this lane 0/2). REMEDY (backlog for a test-hygiene lane, NO product change needed): serialize the module's port-range users with a test-scoped async lock (a static tokio Mutex held by each port-binding test for the duration of its range use) - collapses the family-filter rate to the --test-threads=1 axis (0%); weaker alternative: a bounded retry over start() in the victims instead of .unwrap(). REOPEN TRIGGER: any oauth_callback failure WITHOUT the 'ports 53700-53709 are all in use' signature (settle/assert/logic failures) = NEW signature, full fresh triage; or the red firing solo, at --test-threads=1, or in CI (any of the three immunity axes) = the family classification is wrong.",
+  "expiry_old": "2026-09-26 (EXPIRED)",
+  "expiry_new": "2026-10-01",
+  "auto_citation_verified": "failnames callback_flow_settles_code_and_state / error_callback_settles_none / unknown_route_is_404_without_settling / falls_back_to_the_next_free_port -> entry mcp_oauth_callback_family, NOT expired, known_red=True - the wave's gates stop red-ing UNKNOWN on this family",
+  "reopen_trigger": "any oauth_callback failure WITHOUT the 'ports 53700-53709 are all in use' signature (settle/assert/logic failures) = NEW signature, full fresh triage; or the red firing solo, at --test-threads=1, or in CI - any of the three immunity axes - means the family classification is wrong.",
+  "remedy_design": "backlog for a future TEST-HYGIENE lane (no product change needed): serialize the module's port-range users with a test-scoped async lock (a static tokio::sync::Mutex<()> in the tests module, held by each port-binding test for the duration of its range use) - collapses the family-filter red rate to the --test-threads=1 axis (0%); weaker alternative: a bounded retry over CallbackServer::start() in the victims instead of .unwrap()"
+ },
+ "backlog": {
+  "dead_sidecar": "dead_sidecar_degrades_to_errors_not_panics (pa-daemon tests/extension_runner.rs integration binary) fired 1x in this lane's co-scheduled run1 (and is green in run2); 3 fleet-wide occurrences total per the wave census - UNREGISTERED (not in known_reds.json). STAYS IN THE BACKLOG for a future triage lane per the operator's disposition; NOT triaged here (out of lane scope).",
+  "other_unrelated_reds_seen": "worker::turn_stream_tests::abort_and_send_queued_acks_before_the_follow_up_delivery (run1) + worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row (run2) - the rotating daemon/worker-timing families; both are the known parked-queue/abort class, disclosed as context, not triaged here."
+ },
+ "gates": {
+  "product_gates": "n/a - no product change (no rust PR; the full test suite ran green on the triage VM at the pinned tip for the pa-core surface)",
+  "bench_test_suite": "n/a - no bench-repo code change (evidence + registry + records only)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Solo runs are single-test cargo invocations on an otherwise idle VM. The rerun discipline (1+1 then stop) was not needed: the family-filter reds are the STUDIED population (the mechanism characterization), not reds to fish away; every number is read from the collected logs, re-verified from the still-alive VM after the reboot (run1/run2 module lines, collision counts, failnames, HEAD, toolchain, resolver state all re-confirmed). The VM logs archive was sha-verified (c5ec4678fa011f25897af8a61afa9ffa04c808ae4e4db4e4e85eea383e743ae0, VM-side sha match) BEFORE the VM was deleted. The 3 unavailable CI job logs (of 367 fetched) are disclosed; 236 fetched logs' jobs never reached the pa-core#lib unit (no module execution - no possible module red)."
+ },
+ "outcome": "merged",
+ "decision": "Lane closed: the expired mcp_oauth_callback_family known-red is RENEWED with the evidence-complete, mechanism-precise classification (port-collision co-scheduling family: same-binary 10-port range race; solo 0/10, family-filter 70%/40%/0%, full-suite ~1.8%, CI 0/1531, pool era 1/109) at expiry 2026-10-01, auto-citation verified - the wave's gates stop red-ing UNKNOWN on this family. The remedy design (a test-scoped port-range lock) is filed in the entry as backlog for a future test-hygiene lane. dead_sidecar_degrades_to_errors_not_panics (3 fleet-wide occurrences, unregistered) stays in the backlog per the operator's disposition. NO product change; NO PR (bench repo flows to hillclimb directly; the known-reds registry is fleet-tools local). Triage bound at tip a5235b123c7c4465ec4c9f1c29704aef5b57d7b8; the current origin/rust tip has since moved (the pa-tui/pa-daemon split series) with crates/pa-core/src/mcp/oauth_callback.rs byte-identical (git diff empty a5235b123..origin/rust), so the evidence carries to the current tip. Session was a REBOOT: the predecessor died in the glm-5.3-fast endpoint outage after the matrix/censuses were done; this session collected the still-alive VM's logs, re-verified every number from artifacts, applied the renewal and wrote this record.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-215401-other-oauth-callback-known-red-renewal.json",
+ "session": {
+  "worker": "oauthcb-renewal",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-3a2225d5/01a0e4ba-4713-7492-9691-59e4218cec15.jsonl"
+ },
+ "timestamp": "2026-09-27T21:54:01.870292+00:00",
+ "head_note": "origin/rust moved past the triage tip during the lane (a5235b123 -> ... -> d3d4e5ca9, the pa-tui session_ui.rs + pa-daemon split series); crates/pa-core/src/mcp/oauth_callback.rs is UNTOUCHED (git diff a5235b123..origin/rust -- <file> empty), so the triage evidence carries",
+ "base": {
+  "revision": "a5235b123c7c4465ec4c9f1c29704aef5b57d7b8",
+  "note": "the triage-tip at lane start (origin/rust); triage/registration lane - no product branch, no PR"
+ },
+ "branch": null,
+ "vm": {
+  "sandbox_id": "v5evmdg73zktmj6dhmnctnzn",
+  "image": "rust:1-bookworm (the gate pool's exact image)",
+  "cpu": 8,
+  "mem_gb": 32,
+  "disk_gb": 100,
+  "toolchain": "rustup 1.98.1 (pinned by bootstrap; rustc 1.98.1 (48a229cea 2026-09-01))",
+  "repo": "/workspace/prime-agent cloned at a5235b123c7c4465ec4c9f1c29704aef5b57d7b8 (origin/rust, --detach)",
+  "evidence_archive": "triage-evidence.tar.gz (VM /workspace/logs: t2 bootstrap, t3 solo, t4 family matrix, t4_venv, t5 full driver, p3_full_run1/run2; sha256 c5ec4678fa011f25897af8a61afa9ffa04c808ae4e4db4e4e85eea383e743ae0 - VM-side sha match verified BEFORE deletion)"
+ },
+ "evidence_paths": [
+  "bench repo hillclimb commit 6c6d4b1: hillclimb/archives/oauthcb-renewal/oauthcb-renewal-evidence.tar.gz (bundle sha256 6d02b92a0ac109cc363d8ade8b9d192022acf205ed37b18ccd46a0ad2199aac3)",
+  "/home/ubuntu/hillclimb/archives/oauthcb-renewal/ (unpacked: triage-evidence.tar.gz, vm-forensics.txt, pool-era-slot0/1.txt, the t2/t3/t4/t45 scripts+collected logs, the CI census scripts+logs+extraction JSONs, known_reds.json pre/post)",
+  "/home/ubuntu/hillclimb/archives/oauthcb-renewal/ci-shard2-raw-logs.tar.gz (the 367 raw shard-2 job logs, host-side; sha256 1dfd4ab89438869fdb3e6286fec22ae73cc6db42783c69d2c7675725fc9dba44)",
+  "/home/ubuntu/.prime/agent/fleet-tools/known_reds.json (the renewed registry entry; live copy)",
+  "/home/ubuntu/lane-worktrees/fleet-tools (the fleet-tools VC repo, renewal commit a928a98)",
+  "/home/ubuntu/worktrees/perf-oauth-renewal/_lane/ (the lane scratch: scripts, run tails, ci-scan/ with the raw job logs)"
+ ],
+ "measurements": null,
+ "commits": [
+  "6c6d4b1 (bench repo, hillclimb - the lane evidence archive)",
+  "a928a98 (fleet-tools VC repo, local - the known_reds.json renewal)"
+ ]
+}
