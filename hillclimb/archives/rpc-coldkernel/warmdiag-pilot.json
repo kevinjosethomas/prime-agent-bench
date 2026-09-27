@@ -1,0 +1,323 @@
+{
+ "mode": "warm-census",
+ "trials": 1,
+ "binary_sha256": "34c7fd875ca6d8cf095d9569992ca53734c428913bfa44c47c9c06556db98392",
+ "loadavg_last": 0.08,
+ "receipts": [
+  {
+   "trial": "/root/rpc-trials/warm-census-00",
+   "mode": "warm-census",
+   "argv_tail": [
+    "--mode",
+    "rpc",
+    "--provider",
+    "prime-inference",
+    "--model",
+    "mock-1",
+    "--daemon-socket",
+    "/root/rpc-trials/warm-census-00/d.sock"
+   ],
+   "kernel_venv": null,
+   "launch_to_ready_ms": 32.94019999998454,
+   "ready_state": {
+    "sessionId": "01a0e46d-5bb3-763d-b487-bfb90e2cfc92",
+    "messageCount": 0,
+    "sessionFile": "/root/rpc-trials/warm-census-00/agent/sessions/01a0e46d-5bb3-763d-b487-bfb90e2cfc92.jsonl",
+    "model": "mock-1",
+    "success": true
+   },
+   "commands": [
+    {
+     "id": "st2",
+     "ok": true,
+     "ms": 10.263863999966816,
+     "t0_wall": 1790538767.3143353,
+     "err": null
+    },
+    {
+     "id": "ssn",
+     "ok": true,
+     "ms": 50.49325599998156,
+     "t0_wall": 1790538767.676992,
+     "err": null
+    },
+    {
+     "id": "stl",
+     "ok": true,
+     "ms": 10.387756000000081,
+     "t0_wall": 1790538768.0798333,
+     "err": null
+    },
+    {
+     "id": "pr1",
+     "ok": true,
+     "ms": 14.359780000063438,
+     "t0_wall": 1790538768.4428482,
+     "err": null
+    },
+    {
+     "id": "ns1",
+     "ok": true,
+     "ms": 38.869845000021996,
+     "t0_wall": 1790538768.9997563,
+     "err": null
+    },
+    {
+     "id": "ns2",
+     "ok": true,
+     "ms": 42.13702499998817,
+     "t0_wall": 1790538772.0408583,
+     "err": null
+    },
+    {
+     "id": "ns3",
+     "ok": true,
+     "ms": 44.04091200001403,
+     "t0_wall": 1790538775.086061,
+     "err": null
+    },
+    {
+     "id": "sw1",
+     "ok": true,
+     "ms": 39.24197499998172,
+     "t0_wall": 1790538777.1352327,
+     "err": null
+    },
+    {
+     "id": "eof_gm",
+     "ok": true,
+     "ms": 10.531317000072704,
+     "t0_wall": 1790538779.1794493,
+     "err": null
+    }
+   ],
+   "frames_n": 24,
+   "stdin_close_to_exit_ms": 31.444171999964965,
+   "exit_code": 0,
+   "stderr_tail": "",
+   "proc_events": [
+    {
+     "dt_ms": 101.7,
+     "ev": "start",
+     "kind": "kernel",
+     "pid": 12254
+    },
+    {
+     "dt_ms": 1815.7,
+     "ev": "start",
+     "kind": "kernel",
+     "pid": 12270
+    },
+    {
+     "dt_ms": 1815.7,
+     "ev": "end",
+     "kind": "kernel",
+     "pid": 12254
+    },
+    {
+     "dt_ms": 4839.8,
+     "ev": "start",
+     "kind": "kernel",
+     "pid": 12278
+    },
+    {
+     "dt_ms": 4839.8,
+     "ev": "end",
+     "kind": "kernel",
+     "pid": 12270
+    },
+    {
+     "dt_ms": 7861.7,
+     "ev": "start",
+     "kind": "kernel",
+     "pid": 12286
+    },
+    {
+     "dt_ms": 7861.7,
+     "ev": "end",
+     "kind": "kernel",
+     "pid": 12278
+    },
+    {
+     "dt_ms": 9876.4,
+     "ev": "start",
+     "kind": "kernel",
+     "pid": 12291
+    },
+    {
+     "dt_ms": 9977.1,
+     "ev": "end",
+     "kind": "kernel",
+     "pid": 12286
+    },
+    {
+     "dt_ms": 12293.0,
+     "ev": "end",
+     "kind": "kernel",
+     "pid": 12291
+    }
+   ],
+   "frames": [
+    [
+     1790538767.304273,
+     650.162,
+     "response",
+     "get_state"
+    ],
+    [
+     1790538767.3145354,
+     650.173,
+     "response",
+     "get_state"
+    ],
+    [
+     1790538767.717302,
+     650.575,
+     "session_info_changed",
+     null
+    ],
+    [
+     1790538767.7174041,
+     650.576,
+     "response",
+     "set_session_name"
+    ],
+    [
+     1790538768.080154,
+     650.938,
+     "response",
+     "set_thinking_level"
+    ],
+    [
+     1790538768.4456983,
+     651.304,
+     "response",
+     "prompt"
+    ],
+    [
+     1790538768.445731,
+     651.304,
+     "agent_start",
+     null
+    ],
+    [
+     1790538768.4457812,
+     651.304,
+     "turn_start",
+     null
+    ],
+    [
+     1790538768.4458568,
+     651.304,
+     "message_start",
+     null
+    ],
+    [
+     1790538768.445909,
+     651.304,
+     "message_end",
+     null
+    ],
+    [
+     1790538768.4459918,
+     651.304,
+     "message_start",
+     null
+    ],
+    [
+     1790538768.446032,
+     651.304,
+     "message_end",
+     null
+    ],
+    [
+     1790538768.4469266,
+     651.305,
+     "message_start",
+     null
+    ],
+    [
+     1790538768.447057,
+     651.305,
+     "message_update",
+     null
+    ],
+    [
+     1790538768.4470973,
+     651.305,
+     "message_update",
+     null
+    ],
+    [
+     1790538768.447132,
+     651.305,
+     "message_update",
+     null
+    ],
+    [
+     1790538768.4942548,
+     651.352,
+     "message_end",
+     null
+    ],
+    [
+     1790538768.4942982,
+     651.352,
+     "turn_end",
+     null
+    ],
+    [
+     1790538768.4962444,
+     651.354,
+     "agent_end",
+     null
+    ],
+    [
+     1790538769.028544,
+     651.887,
+     "response",
+     "new_session"
+    ],
+    [
+     1790538772.0729215,
+     654.931,
+     "response",
+     "new_session"
+    ],
+    [
+     1790538775.120012,
+     657.978,
+     "response",
+     "new_session"
+    ],
+    [
+     1790538777.1643891,
+     660.023,
+     "response",
+     "switch_session"
+    ],
+    [
+     1790538779.1798918,
+     662.038,
+     "response",
+     "get_messages"
+    ]
+   ],
+   "session_files": [
+    {
+     "name": "01a0e46c-b8d0-71eb-b4dc-90844e9e87fe.jsonl",
+     "bytes": 6868
+    },
+    {
+     "name": "01a0e46d-121d-7624-bda0-a1fa978e14c6.jsonl",
+     "bytes": 6868
+    },
+    {
+     "name": "01a0e46d-5bb3-763d-b487-bfb90e2cfc92.jsonl",
+     "bytes": 6868
+    }
+   ],
+   "trial_wall_s": 12.3
+  }
+ ]
+}
