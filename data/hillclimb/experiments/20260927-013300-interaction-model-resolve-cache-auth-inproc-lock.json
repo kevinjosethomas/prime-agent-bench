@@ -1,0 +1,174 @@
+{
+ "id": "20260927-013300-interaction-model-resolve-cache-auth-inproc-lock",
+ "axis": "interaction",
+ "hypothesis": "msgsettle's reported ~20ms fresh-session first-turn auth-lock contention retry (crates/pa-core/src/auth/storage.rs acquire_lock, TS-parity 'acquireLockSyncWithRetry: 10 attempts, 20ms apart') is an in-process race between two worker threads (the admission thread right after the durable user-row append vs the turn thread's from-scratch model-resolution registry build), both calling AuthStorage::create -> FileAuthStorageBackend::with_lock; the TS product runs its sync auth lock single-threaded, so same-process contention is a Rust-port artifact and a process-local per-path mutex can remove the 20ms class with byte-identical cross-process retry semantics.",
+ "approach": "Baseline decomposition first (no code changes): 29 fresh-session trials on one VM at origin/rust 4ed68f6e9 (fresh dir/daemon/session per trial; bench compare.msg_send mock-regime protocol replicated verbatim incl. 120x40 PTY, probe-input-ready, typed prompt, Enter->first-chunk ack, needle+600ms-stability settle; PI_REQUEST_TIMING on for phase extraction) + 3 strace -f diagnostic trials (syscall timeline only) with mkdir/rmdir/utimensat/rename/fsync added to the trace filter. Then candidate = in-process serialization of FileAuthStorageBackend::with_lock (one commit, +37/-2, crates/pa-core/src/auth/storage.rs only); lane folded to origin/rust 61d92a206 (post-fold re-diff = exactly the one file); ABBA paired legs base(61d92a206) vs cand(34a6ba359) on the same VM: LEGF 8/arm fresh 1-turn + LEGW 4/arm 2-turn (turn2 = warm contrast), arms interleaved A-B-B-A per round, binary sha asserted per trial, session-row parity oracle across arms, 2 cand strace diagnostics. I/O regime: fleet advisory v0.9 preflight (>=40 isolated fresh+sync_all+rename at 0.5s spacing + >=20 repeat-fsync; H/M/D by stall-rate/max/baseline-p50) before every leg.",
+ "parity_notes": "Frozen parity untouched: the file protocol (proper-lockfile mkdir/utimensat/stale-reclaim), the 10x20ms retry structure, settings storage, session JSONL, RLM wire, prompts, TUI behavior all unchanged; the patch adds ONLY a process-local Mutex<()> per auth document path taken around the existing critical section. Cross-process contention keeps identical retry semantics (the cand strace residual class: 2 retry sleeps in 16 turns, ZERO same-process racing pairs - the lock was held by the untraced TUI process). Session rows byte-identical in type/role/content-shape sequences across arms. The measured mock path (prime-inference/mock-1 via bench vendored mock_provider SSE, queue-matched script) replicates the campaign's compare.msg_send provider path. The driver's typed prompt carries the probe-prefix leftover 'Zq7' exactly as the bench harness's own erase_all semantics leave it (bench core/harness.py erase_all stops when the full token is gone) - same protocol class as every msg_send row; disclosed.",
+ "base": {
+  "revision": "4ed68f6e90a50b8d53df92fe80199d16fab7b2da (baseline); 61d92a2068eb63e8a674ca1fe536ace8c9322c2f (ABBA base, folded)"
+ },
+ "branch": "lane/perf-model-resolve-cache (34a6ba359ec48c32ad6d3da36c5ff6fb938d4e16 = 61d92a206 + d15e7c009 'serialize same-process auth-file with_lock calls' + merge; post-fold re-diff vs merge-base = exactly crates/pa-core/src/auth/storage.rs, +37/-2)",
+ "commits": [
+  {
+   "sha": "d15e7c009f332a893f3d00549bdda97c7cc15875",
+   "subject": "perf(pa-core): serialize same-process auth-file with_lock calls; fresh-session first-turn 20ms contention retry vanishes"
+  },
+  {
+   "sha": "34a6ba359ec48c32ad6d3da36c5ff6fb938d4e16",
+   "subject": "Merge branch 'rust' (fold 61d92a206)"
+  }
+ ],
+ "build": {
+  "sandbox_id": "rl05a0redaks9b1yrhomurre (16c/32GB ubuntu:22.04, glibc 2.35)",
+  "baseline_binary_sha256": "359ac0abe3a66b81999dc02f16a2ce3de740a0ddb92c6e9487d92929f58c439c (at 4ed68f6e9)",
+  "abba_base_binary_sha256": "453ce17df2dedf2ce53c6be5df237a3599664f0b720fc61d93700a30f12c7ce6 (at 61d92a206)",
+  "abba_cand_binary_sha256": "eab9b107c746f2e93848ba3a5972ae7a4c9b76c440e0ed7654d098544f4d26d7 (at 34a6ba359)",
+  "toolchain": "rustup 1.98.1",
+  "tip_verification": "baseline cloned+verified at 4ed68f6e9; ABBA built at folded tip 61d92a206 (origin/rust fetched, no drift within the measurement window)"
+ },
+ "gates": {
+  "fmt": "GREEN (fleet gate pool VM, cargo +1.98.1 fmt --all --check, rc 0)",
+  "clippy": "GREEN (cargo +1.98.1 clippy --workspace --all-targets -D warnings, rc 0)",
+  "test": "RED on ONE test, disclosed: mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating failed in both full-suite fleet gate runs (gate_1790469839, gate_1790471740) with 'Error: failed to lookup address information: Name or service not known' - a DNS-resolution failure (environment class). The test is a REGISTERED known-red flake family (entry mcp_login_worker_begin_login_gating, EXPIRED 2026-09-26, citation: fired in the identical trio in two independent focused review runs 2026-09-25 review_1790311640/review_1790316556, PRE-PATCH; GitHub CI workspace shards all green on the same heads). Fresh triage: solo run on the exact PR head 34a6ba359 PASSES (1 passed, 2.13s); failure mode is network/DNS, which an auth-lock serialization commit cannot cause; every other suite green (pa-daemon lib 759 passed etc.). Two additional earlier suite-load flakes on my VM triaged solo-green: pa-ai oauth dead-server Elapsed(()), pa-cli interactive_daemon draft-restore - both pass solo; and the kernel-env test needed uv+PI_PACKAGE_DIR per docs/PORTING-NOTES.md (the a_bang and goal-recovery families noted fixed upstream #2904/#2902). Awaits operator disposition per the merge gate."
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA, sha-asserted binaries, fresh-session-per-trial, PI_REQUEST_TIMING on",
+  "baseline_decomposition_at_4ed68f6e9": {
+   "fresh_first_turns_timing_on": {
+    "n": 23,
+    "user_row_to_turn_dispatch_ms": {
+     "fast_class_p50": 2.0,
+     "fast_n": 15,
+     "slow_class_n": 8,
+     "slow_values": [
+      15.0,
+      21.0,
+      21.99,
+      22.0,
+      22.0,
+      22.0,
+      22.0,
+      27.0
+     ],
+     "slow_rate_pct": 34.8
+    },
+    "dispatch_to_prompt_built_ms": {
+     "p50": 0.0
+    },
+    "request_sent_to_first_byte_ms": {
+     "p50": 1.2
+    },
+    "note": "the slow class is EXACTLY the acquire_lock TS-parity 20ms retry landing on the loser of the auth.json.lock mkdir race"
+   },
+   "warm_turn2_contrast": {
+    "n_timing_on": {
+     "ack_to_user_row_slow_19_27ms": "5/12",
+     "user_row_to_dispatch_slow": "1/9"
+    },
+    "note": "the contention class is NOT fresh-session-only: warm turns pay it in the admission phase"
+   },
+   "strace_syscall_timeline": {
+    "auth_lock_cycles_per_fresh_first_turn": 36,
+    "hold_ms": "0.1-0.3 p50-class",
+    "retry_20ms_nanosleeps_per_first_turn": 1,
+    "racing_pair": "TID 14190 (admission thread: durable user-row append + fdatasync at 16.564830, then its own AuthStorage::create) vs TID 14158 (turn thread model-resolution registry build); openat O_CREAT|O_EXCL EEXIST 123us apart, mkdir auth.json.lock 23us apart (14190 wins), 14158 clock_nanosleeps exactly 20ms",
+    "same_process_evidence": "FUTEX_PRIVATE wake/wait pair between the two TIDs (0x55a5f95b7ee0) - two threads of ONE worker process; the TS product cannot have this contention (single-threaded sync lock)"
+   }
+  },
+  "abba_paired_at_folded_tip": {
+   "arms": "A=61d92a206 (453ce17d), B=34a6ba359 (eab9b107)",
+   "design": "LEGF: 8/arm fresh 1-turn; LEGW: 4/arm 2-turn; A-B-B-A interleave per round; all PI_REQUEST_TIMING on",
+   "dispatch_slow_class_rate": {
+    "A": "8/16 (50%)",
+    "B": "2/16 (12.5%)"
+   },
+   "submit_to_assistant_row_ms": {
+    "A": {
+     "p50": 26.3,
+     "values": [
+      5.09,
+      7.71,
+      7.97,
+      12.65,
+      12.93,
+      25.11,
+      26.09,
+      26.19,
+      26.41,
+      27.05,
+      27.47,
+      28.55,
+      28.78,
+      29.56,
+      30.78,
+      31.16
+     ]
+    },
+    "B": {
+     "p50": 8.28,
+     "values": [
+      4.74,
+      4.93,
+      6.51,
+      6.53,
+      6.66,
+      7.48,
+      7.51,
+      8.1,
+      8.46,
+      9.02,
+      9.17,
+      11.24,
+      13.51,
+      23.83,
+      27.82,
+      31.28
+     ]
+    },
+    "delta_p50": "-18.0ms (-68%)"
+   },
+   "submit_to_reply_visible_ms": {
+    "A": {
+     "p50": 51.65
+    },
+    "B": {
+     "p50": 29.85
+    },
+    "delta_p50_ms": -21.8
+   },
+   "cand_strace_diagnostics": {
+    "cand1": "36 cycles, 0 retry-20ms sleeps, 0 racing pairs (a fully clean first turn)",
+    "cand2": "36 cycles, 2 retry-20ms sleeps, ZERO same-process racing pairs - the incumbent holder is outside the daemon's process tree (the TUI's own auth read), i.e. the residual class is cross-process contention, which the patch deliberately leaves byte-identical (TS-parity retry)",
+    "cycle_count_parity": "36=36 on both arms; holds 0.1-0.3ms - no behavioral change in the lock protocol, only the contention cost"
+   },
+   "io_regime_v09_preflights": {
+    "protocol": ">=40 isolated fresh+sync_all+rename @0.5s spacing + >=20 repeat-fsync; H/M/D by stall-rate(>15ms)>2% / max>50ms / p50>2x baseline",
+    "sequence": "pre=D (A_STALL_RATE 2.5%, A_MAX 332ms - the fleet-synchronized flush regime; timing legs HELD, re-probe after 300s), then pre-try2/mid1/mid2/mid3/post all=H (A_MAX 2.4-5.6ms, stall-rate 0.0)",
+    "note": "all measured legs ran under HEALTHY regime classifications; the DEGRADED window was excluded by the preflight gate"
+   }
+  }
+ },
+ "validity": {
+  "excluded": [
+   "warm1/warm2 (throwaway warmups)",
+   "smoke1 (mock server launched after the trial: 2 connection-error retries + 6.4s turn-1 wall - harness launch-order artifact, excluded before any measured leg)",
+   "the first two matrix launches (killed; mock queue-index drift across trials and a pkill -f self-match that killed the sweep shell before the trials-tree move - fleet-memory traps, both fixed before the final runs; no measured trial from those trees)",
+   "strace trials (syscall-timeline evidence only, never timing evidence)",
+   "gate-test red (disclosed above; environment/DNS class)"
+  ],
+  "notes": "All ABBA trials completed=true with ack+settle validation; binary sha asserted per trial; mock request log: exactly one completion POST per turn (216-217 bytes redacted log line per 1-turn, 496-497 per 2-turn); session rows byte-identical in type/role/content-shape sequences across arms; single sequential driver with flock guard; single-VM loadavg <= 2.0 throughout."
+ },
+ "outcome": "POSITIVE, mechanism confirmed and fixed at its layer: the ~20ms fresh-session first-turn class (and the warm-turn admission variant) is same-process auth.json.lock contention between the admission thread and the turn thread's from-scratch model-resolution registry build - a Rust-port artifact (TS runs its sync auth lock single-threaded, so its 10x20ms retry only ever fires cross-process). A process-local per-path mutex around FileAuthStorageBackend::with_lock's existing critical section removes it: dispatch slow-class 8/16 -> 2/16, submit->assistant_row p50 26.3 -> 8.28ms (-18.0ms, -68%), submit->reply_visible p50 51.65 -> 29.85ms on the folded tip, with byte-identical cross-process retry semantics (the residual 2 slow turns are TUI-vs-worker cross-process contention, TS-parity by design). No parity surface touched: one file, +37/-2.",
+ "decision": "Lane evidence complete at folded tip 61d92a206; PR opened for numeric review + both adversarial reviewers on the final PR SHA. The 20ms-class disappearance claim is scoped to same-process contention; cross-process contention (rare; TUI auth reads) retains the TS-parity retry by design. Reported-only findings: (1) auth.json is lock-cycled ~36x per fresh first turn (daemon+worker surfaces rebuild AuthStorage per call) - a consolidation candidate for a future lane, parity-sensitive (per-call rebuild is the documented R8 behavior); (2) the residual warm-turn ack->user_row spread (0.9-26.8ms) includes the durable-append fdatasync (~0.5ms typical) - flush-regime sensitive per the fleet advisory.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260927-013300-interaction-model-resolve-cache-auth-inproc-lock.json",
+ "session": {
+  "worker": "perf-model-resolve-cache-fast",
+  "session_dir": "~/.prime/agent/sessions/ (this session)"
+ },
+ "timestamp": "2026-09-27T01:33:00Z",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/model-resolve-cache/ (baseline-evidence.tar.gz sha256 f4bacc54222b76ecf00890cacf78355110173d0c660dac81df2140031da2424a: 29 baseline trials + trace.json per trial, analysis-baseline.json, 3 strace logs, driver+fixtures; pair-evidence.tar.gz sha256 afa1645d1a07853f5a9ac55dd02e624b8f7082d86adf6d0412607dcbb67b3d55: 24 ABBA trials + analysis-pair.json + 2 cand strace logs + probe logs + drivers)",
+  "vm": "rl05a0redaks9b1yrhomurre (retained until review closes)"
+ }
+}
