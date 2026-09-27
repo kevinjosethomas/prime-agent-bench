@@ -1,12 +1,12 @@
-binary: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
-revision: 59a9c658d870bfc31dac9a09683d1679d8791011
+binary: /root/bench/repos/prime-agent-rust/target/release/prime-agent
+revision: 7152746b99f6767843bb40b4674a23a5a501fdc0
 needs_kernel_venv: true
 install:
   installed_paths:
-  - ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
-  - ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
+  - ~/.local/share/prime-agent-rust
+  - ~/.local/bin/prime-agent-rust
   download_bytes: 53291156
-  note: continuous rust-branch build (run 36193301325) via install-rust.sh into a campaign-private prefix; artifact tarball bytes as download
+  note: continuous rust-branch build (run 36192096870) via install-rust.sh; artifact tarball bytes as download
 auth_sources:
 - src: ~/.prime/config.json
   note: PRIME_API_KEY for the trial env
@@ -21,9 +21,9 @@ first_run_dialogs:
   - enter
   intent: Not now
 vendor:
-- src: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
+- src: ~/.local/bin/prime-agent-rust
   dst: root/.local/bin/prime-agent-rust
-- src: ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
+- src: ~/.local/share/prime-agent-rust
   dst: root/.local/share/prime-agent-rust
 - src: ~/.prime/config.json
   dst: root/.prime/config.json
@@ -31,3 +31,13 @@ vendor:
   dst: root/.prime/agent/auth.json
 - src: ~/.prime/agent/settings.json
   dst: root/.prime/agent/settings.json
+
+# Deployed default = the per-VM lane pin (deploy_bench.sh + the wave briefs
+# populate /root/bench/repos/prime-agent-rust/target/release/prime-agent with the
+# VM-built candidate; a sandbox.yaml products: rust: section overrides
+# binary/revision per deployment — product_config() reads it). The cmp5
+# campaign pin (~/bench-cmp5/pa-rust-prefix, run 36193301325) is campaign
+# provenance, recorded in records/campaigns/cmp5-20260926/; repinning this
+# file to it broke every fresh bundle deploy 2026-09-26..27 (settle
+# FileNotFoundError for the campaign-private prefix; scroll-retain2 close-out
+# flag). Campaign-private paths never belong in the shared deployed default.

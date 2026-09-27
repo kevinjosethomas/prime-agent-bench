@@ -73,7 +73,7 @@ class Registry:
 def adapter_cfg(cfg: dict, kind: str, name: str) -> dict:
     """The constructor config slice for one adapter."""
     layout = BenchLayout.from_config(cfg)
-    slice_ = {"layout": layout, "product": product_config(name),
+    slice_ = {"layout": layout, "product": product_config(name, cfg),
               "mock": cfg.get("mock", {})}
     if kind == "fixtures":
         slice_["fixture"] = cfg.get("fixtures", {}).get(name, {})

@@ -55,11 +55,42 @@ def test_deep_merge_override_wins():
 
 def test_product_config_loads_pinning():
     cfg = product_config("rust")
-    # the 2026-09-25 campaign pin: the latest continuous rust-branch build
-    # (install-rust.sh, run 36193301325)
-    assert cfg["revision"] == "59a9c658d870bfc31dac9a09683d1679d8791011"
-    assert cfg["binary"].endswith("/bin/prime-agent-rust")
+    # the deployed lane pin: the per-VM candidate path every bundle deploy
+    # populates (deploy_bench.sh + the wave briefs); the cmp5 campaign pin
+    # (59a9c658, run 36193301325) lives in records/campaigns/cmp5-20260926/
+    assert cfg["binary"] == "/root/bench/repos/prime-agent-rust/target/release/prime-agent"
+    assert cfg["revision"] == "7152746b99f6767843bb40b4674a23a5a501fdc0"
     assert "install" in cfg
+
+
+def test_product_config_honors_config_section_override():
+    """The config ``products: <name>:`` section is REAL: a deployment
+    overrides any product.yaml pin (binary/revision/...) without editing
+    repo files — the audit-F10 trap class (a pin landing in a section no
+    code reads) stays closed. Unoverridden keys keep the file default."""
+    deploy = {"products": {"rust": {
+        "binary": "/root/bench/repos/prime-agent-rust/target/release/prime-agent",
+        "revision": "13d5c0d781d28228ab95d60760e5e018d283083a"}}}
+    cfg = product_config("rust", deploy)
+    assert cfg["binary"] == "/root/bench/repos/prime-agent-rust/target/release/prime-agent"
+    assert cfg["revision"] == "13d5c0d781d28228ab95d60760e5e018d283083a"
+    assert cfg["needs_kernel_venv"] is True          # file default preserved
+    assert cfg["install"]["download_bytes"] == 53291156
+    assert cfg["vendor"]                              # vendor list preserved
+    assert product_config("rust", {"products": {}})["revision"] ==         "7152746b99f6767843bb40b4674a23a5a501fdc0"   # empty section = file pin
+
+
+def test_discovery_passes_config_product_overrides(tmp_path):
+    """discover() wires the products-section override into the instantiated
+    adapter (the registry is the only product_config call site that sees
+    the loaded config)."""
+    reg = discover(_cfg(tmp_path, {"products": {"rust": {
+        "binary": "/tmp/vm-built-candidate",
+        "revision": "cafebabecafebabecafebabecafebabe"}}}))
+    rust = reg.product("rust")
+    assert rust.product_cfg["binary"] == "/tmp/vm-built-candidate"
+    assert rust.product_cfg["revision"] == "cafebabecafebabecafebabecafebabe"
+    assert rust.binary == Path("/tmp/vm-built-candidate")
 
 
 def test_benchmark_config_overrides_reach_registry_adapters(tmp_path):

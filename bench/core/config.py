@@ -82,7 +82,7 @@ def load_config(path: str | Path | None = None) -> dict:
     return cfg
 
 
-def product_config(name: str) -> dict:
+def product_config(name: str, overrides_cfg: dict | None = None) -> dict:
     """The product's COMPLETE config: bench/adapters/<name>/product.yaml.
 
     The one file pinning the binary source, the auth/config sources, the
@@ -90,11 +90,21 @@ def product_config(name: str) -> dict:
     the vendor payload for sandbox setup. ``~`` in path-valued keys
     (binary, install.installed_paths, vendor[].src, auth_sources[])
     expands to the controller home so pinning stays portable across
-    nodes."""
+    nodes.
+
+    A deployment overrides any pin through the loaded config's
+    ``products: <name>:`` section (deep-merged over the file, override
+    wins) — a per-VM bundle deploy points ``binary``/``revision`` at the
+    VM-built candidate without editing repo files. A pin landing in a
+    section no code reads (the audit-F10 trap) is structurally closed:
+    this is the ONLY product pin reader, and it reads both sources."""
     path = ADAPTERS_DIR / name / "product.yaml"
     if not path.exists():
         return {}
     cfg = yaml.safe_load(path.read_text()) or {}
+    if overrides_cfg is not None:
+        overrides = (overrides_cfg.get("products") or {}).get(name) or {}
+        cfg = deep_merge(cfg, overrides)
     if isinstance(cfg.get("binary"), str):
         cfg["binary"] = str(Path(cfg["binary"]).expanduser())
     install = cfg.get("install")

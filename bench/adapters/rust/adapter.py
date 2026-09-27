@@ -26,9 +26,11 @@ class PrimeAgentRustProduct(ProductAdapter):
     # the install-rust.sh layout (launcher + payload under ~/.local);
     # product.yaml is the source of truth for the live pin
     default_binary_subpath = None
-    # The campaign-verified build revision (audit F10: the earlier pin fix
-    # landed in a config file no code reads, leaving the live pin stale).
-    default_revision = "59a9c658d870bfc31dac9a09683d1679d8791011"
+    # The deployed lane pin's revision (product.yaml is the source of truth
+    # for the live pin; audit F10: the earlier pin fix landed in a config
+    # file no code reads — product_config() now reads the config products
+    # section too, closing that trap class).
+    default_revision = "7152746b99f6767843bb40b4674a23a5a501fdc0"
 
     @property
     def binary(self) -> Path:
