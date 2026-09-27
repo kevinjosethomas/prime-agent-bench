@@ -1,0 +1,102 @@
+{
+ "id": "20260927-103000-interaction-settings-lock-read-consolidation",
+ "axis": "interaction",
+ "hypothesis": "PENDING decompose: settings.json is lock-cycled 32-43x per fresh first turn (auth-lock record 20260927-075500, reported-only; merged b178174c5's #2915-pattern mutex serializes same-process holders but the cycles remain) from per-call SettingsManager rebuilds: every SettingsManager::create runs 2 scoped with_lock file-protocol cycles (global + project; the harness trial's project doc is absent, so 1 full cycle per create) even when the documents have not changed. TS keeps ONE SettingsManager per session-services instance (agent-session-services.ts:165, the AuthStorage sibling at :163) and serves every per-call getter from its in-memory snapshot (settings-manager.ts:582-588; provider-retry.ts:18-23) - zero per-turn lock cycles. A storage-layer read-through content cache (a pure-read trait arm, stat-validated per path - the auth-lock lane's proven pattern) should collapse the per-call read cycles to one miss per process per document with byte-identical file-protocol behavior for every writer and the port's per-call freshness preserved.",
+ "approach": "Baseline decomposition first (no code changes): 31 trials on one VM at 58eda04c4 (12 fresh 1-turn + 8 fresh 2-turn timing legs, 4 timing-off controls, 3 strace legs, 2 diagnostic-build census legs with an env-gated pid/tid backtrace at FileSettingsStorage::with_lock; bench compare.msg_send mock-regime protocol replicated verbatim from the auth-lock lane incl. 120x40 PTY, probe-input-ready, typed prompt, Enter->first-chunk ack, needle+600ms-stability settle, PI_REQUEST_TIMING on; I/O advisory v1.0 preflights at every leg boundary). Candidate = 1 commit: C1 the settings read-through cache (settings/storage.rs + manager.rs load_scope). ABBA: 2-arm pair base vs C1 (A-B-B-A x3 rounds fresh 1-turn = 12/arm, 1 two-turn round = 4/arm, per-arm strace census pairs over ALL .lock surfaces - the unmasking census), same-VM sequential, sha-asserted binaries per leg, order-balanced rounds, unique per-leg output paths, zombie sweeps. Confirmation pair at the PR head after the fold.",
+ "parity_notes": "Frozen parity untouched: the settings file protocol (proper-lockfile mkdir/utimensat/stale-reclaim/rmdir, the 10x20ms retry structure, atomic_write temp+rename+private-mode) is byte-for-byte unchanged for every writer; with_lock (every write and read-modify-write flow) is untouched; session JSONL, RLM wire, prompts, TUI behavior unchanged (the delta touches only crates/pa-core/src/settings/storage.rs + the load_scope call in manager.rs). The pure-read arm (SettingsStorage::read, default = the old with_lock read) is used ONLY by load_scope (from_storage + reload). TS-parity case FIRST: TS constructs ONE SettingsManager per session-services instance and serves every per-call getter from its in-memory snapshot (agent-session-services.ts:165; getGlobalSettings/getProjectSettings settings-manager.ts:582-588; provider-retry.ts:18-23; the file protocol runs only at construction + explicit reloads, settings-manager.ts:493-500); the port's ~100 SettingsManager::create call sites rebuild the whole manager per call (each = 2 scoped with_lock loads) - a port artifact with no TS counterpart benefit. The stat-validated cache keeps the port's per-call freshness STRICTLY fresher than the TS snapshot instance (an external write invalidates on the next read via dev/ino/mtime_ns/len identity; TS never re-reads). Documented behavior delta: a cache hit now succeeds under a foreign lock holder while the document is unchanged (TS serves its snapshot in exactly that window); first reads in a process (cache misses) keep the old contention behavior. Same-ns edge (theoretical: an in-place rewrite within mtime-ns granularity with identical length) - the auth-lock reviewers' accepted-with-note class, far tighter than the TS unvalidated snapshot. No callback re-entrancy: the read arm has NO callback; the process mutex is a leaf and shared with with_lock (same registry), so read+write order in-process; per-instance manager mutable state untouched (each create still parses + merges + tracks its own runtime overrides; only the file protocol cycles collapse). 3 new unit tests: write-through invalidation, external in-place + atomic-rename invalidation, absent-file Ok(None) + with_lock error-class parity, and the trait-default read on the in-memory backend.",
+ "base": {
+  "revision": "58eda04c408ae0f9445165e2e373619d8fede882 (the tip at lane start; includes merged b178174c5 #2932 auth cache + settings mutex, and 58eda04c4 #2935 zero-copy worker response)"
+ },
+ "branch": "lane/perf-settings-lock",
+ "build": {
+  "sandbox_id": "tsiuus33clyetpnkfokartp9 (16c/32GB ubuntu:22.04, glibc 2.35, rustup 1.98.1)",
+  "binary_shas": {
+   "base_58eda04c4": "1a348b2f29fd6137facdb7bb68015f13b8396443969f73f46bd9c1da2cff4e06",
+   "cand_95f4ab2bd": "b333255f8891aba60e9a310d0e12917bee4c7d0dd4f19d1721564f582fcd8d55"
+  }
+ },
+ "measurements": {},
+ "validity": {
+  "excluded": [
+   "the first confirmation launch (28 legs, all rc=2 wall=0.0s mockreq=0, zero trials): a driver-infrastructure failure \u2014 my adapted s_conf.py resolved w5_bench.py at /root/w5/w5_bench.py (the auth lane's VM layout) instead of /root/w5/benchvendored/w5_bench.py (this lane's layout); no measured trial kept, no strace produced; the 4-leg census-only patch run hit the same bug and is void for the same reason (the auth lane's pyte-venv launch failure class)",
+   "strace/diag census legs in every phase (syscall-timeline + call-site attribution evidence only, never timing evidence)"
+  ],
+  "notes": "All ABBA + confirmation timing legs completed with ack+settle validation; binary sha asserted per leg; single sequential driver with flock guard + per-leg zombie sweeps; unique per-leg output paths; session rows byte-identical in type/role/content-shape sequences across arms; single-VM loadavg <= 2.0 throughout; the first decompose ft-strace1 leg's cold-cache first_paint (0.021s vs 0.012s steady-state) is a warmup artifact of that leg's strace start"
+ },
+ "outcome": "POSITIVE with an honest wall-clock negative: the settings read-through cache collapses the per-fresh-first-turn settings.json lock cycles 32 -> 2 (41 -> 2 over a 2-turn trial) - census-verified at the base tip 58eda04c4 (decomposition + 2-arm ABBA) and re-verified at the PR head a6ea27d21 (folded base 3cb8c99d6) - removing ~6.1-8.4ms of lock-protocol hold-sum per trial (spread across 8-10 TIDs, pre-submit/open-path per the call-site map, mirroring the auth lane's phase split). NO measurable submit->assistant_row or reply_visible change at n=6-12/arm (all paired deltas within noise; zero stall legs >=15ms in either arm in both paired runs) - the wall-clock claim is an honest negative at this sample size; the removed cycles sit mostly pre-submit per the 46-create call-site map (worker 30 incl. resolve_registry_model x20, TUI 13, daemon 3). NO UNMASKING: auth.json.lock 2/2, scheduled-jobs.json.lock 1/1, retry-sleeps 0, same-process racing pairs 0 across ALL census legs in ALL arms and phases - the consolidation unmasks no other storage surface (the auth-lock lesson applied: the census counted every .lock surface in every pass). The 2-turn stall-class asymmetry seen once (A 2/4 vs B 0/4 in the ABBA) did NOT replicate at 12 turns/arm in the confirmation (A 0/12, B 1/12): combined 2/16 vs 1/16 - arm-independent regime evidence (the flush-trap window), DROPPED as a mechanism claim. The #2915-pattern settings process mutex (merged b178174c5) is untouched: the mutex serializes same-process holders; this lane removes the per-call cycles the mutex cannot consolidate.",
+ "baseline_census": {
+  "settings_lock_cycles_per_fresh_first_turn": 32,
+  "settings_lock_cycles_2turn": 41,
+  "per_cycle": "hold p50 0.15-0.24ms (mkdir->rmdir), hold sum 6.5-7.4ms/turn, cycles spread over 8-10 TIDs; metadata-op class (regime-insensitive); zero settings.json writes per turn",
+  "call_site_map_diag_census": "46 SettingsManager::create calls per fresh first turn (92 with_lock entries = 2 scoped loads each; project doc absent = stat-only): worker 30 creates (resolve_registry_model load x20 - the same dominant class as auth's resolve_registry_model_unchecked x16; turn-path singles: retry_policy, failover_policy, failover_candidates, effective_thinking, configure_rlm_identity, append_creation_prefix, resolve_service_catalog, resolve_integrations_over_catalog, +2 async blocks), TUI 13 (client x3, build_tui_options x2, theme x2, enable_skill_commands x2, onboarding, show_hardware_cursor, chat_detail, main_impl), daemon 3 (run_daemon_mode, startup async, main_impl)",
+  "other_lock_surfaces_same_pass": "auth.json.lock 2/turn (the #2932 cache verified), scheduled-jobs.json.lock 1/trial (cron store), retry-sleeps 0, same-process racing pairs 0 across all surfaces in the base legs",
+  "timing_baseline_12ft": "submit->assistant_row p50 5.77ms [4.88..11.09] zero stall legs >=15ms; reply p50 29.90ms [28.50..31.10]; user_row->dispatch p50 2.0ms; tt legs turn1 5.39 / turn2 5.23 assist p50",
+  "io_regime": "fresh+sync_all+rename class DEGRADED-by-stall-rate (7.5-22.5%, max 321.7ms pre) with healthy p50 0.85-0.89ms - NOT the auth lane's DEGRADED-steady flush-trap class (p50 25-28.6ms); repeat-fsync class HEALTHY (p50 0.14-0.21ms); settings lock cycles are metadata ops (regime-insensitive)"
+ },
+ "commits": [
+  {
+   "sha": "95f4ab2bdc36b7e82033445aa69f7381bb9b1863",
+   "subject": "perf(pa-core): consolidate settings-document reads through a validated cache"
+  }
+ ],
+ "diag_build": {
+  "commit": "313eded3a (diag/settings-trace, never shipped)",
+  "binary_sha": "c2a860fb94e4c964bf787f85e52c3d77297efe48c8967b0869a8f30809919e53"
+ },
+ "abba_2arm_at_58eda04c4_vs_c1": {
+  "arms": "A=base 58eda04c4 (1a348b2f), B=cand 95f4ab2bd (b333255f); 3 order-balanced rounds x (A,B,B,A) fresh 1-turn = 6/arm + 1 round 2-turn = 4/arm + 4 census strace legs (2/arm)",
+  "census": "settings.json.lock 32->2 (fresh 1-turn) and 41->2 (2-turn); hold-sum 6.6-8.0ms -> 0.29-0.31ms per trial; auth.json.lock 2->2, scheduled-jobs.json.lock 1->1; retry-sleeps 0; same-process racing pairs 0 in ALL legs and arms - NO UNMASKING on any .lock surface",
+  "timing_ft_honest_wash": "submit->assistant_row p50 A 5.97 [5.50..9.93] vs B 7.90 [5.27..9.27]; round-paired deltas [-1.16,-2.53,+2.30]ms mean -0.46 (distributions overlap, zero stall legs >=15ms in either arm); reply p50 29.65 vs 29.70, paired deltas [-0.05,-0.45,+0.90] mean +0.13ms; open-path first_paint 0.012s / probe_ready_gap 0.246s identical",
+  "tt_stall_signal_small_n": "2/4 base-arm turns paid 30-40ms-class stalls (assist 36.5/37.8ms, reply 76.1/60.5ms) vs 0/4 cand-arm turns, inside a flush-trap window (probe A-class p50 31.6ms at midf3); parked as small-n suggestive; the confirmation pair runs 3 x 2-turn rounds to firm or drop it",
+  "io_regime_phase_model": "the regime flickered across boundaries: pre/midf1/midf3/midw DEGRADED-steady flush-trap (A-class p50 29.8-32.9ms, stall-rate 100%), midf2/post healthy-p50 (0.95-1.05ms, stall-rate 7.5%); both arms hit identically at every boundary; absolute p50s not comparable decompose->ABBA across the transition (disclosed)",
+  "oracles": "session-row shape byte-identical across arms (7 rows/1-turn, 9/2-turn, same role sequences, same timing-entry counts); mock request log 216-217/496-497 bytes per trial both arms"
+ },
+ "fold": {
+  "operation": "ONE append-only fold of org/rust 3cb8c99d6 into lane/perf-settings-lock (fleet_fold fold_1790506617_850466, verdict GREEN)",
+  "upstream_commits_folded": [
+   "#2931 agent_engine.rs split 6/11 (de0373b2c's neighbors: 419429e39)",
+   "#2936 de0373b2c queue-checkpoint journal batching",
+   "#2937 3cb8c99d6 exit watchdog"
+  ],
+  "pr_head": "a6ea27d21a2bb9f389f5009a82a25982b5999a00 = 3cb8c99d6 + 95f4ab2bd + the fold merge",
+  "post_fold_rediff": "diff vs merge-base 3cb8c99d6 = exactly 2 files (+219/-12), hunk-by-hunk identical to the pre-fold diff (verified)"
+ },
+ "confirmation_pair_at_pr_head": {
+  "arms": "A2 = folded-tip base 3cb8c99d6 (fed484c2), B2 = PR head a6ea27d21 (cce0b77f); same VM, same protocol, sha-asserted per leg, order-balanced (A2,B2,B2,A2) x3 fresh 1-turn = 6/arm + x3 2-turn rounds = 12 turns/arm + census strace pairs per arm; all 28 legs rc=0",
+  "census": "settings.json.lock A2 32/41 cycles (ft/tt) vs B2 2/2 \u2014 the collapse re-verifies at the PR head; hold-sum 6.1-8.4ms -> 0.31-0.38ms; auth.json.lock 2/2 both arms; scheduled-jobs.json.lock 1/1 both arms; retry-sleeps 0; same-process racing pairs 0 \u2014 NO UNMASKING at the PR head",
+  "timing_ft": "submit->assistant_row p50 A2 6.27 [5.38..9.53] vs B2 6.255 [5.81..14.44]; round-paired deltas [-0.76,+1.38,-3.93] mean -1.10 (the round3 delta is one B outlier at 14.44ms, under the 15ms stall class); reply p50 29.65 vs 29.85; ZERO stall legs >=15ms in either arm",
+  "timing_tt_12turns_per_arm": "the 2-turn stall-asymmetry question answered honestly: ONE 30-40ms-class stall in 24 turns, in the B2 arm this time (tt-B2-19 turn1 assist 39.36ms, reply 75.9ms); A2 zero stalls in 12 turns. Combined with the ABBA (A 2/4, B 0/4): the class hit A 2/16 and B 1/16 turns across runs \u2014 arm-INDEPENDENT regime evidence (the flush-trap window hitting the durable append), the ABBA's small-n asymmetry did NOT replicate at the larger n; DROPPED as a mechanism claim",
+  "oracles": "session-row shape byte-identical across arms (7 rows/1-turn, 9/2-turn, same role sequences, same timing-entry counts); mock request log byte-range identical (215-217/496-497 per trial both arms); all 28 legs completed",
+  "conclusion": "the primary re-verifies at the PR head: settings lock cycles 32/41 -> 2/2, zero unmasking on any .lock surface, session-row + mock-request parity identical, and the timing stays a wash at this n (the removed cycles sit pre-submit/open-path per the call-site map \u2014 consistent with the auth lane's phase split)"
+ },
+ "gate": {
+  "gate_run": "gate_1790506819_850466 at the org branch head a6ea27d21 (pooled VM ykp6mbwtdtz17w58tayfa0yw, base_state folded)",
+  "fmt": "rc 0",
+  "clippy": "rc 0",
+  "test": "rc 101 with the SOLE failure = mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating, a known_reds.json entry EXPIRED 2026-09-26 (daemon-timing flake family, rotating member, fires under full-workspace co-scheduling; GitHub CI workspace shards all green on the same heads historically)",
+  "triage": "FRESH TRIAGE per the expired-known-red rule: solo isolation 3/3 rc=0 at the PR head a6ea27d21 (--release, test verified 1-passed in the pa-daemon lib harness) + 3/3 rc=0 at the folded base 3cb8c99d6; profile-matched DEBUG solo runs at the head in flight; disposition: the flake class, not a lane red"
+ },
+ "review": {
+  "run": "review_1790506821_850466 at a6ea27d21: verdict GREEN, 0 blockers, 1 advisory (history_narration heuristic on the 'mirroring the process-lock registry's lifetime policy' comment)",
+  "disposition": "justified in the PR body: current-behavior contract stated by reference to the process-lock registry policy in the same file; a comment-only reword commit (ebbb247a7) was DROPPED to keep the head sha-bound to the gated + confirmation-measured a6ea27d21",
+  "mechanical": "fmt rc 0, clippy rc 0, pa-core tests rc 0 (905 passed incl. the 3 new cache tests) in the pooled-VM pre-flight"
+ },
+ "decision": "Lane evidence complete at the PR head a6ea27d21 (PR base rust @ 3cb8c99d6): the census collapse is the primary claim (32->2 cycles per fresh first turn across the daemon tree, 1 miss per process per document, stat-validated hits), verified at base + ABBA + PR head with zero unmasking on any .lock surface and byte-identical session-row + mock-request oracles; the timing deltas are honestly negative at this n. Claim scope: (1) settings lock-cycle consolidation 32 -> ~2 per fresh first turn (2 = the daemon tree's two process-first misses; the TUI process's own misses are outside the strace census tree but inside the 46-create diag census); (2) per-instance manager semantics untouched, writes keep the full file protocol + process mutex, the port's per-call freshness preserved (strictly fresher than the TS snapshot); (3) frozen parity surfaces untouched.",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/settings-lock/ (evidence-sha256.json: baseline-evidence.tar.gz 813ca2ab..., abba-evidence.tar.gz f5070b10..., confirmation-evidence.tar.gz 9127b0da...; drivers/ = the full VM-side driver suite; ts-parity-case.md with file:line citations; s-decompose.out/s-abba.out/s-conf.out = the three driver transcripts)",
+  "vm": "tsiuus33clyetpnkfokartp9 (bench VM, retained until review closes); pwdmdz72wyn0i1ue2qi87jvg (triage VM, destroyable)"
+ },
+ "gates": {
+  "fmt": "rc 0 (VM gate gate_1790506819_850466 + review pre-flight)",
+  "clippy": "rc 0 (both)",
+  "test": "rc 101 = the SOLE failure mcp_login::tests::worker_begin_login_persists_creds_and_unlocks_gating, a known_reds.json entry EXPIRED 2026-09-26 (daemon-timing flake family, rotating member under full-workspace co-scheduling; GitHub CI shards green on same heads historically) - FRESH TRIAGE: solo 3/3 rc=0 at the PR head (--release) + 3/3 rc=0 at the folded base (--release) + 3/3 rc=0 at the head profile-matched DEBUG (test verified 1-passed in the pa-daemon lib harness in every run); disposition: the flake class, NOT a lane red (the worker-clone lane precedent)",
+  "vm_full_gate": "gate_1790506819_850466 at the org branch head a6ea27d21, base_state folded, 905 pa-core tests passed incl. the 3 new cache tests",
+  "fleet_review": "GREEN, 0 blockers, 1 advisory (history_narration on a comment phrasing) - disposition: justified in the PR body; the comment-only reword commit ebbb247a7 was DROPPED to keep the head sha-bound",
+  "ci_rollup_disclosure": "TO BE APPENDED when the PR's GitHub CI completes"
+ },
+ "session": {
+  "worker": "perf-settings-lock-fast",
+  "session_dir": "~/.prime/agent/sessions/ (this session)"
+ },
+ "timestamp": "2026-09-27T11:35:00Z"
+}
