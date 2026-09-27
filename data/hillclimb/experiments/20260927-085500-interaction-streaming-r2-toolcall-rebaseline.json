@@ -1,0 +1,288 @@
+{
+ "id": "20260927-085500-interaction-streaming-r2-toolcall-rebaseline",
+ "axis": "interaction",
+ "hypothesis": "Upstream #2912 (StreamingJsonAccumulator, TS #2783 port, 7bb0cd5c3) landed INSIDE the streaming lane's closed negative territory; the negative's conclusions may be stale in either direction and follow-up wins may hide behind the accumulator (its own per-delta allocation, growth policy, or the render path it feeds). Re-baseline the streaming tool-call path at the current tip: the accumulator's own cost classes (incremental accumulation vs the old per-delta re-parse), tool-call-heavy streamed turns at large N, first-output + mid-stream + settle timings, CPU per delta, and whether the fleet's recorded streaming numbers moved.",
+ "approach": "RE-BASELINE + UPSTREAM ATTRIBUTION, no code changes. Three sha-asserted binaries on one 16c/32GB ubuntu:22.04 VM (lyipx4wcyp79zgeppu8ytw7n): pre=daaf946b2 (7bb0cd5c3^), acc=7bb0cd5c3 (#2912), tip=9b62f26af. (1) MICROBENCH (cargo --release, in-VM, tip code; harness = ignored integration test, product binaries built first and untouched): per-delta whole-buffer reparse (pre-#2912 semantics) vs accumulator append across 6KB/8KB/16KB/150KB payloads x 16B deltas + a 512B-delta burst + non-ASCII, plus settle-flush and final-parse costs; plus the shipped accumulator_benchmark_10k_deltas. (2) PRODUCT PATH, full PTY driver (extension of the wave-2 lane's pty_stream_bench.py: per-trial pre/mid/post spin calibration, 100ms per-process CPU/RSS/PSS sampler, raw PTY capture, frame accounting, PI_REQUEST_TIMING=1): faux route re-verifies the old negative's text fixture verbatim (sha b79f2b4594) at none/large transcripts x r40/r800; NEW mock-SSE route (models.json custom provider benchmock, api openai-completions, baseUrl 127.0.0.1:8787/v1 + local mock OpenAI SSE server) drives the REAL openai_completions stream parser (the accumulator's product path) with scripted tool-call deltas: tc-small 6KB args (sub-EAGER regime), tc-many 20x500B args, tc-large 150KB args @ r800 (~9.6k deltas), tc-burst 150KB unpaced, plus mk-text control; arms run ABCCBA-balanced (tip,pre,acc,acc,pre,tip) per config. I/O advisory v1.0 battery (fresh+sync_all+rename >=40 isolated @0.5s; repeat-fsync >=25) at every phase boundary, phase labels per leg.",
+ "parity_notes": "No product edits; nothing merged. Frozen surfaces untouched. Disclosed head moves: brief pinned 5cf45d4da; measured tip 9b62f26af is one pure supervisor-split (#2883) later \u2014 the measured path (pa-ai/pa-agent/pa-tui/pa-daemon worker+streaming+agent_engine) diffs EMPTY 5cf45d4da..9b62f26af; e6e7a26e4 (#2925 follow-ups: RowPack::pack refuses unrepresentable entries, huge-entry trim drops expanded rows first) landed mid-lane and is diff-irrelevant for these fixtures (no entry approaches u32 span/byte limits or HUGE_PACKED_ROWS; provider/worker path untouched). The accumulator's EAGER_PARSE_LENGTH=8KB + 1/16 growth throttle is TS-#2783 parity by construction; its user-visible effect (preview growth cadence) is upstream behavior, not a lane candidate surface.",
+ "base": {
+  "revision_pre": "daaf946b231369d6174f023a13fb3d99d750bd22",
+  "revision_acc": "7bb0cd5c35cb8de78d62a659ec52d76e505869de",
+  "revision_tip": "9b62f26af267a844d685cc3cd6c76cc526c1307a"
+ },
+ "branch": "baseline-only re-baseline (no lane branch, no code changes)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "lyipx4wcyp79zgeppu8ytw7n (16c/32GB ubuntu:22.04, 100GB)",
+  "toolchain": "rustup 1.98.1 (glibc 2.35)",
+  "binary_sha256_pre": "4d21e3ca1cfdfdf06ecd0a8c7efc88c68111a9f7e1b192fc0e12c23d7607996b",
+  "binary_sha256_acc": "f191b53df9397150ef411ffb13471533b617dba8efda67e9e7da970bef69e134",
+  "binary_sha256_tip": "f4e4efd24c8139826486d214c2c0d728b8c651d3f0af130c0ee1b087d27b684a",
+  "sha_assertion": "per-leg sha256 assert inside the matrix runner; arms staged as <arm>/prime-agent"
+ },
+ "gates": {
+  "fmt": "not-run (no code changes)",
+  "clippy": "not-run (no code changes)",
+  "test": "not-run (no code changes)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABCCBA; per-trial calibration drift 1.4-11.8% (post-spin on a busy 48s leg worst-case); 44 valid trials (run-c)",
+  "microbench_accumulator_classes": {
+   "small_6KB_387deltas": {
+    "reparse_ms": 4.2,
+    "accum_ms": 4.2,
+    "accum_parses": 387,
+    "note": "SUB-8KB: zero win \u2014 both arms reparse every delta (EAGER_PARSE_LENGTH never binds)"
+   },
+   "eager_8KB_515deltas": {
+    "reparse_ms": 7.4,
+    "accum_ms": 7.4,
+    "accum_parses": 512
+   },
+   "over_16KB_1027deltas": {
+    "reparse_ms": 28.6,
+    "accum_ms": 8.0,
+    "accum_parses": 523
+   },
+   "large_150KB_9603deltas": {
+    "reparse_ms": 2456.3,
+    "accum_ms": 15.9,
+    "accum_parses": 560,
+    "note": "154x; per-delta 256us -> 1.65us"
+   },
+   "burst_150KB_512Bdeltas_301deltas": {
+    "reparse_ms": 77.3,
+    "accum_ms": 8.0,
+    "accum_parses": 58
+   },
+   "nonascii_150KB_8323deltas": {
+    "reparse_ms": 1472.4,
+    "accum_ms": 11.4,
+    "accum_parses": 548,
+    "note": "utf16 counting invisible vs ASCII at scale"
+   },
+   "settle_flush_150KB_ms": 0.02,
+   "finish_parse_150KB_ms": 0.02,
+   "shipped_benchmark_10k_deltas": {
+    "reparse_ms": 1853.3,
+    "accum_ms": 12.1,
+    "reparse_parsed_bytes": 737817688,
+    "accum_parsed_bytes": 4548176
+   }
+  },
+  "text_reverify_vs_old_negative": {
+   "fixtures": "verbatim fixture-base.json (sha b79f2b4594), none + 10k-row-seed transcripts",
+   "r40_none": {
+    "stream_wall_s": [
+     22.292,
+     22.247
+    ],
+    "old_wall_s": 22.25
+   },
+   "r40_large": {
+    "stream_wall_s": [
+     22.301,
+     22.225
+    ],
+    "old_wall_s": 22.29
+   },
+   "r800_none": {
+    "stream_wall_s": [
+     1.246,
+     1.247
+    ],
+    "old_wall_s": 1.25
+   },
+   "r800_large": {
+    "stream_wall_s": [
+     1.244,
+     1.247
+    ],
+    "old_wall_s": 1.25
+   },
+   "ttft_ms": {
+    "r40_band": [
+     289.8,
+     343.3
+    ],
+    "old_band": [
+     290,
+     343
+    ],
+    "r800_p50": 36.8,
+    "old_r800": 36.1
+   },
+   "tui_cpu_per_frame_ms": {
+    "r40": [
+     0.708,
+     0.869
+    ],
+    "old": [
+     0.76,
+     0.79
+    ],
+    "transcript_size_effect": "none (none vs large within noise)"
+   },
+   "frame_cadence_p50_ms": {
+    "r40": 51.1,
+    "r800": 50.4,
+    "old": 50.3,
+    "verdict": "still flush-interval-bound (50ms coalescer)"
+   },
+   "pty_bytes_p50_r40": [
+    98,
+    98
+   ],
+   "verdict": "OLD NEGATIVE'S TEXT CONCLUSIONS HOLD AT TIP \u2014 no recorded number moved beyond cross-VM noise (old VM deleted; host-relative caveat disclosed)"
+  },
+  "toolcall_product_path_mock_route": {
+   "tc_large_150KB_9605deltas_r800": {
+    "worker_cpu_ms_per_delta": {
+     "pre": 0.3363,
+     "acc": 0.1172,
+     "tip": 0.1005
+    },
+    "worker_cpu_stream_ms": {
+     "pre": [
+      3040,
+      3420
+     ],
+     "acc": [
+      1010,
+      1240
+     ],
+     "tip": [
+      960,
+      970
+     ]
+    },
+    "tui_cpu_ms_per_delta": {
+     "pre": 0.3113,
+     "acc": 0.3144,
+     "tip": 0.2956
+    },
+    "stream_wall_s": {
+     "pre": [
+      48.803,
+      48.936
+     ],
+     "acc": [
+      48.754,
+      48.931
+     ],
+     "tip": [
+      48.734,
+      48.773
+     ]
+    },
+    "settle_tail_worker_cpu_ms": 0.0,
+    "ttft_ms": {
+     "pre": 38.6,
+     "acc": 39.25,
+     "tip": 38.55
+    },
+    "verdict": "ACCUMULATOR IN-PRODUCT: worker CPU/delta -65% (pre->acc), acc->tip neutral; wall parity (provider-paced); TUI CPU arm-independent"
+   },
+   "tc_small_6KB_389deltas_r800": {
+    "worker_cpu_ms_per_delta": {
+     "pre": 0.1028,
+     "acc": 0.09,
+     "tip": 0.1028
+    },
+    "stream_wall_s": {
+     "pre": 1.996,
+     "acc": 1.987,
+     "tip": 1.9835
+    },
+    "verdict": "NO WIN BELOW 8KB (by design): reparse-per-delta stands, but the class costs ~10us/delta inside a ~0.10ms/delta event pipeline \u2014 not a bottleneck"
+   },
+   "tc_many_20calls_r800": {
+    "worker_cpu_ms_per_delta": {
+     "pre": 0.2009,
+     "acc": 0.2078,
+     "tip": 0.194
+    },
+    "stream_wall_s": {
+     "pre": 3.593,
+     "acc": 3.5785,
+     "tip": 3.5725
+    },
+    "verdict": "many-block scale linear, arm-neutral (all args sub-threshold)"
+   },
+   "tc_burst_150KB_unpaced": {
+    "stream_wall_s": {
+     "pre": [
+      0.068,
+      null
+     ],
+     "acc": [
+      0.036,
+      null
+     ],
+     "tip": [
+      0.035,
+      null
+     ]
+    },
+    "verdict": "2x wall on the unpaced burst (pre's per-delta reparse binds when pacing is removed); CPU sampler under-samples a 35-70ms leg (0.0s reported) \u2014 wall is the evidence"
+   },
+   "mk_text_control": {
+    "worker_cpu_ms_per_delta": {
+     "pre": 0.0667,
+     "acc": 0.0444,
+     "tip": 0.0888
+    },
+    "note": "jiffies-quantized noise at ~2ms total per trial; text route arm-neutral"
+   }
+  },
+  "render_path_it_feeds": {
+   "finding": "The streamed tool-call args preview RENDERS LIVE in the transcript (apply_streamed_tool_card folds every message_update into the pending tool card: card.args = args.clone() + mark_entry_stale per 50ms flush; the unknown-tool card falls through to the generic panel which renders the raw args JSON). At 150KB args the TUI pays ~2.9ms/frame (parse of the ~150KB wire snapshot + args clone + raw-JSON panel render), 3.7x the text path's 0.78ms/frame \u2014 O(args) per flush even though only ~67B/frame reach the PTY.",
+   "tui_cpu_per_frame_150KB": [
+    2.89,
+    2.864
+   ],
+   "tui_cpu_per_frame_text_r40": [
+    0.708,
+    0.869
+   ],
+   "pty_stream_bytes": {
+    "pre": [
+     181613,
+     182655
+    ],
+    "acc": [
+     92620,
+     93104
+    ],
+    "tip": [
+     92231,
+     92723
+    ]
+   },
+   "pty_bytes_p50_per_frame_150KB": 67,
+   "cadence_p50_ms": 51.2,
+   "user_visible_cadence_effect": "pre grows the visible args block every flush; acc/tip grow it in 1/16 steps (throttle-aligned preview) \u2014 upstream TS-#2783 behavior, not a lane surface",
+   "verdict": "COST CLASS DOCUMENTED, NOT A CANDIDATE: 2.9ms/frame is 5.7% of the 50ms flush budget at an extreme 150KB args; the wire-snapshot parse is frozen-surface-bound (the snapshot must transit and be read); a diff-skip (skip clone+render when args unchanged between flushes) would save only the non-parse share (~2%) \u2014 below the fleet bar. No frame drops, no user-visible lag (cadence flush-bound; ttft 37-39ms)"
+  },
+  "io_regime_labels": {
+   "fresh_class": "fleet-synchronized flush-trap windows at pre-A and pre-mk-text (p50 39-40ms, stall15 100%, DEGRADED \u2014 the known clustered incident class); MARGINAL windows elsewhere (2.5-12.5% stalls, max 35-58ms); fsync class HEALTHY throughout (p50 0.05-0.09ms)",
+   "leg_gating": "legs are CPU/wire-path measurements (streaming does no durability I/O mid-turn; the only durability write is the session append at settle, where settle-tail worker CPU measured 0.0 across arms); per advisory the ABCCBA arms pay symmetric stall rates and every leg carries its boundary labels"
+  },
+  "memory_pss_kb_max": {
+   "note": "recorded per-trial in trace.json; no arm anomaly"
+  }
+ },
+ "validity": {
+  "excluded": [
+   "run-a (44 trials): per-role CPU VOID \u2014 arms were staged as bin-<arm> so the sampler's 'prime-agent' comm filter matched nothing; walls/cadence/needles valid but all CPU attribution discarded; superseded by run-c",
+   "run-b: aborted at my cleanup after 26 trials (mixed into stale run-a dirs); 14 orphan trial dirs (no trace.json, killed mid-trial) deleted from the evidence tree before analysis"
+  ],
+  "notes": "44 valid trials (run-c) + 8 microbench cases + shipped benchmark; per-trial calibration drift 1.4-11.8%; PTY raw streams captured per trial (byte-oracle material); mock-server request logs captured per trial (chunk counts match fixture deltas: 390/9605+1); fx-tc legs confirm the faux route measures the same ~0.10ms/delta pipeline as the mock route at small args (route isolation sane). Cross-VM comparison vs the old negative: old VM deleted post-record; calibration spin drift disclosed; all comparisons stay inside the old record's own noise bands."
+ },
+ "outcome": "re-baseline-complete",
+ "decision": "HONEST RE-BASELINE, NO CANDIDATE. (1) The old streaming negative is NOT stale: every recorded text-path number reproduces at tip within its own noise bands (walls 22.25/1.25 -> 22.22-22.30/1.244-1.247; ttft bands identical; render 0.71-0.87ms/frame vs 0.76-0.79; cadence flush-bound 51ms). (2) #2912 moved the tool-call path exactly where the microbench predicts: worker CPU/delta on 150KB-args streams -65% (0.336 -> 0.117ms/delta; acc->tip neutral), 154x on the accumulator's own classes at 10k deltas, 2x wall on unpaced bursts; zero win below the 8KB EAGER_PARSE_LENGTH (TS-parity design \u2014 the common small-tool-call regime keeps per-delta reparse, measured harmless at ~10us/delta inside a 0.10ms/delta event pipeline). Settle/finish costs negligible (0.02ms at 150KB). (3) NEW COST CLASS DOCUMENTED (the render path it feeds): the streamed args preview renders live via the pending-tool card's generic raw-JSON panel \u2014 O(args) TUI work per 50ms flush (~2.9ms/frame at 150KB, arm-independent, wire-parse-bound) \u2014 below the fleet bar (5.7% of the flush budget at an extreme size; the dominant share is frozen-surface wire parsing; no frame drops, no user-visible lag). (4) Residual per-delta cost at tip (~0.10ms/delta = 2% of the r800 pacing budget) is the event pipeline's clone chain, not the accumulator (1.7% of it at 150KB) \u2014 no dominant parity-safe cost, no real gap. Lane recommendation: close as a re-baseline record; the tool-call streaming path is healthy at tip behind #2912; the render-path class and the sub-8KB reparse residue are reported for disposition.",
+ "record_path": "data/hillclimb/experiments/20260927-085500-interaction-streaming-r2-toolcall-rebaseline.json",
+ "session": {
+  "worker": "perf-streaming-r2-fast (wave-5)"
+ },
+ "timestamp": "2026-09-27T08:55:00Z"
+}
