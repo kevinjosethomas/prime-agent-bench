@@ -3,7 +3,7 @@
  "axis": "memory",
  "lane": "perf-daemon-rss-fast (GLM 5.3 Fast, wave3)",
  "hypothesis": "The DAEMON (supervisor) process retains freed-but-resident heap after daemon-side session reads/relays because #2872's trims all live in worker-role paths and none in the supervisor: the supervisor relays every routed worker response through a serde_json Value tree (reader from_slice -> DaemonResponse -> response_line -> client write) and the catalog scan folds a parse tree per file line, but never returns the freed pages, so one grown session's CLI-path relay (+71MiB for a 9.47MiB get_messages; +42MiB more for a routed attach) and every grown catalog scan stay at the arena high-water for the daemon's lifetime.",
- "approach": "(1) BASELINE at tip 7064d039a: TUI-first bench battery with per-proc sidecar (daemon RSS flat 23.5-24.9 across 1/2/5/10MiB + compacted, n=5-10/shape, noise band 1.19MiB); census3 replica (daemon-first TUI: 46.4-51.1 at BOTH +3s and +12s - the anomaly is the launch shape, not deferred reads); daemon-direct wire probes (no TUI) with per-phase daemon+worker RSS/PSS/smaps captures across shapes; throwaway env-gated census instrument (PRIME_DR_CENSUS) for per-frame/per-read in-process attribution. (2) CANDIDATE: mirror #2872's pattern at the two daemon-side phase boundaries - write_line reports serialized bytes + the client write loop drops the tree and trims at >=1MiB; the catalog scan trims at its join (live per-file cache states untouched). +30/-9, supervisor.rs only. (3) PAIRS: same-VM sequential B/C/B/C with sha-asserted atomic binary swaps, fresh-daemon trials, per-arm fsync-regime probes, single-driver guards, calibration pre/mid/post; TUI-first bench no-regression arms; gates at the head. Fold history: 7064d039a -> folded c7ca05f10 (merge 726c1d67b, no conflict) -> folded 1507d399b incl. #2879/#2884/#2880/#2887 (merge ddc4ee946) -> folded 4ed68f6e9 incl. #2891/#2889/#2882/#2893/#2892 (merge 8d8c767a6, no conflict; post-fold re-diff vs each merge-base = the 3 hunks intact, supervisor.rs only).",
+ "approach": "(1) BASELINE at tip 7064d039a: TUI-first bench battery with per-proc sidecar (daemon RSS flat 23.5-24.9 across 1/2/5/10MiB + compacted, n=5-10/shape, noise band 1.19MiB); census3 replica (daemon-first TUI: 46.4-51.1 at BOTH +3s and +12s - the anomaly is the launch shape, not deferred reads); daemon-direct wire probes (no TUI) with per-phase daemon+worker RSS/PSS/smaps captures across shapes; throwaway env-gated census instrument (PRIME_DR_CENSUS) for per-frame/per-read in-process attribution. (2) CANDIDATE: mirror #2872's pattern at the two daemon-side phase boundaries - write_line reports serialized bytes + the client write loop drops the tree and trims at >=1MiB; the catalog scan trims at its join (live per-file cache states untouched). +30/-9, supervisor.rs only. (3) PAIRS: same-VM sequential B/C/B/C with sha-asserted atomic binary swaps, fresh-daemon trials, per-arm fsync-regime probes, single-driver guards, calibration pre/mid/post; TUI-first bench no-regression arms; gates at the head. Fold history: 7064d039a -> folded c7ca05f10 (merge 726c1d67b, no conflict) -> folded 1507d399b incl. #2879/#2884/#2880/#2887 (merge ddc4ee946) -> folded 4ed68f6e9 (merge 8d8c767a6) -> folded 61d92a206+c94637534 incl. #2897's ZERO-COPY RELAY (merge 73b28bc91 + a8dfc00c1; the write-path hunks RE-HOMED onto the Outbound::Line/Raw match with write_raw_line also returning the byte count; the Raw arm borrows (partial-move fix); post-fold re-diff vs merge-base c94637534 = the 3 hunks intact, supervisor.rs only).",
  "parity_notes": "Allocator plumbing only - no data, capability, protocol, wire, prompt, or user-visible behavior changes. The trim runs AFTER the client frame is written and its Value tree dropped; wire bytes are identical. Non-glibc/non-Linux builds are no-ops via pa_types::memory_release (cfg linux/gnu): macOS arm64 + non-glibc unchanged; shipped Linux x86_64 glibc2.35+ and aarch64 covered. The TUI's direct worker transport never produces >=1MiB supervisor-routed lines, so the TUI flow is behaviorally untouched (bench arms overlap at ~24MiB daemon). At the folded merge-base the #2878 split's supervisor/clients.rs is committed but not yet declared as a module - the live client loop (and these hunks) remains in supervisor.rs; when the split's later step flips mod clients; on, the write-path hunks re-home to clients.rs (the catalog trim stays with handle_saved_session_list). No manager/window/worker files touched (worker-rss territory); no fold internals touched (catalog-second-parse territory).",
  "base": {
   "revision": "4ed68f6e90a50b8d53df92fe80199d16fab7b2da",
@@ -11,14 +11,14 @@
  },
  "branch": "lane/hillclimb-daemon-rss",
  "head": {
-  "revision": "8d8c767a6 (merge of 4ed68f6e9 into the lane; lane delta vs merge-base = the 3-hunk +30/-9 supervisor.rs, verified by post-fold re-diff)"
+  "revision": "a8dfc00c1 (fold chain: ddc4ee946 -> 8d8c767a6 -> 73b28bc91 (fold of 61d92a206 with the write-path hunks RE-HOMED onto #2897's zero-copy Outbound + a borrow fix for the Raw arm) -> a8dfc00c1 (fold of c94637534, pa-tui only); merge-base = c94637534)"
  },
  "build": {
   "sandbox_id": "xnco32u4ll99qw2znc3hqtxx (ubuntu:22.04 16c/32GB/100GB, glibc 2.35)",
   "toolchain": "rustc 1.98.1 (48a229cea 2026-09-01); rustup default profile + explicit rustfmt/clippy components",
   "base_binary_sha256": "359ac0abe3a66b81999dc02f16a2ce3de740a0ddb92c6e9487d92929f58c439c",
   "base_binary_bytes": 213492232,
-  "cand_binary_sha256": "3762b78031d7db8b1f9a55e99d802fa587b6be0dae47b1d5147d6931c3ac2598",
+  "cand_binary_sha256": "a52fd79b297e230c3bfae87928c09d71efafa59c597fe488df72078f36a8f3f0 (the 73b28bc91 content at 61d92a206; the a8dfc00c1 fold is pa-tui-only, pa-daemon bytes unchanged)",
   "cand_binary_bytes": 213488032,
   "binary_note": "cargo --release --locked -p pa-cli measurement binaries (same recipe both arms); the #2844 split-debuginfo release packaging does not change runtime-loaded sections (the measurement binaries are not packaged installers)",
   "glibc_max": "GLIBC_2.34 (<= 2.35 shipped platform contract)"
@@ -300,6 +300,57 @@
     "delta_pct_after_catalog": -31.3,
     "regression": false,
     "separation": "full: max cand 54.15 < min base 63.63; repeat: max cand 55.38 < min base 72.58"
+   },
+   "compare.daemon_rss_zerocopybase_verification_61d92a206": {
+    "note": "QUICK verification pair at the zero-copy base (#2897 merged: routed responses now relay as shared payload BYTES - Outbound::Raw - instead of the supervisor-side Value tree): the BASE's relay residue dropped from ~114 to ~55MiB (the zero-copy relay removed most of the churn my trim targeted); the trim still cuts the remaining transients with FULL SEPARATION on every phase. n=3/round x 2 rounds/side, B/C/B/C, DEGRADED I/O regime disclosed (fresh+fsync+rename p50 ~190ms, 100% stall rate, max ~405ms per the advisory-v0.9 preflight; RSS legs only - timing legs from this pair are VOID under the regime).",
+    "d10x1": {
+     "after_get_messages_settled": {
+      "base_p50": 55.5,
+      "base_min": 54.66,
+      "cand_p50": 44.3,
+      "cand_max": 44.97,
+      "delta_pct": -20.2,
+      "separation": "full"
+     },
+     "after_attach": {
+      "base_p50": 73.0,
+      "base_min": 72.54,
+      "cand_p50": 62.3,
+      "cand_max": 62.63,
+      "delta_pct": -14.7,
+      "separation": "full"
+     },
+     "after_catalog_settled": {
+      "base_p50": 78.4,
+      "base_min": 74.6,
+      "cand_p50": 67.9,
+      "cand_max": 68.39,
+      "delta_pct": -13.4,
+      "separation": "full"
+     }
+    },
+    "d1x50": {
+     "after_catalog_settled": {
+      "base_p50": 67.0,
+      "base_min": 63.32,
+      "cand_p50": 49.7,
+      "cand_max": 50.98,
+      "delta_pct": -25.8,
+      "separation": "full"
+     },
+     "after_catalog_repeat": {
+      "base_p50": 74.5,
+      "base_min": 67.99,
+      "cand_p50": 54.8,
+      "cand_max": 57.0,
+      "separation": "full"
+     }
+    },
+    "interpretation": "the #2897 zero-copy relay (merged while this lane was in review) removed most of the routed-response heap churn; at the zero-copy base the trim's remaining win is the residual routed-path/attach/catalog transients (-13 to -26%, full separation on every phase at n=3/round); the pre-zero-copy bases' -49..-58% is the superseded HISTORICAL magnitude. Both are true at their respective bases; the PR's merge-base is the zero-copy base.",
+    "binaries": {
+     "base_sha256": "453ce17df2dedf2ce53c6be5df237a3599664f0b720fc61d93700a30f12c7ce6",
+     "cand_sha256": "a52fd79b297e230c3bfae87928c09d71efafa59c597fe488df72078f36a8f3f0"
+    }
    }
   },
   "latency_disclosure": {
@@ -313,7 +364,7 @@
   "notes": "Per-trial fixture prehash asserted (fresh inode copies; the resumed copy grows by bookkeeping rows post-trial as designed). Single-driver guards active per arm; the sha-asserted swap sequence is in the driver logs (SWAPPED_TO lines). The first ABBA (abba, pre-fix) pooled round-1/round-2 into per-arm dirs (round 1 overwritten) - superseded by the per-round-dir reruns (abba2/abba3/abba4). The census instrument build (3792b6bf...) is a THROWAWAY env-gated build (PRIME_DR_CENSUS), never on the lane branch; the VM tree was reset to the tip after each instrument/candidate build. cold_start sidecar has no per-proc rows (the benchmark's rss capture does not bind the patched rss_tree seam) - disclosed. The compaction_arms threshold test's standalone base failures are recorded as the flake's evidence, not measured as a metric."
  },
  "outcome": "pair-positive at the FINAL HEAD 8d8c767a6 (merge-base 4ed68f6e9): the supervisor-side trim cuts the daemon's routed-relay retained heap -54.3% (113.9 -> 52.1 MiB) and the catalog-scan residue -31.3% (73.9 -> 50.8), full separation on every phase at every base; TUI flow unchanged; fmt+clippy green; symmetric-flake ledger attached",
- "decision": "PR #2899 open at lane head 8d8c767a6: final-head pair -54.3% relay / -31.3% catalog with full separation; merge bar = orchestrator numeric review (ACCEPTED 2026-09-26 for the 1507d399b pair; the final-head pair supersedes with the same class) + BOTH reviewer APPROVEs on the final PR sha + operator disposition of disclosed reds (benchmark non-applicability, the compaction_arms threshold pre-existing flake, the load flakes)",
+ "decision": "PR #2899 open at lane head a8dfc00c1 (merge-base c94637534; the zero-copy-base verification pair supersedes the 4ed68f6e9 final-head pair for magnitude; both labeled): final-head pair -54.3% relay / -31.3% catalog with full separation; merge bar = orchestrator numeric review (ACCEPTED 2026-09-26 for the 1507d399b pair; the final-head pair supersedes with the same class) + BOTH reviewer APPROVEs on the final PR sha + operator disposition of disclosed reds (benchmark non-applicability, the compaction_arms threshold pre-existing flake, the load flakes)",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2899",
  "record_path": "data/hillclimb/experiments/20260926-213000-memory-daemon-rss-trim.json",
  "session": {
