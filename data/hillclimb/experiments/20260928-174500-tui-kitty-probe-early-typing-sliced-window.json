@@ -11,7 +11,8 @@
  "branch": "lane/kitty-probe-coldstart (product); hillclimb (bench)",
  "commits": [
   "d75f2be71 (the sliced-window patch: vendored crossterm v2 + PRIME_AGENT_PATCH.md + enhanced_keys doc)",
-  "3e4ee2760 (kitty_early_typing_e2e.rs: the differential oracle with served-path assertions)"
+  "3e4ee2760 (kitty_early_typing_e2e.rs: the differential oracle with served-path assertions)",
+  "4fa0ab5fe (the append-only fold of base 30808d2f4 - #3007/#3008/#3009/#3011 era: docs-ends, bash_view/auth_panel/heartbeats_picker splits; ZERO conflicts; post-fold re-diff BYTE-IDENTICAL: the 4-file 718-insertion lane delta vs the folded base equals the pre-fold delta hunk-for-hunk minus index lines)"
  ],
  "build": {
   "sandbox_id": "jzcnfbdb4mjtig1e5atyaeur (16c/32GB ubuntu:22.04)",
@@ -25,7 +26,8 @@
   "new_e2e": "kitty_early_typing_e2e 3/3 pass on the cand tree (early_typing_child_mode trivial + the differential + the answered classes)",
   "frozen_e2es": "kitty_release_handoff_e2e 2/2 + kitty_exit_routes_e2e 2/2 pass on the cand tree (the exit standdown + pop ordering + late-release filtering preserved)",
   "pa_tui_unit": "1235/1236 pass on the cand tree; the single red = browser::tests::the_opener_resolves_an_absolute_path_and_targets_the_url \u2014 ENVIRONMENTAL: the ubuntu:22.04 VM image has no xdg-open (opener() finds nothing); reproduced RED on the CLEAN BASE TREE b5bf28f1d at the same head (git-stash A/B, 0 passed 1 failed); unrelated to the lane (touches only vendor/crossterm + docs + a new test file); GitHub CI (ubuntu-latest with xdg-open) is the green surface",
-  "full_suite": "the fleet VM gate on the pushed branch (fleet_pipeline.fleet_gate) \u2014 see outcome"
+  "full_suite": "fleet_gate mode=full at 3e4ee2760: GREEN (fmt rc=0, clippy --workspace --all-targets -D warnings rc=0, test --workspace --no-fail-fast rc=0, zero failing tests, zero unknown failures; VM bvwr5lk9t7jbsj3e5tc6x7im pool_slot 1, hosts_guard OK) \u2014 the gate VM image runs the browser-opener green; the re-gate at the folded head 4fa0ab5fe (the stale-head-gate rule after the tip moved) in flight as gate_1790618946",
+  "github_ci_at_3e4ee2760": "PASS: fmt, clippy, shards 1/2/4, Cursor Bugbot, Macroscope, loc, request, author gates. FAIL shard 3/4: pa-daemon fd_lifecycle_e2e supervisor_restart_loop_leaves_no_orphan_workers \u2014 TRIAGED co-scheduling flake: pa-daemon has NO crossterm/pa-tui dependency (no code path from this diff) + SOLO GREEN x2 at the exact head content (4/4, 17.1s/15.5s; the 1+1 rerun discipline, stop) + the test summary aggregates the shard. FAIL benchmark: STANDING class ('Benchmark partial: failed or incomplete' before any PR-side trial; reproduced on merged PRs #2999/#3002/#3003/#3006 - the standing benchmark disposition). Zero unresolved bot threads (Bugbot + Macroscope green, 0 review comments). CI reruns at the folded head 4fa0ab5fe."
  },
  "measurements": {
   "method": "same-VM sequential, ABBA base,cand,cand,base, sha-asserted unlink-then-copy swaps, chunk-accurate pty ledger, pyte echo watch on the cursor rows, pre/mid/post noop+fsync+isolated-fresh calibration",
@@ -55,8 +57,8 @@
   "excluded": "the first v2-pilot (10 rows) ran concurrent with the candidate cargo build (load-contaminated ttff 15-137ms) \u2014 EXCLUDED from all claims; kept as trials-pilot.jsonl",
   "cross_check": "the pre-slice BASE settle-coupled signature (251.8ms across offsets) + the arm-invariant answered classes + the control keys + TTFF agree across both suites"
  },
- "outcome": "PR #3010 OPEN at head 3e4ee2760 (d75f2be71 the sliced-window patch + 3e4ee2760 the differential e2e): the silent-pty early-typing hold collapses 11-63x (241.8->11.2 / 201.6->3.2 / 131.8->4.3 / 51.8->4.5ms p50 at +10/+50/+120/+200ms), base settle-coupled at query+251.8ms exactly as modeled; answered classes unmoved; TTFF not gated; controls equal; the full-suite VM gate verdict + merge bar to annotate this record when closed",
- "decision": "PR OPEN \u2014 merge bar pending (both adversarial reviewers SHA-bound at 3e4ee2760 + CI rollup + orchestrator numeric review + dispositions)",
+ "outcome": "PR #3010 OPEN, FOLDED head 4fa0ab5fe (base 30808d2f4 + the byte-identical 4-file lane delta; pre-fold head 3e4ee2760 gate GREEN): the silent-pty early-typing hold collapses 11-63x (241.8->11.2 / 201.6->3.2 / 131.8->4.3 / 51.8->4.5ms p50 at +10/+50/+120/+200ms), base settle-coupled at query+251.8ms exactly as modeled; answered classes unmoved; TTFF not gated; controls equal",
+ "decision": "PR OPEN at the folded head 4fa0ab5fe \u2014 re-gate in flight; merge bar pending (both adversarial reviewers SHA-bound + the folded-head CI rollup + orchestrator numeric review + the dispositions)",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3010",
  "record_path": "data/hillclimb/experiments/20260928-174500-tui-kitty-probe-early-typing-sliced-window.json",
  "evidence": {
