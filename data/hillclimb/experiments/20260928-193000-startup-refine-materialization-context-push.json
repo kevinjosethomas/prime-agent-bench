@@ -1,0 +1,146 @@
+{
+ "id": "20260928-193000-startup-refine-materialization-context-push",
+ "axis": "startup",
+ "hypothesis": "The refine command's post-LLM MATERIALIZATION (~40ms p50 of around-work on stock-10MiB at the decompose tip e99c4a262, the rebuilt-context class, FILE-SIZE-SCALED) is the full live-context rebuild after the plan applies: AgentSession::refine re-derives the WHOLE agent context (active_context(): by-id map + parent-chain walk + per-row clones) plus a per-message serde Value round-trip (session->loop shape) to add the 1-3 rows a refine appends. TS NEVER rebuilds after refine (_applyRefine -> _appendDurableRefineMessage pushes the outcome/notice rows onto agent.state.messages); the rebuild is a port-time divergence that also RESURRECTS a retried turn's dropped trailing error assistant (drop_trailing_assistant's sanctioned live/durable divergence, TS's retry slice(0,-1) - TS agent-session.ts:10206 keeps it out). The cut: restore the TS push (rows materialized from the appended durable entries, byte-identical to a rebuild's rows), O(refine rows) instead of O(session file).",
+ "approach": "PAIR lane at the tip e2ee82f2d: (1) BASELINE-FIRST: tip e2e refine legs per size class (256KiB/1MiB/10MiB, n=6, the decompose's 256KiB control protocol extended with a medium tier) + the micro-decompose (a cargo example over the product's own pub API on real fixtures: windowed open + adopt_window, then 20 reps of active_context() and the serde round-trip per class); (2) the cut on lane/refine-materialization; (3) the differential oracle (unit: the verbatim tip mechanism extracted as rebuilt_loop_messages is the reference, byte-compared against the pushed live context; the retry-drop case is the served-path gate; VM e2e: the mock's request-body sha256 byte-identity across arms on the refiner request AND the post-refine next-turn request, gs2 counts, response shape); (4) paired same-VM sequential ABBA (tip A / cand B, 3+3 per block per class, sha-asserted unlink-then-copy swaps), parity legs, strace census pair, I/O advisory v1.0 probes pre/mid/post + per-block.",
+ "parity_notes": "FROZEN SURFACES UNTOUCHED: session-JSONL rows identical (audit/outcome/notice appends unchanged - census pair); RLM wire: the refine response + get_state identical (parity legs); prompts: the refiner request AND the post-refine next-turn provider request byte-identical across arms (mock bodySha256 instrument - bench-harness scratch on the VM, additive log field, disclosed); TUI: the /refine slash-command path's end state unchanged (session_commands' sync_live_context still rebuilds; the cut removes only the INNER rebuild on that path). DELIBERATE TS-ANCHORED DIVERGENCE FROM THE TIP REFERENCE: on the RPC/RLM surface, refine no longer normalizes the live context onto the durable one - the retry-drop case keeps the dropped error row out of live (TS parity; the tip's rebuild resurrected it; unit test documents the reference resurrecting). Corner case disclosed: a FAILED refine's retained outcome row that a later tip-rebuild would surface is not pushed by the cut (the failure arm's live state is unchanged by design - execute_refinement bails before any live update at BOTH arms). Driver-side findings, all mine, all disclosed: (1) the probe inherited the archived decompose probe's drain bug - the select timeout must be capped by the idle budget or a quiet stream blocks the full max_s window (measurement-NEUTRAL: arrival-accurate parse timestamps were always true; only trial walls shrank); (2) a VM file upload failed SILENTLY (mock_state.py) - md5-verify after every VM file push (bench hygiene); (3) shutil.copyfile drops the exec bit on the ABBA swap - chmod 0755 after copy.",
+ "base": {
+  "revision": "e2ee82f2d78de41272ccaf52b76a59b0cab33d61",
+  "note": "the current org/rust tip (42 hillclimb merges; #3001 kitty-mode at the tip, TUI-only, disjoint)"
+ },
+ "branch": "hillclimb (bench repo, record only); lane worktree /home/ubuntu/worktrees/perf-refine-materialization (branch lane/refine-materialization, head 547c02c20)",
+ "commits": [
+  "fed06cd0b pa-core: refine pushes its appended rows instead of rebuilding the context (perf + TS parity)"
+ ],
+ "build": {
+  "tip_binary_sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678dbd4c85b05e5c8f36f63",
+  "cand_binary_sha256": "a4bdb23455f56c6241f97b87a4d78db18f27b7091b94585254cb1ddde4387d2e",
+  "sandbox_id": "r0f7f1r4zmocfoovsylo7vc5 (hillclimb-perf-refine-mat, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0 both arms",
+  "note": "both arms cargo build --release --locked --workspace rc=0; per-block binary sha asserted on every ABBA swap (tip ae1b2a1b..., cand a4bdb234...)"
+ },
+ "gates": {
+  "fmt": "cargo fmt --all -- --check CLEAN at fed06cd0b (after one rustfmt pass on the lane's new code)",
+  "clippy": "cargo clippy --workspace --all-targets --locked CLEAN at fed06cd0b (0 errors; the lane's one warning fixed: match_wildcard_for_single_variants in the oracle test)",
+  "test": "cargo test --workspace --locked --no-fail-fast at fed06cd0b: ALL GREEN except pa-cli --test interactive_daemon_e2e (parallel-load flake: solo-green 32/32 x2 at the exact heads; the gate4 failures triaged: packages::tests npm ENOENT = VM env gap, npm installed -> 6/6 solo-green; auto_refine_trigger declining-review + pa-tui browser::opener + the gate4 tui_refused_submit flake = solo-green at the head)",
+  "benchmark_ci": "n/a (no bench-repo change)"
+ },
+ "measurements": {
+  "io_regime": "EVERY boundary probe CLASS=D (A_P50 30.7-37.4ms fresh+sync_all+rename wall, A_STALL_RATE 100%, ceilings: io-pre 109ms, io-mid 233.6ms - NO-CEILING labeled; B repeat-fsync mostly fast p50 0.14-0.20ms with ~5% ~30ms singles) - the same D-regime family the decompose campaign ran in; durable-write-bounded spans regime-labeled; ABBA interleave balances the arms; CPU-phase spans are the primary evidence.",
+  "micro_decompose_tip_p50_ms_n20": {
+   "session-256kib": {
+    "rows": 190,
+    "live_messages": 176,
+    "open_ms": 1.654,
+    "assemble_active_context_p50": 0.071,
+    "reserialize_roundtrip_p50": 0.494,
+    "materialization_total": 0.565
+   },
+   "session-1mib": {
+    "rows": 749,
+    "live_messages": 725,
+    "open_ms": 5.403,
+    "assemble_active_context_p50": 0.273,
+    "reserialize_roundtrip_p50": 1.87,
+    "materialization_total": 2.143
+   },
+   "session-10mib": {
+    "rows": 7391,
+    "live_messages": 7259,
+    "open_ms": 49.082,
+    "assemble_active_context_p50": 4.55,
+    "reserialize_roundtrip_p50": 18.86,
+    "materialization_total": 23.41
+   },
+   "class_answer": "the materialization = the per-message serde-Value re-serialization (session->loop shape, 80%: 18.86ms at 10MiB) + the active_context assembly walk (by-id map + parent chain + per-row clones, 20%: 4.55ms); NO digest work in the span; linear in rows (176/725/7259 live messages); the windowed-open resume read (49ms @10MiB) is the separate resume class (#2970 territory, untouched)"
+  },
+  "baseline_tip_refine_cmd_p50_ms_n6_arrival_accurate": {
+   "small_256kib": {
+    "p50": 42.8,
+    "min": 39.3,
+    "max": 200.0,
+    "gs2_message_count": 178,
+    "ready_p50": 108.8
+   },
+   "medium_1mib": {
+    "p50": 47.0,
+    "min": 43.0,
+    "max": 62.4,
+    "gs2_message_count": 727,
+    "ready_p50": 127.4
+   },
+   "large_10mib": {
+    "p50": 107.0,
+    "min": 102.1,
+    "max": 110.7,
+    "gs2_message_count": 7261,
+    "ready_p50": 211.1
+   },
+   "note": "the signal is LIVE at the tip: large 107.0 vs the decompose record's 107.6 at e99c4a262; the small/medium walls sit on the D-regime durable-write floor (harness save write+fsync+rename + 2 row appends write+fdatasync)"
+  },
+  "pair_abba": "(pending)",
+  "parity": "(pending)",
+  "census": "(pending)",
+  "pair_abba_refine_cmd_p50_ms_same_vm_interleaved_n6_per_arm": {
+   "large_10mib": {
+    "tip": {
+     "p50": 73.3,
+     "min": 70.6,
+     "max": 83.4
+    },
+    "cand": {
+     "p50": 47.8,
+     "min": 41.8,
+     "max": 562.3
+    },
+    "delta_p50": -25.4,
+    "delta_pct": -34.6
+   },
+   "medium_1mib": {
+    "tip": {
+     "p50": 10.6,
+     "min": 8.9,
+     "max": 516.0
+    },
+    "cand": {
+     "p50": 7.3,
+     "min": 5.3,
+     "max": 9.2
+    },
+    "delta_p50": -3.3
+   },
+   "small_256kib": {
+    "tip": {
+     "p50": 8.2,
+     "min": 4.6,
+     "max": 527.4
+    },
+    "cand": {
+     "p50": 5.7,
+     "min": 4.4,
+     "max": 1088.3
+    },
+    "delta_p50": -2.5,
+    "note": "at/below the e2e noise floor: the micro floor is 0.57ms (fixed classes + regime variance); honest bound"
+   },
+   "note": "the pair legs straddled the D->H transition (per-block probes: A_P50 31-37ms CLASS=D through the legs; io-post CLASS=H A_P50 0.87ms) - the ABBA interleave balances the arms and the delta is the primary signal; the -25.4ms at 10MiB matches the micro-decompose's 23.4ms materialization class; ceiling hits labeled (527ms, 1088ms in-leg, 233.6ms io-mid)"
+  },
+  "oracle_unit_tests": "3/3 green at fed06cd0b (solo): refine_pushed_live_context_matches_a_full_rebuild_byte_for_byte (the pushed live context == the verbatim tip rebuild, serde-Value byte-identity, rows exactly once in durable order, audit never in context); refine_with_an_empty_plan_pushes_only_the_outcome_row (no notice on 0 applied edits); refine_keeps_the_retry_drop_instead_of_resurrecting_the_error_row (the served-path gate: a rebuild would resurrect the retry-dropped error row - the reference rebuild's output is asserted to CONTAIN it - the push does not; TS _applyRefine parity)",
+  "parity_e2e_verdicts": {
+   "refiner_request": "RAW byte-identical across arms: full-body deep-equal on 2+2 dumps AND the mock log's bodySha256 identical (8a98811c...) at all three classes",
+   "post_refine_next_turn_request": "BYTE-IDENTICAL tip-vs-cand on all 4 pairings (deep-equal over the full 4844-message bodies ~7.6MB) with the three disclosed per-trial/per-arm environment normalizations: the <available_skills> enumeration order (per-trial first-boot skills-install order - WITHIN-arm volatile: tip1 vs tip3 differs the same way), the arm's source-tree root in the skills' <location> paths, and the per-trial working-dir/log paths in the system footer; messages[1:] (the conversation served from the live context - the exact surface the materialization feeds) is identical with NO normalization",
+   "response_and_state": "refine response data_keys + summary/scope/edits identical; gs2 messageCount identical per class (178/727/7261); frame sequences identical (4 responses, no event frames); post-refine session rows +5/+5 both arms (3 startup + audit + outcome), tails identical normalized for per-trial paths/ids/timestamps",
+   "census_strace_10mib": "durable-write classes IDENTICAL: fsync 4=4, fdatasync 5=5, rename 7=7, unlink 5=5, unlinkat 4=4, mkdir 15=15, rmdir 2=2, linkat 1=1; openat 523=523; write 50 vs 51 and recvfrom 35 vs 36 = one wire chunk boundary, no new durable class; structure-only (INVALID for timing)"
+  }
+ },
+ "ts_anchor": {
+  "refine": "agent-session.ts:9722 refine() -> :9981 _applyRefine -> :9949 _recordRefinementOutcome/:9950s _recordRefinementNotice -> :9959 _appendDurableRefineMessage: appendCustomMessageEntryWithRollback (catch: _unpersistedOutcomes.push) THEN this.agent.state.messages.push(message) + _emit message_start/message_end - NO buildSessionContext anywhere in the refine path",
+  "retry_drop": "agent-session.ts:10206/10374 this.agent.state.messages = messages.slice(0, -1) - the error assistant row stays in session history, dropped from live; TS refine never rebuilds, so the drop SURVIVES refine (the Rust tip's rebuild resurrected it)",
+  "compact_by_contrast": "agent-session.ts:8968 agent.state.messages = buildSessionContext().messages - the rebuild is the compact arm's tail (and navigateTree's), which the Rust port correctly keeps (rebuilt_loop_messages now shared by those tails)",
+  "rust_mapping": "pa-core session_engine/mod.rs refine_with_refiner (the push); refine.rs appended_context_rows (the rows from the appended durable entries); session/mod.rs build_session_context + compact_session::rebuilt_context_after_compaction + rebuilt_loop_messages (the verbatim tip mechanism, the oracle reference)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The signal is live at the tip (baseline large 107.0ms p50 vs the decompose record's 107.6 at e99c4a262, both D-regime). The pair legs' absolute walls ran lower than the baseline legs (73.3 tip) because the I/O regime lifted D->H mid-campaign (io-post CLASS=H) - the ABBA delta, not the absolute walls, is the campaign's timing claim, and the micro-decompose (regime-independent CPU spans) carries the mechanism split. The baseline and pair legs agree in the overlapping regime (the tip arm's 10MiB p50: 107.0 baseline-D vs 73.3 pair-transition; the cand arm 47.8 with the D floor gone reads as ~47.8 = the ~40ms D floor... see the regime labels per block in legs-mat/state.json). Honest bounds: the 256KiB e2e delta (-2.5ms) is at the noise floor (micro floor 0.57ms); the 1MiB delta (-3.3ms) exceeds the micro floor (2.14ms) but carries regime variance. The e2e byte-identity oracle needed the skills-order/location/trial-path normalizations disclosed above - the raw first-diff of an unnormalized pair would FALSELY read as a product divergence (the skills enumeration order is within-arm per-trial volatility; verified tip1-vs-tip3). The mock body-dump instrument (MOCK_BODY_DIR) and the bodySha256 log field are bench-harness scratch on the VM, additive, disclosed; the probe drain fix (select timeout capped by the idle budget) is measurement-neutral (arrival-accurate timestamps were always true)."
+ }
+}
