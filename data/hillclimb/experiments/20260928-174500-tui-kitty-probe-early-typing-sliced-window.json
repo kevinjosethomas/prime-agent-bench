@@ -12,7 +12,8 @@
  "commits": [
   "d75f2be71 (the sliced-window patch: vendored crossterm v2 + PRIME_AGENT_PATCH.md + enhanced_keys doc)",
   "3e4ee2760 (kitty_early_typing_e2e.rs: the differential oracle with served-path assertions)",
-  "4fa0ab5fe (the append-only fold of base 30808d2f4 - #3007/#3008/#3009/#3011 era: docs-ends, bash_view/auth_panel/heartbeats_picker splits; ZERO conflicts; post-fold re-diff BYTE-IDENTICAL: the 4-file 718-insertion lane delta vs the folded base equals the pre-fold delta hunk-for-hunk minus index lines)"
+  "4fa0ab5fe (the append-only fold of base 30808d2f4 - #3007/#3008/#3009/#3011 era: docs-ends, bash_view/auth_panel/heartbeats_picker splits; ZERO conflicts; post-fold re-diff BYTE-IDENTICAL: the 4-file 718-insertion lane delta vs the folded base equals the pre-fold delta hunk-for-hunk minus index lines)",
+  "ff1a47dc7 (the second single-commit clean-boundary fold: base 01a46d422 (#3011 heartbeats_picker.rs split, disjoint from the lane files); ZERO conflicts; the post-fold re-diff BYTE-IDENTICAL again - the 4-file 718-insertion lane delta unchanged through both folds)"
  ],
  "build": {
   "sandbox_id": "jzcnfbdb4mjtig1e5atyaeur (16c/32GB ubuntu:22.04)",
@@ -58,7 +59,7 @@
   "cross_check": "the pre-slice BASE settle-coupled signature (251.8ms across offsets) + the arm-invariant answered classes + the control keys + TTFF agree across both suites"
  },
  "outcome": "PR #3010 OPEN, FOLDED head 4fa0ab5fe (base 30808d2f4 + the byte-identical 4-file lane delta; pre-fold head 3e4ee2760 gate GREEN): the silent-pty early-typing hold collapses 11-63x (241.8->11.2 / 201.6->3.2 / 131.8->4.3 / 51.8->4.5ms p50 at +10/+50/+120/+200ms), base settle-coupled at query+251.8ms exactly as modeled; answered classes unmoved; TTFF not gated; controls equal",
- "decision": "PR OPEN at the folded head 4fa0ab5fe \u2014 re-gate in flight; merge bar pending (both adversarial reviewers SHA-bound + the folded-head CI rollup + orchestrator numeric review + the dispositions)",
+ "decision": "PR OPEN at the final folded head ff1a47dc7 \u2014 the binding gate (gate_1790619159) anchors there; merge bar pending (both adversarial reviewers SHA-bound at ff1a47dc7 + the folded-head CI rollup + orchestrator numeric review + the dispositions)",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3010",
  "record_path": "data/hillclimb/experiments/20260928-174500-tui-kitty-probe-early-typing-sliced-window.json",
  "evidence": {
