@@ -1,0 +1,44 @@
+{
+ "id": "20260928-193500-other-turn-runner-compacting-gate",
+ "axis": "other",
+ "hypothesis": "The port's turn-runner admission gate (worker/turn.rs) checked the input pauses + the queued-input suspension ONLY, while TS's pump predicate rides externalBusy = isCompacting || isRetrying || isBashRunning (_isBusyForSessionInput('pump'), agent-session.ts:7097-7110) and isCompacting spans the whole manual-compact window (_compactionAbortController, cleared in compact()'s finally, agent-session.ts:5277-5283 + 8783). The port's resume sites (steer/follow_up -> resume_queued_input; handle_prompt's streamingBehavior arm; the cron/heartbeat fire path) clear the suspension MID-WINDOW exactly like TS (_admitSessionInput enqueues at :6772, then the wake:'immediate' resume at :6791-6793) \u2014 so the cleared suspension admitted a racing turn DURING the compaction: its user row landed on the live agent context mid-window (rows TS's pump never admits), exactly the digest-capture lane's Oracle B finding (the racing row flips the commit-moment digest ranking). The fix: the compacting term in the runner gate + the TS-finally post-window wake + the compacting-clear moved to the flow tail.",
+ "approach": "RED-FIRST: the oracles committed alone at the tip (36ab72ae2) and gated (gate_1790619175, crates pa-daemon) \u2014 816 passed, exactly the two racing oracles red, both on 'the parked steer left its lane mid-compaction: left: 0, right: 1' (the dispatch-level racing steer + the runner-level served-path probe), the frozen-classes control green \u2014 the reproduction at the tip. Then the three-piece fix (08f23562d, fmt-amended) gated GREEN (gate_1790619870: clippy+test rc=0, the racing oracles now deferring+delivering post-window). The #3014 tip fold (fold_1790620906, conflict-free; post-fold re-diff verified hunk-by-hunk: the three fix files + both oracle homes byte-identical, the split's carved families disjoint from the oracle homes) -> b15dc777d -> the binding full-suite gate + the solo dispositions -> PR #3021 -> the adversarial bar -> squash-merge 82dd3af72.",
+ "parity_notes": "FROZEN SURFACES UNTOUCHED (reviewer-verified, both adversaries): the diff is pa-daemon worker/compaction only (6 files, +467/-15); no wire/schema/session-JSONL/prompt/TUI change; the compaction_start/compaction_end shapes and event ordering unchanged. THE CHANGED SURFACE IS THE DIVERGENCE ITSELF: a mid-window steer's row now arrives AFTER compaction_end \u2014 exactly TS's ordering (the pump defers on isCompacting through the window; compact()'s finally re-schedules). RESUME-SITE SEMANTICS (the scrutiny point, reviewer-confirmed load-bearing): TS ENQUEUES the action BEFORE the wake:'immediate' resume (:6772 before :6791-6793); the deferral holds the parked item; the port's tail wake delivers it post-window \u2014 never lost (the lost-steer case is worse than the racing turn; without the wake the gate term alone would STRAND the parked steer \u2014 reviewer #2's own confirmation). THE SPAN: the compacting-clear moved after persist+compaction_end (TS's finally position, agent-session.ts:8786) \u2014 closes the durable-order sliver (a user row durable before the compaction entry that summarizes it). SIBLING OBSERVATIONS DISCLOSED (not changed): TS's isCompacting also spans _branchSummaryAbortController (the port's navigate_tree branch summary neither sets core.compacting nor holds TS's _navigateTreeUnderPause pause \u2014 a sibling admission gap in the navigation window; separate lane) and _autoCompactionAbortController (the port's auto compaction runs inside the runner's turn flow \u2014 serialized by construction, no gap); handle_wait_for_idle answers during a compaction window while TS waitForIdle parks on the pump-busy predicate \u2014 a sibling wait-semantics divergence in the same predicate.",
+ "base": {
+  "revision": "b89b8ffdd9ba68375599de041debcabe4b230c48",
+  "note": "origin/rust tip at lane start; folded mid-lane to e4fc1839ca588a122279e5da00d5289848d125fb (#3002+#3007+#3014, the worker test-family split) \u2014 the post-fold re-diff hunk-by-hunk verified, the binding gate at the folded head"
+ },
+ "branch": "lane/turn-runner-compacting-gate (worktree /home/ubuntu/worktrees/perf-compacting-gate); bench record on hillclimb (record only)",
+ "commits": [
+  "36ab72ae2 test(pa-daemon): the compaction admission-gate oracles - the racing steer must defer mid-window (the RED reproduction head)",
+  "08f23562d fix(pa-daemon): the compacting admission gate - a racing turn defers through the compaction window, the parked work delivers after it",
+  "b15dc777d the #3014 tip fold (merge of e4fc1839c)"
+ ],
+ "build": {
+  "sandbox_ids": "fleet-gate-pool slots ykp6mbwtdtz17w58tayfa0yw + bvwr5lk9t7jbsj3e5tc6x7im (gates); o87wy9bbsx1xuzg6d8jngoi3 (the cold-open lane's VM, borrowed for both solo receipts; healthy-VM class, NOT the degraded pool VM)",
+  "binary_sha256": null,
+  "note": "no benchmark campaign: a parity-first lane (the gate term is one boolean read on an already-held core lock; the wake is one notify per compact \u2014 unmeasurable by construction, reported not chased)"
+ },
+ "gates": {
+  "fmt": "rc=0 at the binding head (gate_1790620962 full suite)",
+  "clippy": "rc=0 (workspace, -D warnings)",
+  "test": "the binding full-suite gate gate_1790620962 at b15dc777d: RED_KNOWN_REDS with ONLY the registered kernel_restore_guards co-scheduling pair (auto-attached, unexpired 2026-10-01, ZERO unknown failures); SOLO kernel_restore_guards 6/6 GREEN at the exact head (PA_CORE_KERNEL_PYTHON on the harness kernel venv, every run '2 passed; 0 failed', RC=0); the pre-split full gate gate_1790620511 showed one unrelated TUI e2e red (tui_prime_login_renders_the_inline_team_picker, a 60s settle timeout under full-workspace parallel load) \u2014 absent at the folded head, triaged load-flake with a solo 1+1 green at the exact head (2.19s/1.69s, RC=0), rerun loop stopped per 1+1; GitHub CI on the PR head: fmt+clippy+4/4 shards+test summary ALL SUCCESS (completed 19:27:07Z), Bugbot+Macroscope SUCCESS with ZERO finding threads, the benchmark workflow's PR-side setup failed (npm ci exit 1, 0 measurements) = the standing non-applicable class"
+ },
+ "measurements": {
+  "method": "no bench campaign (parity-first; the GitHub benchmark workflow produced 0 measurements \u2014 its PR-side setup failed, the standing class)",
+  "result": "the admission-behavior parity restoration IS the deliverable: the racing class defers through the window (busy false, lane intact, no row on the wire mid-window) and delivers after it (compaction_end precedes the racing row on the wire)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The RED reproduction is the served-path evidence: at the tip exactly the two racing oracles fail on the racing-admission signature while 816 pass and the frozen-classes control is green; the oracles assert the real command paths (the steer's resume site fires mid-window on the delay-held scripted compaction; the recording engine's prompt log is the served-path probe). The folded-head re-diff verified the oracle homes byte-identical under #3014's test-family split."
+ },
+ "outcome": "MERGED: PR #3021 squash-merged as 82dd3af72e6bcf531b524a2a9acf144c50d57adf (origin/rust verified; the 43rd hillclimb merge). The bar: both adversarial reviewers EXPLICIT SHA-bound APPROVEs at b15dc777d1415a6eb5760bce8dc02af42eec56b4 (parity-adversary-fast + parity-adversary-2-fast, each verifying the five covers against the TS source by their own reads \u2014 the gate term's anchor agent-session.ts:7098/7097-7110, the tail wake's finally re-schedule :8789-8790, the clear span :8786, the non-vacuous oracles, the frozen surfaces), the completed green CI rollup carried in the requests, the orchestrator's numeric review (accepted on the RED reproduction + the GREEN fix + the frozen-classes control), the three operator dispositions (kernel_restore_guards on the head-bound solo 6/6; the TUI one-off on the load-flake 1+1 receipt; the benchmark the standing non-applicable class), zero unresolved bot threads.",
+ "decision": "CLOSED \u2014 the racing class can no longer land mid-window: the digest-capture lane's Oracle B is green-by-the-fix (the racing row can no longer flip the commit-moment ranking). LINEAGE (the parent's note): the digest-capture placement oracle pinned the ENTER-capture shield FIRST (#3006), then this lane closed the racing class at the gate \u2014 the two-lane sequence exactly as scoped.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3021",
+ "record_path": "data/hillclimb/experiments/20260928-193500-other-turn-runner-compacting-gate.json",
+ "session": {
+  "worker": "perf-runner-compacting-gate",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-3ace4cea"
+ },
+ "timestamp": "2026-09-28T19:35:00Z"
+}
