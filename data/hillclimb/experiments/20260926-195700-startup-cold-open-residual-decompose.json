@@ -270,7 +270,7 @@
   "io_gate_v1_1": "2026-09-27T14:12Z I/O GATE v1.1 IN FORCE (fleet addendum to v1.0; hoststat census record 20260927-140000, bench ddac5ce): per-host state machine {fast ~0.88ms, slow ~2.4ms} flips every ~9-12.5min lifting ONLY the fresh-write-rename classes; repeat-fsync is STATE-INVARIANT (~0.55ms, the reference class). New rules: (A) the 2x-lift gate applies WITHIN the state band; fresh p50 > 4x the fast floor = BEYOND-CENSUS; (B) repeat-fsync lifting >2x = a TRAP/REGIME EVENT, not the state machine; (C) baseline-lift-only MARGINAL (stall-rate <=2%) = slow-state LABEL - proceed if the ~2.7x fresh floor is tolerable or wait >=10min (persistent lift expected); (D) v1.0 trap gates unchanged. Labels are per-state per-class (single 'host baseline' numbers are WRONG). THIS VM classified at 14:12Z under the v1.1 rules: BEYOND-CENSUS/TRAP-EVENT - fresh p50 123.01ms (100% stall-rate) AND the repeat-fsync reference class lifted to p50 123.63ms (>>2x the ~0.55ms invariant reference, rule B) - my VM is NOT in the census state machine at all; it remains in the same deep regime event the fleet warned about at 20:15Z yesterday. Consequence: the v1.1 slow-state MARGINAL label does NOT license timing legs on this VM; the pair stays gated on a genuine recovery (a HEALTHY-FAST classification or an adjudicated post-recovery sequence).",
   "fresh_host_regime_observation": "2026-09-27T19:42-19:51Z FRESH-HOST OBSERVATION (replacement VM o87wy9bbsx1xuzg6d8jngoi3): the new host booted HEALTHY-FAST (fresh p50 0.99ms, 0% stalls, reference class 0.75ms) and flipped to BEYOND-CENSUS/TRAP-EVENT within ~9 minutes (both classes ~41.6ms at 19:51Z). This DISPROVES host-specificity of the deep regime event the predecessor VM sat in for 20+ hours: the event is fleet-synchronized with rapid onsets that draw in fresh hosts - consistent with the v1.0 calendar's synchronized-epoch picture. The pair's I/O gate remains event-gated, not host-gated: it opens only when the v1.1 reference class reads in-band at leg time."
  },
- "outcome": "measured - DECOMPOSITION COMPLETE + two new full-pass discoveries (P2b persisted_rlm_max_depth; P2-never-runs-on-bench-path); edits deferred per sequence",
+ "outcome": "measured - DECOMPOSITION COMPLETE + two new full-pass discoveries (P2b persisted_rlm_max_depth; P2-never-runs-on-bench-path); settle-day: fold executed + gates/oracles GREEN at the PR head (542499bdd, PR #2970); the paired ABBA is EVENT-BLOCKED (honest negative: the 1+1 fires exhausted at two leg-1 gate aborts, zero trials, under the ~40h fleet I/O trap)",
  "decision": "Two parity-safe candidates scoped with expected per-class deltas: P3/P4 shared open (-50.2ms stock) and P2b store-backed lookup (-34.5ms stock, larger on compacted/real classes ~50-66ms). Combined stock-class expectation ~-85ms of the 914ms quiet anchor (~9%). Honest negative on the brief's original expectation: the residual after launch-open's fix is NOT near the boot floor on the stock fixture class (P3+P4+P2b = 124.7ms p50 of redundant passes), but on compacted classes the P3/P4 residual alone IS near-floor (1.3-12ms) and only P2b remains material.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2970",
  "record_path": "data/hillclimb/experiments/20260926-195700-startup-cold-open-residual-decompose.json",
@@ -326,7 +326,75 @@
     "toolchain": "1.98.1",
     "stale_base_note": "org/rust tip moved past the fold (07f42eaa3, session_ui splits - disjoint from the diff); the pre-merge re-fold + re-gate rule stands"
    },
-   "reviewer_requests": "HELD until the pair evidence lands in the record + the CI rollup completes (the request carries the completed CI rollup - the #2914 lesson)"
+   "reviewer_requests": "the pair evidence is the honest negative (event-blocked); the reviewer/merge-bar call is the parent/operator's per the pre-declared discipline"
+  },
+  "pair": {
+   "outcome": "EVENT-BLOCKED (honest negative): the 1+1 fire discipline is exhausted with ZERO trials measured - both fires aborted at the leg-1 boundary gate by sub-minute regime flips",
+   "attempts": [
+    {
+     "fire": 1,
+     "t": "2026-09-27T23:17:39Z",
+     "pre_fire_probe": "HEALTHY-FAST (fresh 0.93ms / ref 0.76ms) at 23:17Z",
+     "abort": "leg-1 gate ~60s later: TRAP-EVENT 106.18ms; GATE_OUT_OF_BAND; zero trials; pin restored by the EXIT trap",
+     "protocol_state": "fail-closed worked as designed: the abort fired BEFORE any binary swap or trial"
+    },
+    {
+     "fire": 2,
+     "t": "2026-09-28T11:57:07Z",
+     "pre_fire_confirm": "the FIRST 3-sample-confirmed window of the watch: s1 11:40Z HEALTHY-FAST 1.03ms, s2 11:45Z 0.62ms, s3 11:50Z 0.59ms (~10 min, all fully clean)",
+     "abort": "leg-1 gate ~60-90s after s3: TRAP-EVENT 93.72ms; GATE_OUT_OF_BAND; zero trials; pin restored",
+     "protocol_state": "the window was ~15-18 min old at the flip - the measured clean-dwell ceiling held exactly; the pair needed ~18 MORE minutes of window"
+    }
+   ],
+   "watch_record": {
+    "probe_series": "cold-open-work/event-probe-series.jsonl (60+ readings, 2026-09-27T22:15Z..2026-09-28T11:57Z)",
+    "lulls_observed": 23,
+    "zero_burn_reruns": "the ONE rerun was held through 22 lulls before the first confirmed window fired it",
+    "lull_series_min": [
+     1,
+     3,
+     14,
+     12,
+     5,
+     5,
+     5,
+     5,
+     "5-10",
+     5,
+     5,
+     5,
+     "5-10",
+     "<10(edge)",
+     5,
+     5,
+     "<=5",
+     "<=5",
+     5,
+     "<=5",
+     "5-10",
+     "5-10",
+     "5-10"
+    ],
+    "chains_to_s3": "4 (04:00, 06:30, 10:40, 11:05 - later 11:40) - every one closed at the boundary",
+    "measured_ceiling": "the clean dwell reliably ends between 10 and 15 min of age; the pair's 10+10 ABBA needs ~18 min of in-band stability; the ceiling is ~2x short"
+   },
+   "trap_taxonomy_final": {
+    "event_span": "the fleet-synchronized deep I/O event: onset ~2026-09-26T20:15Z (predecessor VM), VM2 drawn in within ~9 min of its 19:42Z boot; STILL ACTIVE at 2026-09-28T11:57Z (~40h)",
+    "deep_band": "fresh+rename p50 83-112ms, 100% stalls; the reference class tracks it when the trap is 'on' (rule B)",
+    "lulls": "transient HEALTHY-FAST windows (fresh 0.52-1.09ms, maxes mostly <7ms, 0% stalls; reference 0.44-1.02ms): 23 observed, ceiling ~5 min typical / 12-14 min max",
+    "split_signatures": "BOTH classes: fresh-first (00:45Z fresh-deep/ref-clean) and reference-first (08:00Z fresh-clean/ref-trapped) - the trap enters through either class, both caught by their rules",
+    "edge_signatures": "p50-at-floor-with-residual-stalls readings (23:30Z 2.5%, 23:37Z 10%, 06:55Z 2.5%, 09:15Z 12.5% - maxes 96-157ms) - the flip's stall events arrive before the p50 moves; the v1.0 trap gates catch them",
+    "structural_finding": "the trap COUPLED to the census state machine's fast/slow flip cadence (record 20260927-140000: {fast ~0.88ms, slow ~2.4ms, flip ~9-12.5min}) at a different magnitude: the 'slow' state is the 83-112ms deep band and the clean dwell shrank to ~5 min. The census's slow-state MARGINAL (2.4ms, rule C) never appeared on this host.",
+    "protocol_lessons": [
+     "a single healthy probe reading is NOT a window (fire #1 burned on a sub-minute lull)",
+     "a 3-min confirm catches the short lulls (v2 saved the rerun at 00:03Z)",
+     "window-age (>=15 min) is necessary but not sufficient (v3 kept the rerun through the coarse grid)",
+     "the 3-sample confirm at 5-min resolution is the finest honest filter - and even a CONFIRMED window can close before the first leg gate (fire #2)",
+     "the fail-closed leg gates are the final protection: both aborts produced zero contaminated trials"
+    ]
+   },
+   "pair_measurements": null,
+   "note": "NO paired timing evidence exists for the settle-day claim. The candidate's expected deltas remain the HISTORICAL ledger values (recorded at 7064d039a pre-folds): C1 -50.2ms stock / C2 -34.5ms stock (the instrument ledger's within-run phase walls). The oracles + gates at the PR head (542499bdd) are the exact-parity evidence; the paired ABBA is the missing timing claim, event-blocked by the ~40h fleet I/O regime event. The PR carries this as the honest negative; the reviewer/merge-bar call is the operator's."
   }
  }
 }
