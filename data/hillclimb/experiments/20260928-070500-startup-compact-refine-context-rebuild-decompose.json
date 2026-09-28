@@ -1,0 +1,198 @@
+{
+ "id": "20260928-070500-startup-compact-refine-context-rebuild-decompose",
+ "axis": "startup",
+ "hypothesis": "Compact/refine = the context-rebuild class, the only RPC-surface cost class never decomposed (the durable-write census left it unmapped; reads ~0.17-0.20ms true, gam boot-warmed by #2953, the kernel-boot class refuted by the kernel-cold lane). The LLM-summarize/refiner call is the product's semantic core, but the AROUND-work (context assembly, the rebuilt-context materialization, the durable handoff) is the measurable class with an offline mock; the decompose splits the two per phase on the 10MiB fixtures, maps the durable writes per command, and anchors the Rust chain on the TS compact/refine path. Candidates only in the around-work; the honest negative (the cost is the semantic core) is the alternative outcome.",
+ "approach": "MEASUREMENT ONLY, no product change (exploration/decompose lane; the record is the deliverable). Pinned tip e99c4a262 (origin/rust moved 0e16d7671 -> 1321fd927 -> e99c4a262 during recon; the #2987 compact_session.rs split diff-scanned \u2014 the rpc/ handlers byte-identical, the PA_COMPACTION_TRACE seam intact, the split behind stable re-exports; #2969/#2985/#2988/#2992 disjoint). VM qqlj5mt48h90iudesg6xmwia (hillclimb-perf-compact-refine, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1), cargo build --release --locked --workspace rc=0, binary sha 2c15f430d603a54ce2541b01a4a99887b5a38741267e05ebb49e68592c6be77d. Bench harness deployed + settled (template ready; kernel-venv warm at /root/bench/global/rust). Fixtures rebuilt on-VM with fleet-known shas: stock session-10mib dadaecfc... (7391 rows), compacted 97beb5eb... (reference), PLUS a new 256KiB control session-256kib bd18b080... (190 rows) for the fixed-floor vs size-scaled isolation. REAL assembly, offline mock (prime-inference/mock-1; three queues: refiner -> empty-plan JSON, summarizer -> summary text, default -> ok). INSTRUMENT: the IN-TREE PA_COMPACTION_TRACE seam (compaction_trace.rs, env=<path>, zero product change) carries the compact phase marks (enter/digest_captured/cut_prepared/tokens_before_computed/summarizer_request/summarizer_resolved/digest_rendered/entry_appended/rebuilt_context/kernel_pruned/kernel_listed/returned); the mock provider's redacted request log (per-trial offset window) carries the semantic-core wire spans; arrival-accurate frame pump (parse timestamps; the select(0.05)-park lesson re-applied mid-lane and FIXED \u2014 receipts initially inflated +50ms/command, all reported numbers from the post-fix legs); strace census legs (fd-map v2.1: one process per trial, the openat->fd map merges all -ff -f per-thread files chronologically; writev NOT in the trace set \u2014 the HTTP request bodies' write-path is untraced, disclosed) for the per-command durable writes. LEGS (same-VM sequential, ABBA-balanced blocks across the two command classes, binary sha asserted per block, quiet gate + product-only zombie sweep, per-trial fixture prehash assert): MAIN: compact-vs-refine on stock-10mib, 4x4 blocks A1 B1 B2 A2 (8 trials each); CONTROL: same ABBA on 256KiB (6 trials each); CENSUS: 2x each class at 10MiB + 1x each at 256KiB under strace (structure-only, INVALID for timing); probe_v09 pre/mid/post + per-block pre-probes.",
+ "parity_notes": "No product source changed in any phase; frozen parity untouched (the RPC surface exercised as a black box over stdio; the compaction trace seam is the product's own off-by-default debug env). Driver-side findings, all mine, all disclosed: (1) the probe inherited the archived rpc_probe select(0.05) park \u2014 per-command receipt ms inflated +50ms; fixed to arrival-accurate parse timestamps + window-bounded select BEFORE the legs; frame parse timestamps were always true. (2) trial dirs reused across legs (/root/ctxrebuild-trials/<mode>-NN): the trace file appended across legs; every receipt's embedded marks carry earlier legs' sequences BESIDE its own \u2014 the own sequence is always LAST (verified per receipt: enter-count and cut detail entries match the fixture), and the analyzer derives phase spans from the last-sequence values (dict overwrite); the negative returned->enter boundary key is excluded as the artifact. (3) the PA_COMPACTION_TRACE sink writes serde-JSON token-by-token to an unbuffered locked File: ~380 write syscalls per compact trial (~0.3-0.5ms per mark line, ~4% of the 10MiB compact wall, ~10% of the 256KiB wall) \u2014 instrument overhead on compact phases only (refine has no seam, zero overhead); the compact timing legs ran WITH the seam enabled (a seam-off control would shave ~5ms). (4) setup gap: the archived setup.sh misses rsync (the current bench settle requires it); installed and settled clean. (5) the compact census socket writes: the 3.19MiB summarizer request body rides writev/write on the socket fd \u2014 writev is NOT in the trace set; the census proves the durable file writes, not the wire chunk count.",
+ "base": {
+  "revision": "e99c4a262659f759de01ac085206aabbc0d80cb4",
+  "note": "pinned per the frozen-evidence rule; #2987 (compact_session split) scanned into the pin; #2992 landed after the pin (pa-tui, disjoint)"
+ },
+ "branch": "hillclimb (bench repo, record only); lane worktree /home/ubuntu/worktrees/perf-compact-refine (branch lane/compact-refine-rebuild, no product change)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "qqlj5mt48h90iudesg6xmwia (hillclimb-perf-compact-refine, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "2c15f430d603a54ce2541b01a4a99887b5a38741267e05ebb49e68592c6be77d",
+  "binary_bytes": 224330168,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (no product change; no PR)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0 at launch), per-block binary sha asserted (2c15f430... unchanged throughout), ABBA interleave across the compact/refine command classes, I/O advisory v1.0 probes pre/mid/post + before every block (PHASE MODEL, NO-CEILING)",
+  "io_regime": "EVERY leg boundary probe read CLASS=D (A_P50 34.0-36.9ms fresh-write-rename wall, A_STALL_RATE 100%; the same ~35-56ms regime family the rpc-baseline lane labeled; repeat-fsync B mostly fast p50 0.14-0.18ms with ~5% stall hits) \u2014 the whole legs campaign ran in the D regime; a brief FAST window (A_P50 0.80ms) appeared only at io-mid AFTER the legs completed and flipped back to D by io-post. All durable-write-bounded spans are regime-labeled: the ~35ms wall is the HOST's fresh-write+fsync class, not product logic; the ABBA interleave balances it across both classes; the deltas and the CPU-phase spans are the primary evidence.",
+  "command_walls_arrival_accurate": {
+   "compact_stock_10mib": {
+    "trials": 8,
+    "p50_ms": 135.1,
+    "min": 108.1,
+    "max": 177.4
+   },
+   "compact_256kib_control": {
+    "trials": 6,
+    "p50_ms": 48.8,
+    "min": 11.5,
+    "max": 96.3
+   },
+   "refine_stock_10mib": {
+    "trials": 8,
+    "p50_ms": 107.6,
+    "min": 72.7,
+    "max": 114.6
+   },
+   "refine_256kib_control": {
+    "trials": 6,
+    "p50_ms": 40.3,
+    "min": 7.0,
+    "max": 44.6
+   },
+   "note": "the response frame's parse timestamp minus the send wall; closure check: trace-total + 0.5-0.8ms surface = response arrival per trial (gap p50 0.68ms)"
+  },
+  "compact_phase_decompose_p50_ms_n8_stock": {
+   "dispatch_send_to_enter": 0.5,
+   "enter_to_digest_captured": {
+    "p50": 11.9,
+    "min": 9.6,
+    "max": 16.9,
+    "class": "around-work: harness digest inputs (reads harness state + relevance terms from the live pre-compaction context)"
+   },
+   "digest_captured_to_cut_prepared": {
+    "p50": 17.4,
+    "min": 16.7,
+    "max": 19.5,
+    "class": "around-work: the cut scan over 7394 retained entries + history/turn-prefix assembly (4838 history messages)"
+   },
+   "cut_prepared_to_tokens_before_computed": {
+    "p50": 6.0,
+    "min": 5.4,
+    "max": 6.9,
+    "class": "around-work: context token estimation"
+   },
+   "tokens_before_to_summarizer_request": {
+    "p50": 14.3,
+    "min": 12.0,
+    "max": 15.8,
+    "class": "around-work: file-op details extraction + auxiliary-model resolution (spawn_blocking; settings/models/auth reads)"
+   },
+   "summarizer_request_to_summarizer_resolved": {
+    "p50": 27.8,
+    "min": 26.4,
+    "max": 31.3,
+    "class": "SEMANTIC-CORE SPAN with the offline mock: product request-build+send 10.6ms (serialize_conversation of the 3.19MiB history text + HTTP body) + mock-side body parse ~17.4ms (INSTRUMENT cost: the mock json.loads 3.19MiB; a real provider = LLM seconds) + response parse <1ms; split via the mock arrival timestamps"
+   },
+   "summarizer_resolved_to_digest_rendered": {
+    "p50": 0.07,
+    "class": "around-work: summary composition + harness digest render"
+   },
+   "digest_rendered_to_entry_appended": {
+    "p50": 36.5,
+    "min": 2.6,
+    "max": 42.2,
+    "class": "MATERIALIZATION/durable: the compaction row append (write+fdatasync on the session file) \u2014 REGIME-BOUND: p50 sits at the host's ~35ms D-regime wall; the 2.6ms min is the fast-path append"
+   },
+   "entry_appended_to_rebuilt_context": {
+    "p50": 13.4,
+    "min": 12.4,
+    "max": 15.6,
+    "class": "MATERIALIZATION: rebuilt context read (windowed active-context rebuild, file-size-scaled) + serde round-trip + set_messages; post-compact live context is 2 messages but the span scales with the FILE (13.4ms at 10MiB vs 0.51ms at 256KiB)"
+   },
+   "rebuilt_to_returned": {
+    "p50": 8.0,
+    "class": "HANDOFF: ipython_state sync_after_compaction (kernel prune/list + the durable ipython_state notice row \u2014 the second session-jsonl write+fdatasync in the census; 6.5+0.2+1.3 marks)"
+   },
+   "returned_to_response": 0.5,
+   "sum_check": "phase p50s sum 135.4ms vs command p50 135.1ms (consistent; per-trial closure gap p50 0.68ms)"
+  },
+  "compact_256kib_control_phase_p50s_n6": {
+   "digest": 0.47,
+   "cut": 0.4,
+   "tokens": 0.17,
+   "details_aux": 2.06,
+   "summarizer_span": 2.45,
+   "request_build_send": 1.59,
+   "mock_latency_parse": 0.75,
+   "entry_append_regime_bound": 19.4,
+   "rebuilt_context": 0.51,
+   "kernel_sync": 3.5,
+   "returned_tail_regime_bound": "p50 35.3 (min 0.6, max 46.6 \u2014 the notice row's durable write hitting the D-regime wall in most trials)"
+  },
+  "refine_wire_decompose_stock_n8": {
+   "pre_llm_assembly_send_to_mock_arrival": {
+    "p50": 31.3,
+    "min": 28.2,
+    "max": 35.0,
+    "class": "around-work: history_snapshot (full retained-entries read+clone over the 7391-row fixture) + 4 harness-state loads (global+local+baseline+target) + refinement history merge + the 80K-capped conversation prompt build + HTTP send"
+   },
+   "semantic_core_mock": {
+    "class": "the mock answers instantly; the refiner request is SIZE-INDEPENDENT (system 5091 + user 80730 chars \u2014 conversation_text caps at 80K) at BOTH fixture sizes; a real provider = the LLM plan call (seconds)"
+   },
+   "post_llm_apply_and_writes": {
+    "class": "census-anchored: mock response -> harness save (write+fsync+rename) ~0.4-1.5ms -> global refinement-history append -> 2 session rows (audit + outcome; write+fdatasync each; the notice row is skipped \u2014 0 applied edits on the empty plan) -> rebuilt-context MATERIALIZATION"
+   },
+   "post_llm_materialization_last_write_to_response": {
+    "p50": "~39-41ms at 10MiB (census trials), 1.65ms at 256KiB",
+    "class": "MATERIALIZATION: the rebuilt-context round-trip + response serialize \u2014 file-size-scaled (the windowed active-context rebuild after the retained-row appends)"
+   },
+   "wall_share": "p50 107.6ms total: ~31ms pre-LLM assembly + <2ms core+apply + ~3-4ms durable writes (fast-path fdatasyncs; occasional +35ms regime walls) + ~40ms materialization + ~1ms surface"
+  },
+  "refine_256kib_control": {
+   "pre_llm_assembly": 2.3,
+   "post_llm_materialization": 1.65,
+   "total_p50": 40.3,
+   "note": "the pre-LLM assembly scales ~13.6x with 40x size (the snapshot clone dominates); the post-LLM span is write-bound (fixed ~2 durable rows + the harness save)"
+  },
+  "durable_write_census_per_command": {
+   "compact": "2 session-jsonl row appends (write+fdatasync each: the compaction row + the ipython_state notice row) + 3 stdout writes (compaction_start, compaction_end, response) + 2 misc renames; NO settings/auth/models writes on the command (the aux-model resolution READS only)",
+   "refine": "1 harness-state save (write+fsync+rename, written even for a 0-edit empty plan) + 1 global refinement-history append + 2 session-jsonl row appends (audit + outcome; write+fdatasync each) + 1 stdout write (the response); the notice row skipped on 0 applied edits",
+   "note": "session row appends are write+fdatasync (no temp+rename); the harness save is temp+rename+fsync"
+  },
+  "event_visibility_flush_starvation": {
+   "finding": "the compaction_start event frame is QUEUED at command dispatch (~+0.2ms) but ARRIVES at the client +48.2ms p50 (n=8, stock-10MiB) \u2014 the pre-summarizer CPU phases (digest 11.9 + cut 17.4 + tokens 6.0 + details/aux 14.3 = ~46ms) run without an await point on the async runtime, so the LineWriter writer task cannot flush the queued frame until the pipeline's first await (the summarizer HTTP call); the compaction_end frame and the response flush immediately after the pipeline (returned +0.5ms)",
+   "control": "256KiB: compaction_start arrives +1.8ms (the small CPU phases barely delay the flush); end-start span p50 47.0ms",
+   "class": "client-visible event-visibility delay caused by AROUND-WORK CPU, not the semantic core; the TUI/attached clients see the compaction start ~46ms late at 10MiB"
+  },
+  "mock_request_shapes": {
+   "compact_stock": "2 summarizer calls (the split-turn arm, concurrent): turn-prefix user 548 chars + history user 3,188,800 chars (~3.04MiB serialized conversation text)",
+   "compact_256kib": "turn-prefix 548 + history 85,389 chars",
+   "refine_both": "1 refiner call, size-independent: system 5091 + user 80730 chars (the 80K conversation cap)"
+  },
+  "secondary": {
+   "ready_10mib_resume": "p50 230-233ms (both classes; the stock resume class, regime-labeled)",
+   "gs1_warm_get_state": "p50 7.4-8.1ms on 10MiB contexts, 0.34-0.42ms on 256KiB \u2014 the state snapshot serializes the live context (size-bound); post-compact gs2 0.74ms (the cut shrank the context) vs post-refine gs2 8.1ms (refine does NOT cut \u2014 the full context remains)",
+   "split_turn": "the stock-fixture cut is a split turn (isSplitTurn=true, turnPrefixMessages=1) \u2014 the two-concurrent-summarizer-call arm is exercised"
+  }
+ },
+ "ts_anchor": {
+  "rpc_commands": "packages/coding-agent/src/modes/rpc/rpc-mode.ts:283-291 \u2014 case compact: connection.compact(customInstructions); case refine: connection.refine({instructions, rollbackId, global})",
+  "compact": "agent-session.ts:8718 compact() (disconnect -> abort -> compaction_start emit -> _performCompaction -> compaction_end emit); :8818 _performCompaction(): prepareCompaction(pathEntries, settings) [the cut] -> _resolveAuxiliaryModel (#2411) -> compact(...) [the summarizer wire calls, semantic edges] -> _harnessDigestWithFingerprint [mechanical, never through the summarizer] -> sessionManager.appendCompaction [durable row] -> :8968 sessionManager.getEntries() + agent.state.messages = buildSessionContext().messages [the context rebuild] -> _mergeUnpersistedOutcomes/_restoreLateIpythonSentAgentMessages -> _syncKernelStateAfterCompaction (:8981)",
+  "refine": "agent-session.ts:9722 refine(): in-flight serialization (_refineInFlight/_refinePlanInFlight/_serializedPlanInFlight) -> _planRefine (the LLM plan call, backgrounded) -> waitForIdle -> apply-after-quiescence",
+  "rust_mapping": "pa-daemon/src/rpc/commands.rs compact@394 (handle guard held through; agent().abort()+wait_for_idle; session_ops lane; compaction frames; AgentSession::compact) refine@522 (session_ops; AgentSession::refine); pa-core session_engine/mod.rs compact():459/refine():~700 (the chains the trace marks cover); compact_session.rs execute_compaction + rebuilt_context_after_compaction; refine.rs execute_refinement (the 4 harness-state loads, plan, apply, save, 3 session rows)",
+  "parity_note": "the Rust chains are port-faithful to the TS sequence (same phase order; the TS RPC mode answers compact with the CompactionResult and refine with the RefinementResult identically)"
+ },
+ "candidates_reported_only": [
+  "REFINE POST-LLM MATERIALIZATION (~40ms at 10MiB, p50): the rebuilt-context round-trip after the retained-row appends \u2014 file-size-scaled (1.65ms at 256KiB); the same class the compact path pays as entry_appended->rebuilt_context (13.4ms). A candidate lane would attack the windowed active-context rebuild/serde round-trip (e.g. incremental window update on retained appends instead of the rebuild) \u2014 around-work only, no semantic-core change; frozen surfaces untouched (wire bytes unchanged)",
+  "COMPACT EVENT-VISIBILITY (+46ms at 10MiB): the queued compaction_start frame cannot flush until the pipeline's first await \u2014 a yield point (or a synchronous flush) before the digest/cut/tokens/details CPU block would give attached clients the start event ~46ms sooner; the mechanism is the LineWriter mpsc+writer-task starvation by non-yielding CPU work \u2014 around-work only",
+  "REFINE PRE-LLM ASSEMBLY (31.3ms at 10MiB vs 2.3ms at 256KiB): the history_snapshot full retained-entries clone over the 7391-row fixture to build an 80K-capped conversation text \u2014 a candidate could cap/collect the conversation window BEFORE the full clone (the refiner request only ever uses 80K chars)",
+  "COMPACT DIGEST CAPTURE (11.9ms): harness_digest_inputs reads the live pre-compaction context for relevance terms at compact ENTER, but the digest renders only at the commit \u2014 deferring the capture to post-summarizer (~where TS captures it: TS _harnessDigest() is called at the appendCompaction commit) would shave the pre-LLM path; TS-parity check first",
+  "REFINE HARNESS SAVE ON EMPTY PLANS: the harness state save (write+fsync+rename) runs even when 0 edits applied (the empty-plan case measured) \u2014 skipping the save when the plan applies nothing saves one durable write per empty refine; TS-parity check first",
+  "KERNEL SYNC AT COMPACT (8.0ms at 10MiB): sync_after_compaction lists kernel state on every compact (prune+list+durable notice row) even with no live kernel work \u2014 characterization-only; the notice row is by design (back-to-back compact parity)"
+ ],
+ "validity": {
+  "excluded": [],
+  "notes": "All legs ran in the D-regime (every leg-boundary probe CLASS=D, A_P50 34-37ms fresh-write wall) \u2014 durable-write spans are regime-labeled and the ABBA interleave balances them; CPU-phase spans are regime-independent (no I/O). The compact timing numbers carry the trace-sink instrument overhead (~380 write syscalls/trial, ~0.3-0.5ms per mark line, ~5ms/command \u2014 disclosed; refine carries none). The trial-dir reuse artifact (trace files appended across legs) is verified benign: every receipt's own sequence is last and the analyzer derives phase values from the last sequence (per-receipt enter-count + cut-detail entries validated). The census socket-write gap (writev untraced) disclosed. The mock's body-parse cost (~17.4ms for the 3.19MiB summarizer request) is INSTRUMENT-side, split out of the semantic-core span via the mock arrival timestamps \u2014 with a real provider the semantic core is the LLM inference and the around-work is the fixed overhead measured here. Auto-compaction did not fire (no prompts admitted; the compact/refine commands are the only mutations). The refine legs used local scope (the resumed session is session-dir-backed; has_session_dir true); the empty-plan refinement is the honest no-op case for the durable-write census (the notice row correctly skipped).",
+  "evidence": "hillclimb/archives/perf-compact-refine/ctxrebuild-evidence.tar.gz (sha d030a9ec2377924b4e349fb14cbc99a4480ab600d99e69286969df20b50b0a27, VM-side sha match verified before VM deletion; all legs state, every receipt with full frame timelines + trace marks + mock-log windows, census strace per-tid logs + both analyzers' outputs, probe logs, driver + probe + analyzer scripts, fixtures' manifests)"
+ },
+ "outcome": "decompose-complete (honest record; no product change, no PR \u2014 measurement-only exploration lane per the brief; the record and the reported candidates are the deliverables)",
+ "decision": "The context-rebuild class is decomposed end-to-end. ANSWER: the cost is NOT the semantic core at these fixture sizes \u2014 with the offline mock the compact command is 135.1ms p50 and refine 107.6ms p50 of AROUND-WORK: compact = 49.6ms pre-LLM assembly (digest 11.9 + cut 17.4 + tokens 6.0 + details/aux 14.3) + 36.5ms regime-bound durable commit + 13.4ms materialization + 8.0ms kernel handoff + 10.6ms request-build; refine = 31.3ms pre-LLM assembly + ~40ms materialization + ~4ms durable writes. The size-scaling (256KiB controls) shows the file-size-scaled classes: compact assembly 49.6->2.7ms, refine assembly 31.3->2.3ms, refine materialization ~40->1.65ms. Plus a client-visible event-visibility finding: the compaction_start frame is delayed +46ms behind non-yielding pre-summarizer CPU work (flush starvation until the first await). Six around-work candidates reported for the queue (materialization, visibility, assembly, digest capture placement, empty-plan save, kernel sync); the semantic core excluded by design.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-070500-startup-compact-refine-context-rebuild-decompose.json",
+ "session": {
+  "worker": "perf-compact-refine",
+  "session_dir": "~/.prime/agent/sessions/sub-a232a276/01a0e610-eb8c-755c-8844-2bd050196cc0.jsonl"
+ },
+ "timestamp": "2026-09-28T07:05:00Z"
+}
