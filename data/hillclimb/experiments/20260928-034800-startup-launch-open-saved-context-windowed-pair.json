@@ -130,8 +130,8 @@
   "excluded": [],
   "notes": "120/120 trials valid (8-gate contract: fixture pre-sha==source 835c4473 asserted per row; post-bytes differ; sentinel+echo+erase; daemon+worker sighted; replay rendered; ready>150ms). 6/6 sha-asserted swaps per leg boundary in the pair script's fail-closed design; the licensed gates x13 all license=OK. The strict-watch ledger (7 refusals, 6 fires, 1 leg survived) + the licensed-mode disclosure carry the I/O honesty."
  },
- "outcome": "candidate-confirmed (pending review+merge): the windowed read cuts the resume-path restore's worker CPU by ~140ms p50 and the ready wall by ~190-314ms p50 under the labeled incident regime; control CPU-identical",
- "decision": "operator rules (orchestrator numeric review + adversarial reviewers + merge bar)",
+ "outcome": "MERGED - PR #2969 squash-merged as 1321fd927658549825e379eb0677eb7ca6eaaf0c on origin/rust 2026-09-28 (the merge bar: orchestrator numeric review ACCEPTED + both adversarial reviewers EXPLICIT SHA-bound APPROVEs, first at 959b785a2 then mechanically re-bound at the folded head 2dbec3fb5 with the 184/184 line-for-line delta-identity verification; the full mandatory CI green at the folded head incl. the 1+1 shard rerun; zero unresolved bot threads)",
+ "decision": "MERGED (1321fd927): the CPU-axis mechanism claim carried the bar (worker resume CPU -140ms, the parse signature); the wall deltas regime-labeled; the licensed-mode disclosure standing",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2969",
  "record_path": "data/hillclimb/experiments/20260928-034800-startup-launch-open-saved-context-windowed-pair.json",
  "evidence": {
