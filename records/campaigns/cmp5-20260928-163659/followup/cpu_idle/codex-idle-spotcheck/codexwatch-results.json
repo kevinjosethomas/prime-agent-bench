@@ -1,0 +1,1447 @@
+{
+ "meta": {
+  "purpose": "independent codex idle spot-check",
+  "started_utc": "2026-09-28T21:51:42Z",
+  "routing": "real-api",
+  "codex_binary": "/usr/bin/codex",
+  "finished_utc": "2026-09-28T21:52:45Z"
+ },
+ "launchA": {
+  "launch_to_ready_ms": 313.6,
+  "erase_ok": true,
+  "erase_ms": 353.99,
+  "probe_sends": 1,
+  "launch_wall_s": 0.67,
+  "pid": 6152
+ },
+ "watchA_samples": [
+  {
+   "t": 1790632306.171,
+   "utc": "21:51:46",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 0.0
+  },
+  {
+   "t": 1790632308.173,
+   "utc": "21:51:48",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 2.0
+  },
+  {
+   "t": 1790632310.173,
+   "utc": "21:51:50",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 4.0
+  },
+  {
+   "t": 1790632312.173,
+   "utc": "21:51:52",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 6.0
+  },
+  {
+   "t": 1790632314.173,
+   "utc": "21:51:54",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 8.0
+  },
+  {
+   "t": 1790632316.173,
+   "utc": "21:51:56",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 10.0
+  },
+  {
+   "t": 1790632318.173,
+   "utc": "21:51:58",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 12.0
+  },
+  {
+   "t": 1790632320.173,
+   "utc": "21:52:00",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 14.0
+  },
+  {
+   "t": 1790632322.173,
+   "utc": "21:52:02",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 16.0
+  },
+  {
+   "t": 1790632324.173,
+   "utc": "21:52:04",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 18.0
+  },
+  {
+   "t": 1790632326.173,
+   "utc": "21:52:06",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 20.0
+  },
+  {
+   "t": 1790632328.173,
+   "utc": "21:52:08",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 22.0
+  },
+  {
+   "t": 1790632330.173,
+   "utc": "21:52:10",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 24.0
+  },
+  {
+   "t": 1790632332.173,
+   "utc": "21:52:12",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 26.0
+  },
+  {
+   "t": 1790632334.173,
+   "utc": "21:52:14",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6152,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6160,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 5,
+     "nvcsw": 4,
+     "nivcsw": 1,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 28.0
+  }
+ ],
+ "watchA_window_s": 28.0,
+ "watchA_final_pids": [
+  6152,
+  6160
+ ],
+ "pidstat": {
+  "absent": "pidstat not installed"
+ },
+ "strace": {
+  "returncode": 127,
+  "summary": "timeout: failed to run command \u2018strace\u2019: No such file or directory\n",
+  "stdout": ""
+ },
+ "launchB": {
+  "launch_to_ready_ms": 298.33,
+  "erase_ok": true,
+  "erase_ms": 510.5,
+  "probe_sends": 1,
+  "launch_wall_s": 0.81,
+  "pid": 6229
+ },
+ "watchB_samples": [
+  {
+   "t": 1790632336.509,
+   "utc": "21:52:16",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 5,
+     "stime": 2,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 0.0
+  },
+  {
+   "t": 1790632337.51,
+   "utc": "21:52:17",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 1.0
+  },
+  {
+   "t": 1790632338.51,
+   "utc": "21:52:18",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 2.0
+  },
+  {
+   "t": 1790632339.51,
+   "utc": "21:52:19",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 3.0
+  },
+  {
+   "t": 1790632340.51,
+   "utc": "21:52:20",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 4.0
+  },
+  {
+   "t": 1790632341.51,
+   "utc": "21:52:21",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 5.0
+  },
+  {
+   "t": 1790632342.51,
+   "utc": "21:52:22",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 6.0
+  },
+  {
+   "t": 1790632343.51,
+   "utc": "21:52:23",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 7.0
+  },
+  {
+   "t": 1790632344.51,
+   "utc": "21:52:24",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 8.0
+  },
+  {
+   "t": 1790632345.51,
+   "utc": "21:52:25",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 9.0
+  },
+  {
+   "t": 1790632346.51,
+   "utc": "21:52:26",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 10.0
+  },
+  {
+   "t": 1790632347.51,
+   "utc": "21:52:27",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 11.0
+  },
+  {
+   "t": 1790632348.51,
+   "utc": "21:52:28",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 12.0
+  },
+  {
+   "t": 1790632349.51,
+   "utc": "21:52:29",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 13.0
+  },
+  {
+   "t": 1790632350.51,
+   "utc": "21:52:30",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 14.0
+  },
+  {
+   "t": 1790632351.51,
+   "utc": "21:52:31",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 15.0
+  },
+  {
+   "t": 1790632352.51,
+   "utc": "21:52:32",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 16.0
+  },
+  {
+   "t": 1790632353.51,
+   "utc": "21:52:33",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 17.0
+  },
+  {
+   "t": 1790632354.51,
+   "utc": "21:52:34",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 18.0
+  },
+  {
+   "t": 1790632355.51,
+   "utc": "21:52:35",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 19.0
+  },
+  {
+   "t": 1790632356.509,
+   "utc": "21:52:36",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 20.0
+  },
+  {
+   "t": 1790632357.51,
+   "utc": "21:52:37",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 21.0
+  },
+  {
+   "t": 1790632358.51,
+   "utc": "21:52:38",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 22.0
+  },
+  {
+   "t": 1790632359.51,
+   "utc": "21:52:39",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 23.0
+  },
+  {
+   "t": 1790632360.51,
+   "utc": "21:52:40",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 24.0
+  },
+  {
+   "t": 1790632361.51,
+   "utc": "21:52:41",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 25.0
+  },
+  {
+   "t": 1790632362.51,
+   "utc": "21:52:42",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 26.0
+  },
+  {
+   "t": 1790632363.51,
+   "utc": "21:52:43",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 27.0
+  },
+  {
+   "t": 1790632364.51,
+   "utc": "21:52:44",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 28.0
+  },
+  {
+   "t": 1790632365.51,
+   "utc": "21:52:45",
+   "nproc": 2,
+   "procs": [
+    {
+     "pid": 6229,
+     "comm": "node",
+     "state": "S",
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 0,
+     "wchan": "ep_poll",
+     "cmdline": "node /usr/bin/codex --no-daemon -m gpt-5.6-sol"
+    },
+    {
+     "pid": 6237,
+     "comm": "codex",
+     "state": "S",
+     "utime": 8,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0,
+     "wchan": "__futex_wait",
+     "cmdline": "/usr/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex --no-daemon -m gpt-5.6-s"
+    }
+   ],
+   "t_rel_s": 29.0
+  }
+ ],
+ "watchA_delta": {
+  "utime": 0,
+  "stime": 1,
+  "nvcsw": 0,
+  "nivcsw": 0
+ },
+ "watchA_nproc_series": [
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2
+ ],
+ "watchB_nproc_series": [
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2,
+  2
+ ]
+}

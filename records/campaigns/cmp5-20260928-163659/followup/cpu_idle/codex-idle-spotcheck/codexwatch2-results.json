@@ -1,0 +1,158 @@
+{
+ "meta": {
+  "purpose": "codex idle instrument pass (pidstat + strace)",
+  "started_utc": "2026-09-28T21:55:16Z",
+  "finished_utc": "2026-09-28T21:55:50Z"
+ },
+ "launch": {
+  "launch_to_ready_ms": 331.02,
+  "erase_ok": true,
+  "pid": 7043
+ },
+ "pids": [
+  7043,
+  7051
+ ],
+ "pre": {
+  "7043": {
+   "utime": 1,
+   "stime": 0,
+   "nvcsw": 5,
+   "nivcsw": 1
+  },
+  "7051": {
+   "utime": 9,
+   "stime": 4,
+   "nvcsw": 4,
+   "nivcsw": 0
+  }
+ },
+ "direct_during_instruments": [
+  {
+   "t_rel_s": 0.0,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 5,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 4,
+     "nivcsw": 0
+    }
+   }
+  },
+  {
+   "t_rel_s": 2.0,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 8,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 7,
+     "nivcsw": 0
+    }
+   }
+  },
+  {
+   "t_rel_s": 4.0,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 8,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 7,
+     "nivcsw": 0
+    }
+   }
+  },
+  {
+   "t_rel_s": 6.0,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 8,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 7,
+     "nivcsw": 0
+    }
+   }
+  },
+  {
+   "t_rel_s": 8.01,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 8,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 7,
+     "nivcsw": 0
+    }
+   }
+  },
+  {
+   "t_rel_s": 10.01,
+   "counters": {
+    "7043": {
+     "utime": 1,
+     "stime": 0,
+     "nvcsw": 10,
+     "nivcsw": 1
+    },
+    "7051": {
+     "utime": 9,
+     "stime": 4,
+     "nvcsw": 9,
+     "nivcsw": 0
+    }
+   }
+  }
+ ],
+ "strace": {
+  "returncode": 124,
+  "summary": "strace: Process 7043 attached with 7 threads\nstrace: Process 7051 attached with 31 threads\nstrace: Process 7043 detached\nstrace: Process 7051 detached\nstrace: Process 7045 detached\nstrace: Process 7046 detached\nstrace: Process 7047 detached\nstrace: Process 7048 detached\nstrace: Process 7049 detached\nstrace: Process 7050 detached\nstrace: Process 7052 detached\nstrace: Process 7053 detached\nstrace: Process 7054 detached\nstrace: Process 7055 detached\nstrace: Process 7056 detached\nstrace: Process 7068 detached\nstrace: Process 7069 detached\nstrace: Process 7070 detached\nstrace: Process 7071 detached\nstrace: Process 7072 detached\nstrace: Process 7073 detached\nstrace: Process 7074 detached\nstrace: Process 7075 detached\nstrace: Process 7079 detached\nstrace: Process 7083 detached\nstrace: Process 7095 detached\n% time     seconds  usecs/call     calls    errors syscall\n------ ----------- ----------- --------- --------- ----------------\n 82.93    0.008401         600        14        14 restart_syscall\n 11.21    0.001136          21        54         3 futex\n  3.00    0.000304          30        10           epoll_pwait\n  1.74    0.000176           4        37           munmap\n  0.39    0.000040           1        24           madvise\n  0.19    0.000019          19         1           fsync\n  0.12    0.000012           0        23           pwrite64\n  0.11    0.000011           1         9           mmap\n  0.07    0.000007           1         6           write\n  0.07    0.000007           1         7           pread64\n  0.07    0.000007           0        14           sigaltstack\n  0.05    0.000005           0        14           rt_sigprocmask\n  0.05    0.000005           0        10           fcntl\n------ ----------- ----------- --------- --------- ----------------\n100.00    0.010130          45       223        17 total\n",
+  "stdout": ""
+ },
+ "pidstat": {
+  "returncode": 0,
+  "stdout": "Linux 6.16.9+ (sandbox) \t09/28/26 \t_x86_64_\t(4 CPU)\n\n21:55:19      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command\n21:55:29        0      7043    0.00    0.00    0.00    0.00    0.00     1  node\n21:55:29        0      7051    0.00    0.00    0.00    0.00    0.00     1  codex\n\n21:55:29      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command\n21:55:39        0      7043    0.00    0.00    0.00    0.00    0.00     1  node\n21:55:39        0      7051    0.00    0.00    0.00    0.00    0.00     1  codex\n\n21:55:39      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command\n21:55:49        0      7043    0.00    0.00    0.00    0.00    0.00     1  node\n21:55:49        0      7051    0.00    0.00    0.00    0.00    0.00     1  codex\n\nAverage:      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command\nAverage:        0      7043    0.00    0.00    0.00    0.00    0.00     -  node\nAverage:        0      7051    0.00    0.00    0.00    0.00    0.00     -  codex\n",
+  "stderr": ""
+ },
+ "post": {
+  "7043": {
+   "utime": 1,
+   "stime": 0,
+   "nvcsw": 10,
+   "nivcsw": 1
+  },
+  "7051": {
+   "utime": 9,
+   "stime": 4,
+   "nvcsw": 9,
+   "nivcsw": 0
+  }
+ }
+}
