@@ -1,0 +1,230 @@
+{
+ "id": "20260928-043000-interaction-tui-typing-decomp",
+ "axis": "interaction",
+ "lane": "perf-tui-typing (wave-6 exploration: the TUI typing path decomposition)",
+ "hypothesis": "Typing p50 3.67-3.86ms per keystroke (the scroll-retain2 parity legs' PTY-echo baseline, full-token scrolled 3.7-3.9ms) was never decomposed: either mechanism waste hides in the echo loop (read->dispatch->render->write) or the floor is the floor. The decomposition must separate INSTRUMENT cost from APP cost before any candidate exists - the same axis measured 1.53ms (bench compare.scroll_typing, official 5-trial suite) at the 20260925 tip and 0.5-0.8ms in that lane's PTYSession probe legs, so the number was instrument-dominated to an unknown degree.",
+ "approach": "(1) CODE AUDIT at the current tip f3b524305 (origin/rust moved 5cf45d4d->46 merges->0e16d7671->2->f3b524305 during the lane; all three split series completed by then: session_ui 14/14 #2968, agent_engine 11/11 #2964, supervisor 8/8 #2963 - the moving-parts risk retired): the echo loop is interactive.rs's drain loop (per-key handle_key + an INLINE paint that bypasses the 16ms frame gate by design: 'the select below can otherwise wait out its 50ms tick... felt directly as keystroke-to-render lag'), app.rs draw() (terminal.size -> view.render_frame -> hyperlinks::install_frame -> take_osc_emissions -> execute!(BeginSynchronizedUpdate) -> ratatui terminal.draw closure (to_ratatui_line per row + full-grid render + diff + flush) -> queued caret MoveTo -> emit_zone_markers -> execute!(EndSynchronizedUpdate)), input.rs's reader thread (crossterm poll/read -> SequenceGuard -> forward -> ui_tx), the tokio::select loop (ui_rx arm -> pending queue). (2) PROBE BUILD (lane/hillclimb-tui-typing-decomp-probe, a2c325854 = tip + env-gated PA_TUI_ECHO_TRACE marks; PROBE-labeled, never ships, never a product baseline): 18 marks per keystroke across reader thread (reader_read/reader_key with the typed char), select loop (loop_recv), drain (dispatch_start/end, tray_start/end, draw_start/end) and draw internals (draw_enter/size/frame_built/links/osc/begin_w/ratatui/cursor_q/markers/end_w), each carrying CLOCK_REALTIME us + monotonic us + the char, joinable with the driver's stamps. Probe-build parity: P3 legs (trace off) vs P2 (base) p50 0.352/0.978 vs 1.038/1.056/1.029 - the bimodality is the reader-coalesced mode (below), not a probe artifact; trace ON adds nothing at p50 (P4 1.027/1.04/1.008). (3) FRESH VM ip9o9yy6kopg5ccz6ut2sa90 (16c/32GB ubuntu:22.04, rustup 1.98.1): base build (tip) sha 36d030c630938597449dc8ad557c000dd948e2961ca6896e6ffcccc1fc8d24df + probe build sha d124c72760e63f43b6530ab3a87ce603787828df235728a14a8d54a9bc1db419, sha-asserted swaps; bench-harness (PTYSession) + canonical fixtures (10MiB dadaecfc byte-identical assert per trial). TWO instruments on the same launch shape (TUI --offline --resume 10MiB, sentinel CORPUS-TAIL, 2s settle, 25-char token 'zqxjvtypingfeel0123456789', 30ms inter-key): the scroll-retain2 POLL instrument (screen_text() + 2ms sleep loop; continuity with the 3.67-3.86 baseline) and the bench's TIMING-GRADE instrument (start_echo_watch/wait_echo: the reader-thread cursor-row echo watch; the echo stamp is the chunk-arrival delta; sub-ms floor). Noop floors for BOTH instruments (cat echo round-trip) pre+post. Probe-mark legs with traces (P4 x3, P5 scrolled x2). Chunk-ledger legs (P6: base x2 + probe x2): per-key raw PTY chunk (t, offset) ledger + raw bytes + trace join. (4) TS ANCHOR: the official TS beta 0.9.6 (bun SEA, sha 69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb, in-place exec - the SEA is path-dependent, a copied binary degrades; disclosed) run through BOTH instruments on the SAME VM/fixture class (3 grade + 3 poll trials), plus the mechanism citation set. Calibration pre/mid/post (3x 30M-loop) + fleet I/O advisory probes at every phase boundary.",
+ "parity_notes": "NO PRODUCT CHANGE: the lane is a decomposition; the probe branch (a2c325854) adds only env-gated trace marks (absent PA_TUI_ECHO_TRACE every call is a pointer load; when set the marks write to the trace file only - stdout bytes, wire, schema, prompts, TUI output all untouched). The main lane branch lane/hillclimb-tui-typing-decomp stayed at the tip f3b524305 with zero product commits. The TS anchor legs measured the UNTOUCHED official TS beta. TS-leg disclosure: the TS TUI appends to the resumed session JSONL on open (my resume-path diagnostic pointed the TS at the source fixture by mistake; the file grew +5891 bytes, sha f31ed0bc; the six TS legs then ran on that mutated variant - typing is session-size-independent per record 20260925-234516, so the anchor stands; the Rust legs P1-P6 all asserted the canonical dadaecfc pre-sha per trial and the source stayed canonical; the source was regenerated + re-asserted canonical after the TS legs). TS-binary disclosure: the bun SEA binary runs only from its release dir (copied binaries fail), so the TS legs ran the in-place release binary with its sha recorded.",
+ "base": {
+  "revision": "f3b524305 (origin/rust tip at lane time; 46 merges past the brief's 5cf45d4d incl. the three split-series completions)"
+ },
+ "branch": "lane/hillclimb-tui-typing-decomp (zero product commits; the probe lives on lane/hillclimb-tui-typing-decomp-probe)",
+ "commits": [
+  "a2c325854 (PROBE: echo-path timing marks (PA_TUI_ECHO_TRACE) - reader/loop/dispatch/frame/write decomposition, never ships; on the probe branch only)"
+ ],
+ "build": {
+  "sandbox_id": "ip9o9yy6kopg5ccz6ut2sa90 (16c/32GB/120GB ubuntu:22.04, rustup 1.98.1)",
+  "binary_sha256": {
+   "base_f3b524305": "36d030c630938597449dc8ad557c000dd948e2961ca6896e6ffcccc1fc8d24df",
+   "probe_a2c325854": "d124c72760e63f43b6530ab3a87ce603787828df235728a14a8d54a9bc1db419",
+   "ts_0_9_6_official_beta": "69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb"
+  },
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "not-run (no product change)",
+  "clippy": "not-run (no product change)",
+  "test": "not-run (no product change; the probe branch is PROBE-labeled and never merges)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential (one VM, sequential legs, per-leg sha-asserted binary swaps)",
+  "suites": {
+   "calibration_30m_loop": {
+    "pre_s": [
+     0.9726,
+     0.9746,
+     0.9717
+    ],
+    "mid_s": [
+     0.9445,
+     0.9255,
+     0.9432
+    ],
+    "post_s": [
+     0.9359,
+     0.9362,
+     0.9361
+    ],
+    "drift_pct": 3.7
+   },
+   "io_advisory": {
+    "fresh_class": "DEGRADED at all three boundaries (pre p50 26.85ms stall15 100% max 183.89; mid p50 31.25 stall15 100% max 35.54; post p50 33.59 stall15 100% max 37.51) - the fleet write-regime calendar's flush-path family; no product change rides on it",
+    "fsync_class": "MARGINAL (pre p50 0.06ms stall15 4% max 26.51; mid p50 0.08 stall15 4% max 30.10; post p50 0.07 stall15 4% max 32.31)",
+    "note": "the typing legs do no product disk I/O (fixture pre-sha canonical on every Rust trial; in-leg maxima are labeled regime evidence, no ceiling applied)"
+   },
+   "noop_floors_cat": {
+    "grade_instrument": {
+     "pre": {
+      "n": 50,
+      "p50_ms": 0.069,
+      "min_ms": 0.034,
+      "p95_ms": 0.094,
+      "max_ms": 0.109
+     },
+     "post": {
+      "n": 50,
+      "p50_ms": 0.066,
+      "min_ms": 0.025,
+      "p95_ms": 0.083,
+      "max_ms": 0.091
+     }
+    },
+    "poll_instrument": {
+     "pre": {
+      "n": 50,
+      "p50_ms": 4.248,
+      "min_ms": 4.111,
+      "p95_ms": 4.358,
+      "max_ms": 4.607
+     },
+     "post": {
+      "n": 50,
+      "p50_ms": 4.196,
+      "min_ms": 4.11,
+      "p95_ms": 4.349,
+      "max_ms": 4.947
+     }
+    },
+    "note": "THE finding: the poll instrument's own floor (4.2ms against cat, an instant echoer) EXCEEDS the product's poll-leg readings (3.74-3.91) - the poll instrument quantizes at its own screen_text lock + pyte display build + 2ms sleep cycle; the '3.7ms typing baseline' is the instrument, not the app"
+   },
+   "rust_typing_poll_continuity": {
+    "instrument": "scroll-retain2 poll instrument (verbatim sr2-typing-driver.py)",
+    "baseline_typing_ms_p50": [
+     3.914,
+     3.744,
+     3.801
+    ],
+    "baseline_scrolled_ms_p50": [
+     3.708,
+     3.729,
+     3.812
+    ],
+    "typing_ok": "true all trials (the sr2 typing_ok completeness class)",
+    "note": "the scroll-retain2 baseline reproduced at the tip (its legs: 3.674-3.856 at-ready / 3.678-3.765 scrolled); sentinel 0.81s per trial (the resume+tail render at the tip is sub-second on this fixture class)"
+   },
+   "rust_typing_grade": {
+    "instrument": "bench timing-grade echo watch (chunk-arrival stamps)",
+    "base_typing_ms_p50": [
+     1.038,
+     1.056,
+     1.029
+    ],
+    "base_typing_ms_min": [
+     0.986,
+     0.974,
+     0.968
+    ],
+    "base_typing_ms_max": [
+     1.262,
+     1.341,
+     1.285
+    ],
+    "probe_notrace_typing_ms_p50": [
+     0.352,
+     0.978
+    ],
+    "probe_trace_typing_ms_p50": [
+     1.027,
+     1.04,
+     1.008
+    ],
+    "scrolled_typing_ms_p50": [
+     1.063,
+     1.062
+    ],
+    "note": "scrolled == at-ready (session-state independent, the 20260925 finding holds at the tip); the bimodal fast class (0.3-0.4ms keys) is the driver reader coalescing both of the frame's writes into one read (see the ledger decomposition)"
+   },
+   "echo_path_probe_decomposition": {
+    "instrument": "PA_TUI_ECHO_TRACE marks joined per key (75 keys pooled across 3 P4 trials; window = the key's reader_read to the next reader_read; 25/25 matched per trial)",
+    "segments_us_p50": {
+     "SEND->reader_read": 39,
+     "reader_read->reader_key": 7,
+     "reader_key->loop_recv": 25,
+     "loop_recv->dispatch_start": 6,
+     "dispatch_start->dispatch_end": 27,
+     "dispatch_end->tray_start": 1,
+     "tray_start->tray_end": 1,
+     "tray_end->draw_start": 0,
+     "draw_enter->size": 5,
+     "size->frame_built": 45,
+     "frame_built->links": 14,
+     "links->osc": 6,
+     "osc->begin_w": 6,
+     "begin_w->ratatui": 197,
+     "ratatui->cursor_q": 1,
+     "cursor_q->markers": 1,
+     "markers->end_w": 2
+    },
+    "segments_us_p90": {
+     "begin_w->ratatui": 240,
+     "size->frame_built": 69,
+     "dispatch_start->dispatch_end": 40
+    },
+    "app_total_send_to_end_w_us_p50": 384,
+    "note": "the whole app-side echo path is ~0.38ms; the dominant segment is the ratatui terminal.draw (to_ratatui_line per row + full 120x40 grid render + cell diff + flush) at 197us p50/240 p90 - the double-buffer diff cost the 20260925 lane named; handle_key 27us, the tokio wake 25us, the reader wake+parse 39us"
+   },
+   "pty_chunk_ledger_decomposition": {
+    "instrument": "per-key raw chunk ledger + trace join (P6: base x2 + probe x2, 100/100 keys)",
+    "structure": "exactly TWO PTY chunks per keystroke: chunk1 = the BeginSynchronizedUpdate write (8B) at +0.18-0.23ms after send; chunk2 = the ratatui paint + caret MoveTo + EndSynchronizedUpdate (~67B) at +0.82-0.93ms after chunk1",
+    "cross_process_us_p50": {
+     "begin_w_mark->chunk1_arrival": 29,
+     "ratatui_mark->chunk2_arrival": 663,
+     "end_w_mark->chunk2_arrival": 656
+    },
+    "driver_reader_cost": "the driver's per-chunk echo-watch check builds pyte's full 120x40 screen.display (measured in isolation on the VM: 0.755ms p50 per access) - the driver cannot stamp the paint chunk until it finishes processing the 8-byte Begin chunk, which is the ~0.65ms the grade instrument ADDS to the app's 0.38ms (grade reads ~1.03ms); when the reader coalesces both writes into one read the stamp lands at the paint (~0.35-0.40ms - the bimodal fast class)",
+    "note": "the app's own flush sequence (Begin flushed separately from the paint+End) is what creates the two-chunk structure; three write+flush syscalls per keystroke frame (Begin; ratatui paint; caret-MoveTo+End)"
+   },
+   "ts_anchor": {
+    "product": "official TS beta 0.9.6 (bun SEA), same VM, same fixture class, same instruments",
+    "grade_typing_ms_p50": [
+     3.453,
+     3.887,
+     3.407
+    ],
+    "grade_typing_ms_max_first_key": [
+     6.111,
+     6.439,
+     6.353
+    ],
+    "poll_typing_ms_p50": [
+     6.519,
+     6.639,
+     6.613
+    ],
+    "poll_scrolled_ms_p50": [
+     6.475,
+     6.546,
+     6.559
+    ],
+    "mechanism_citations": [
+     "packages/tui/src/tui.ts:605-607 terminal.start wires stdin data -> handleInput",
+     "packages/tui/src/tui.ts:897 handleInput; :946-952 the focused component dispatch + requestRender",
+     "packages/tui/src/tui.ts:664-691 requestRender -> process.nextTick -> scheduleRender",
+     "packages/tui/src/tui.ts:351 MIN_RENDER_INTERVAL_MS=16; :877-892 scheduleRender's setTimeout(max(0,16-elapsed)) - at 30ms key pacing the delay is 0 but the render still rides TWO event-loop hops (nextTick + timer)",
+     "packages/tui/src/tui.ts:1659 doRender; :1600-1656 renderFullscreen (renders ALL components + composeFrame)",
+     "packages/tui/src/fullscreen.ts:784-837 viewport.paint: whole-ROW diff (absolute addressing + clear-line + the full changed row), ONE terminal.write per paint",
+     "packages/coding-agent/src/modes/interactive/components/custom-editor.ts:172 the editor's handleInput"
+    ],
+    "note": "TS pays ~3.4-3.9ms per keystroke (grade) on identical hardware - the Rust port's echo path (~1.03ms grade / 0.38ms app-side) is ~3.3x faster; TS's cost is its event-loop render hops (nextTick + setTimeout) plus the full component render per keystroke; the TS coalescing window (16ms) costs ~0 delay at this pacing but does not amortize the hop count"
+   }
+  },
+  "extra": {
+   "sentinel_s_typical": "0.81-1.01 (Rust resume of the 10MiB fixture at the tip) vs 2.42-2.62 (TS beta)",
+   "pty_bytes_typing_leg": "6913-6922 (Rust, 25-key token + settle) vs 14065 (TS, same token) - TS emits ~2x the echo bytes (whole-row repaints)",
+   "fixture_sha256": "canonical 10MiB dadaecfc... asserted pre-sha on every Rust trial; TS legs ran the TS-mutated variant f31ed0bc (+5891B: the TS appends to the resumed session JSONL on open - disclosed; the TS binary also only runs in-place, its SEA is path-dependent)"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Every timing claim carries its own noop floor measured with the SAME instrument on the SAME VM in the same phase window (cat: grade 0.069/0.066ms pre/post; poll 4.248/4.196ms pre/post); the probe-mark decomposition is cross-checked against the independent chunk-ledger clocks (the begin_w->chunk1 join agrees at 29us). Calibration drift 3.7% across the run (under the 10% gate, monotone warm-up). I/O regime: fresh-class DEGRADED at all boundaries (the fleet flush-path family), fsync MARGINAL - no typing leg does product disk I/O; in-leg maxima (grade max 1.25-1.34ms) are labeled regime evidence, no ceiling applied. typing_ok held on every reported trial (the sr2 completeness class; the one dropped-key rerun discipline was never needed). The bimodal fast class in three legs (P3 t1, P5 t2, P1's first key) is the driver reader's chunk coalescing, disclosed above. TS legs: 3+3 trials, typing_ok true all; the TS fixture mutation and the in-place SEA exec are disclosed in parity_notes."
+ },
+ "outcome": "discarded (honest negative: the floor is the floor - and the floor is ~0.38ms)",
+ "decision": "WORKER RECOMMENDATION: DISCARD (no candidate, no PR). (1) The 3.67-3.86ms 'typing p50 baseline' was the POLL INSTRUMENT's own floor, not a product cost: the identical poll loop against `cat` (an instant echoer) reads 4.2ms p50 on the same VM - HIGHER than the product's 3.74-3.91 - because its screen_text() lock + pyte display build (0.755ms measured) + 2ms sleep quantize every reading at its own cycle; the baseline reproduced at the tip (P1) and is fully attributed. (2) The app's true echo path is ~0.38ms per keystroke (probe marks, 75 keys): reader wake 39us, guard/filter 7us, channel+tokio wake 25us, handle_key 27us, tray 1us, frame compose 45us, hyperlink install 14us, osc 6us, Begin write 6us, ratatui draw+flush 197us, tail 4us - the dominant segment is the ratatui full-grid render+diff (the double-buffer cost the 20260925 lane already named), and it is session-state independent (scrolled 1.06ms == at-ready 1.03ms on the grade instrument). (3) The grade instrument's ~1.03ms reading adds its OWN reader-side 0.65ms (the per-chunk pyte display build delays the paint-chunk stamp; the app's three-syscall flush sequence creates the two-chunk structure the reader trips over). (4) The TS anchor: the official TS beta pays 3.4-3.9ms per keystroke on the same VM/instrument (event-loop hops + full component render + whole-row diff), ~3.3x the Rust port's grade reading - the port is FASTER than its TS source on this axis. (5) CANDIDATES: none meet the bar. The two named micro-items - the 3 write+flush syscalls per keystroke frame (vs TS's single write; merging them keeps the byte stream identical) and the whole-grid re-render at 197us - are worth ~30us and ~100-150us respectively on an already-imperceptible 0.38ms path, under every instrument's noise floor, and sit on the parity-frozen TUI-output surface; the 20260925 lane's refutation of the same class stands. Headroom worth routing elsewhere: none on this axis - the typing path is decomposed, attributed, and at its floor.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-043000-interaction-tui-typing-decomp.json",
+ "session": {
+  "worker": "perf-tui-typing",
+  "session_dir": "~/.prime/agent/sessions/01a0e610-92c5-77d3-a6e9-5865ca3dbe3b.jsonl"
+ },
+ "timestamp": "2026-09-28T04:30:00.000000Z"
+}
