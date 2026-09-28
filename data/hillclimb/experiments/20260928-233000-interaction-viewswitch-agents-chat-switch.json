@@ -140,5 +140,37 @@
  "parity_notes": "The TUI output bytes: the under-limit switch legs are unchanged by the cap (identical visible tails; the residual frame diffs are the A/A-class event/paint-phase non-determinism \u2014 roster rows, goal panels, bash-poll cards, the trial-name artifact \u2014 plus the frame-boundary phase); the capped classes differ exactly by the notice row + the un-rendered older rows (the served-path proof). Editor history/wire stay full-set per TS. TS-parity case: TS renders only the newest 400 at open/rebuild (INITIAL_TRANSCRIPT_RENDER_MESSAGE_LIMIT=400) \u2014 attach-paint's cut restores it; the port's switch inherits it via the shared reconstruct seam (verified: no separate switch call site needed).",
  "outcome": "MEASURED + DECOMPOSED + the stacked-core verified on the switch path (served-path + ABBA + the byte-class evidence). Kevin's signal confirmed real and attributed: linear in the retained message count, dominated by the TS-parity-bound full-ship wire+parse at the big classes; the pole met only under ~5k messages.",
  "session": "perf-view-switch-fast",
- "timestamp": "2026-09-28T23:45:00Z"
+ "timestamp": "2026-09-28T23:45:00Z",
+ "confirmation_pair_at_folded_head": {
+  "purpose": "the PR-head switch-path numbers (the parent's ruling: the pre-move baselines stand; the confirmation re-measures the canon class at the folded tree)",
+  "conf_base": "0bfaab59f (the folded tree WITHOUT the cap), binary sha256 per /root/setup-conf.log",
+  "conf_core": "3091de7ee0c78c3893b33aa5aef6703a352961e4 (attach-paint's folded head = the PR head)",
+  "canon_agents_to_chat_ms": {
+   "conf_base": [
+    322.6,
+    329.7
+   ],
+   "conf_core": [
+    321.6,
+    286.4
+   ]
+  },
+  "canon_open_chat_ms": {
+   "conf_base": [
+    1110.6
+   ],
+   "conf_core": [
+    1532.4
+   ],
+   "note": "single-trial noise at this class (pre-fold spread 829-1022); the switch legs are the confirmation's subject"
+  },
+  "verdict": "the switch legs at the PR head stand in the same ~286-330ms class as the pre-fold arms (263.9-340.7) \u2014 the cap null + the ~0.0245ms/message curve confirmed at the folded tree; the byte legs identical frames counts (2) + bytes (4980) across the pair"
+ },
+ "evidence_archive": {
+  "path": "/home/ubuntu/hillclimb/fixtures/viewswitch/viewswitch-evidence.tar.gz",
+  "sha256": "8d682344bd8691e0451cdfb9ab55d7309e4f95f8b76577f36985e94c12031a13",
+  "bytes": 147493060,
+  "note": "the full ABBA traces (per-leg frames with byte offsets + raw.pt), the instr logs, the probes, the chained-fixture pair, the drivers; sha-verified BEFORE the VM deletion"
+ },
+ "updated": "2026-09-28T23:40:00Z"
 }
