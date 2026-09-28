@@ -1,0 +1,69 @@
+{
+ "id": "20260928-174500-tui-kitty-probe-early-typing-sliced-window",
+ "axis": "startup",
+ "hypothesis": "The kitty-probe cold-start bottleneck (Kevin directive 2026-09-28): on silent (never-answering, non-kitty) terminals the kitty capability probe parks crossterm's process-global event-reader lock for its whole 250ms answer window, so keys typed in the first-mount window queue behind the lock and deliver at the settle (~250ms first-input latency). Code facts at b5bf28f1d: enable() is non-blocking for the render path (TTFF not gated); the residual cost is exactly the lock-hold; DA1-answering terminals already early-exit (KeyboardEnhancementFlagsFilter matches PrimaryDeviceAttributes too) so the full hold hits only silent ptys; TS is in-band (terminal.ts queryAndEnableKittyProtocol detects the reply in the stdin data handler; early keys deliver instantly) \u2014 the out-of-band lock-hold is a port divergence and the sliced window is TS-parity RESTORING.",
+ "approach": "MEASURE FIRST, then the parity-safe cut. (1) Real-product flow (bench PTYSession, per-trial resident daemon, silent/DA1/kitty answer variants, keys at query+10..400ms, chunk-accurate ledger): the early-key visibility on the fresh-session flow is co-gated by the attach-snapshot paint (~250-450ms, arm-invariant) \u2014 the probe's marginal user-visible cost is the silent-vs-answered differential (pilot ~84ms at +50ms) plus the delivery-edge class. (2) SURGICAL PAIRED SUITE (the repo's own pty-e2e child mode: run_interactive against an instant mock supervisor \u2014 no worker spawn, the snapshot paints at mock speed, so key visibility == delivery + render inside the window): ABBA base,cand,cand,base x5 rounds over the two TEST binaries, unlink-then-copy sha-asserted swaps. THE CUT: vendored crossterm read_supports_keyboard_enhancement_raw v2 \u2014 the same 250ms window held in 10ms poll slices with yield between (deadline-capped; poll-error retries now also bounded \u2014 upstream retried without a bound); the query write, filters, DA1 early-exit, parked-keys contract, return values unchanged; pa-tui byte-untouched (probe contract, EXIT_RELEASE standdown, late window, byte orders preserved by construction). Candidates B (env-hint expansion) REJECTED with evidence: after the cut the window gates nothing user-visible (input delivers within a slice, TTFF never gated), so the only benefit class is gone while the misclassification risk (kitty behind env-stripping loses CSI-u) is real; the existing instant paths (kitty/ghostty/wezterm hints, dumb/linux) stand. Candidate C (adaptive early-exit) ALREADY PRESENT in crossterm (filter matches DA1) \u2014 verified live in the da1 rows.",
+ "parity_notes": "Frozen surfaces: once-per-process probe contract (asserted: query count == 1 per child process in the new e2e); late-upgrade window semantics (the 150ms fallback/250ms cap unchanged \u2014 crossterm's return contract untouched); late-reply filtering (parser parking unchanged; replies never become user keys); the exit standdown + #3001 leak class (pa-tui untouched \u2014 the existing kitty_release_handoff_e2e and kitty_exit_routes_e2e are the oracles); bracketed-paste/modifyOtherKeys byte orders (enable()/disable() writes untouched); TUI output bytes (no render-path change; the probe's own writes move not at all \u2014 the query still precedes the first slice). Served-path assertions on every oracle class in the new kitty_early_typing_e2e: the query bytes must be on the wire (anti-vacuity vs env-hint short-circuit), the early key must RENDER (anti-vacuity vs non-delivery), the kitty answer must produce the flags push (upgrade class served), the DA1-only answer must produce NO flags push (early-exit class served). TS-parity anchors: terminal.ts queryAndEnableKittyProtocol (in-band reply detection, 150ms fallback timer) \u2014 the port keeps its documented divergences (no modifyOtherKeys arming) and the patch moves only the lock-hold shape.",
+ "base": {
+  "revision": "b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+  "binary_sha256": "2965938a6c8f61d67855b19e1607c21a8f3141d1230239e57362f2788158d3d1"
+ },
+ "branch": "lane/kitty-probe-coldstart (product); hillclimb (bench)",
+ "commits": [
+  "d75f2be71 (the sliced-window patch: vendored crossterm v2 + PRIME_AGENT_PATCH.md + enhanced_keys doc)",
+  "3e4ee2760 (kitty_early_typing_e2e.rs: the differential oracle with served-path assertions)"
+ ],
+ "build": {
+  "sandbox_id": "jzcnfbdb4mjtig1e5atyaeur (16c/32GB ubuntu:22.04)",
+  "toolchain": "rustup 1.98.1 (the CI pin), --release",
+  "product_binaries": "base 2965938a... / cand 413818711e... (b5bf28f1d + the 3-file patch)",
+  "child_test_binaries": "BASE 491dfae0712241180c030632329c99943540af5fa0ce8da06cc74bb3afdc39ab / CAND 6f2941cd84f6be15c3e6d663a1b8e07f3462ecc32a65469abc381721c6f43505 (provenance: clean-tree vs patched-tree build, git status --short echoed per arm)"
+ },
+ "gates": {
+  "fmt": "pass (cargo fmt --check rc=0 on the cand tree)",
+  "clippy": "pass (-p pa-cli --tests --release -D warnings rc=0)",
+  "new_e2e": "kitty_early_typing_e2e 3/3 pass on the cand tree (early_typing_child_mode trivial + the differential + the answered classes)",
+  "frozen_e2es": "kitty_release_handoff_e2e 2/2 + kitty_exit_routes_e2e 2/2 pass on the cand tree (the exit standdown + pop ordering + late-release filtering preserved)",
+  "pa_tui_unit": "1235/1236 pass on the cand tree; the single red = browser::tests::the_opener_resolves_an_absolute_path_and_targets_the_url \u2014 ENVIRONMENTAL: the ubuntu:22.04 VM image has no xdg-open (opener() finds nothing); reproduced RED on the CLEAN BASE TREE b5bf28f1d at the same head (git-stash A/B, 0 passed 1 failed); unrelated to the lane (touches only vendor/crossterm + docs + a new test file); GitHub CI (ubuntu-latest with xdg-open) is the green surface",
+  "full_suite": "the fleet VM gate on the pushed branch (fleet_pipeline.fleet_gate) \u2014 see outcome"
+ },
+ "measurements": {
+  "method": "same-VM sequential, ABBA base,cand,cand,base, sha-asserted unlink-then-copy swaps, chunk-accurate pty ledger, pyte echo watch on the cursor rows, pre/mid/post noop+fsync+isolated-fresh calibration",
+  "io_advisory_v1_0": "repeat-fsync n=20 (p50 0.11-0.18ms, one 42-54ms stall per leg, labeled); isolated fresh+sync_all+rename+stat n=40 @0.5s spacing per leg (pre p50 44.6ms rate20=100%, mid p50 1.0ms rate20=5%, post p50 49.6ms rate20=100% gt50=17) \u2014 the VM disk's fresh class sits in a slow phase at pre/post and a fast phase at mid (phase-model re-classification at every leg boundary; HOST-RELATIVE: no leg-vs-leg drift within a phase). The measured metric is I/O-independent (pty path is memory/CPU): the base arm reproduces to +-0.2ms across pre-phase block0 and post-phase block3 (241.8 vs 241.6 p50 at +10ms) under different disk phases.",
+  "surgical_suite_120_trials": {
+   "silent_key_sent_at_query+10ms": "BASE p50 241.8ms (n=10, min 241.5 max 242.6) | CAND p50 11.2ms (n=10, min 3.4 max 31.4)",
+   "silent_+50ms": "BASE p50 201.6 (min 201.4 max 202.6) | CAND p50 3.2 (min 2.8 max 5.5)",
+   "silent_+120ms": "BASE p50 131.8 (min 131.4 max 132.6) | CAND p50 4.3 (min 2.4 max 14.5)",
+   "silent_+200ms": "BASE p50 51.8 (min 51.4 max 52.5) | CAND p50 4.5 (min 3.3 max 6.4)",
+   "da1_+50ms": "BASE p50 1.8 (min 1.2 max 5.1) | CAND p50 3.0 (min 1.2 max 3.7) \u2014 the answered path unmoved",
+   "kitty_+50ms": "BASE p50 1.2 (min 1.1 max 1.4) | CAND p50 1.2 (min 1.1 max 3.8) \u2014 the upgrade path unmoved",
+   "base_signature": "every BASE silent row is settle-coupled: visible_at ~= query+251.8ms across all four offsets (241.8+10 / 201.6+50 / 131.8+120 / 51.8+200) \u2014 the lock-hold delivery model confirmed",
+   "abba_drift": "none: block0 vs block3 BASE p50s 241.8/241.6 (+10ms), 201.7/201.6 (+50), 131.8/131.7 (+120), 51.8/51.7 (+200); CAND blocks 12.2/11.2 (+10ms)"
+  },
+  "real_product_flow_120_trials": {
+   "note": "the fresh-session flow co-gates early-key visibility by the attach-snapshot paint (p50 ~280-300ms, arm-invariant, another lane's territory: session-create/worker-spawn)",
+   "ttff": "BASE p50 5.5ms / CAND p50 5.3ms \u2014 first draw NOT gated by the probe (code fact verified live)",
+   "control_keys_post_window": "BASE p50 1.50ms / CAND p50 1.40ms \u2014 the render pipeline arm-invariant",
+   "silent_vs_answered_differential": "the probe's marginal user-visible cost on this flow (the snapshot paint masks part of the hold): pilot da1@+50 188.4 vs silent@+50 272.8 (84ms); suite own-repaint class at +200: BASE 50.8 vs CAND 2.4 (n=1/1 censored-dominated; the surgical suite is the clean isolation)"
+  },
+  "candidate_B_rejection": "no measured benefit class remains (input delivers within a slice; TTFF never gated; answering terminals already early-exit) while misclassification risk is real (kitty behind env-stripping would lose CSI-u silently)",
+  "candidate_C": "already present in the vendored crossterm (the flags filter matches DA1); verified live (da1 rows settle at the answer in both arms; no flags push on DA1-only, asserted in the new e2e)"
+ },
+ "validity": {
+  "surgical": "120/120 valid, 120/120 query_seen (the probe path served in every trial), 10/10 per cell",
+  "product": "120/120 valid, 120/120 query_seen",
+  "excluded": "the first v2-pilot (10 rows) ran concurrent with the candidate cargo build (load-contaminated ttff 15-137ms) \u2014 EXCLUDED from all claims; kept as trials-pilot.jsonl",
+  "cross_check": "the pre-slice BASE settle-coupled signature (251.8ms across offsets) + the arm-invariant answered classes + the control keys + TTFF agree across both suites"
+ },
+ "outcome": "PENDING \u2014 record pushed at PR-open; merge-bar outcome annotates",
+ "decision": "PENDING",
+ "pr_url": "PENDING",
+ "record_path": "data/hillclimb/experiments/20260928-174500-tui-kitty-probe-early-typing-sliced-window.json",
+ "evidence": {
+  "archive": "hillclimb/archives/kitty-probe-coldstart/kpc-evidence.tar.gz",
+  "sha256": "0aa695baa4d63d3ddf3179551a23fb11af5750728a46f0fd8ee9745a73cc6d9e",
+  "contents": "the surgical ABBA rows x120 + the real-product flow rows x120 + the pre/mid/post calibration legs + the load-contaminated pilot rows (EXCLUDED, disclosed) + the two measurement drivers + the two I/O advisory probes"
+ },
+ "session": "kitty-probe-coldstart lane (subagent of Hillclimb)",
+ "timestamp": "2026-09-28T17:45:00Z"
+}
