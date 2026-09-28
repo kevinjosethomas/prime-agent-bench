@@ -1,0 +1,1208 @@
+{
+ "summary": {
+  "compare.cpu_idle": {
+   "products": {
+    "rust": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 270.7,
+      "p50": 274.3,
+      "p95": 333.3,
+      "p99": 333.3,
+      "max": 333.3,
+      "mean": 283.5,
+      "stdev": 18.88,
+      "ci95_median": [
+       272.2,
+       290.1
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 9151.4,
+      "p50": 9178.4,
+      "p95": 11319.1,
+      "p99": 11319.1,
+      "max": 11319.1,
+      "mean": 9389.5,
+      "stdev": 678.13,
+      "ci95_median": [
+       9166.2,
+       9189.8
+      ]
+     },
+     "idle_cpu_pct": {
+      "n": 10,
+      "min": 0.1,
+      "p50": 0.3,
+      "p95": 0.6,
+      "p99": 0.6,
+      "max": 0.6,
+      "mean": 0.3,
+      "stdev": 0.14,
+      "ci95_median": [
+       0.2,
+       0.4
+      ]
+     },
+     "wakes_per_s": {
+      "n": 10,
+      "min": 20.1,
+      "p50": 36.1,
+      "p95": 49.1,
+      "p99": 49.1,
+      "max": 49.1,
+      "mean": 37.1,
+      "stdev": 8.47,
+      "ci95_median": [
+       31.4,
+       43.0
+      ]
+     },
+     "involuntary_wakes_per_s": {
+      "n": 10,
+      "min": 0.0,
+      "p50": 16.0,
+      "p95": 29.1,
+      "p99": 29.1,
+      "max": 29.1,
+      "mean": 17.0,
+      "stdev": 8.48,
+      "ci95_median": [
+       11.3,
+       22.9
+      ]
+     },
+     "idle_window_s": {
+      "n": 10,
+      "min": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "p99": 10.0,
+      "max": 10.0,
+      "mean": 10.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       10.0,
+       10.0
+      ]
+     },
+     "nproc_end": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     }
+    },
+    "ts": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 525.2,
+      "p50": 568.1,
+      "p95": 987.2,
+      "p99": 987.2,
+      "max": 987.2,
+      "mean": 625.3,
+      "stdev": 148.48,
+      "ci95_median": [
+       549.5,
+       797.0
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 42.1,
+      "p50": 61.0,
+      "p95": 81.3,
+      "p99": 81.3,
+      "max": 81.3,
+      "mean": 62.6,
+      "stdev": 15.26,
+      "ci95_median": [
+       44.4,
+       79.9
+      ]
+     },
+     "idle_cpu_pct": {
+      "n": 10,
+      "min": 4.7,
+      "p50": 5.4,
+      "p95": 6.3,
+      "p99": 6.3,
+      "max": 6.3,
+      "mean": 5.3,
+      "stdev": 0.47,
+      "ci95_median": [
+       4.8,
+       5.5
+      ]
+     },
+     "wakes_per_s": {
+      "n": 10,
+      "min": 83.1,
+      "p50": 98.6,
+      "p95": 131.8,
+      "p99": 131.8,
+      "max": 131.8,
+      "mean": 106.2,
+      "stdev": 16.25,
+      "ci95_median": [
+       97.5,
+       122.4
+      ]
+     },
+     "involuntary_wakes_per_s": {
+      "n": 10,
+      "min": 30.2,
+      "p50": 42.6,
+      "p95": 77.9,
+      "p99": 77.9,
+      "max": 77.9,
+      "mean": 52.2,
+      "stdev": 16.21,
+      "ci95_median": [
+       41.1,
+       71.9
+      ]
+     },
+     "idle_window_s": {
+      "n": 10,
+      "min": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "p99": 10.0,
+      "max": 10.0,
+      "mean": 10.0,
+      "stdev": 0.01,
+      "ci95_median": [
+       10.0,
+       10.0
+      ]
+     },
+     "nproc_end": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     }
+    },
+    "claude": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 308.9,
+      "p50": 329.7,
+      "p95": 820.3,
+      "p99": 820.3,
+      "max": 820.3,
+      "mean": 378.3,
+      "stdev": 156.24,
+      "ci95_median": [
+       312.5,
+       357.1
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 2813.7,
+      "p50": 2828.2,
+      "p95": 7079.0,
+      "p99": 7079.0,
+      "max": 7079.0,
+      "mean": 3253.2,
+      "stdev": 1344.29,
+      "ci95_median": [
+       2822.7,
+       2837.5
+      ]
+     },
+     "idle_cpu_pct": {
+      "n": 10,
+      "min": 1.0,
+      "p50": 1.0,
+      "p95": 1.3,
+      "p99": 1.3,
+      "max": 1.3,
+      "mean": 1.1,
+      "stdev": 0.11,
+      "ci95_median": [
+       1.0,
+       1.2
+      ]
+     },
+     "wakes_per_s": {
+      "n": 10,
+      "min": 11.6,
+      "p50": 17.2,
+      "p95": 21.8,
+      "p99": 21.8,
+      "max": 21.8,
+      "mean": 17.7,
+      "stdev": 2.8,
+      "ci95_median": [
+       16.6,
+       20.8
+      ]
+     },
+     "involuntary_wakes_per_s": {
+      "n": 10,
+      "min": 0.4,
+      "p50": 3.1,
+      "p95": 5.4,
+      "p99": 5.4,
+      "max": 5.4,
+      "mean": 3.0,
+      "stdev": 1.57,
+      "ci95_median": [
+       1.6,
+       4.2
+      ]
+     },
+     "idle_window_s": {
+      "n": 10,
+      "min": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "p99": 10.0,
+      "max": 10.0,
+      "mean": 10.0,
+      "stdev": 0.01,
+      "ci95_median": [
+       10.0,
+       10.0
+      ]
+     },
+     "nproc_end": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     }
+    },
+    "codex": {
+     "launch_to_ready_ms": {
+      "n": 9,
+      "min": 295.7,
+      "p50": 308.7,
+      "p95": 313.2,
+      "p99": 313.2,
+      "max": 313.2,
+      "mean": 307.3,
+      "stdev": 5.72,
+      "ci95_median": [
+       302.0,
+       311.9
+      ]
+     },
+     "erase_ok": {
+      "n": 9,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 9,
+      "min": 19.0,
+      "p50": 25.2,
+      "p95": 53.0,
+      "p99": 53.0,
+      "max": 53.0,
+      "mean": 32.9,
+      "stdev": 13.86,
+      "ci95_median": [
+       24.8,
+       50.6
+      ]
+     },
+     "idle_cpu_pct": {
+      "n": 9,
+      "min": 0.0,
+      "p50": 0.0,
+      "p95": 0.1,
+      "p99": 0.1,
+      "max": 0.1,
+      "mean": 0.0,
+      "stdev": 0.03,
+      "ci95_median": [
+       0.0,
+       0.0
+      ]
+     },
+     "wakes_per_s": {
+      "n": 9,
+      "min": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       0.0,
+       0.0
+      ]
+     },
+     "involuntary_wakes_per_s": {
+      "n": 9,
+      "min": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       0.0,
+       0.0
+      ]
+     },
+     "idle_window_s": {
+      "n": 9,
+      "min": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "p99": 10.0,
+      "max": 10.0,
+      "mean": 10.0,
+      "stdev": 0.01,
+      "ci95_median": [
+       10.0,
+       10.0
+      ]
+     },
+     "nproc_end": {
+      "n": 9,
+      "min": 2,
+      "p50": 2,
+      "p95": 2,
+      "p99": 2,
+      "max": 2,
+      "mean": 2.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       2,
+       2
+      ]
+     }
+    },
+    "pi": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 241.9,
+      "p50": 270.9,
+      "p95": 329.5,
+      "p99": 329.5,
+      "max": 329.5,
+      "mean": 279.0,
+      "stdev": 29.74,
+      "ci95_median": [
+       253.3,
+       318.0
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 711.1,
+      "p50": 712.9,
+      "p95": 716.6,
+      "p99": 716.6,
+      "max": 716.6,
+      "mean": 713.4,
+      "stdev": 1.48,
+      "ci95_median": [
+       712.9,
+       714.7
+      ]
+     },
+     "idle_cpu_pct": {
+      "n": 10,
+      "min": 0.7,
+      "p50": 0.8,
+      "p95": 1.0,
+      "p99": 1.0,
+      "max": 1.0,
+      "mean": 0.8,
+      "stdev": 0.1,
+      "ci95_median": [
+       0.7,
+       0.9
+      ]
+     },
+     "wakes_per_s": {
+      "n": 10,
+      "min": 2.7,
+      "p50": 4.0,
+      "p95": 7.7,
+      "p99": 7.7,
+      "max": 7.7,
+      "mean": 4.3,
+      "stdev": 1.5,
+      "ci95_median": [
+       3.2,
+       4.7
+      ]
+     },
+     "involuntary_wakes_per_s": {
+      "n": 10,
+      "min": 0.0,
+      "p50": 0.9,
+      "p95": 4.5,
+      "p99": 4.5,
+      "max": 4.5,
+      "mean": 1.1,
+      "stdev": 1.29,
+      "ci95_median": [
+       0.5,
+       1.9
+      ]
+     },
+     "idle_window_s": {
+      "n": 10,
+      "min": 10.0,
+      "p50": 10.0,
+      "p95": 10.0,
+      "p99": 10.0,
+      "max": 10.0,
+      "mean": 10.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       10.0,
+       10.0
+      ]
+     },
+     "nproc_end": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     }
+    }
+   },
+   "primary": null,
+   "excluded": {
+    "codex": {
+     "count": 3,
+     "reasons": {
+      "validation_failed": 3
+     }
+    }
+   },
+   "trials": {
+    "rust": {
+     "aa": 10,
+     "w1": 10
+    },
+    "ts": {
+     "aa": 10,
+     "w1": 10
+    },
+    "claude": {
+     "aa": 10,
+     "w1": 10
+    },
+    "codex": {
+     "aa": 8,
+     "w1": 9
+    },
+    "pi": {
+     "aa": 10,
+     "w1": 10
+    }
+   },
+   "comparability": {
+    "rust": "qualified",
+    "ts": "qualified",
+    "claude": "qualified",
+    "codex": "qualified",
+    "pi": "qualified"
+   },
+   "identity": {
+    "run_labels": [
+     "idleall-20260928-211002"
+    ],
+    "harness_revs": [
+     "unknown"
+    ]
+   },
+   "disclosures": {
+    "ts": {
+     "probe_quantized": 10
+    },
+    "codex": {
+     "probe_quantized": 9
+    },
+    "pi": {
+     "probe_quantized": 10
+    }
+   }
+  },
+  "compare.memory_idle": {
+   "products": {
+    "rust": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 270.7,
+      "p50": 275.9,
+      "p95": 289.1,
+      "p99": 289.1,
+      "max": 289.1,
+      "mean": 277.2,
+      "stdev": 5.68,
+      "ci95_median": [
+       272.3,
+       282.3
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 9176.3,
+      "p50": 9191.2,
+      "p95": 11308.4,
+      "p99": 11308.4,
+      "max": 11308.4,
+      "mean": 9609.9,
+      "stdev": 887.02,
+      "ci95_median": [
+       9188.3,
+       9199.3
+      ]
+     },
+     "rss_settled_mb": {
+      "n": 10,
+      "min": 109.3,
+      "p50": 110.9,
+      "p95": 111.7,
+      "p99": 111.7,
+      "max": 111.7,
+      "mean": 110.8,
+      "stdev": 0.71,
+      "ci95_median": [
+       110.5,
+       111.7
+      ]
+     },
+     "pss_settled_mb": {
+      "n": 10,
+      "min": 72.3,
+      "p50": 73.7,
+      "p95": 74.4,
+      "p99": 74.4,
+      "max": 74.4,
+      "mean": 73.7,
+      "stdev": 0.69,
+      "ci95_median": [
+       73.1,
+       74.4
+      ]
+     },
+     "tree_nproc": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     },
+     "nproc_settled": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     }
+    },
+    "ts": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 508.1,
+      "p50": 580.2,
+      "p95": 641.6,
+      "p99": 641.6,
+      "max": 641.6,
+      "mean": 577.8,
+      "stdev": 49.39,
+      "ci95_median": [
+       531.9,
+       641.3
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 46.2,
+      "p50": 53.2,
+      "p95": 77.2,
+      "p99": 77.2,
+      "max": 77.2,
+      "mean": 57.2,
+      "stdev": 9.45,
+      "ci95_median": [
+       50.0,
+       66.3
+      ]
+     },
+     "rss_settled_mb": {
+      "n": 10,
+      "min": 632.5,
+      "p50": 643.8,
+      "p95": 648.8,
+      "p99": 648.8,
+      "max": 648.8,
+      "mean": 642.3,
+      "stdev": 5.22,
+      "ci95_median": [
+       639.4,
+       646.3
+      ]
+     },
+     "pss_settled_mb": {
+      "n": 10,
+      "min": 412.2,
+      "p50": 423.6,
+      "p95": 428.6,
+      "p99": 428.6,
+      "max": 428.6,
+      "mean": 422.1,
+      "stdev": 5.35,
+      "ci95_median": [
+       419.0,
+       426.0
+      ]
+     },
+     "tree_nproc": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     },
+     "nproc_settled": {
+      "n": 10,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4,
+      "mean": 4.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       4,
+       4
+      ]
+     }
+    },
+    "claude": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 301.3,
+      "p50": 323.3,
+      "p95": 388.6,
+      "p99": 388.6,
+      "max": 388.6,
+      "mean": 336.3,
+      "stdev": 30.56,
+      "ci95_median": [
+       311.9,
+       376.0
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 2817.6,
+      "p50": 2824.0,
+      "p95": 2830.9,
+      "p99": 2830.9,
+      "max": 2830.9,
+      "mean": 2825.2,
+      "stdev": 4.18,
+      "ci95_median": [
+       2822.7,
+       2829.6
+      ]
+     },
+     "rss_settled_mb": {
+      "n": 10,
+      "min": 236.6,
+      "p50": 237.4,
+      "p95": 238.4,
+      "p99": 238.4,
+      "max": 238.4,
+      "mean": 237.5,
+      "stdev": 0.47,
+      "ci95_median": [
+       237.2,
+       237.7
+      ]
+     },
+     "pss_settled_mb": {
+      "n": 10,
+      "min": 234.9,
+      "p50": 235.8,
+      "p95": 236.8,
+      "p99": 236.8,
+      "max": 236.8,
+      "mean": 235.8,
+      "stdev": 0.5,
+      "ci95_median": [
+       235.5,
+       236.1
+      ]
+     },
+     "tree_nproc": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "nproc_settled": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     }
+    },
+    "codex": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 298.1,
+      "p50": 307.6,
+      "p95": 322.9,
+      "p99": 322.9,
+      "max": 322.9,
+      "mean": 308.0,
+      "stdev": 7.22,
+      "ci95_median": [
+       302.8,
+       313.2
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 13.6,
+      "p50": 25.5,
+      "p95": 37.8,
+      "p99": 37.8,
+      "max": 37.8,
+      "mean": 25.3,
+      "stdev": 6.41,
+      "ci95_median": [
+       21.2,
+       31.0
+      ]
+     },
+     "rss_settled_mb": {
+      "n": 10,
+      "min": 160.6,
+      "p50": 161.1,
+      "p95": 189.7,
+      "p99": 189.7,
+      "max": 189.7,
+      "mean": 163.9,
+      "stdev": 9.08,
+      "ci95_median": [
+       160.9,
+       161.3
+      ]
+     },
+     "pss_settled_mb": {
+      "n": 10,
+      "min": 159.0,
+      "p50": 159.5,
+      "p95": 186.5,
+      "p99": 186.5,
+      "max": 186.5,
+      "mean": 162.1,
+      "stdev": 8.57,
+      "ci95_median": [
+       159.3,
+       159.8
+      ]
+     },
+     "tree_nproc": {
+      "n": 10,
+      "min": 2,
+      "p50": 2,
+      "p95": 3,
+      "p99": 3,
+      "max": 3,
+      "mean": 2.1,
+      "stdev": 0.32,
+      "ci95_median": [
+       2,
+       2
+      ]
+     },
+     "nproc_settled": {
+      "n": 10,
+      "min": 2,
+      "p50": 2,
+      "p95": 3,
+      "p99": 3,
+      "max": 3,
+      "mean": 2.1,
+      "stdev": 0.32,
+      "ci95_median": [
+       2,
+       2
+      ]
+     }
+    },
+    "pi": {
+     "launch_to_ready_ms": {
+      "n": 10,
+      "min": 237.3,
+      "p50": 245.9,
+      "p95": 311.7,
+      "p99": 311.7,
+      "max": 311.7,
+      "mean": 256.8,
+      "stdev": 21.7,
+      "ci95_median": [
+       242.1,
+       265.0
+      ]
+     },
+     "erase_ok": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "erase_ms": {
+      "n": 10,
+      "min": 707.2,
+      "p50": 710.8,
+      "p95": 716.7,
+      "p99": 716.7,
+      "max": 716.7,
+      "mean": 711.9,
+      "stdev": 3.12,
+      "ci95_median": [
+       709.4,
+       715.1
+      ]
+     },
+     "rss_settled_mb": {
+      "n": 10,
+      "min": 143.6,
+      "p50": 145.7,
+      "p95": 157.0,
+      "p99": 157.0,
+      "max": 157.0,
+      "mean": 146.6,
+      "stdev": 3.73,
+      "ci95_median": [
+       145.6,
+       146.1
+      ]
+     },
+     "pss_settled_mb": {
+      "n": 10,
+      "min": 141.7,
+      "p50": 143.8,
+      "p95": 155.3,
+      "p99": 155.3,
+      "max": 155.3,
+      "mean": 144.7,
+      "stdev": 3.79,
+      "ci95_median": [
+       143.7,
+       144.3
+      ]
+     },
+     "tree_nproc": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     },
+     "nproc_settled": {
+      "n": 10,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "ci95_median": [
+       1,
+       1
+      ]
+     }
+    }
+   },
+   "primary": null,
+   "trials": {
+    "rust": {
+     "aa": 10,
+     "w1": 10
+    },
+    "ts": {
+     "aa": 10,
+     "w1": 10
+    },
+    "claude": {
+     "aa": 10,
+     "w1": 10
+    },
+    "codex": {
+     "aa": 10,
+     "w1": 10
+    },
+    "pi": {
+     "aa": 10,
+     "w1": 10
+    }
+   },
+   "comparability": {
+    "rust": "qualified",
+    "ts": "qualified",
+    "claude": "qualified",
+    "codex": "qualified",
+    "pi": "qualified"
+   },
+   "identity": {
+    "run_labels": [
+     "idleall-20260928-205613"
+    ],
+    "harness_revs": [
+     "unknown"
+    ]
+   },
+   "disclosures": {
+    "ts": {
+     "probe_quantized": 10
+    },
+    "codex": {
+     "probe_quantized": 10
+    },
+    "pi": {
+     "probe_quantized": 10
+    }
+   }
+  }
+ },
+ "aa": {},
+ "settle": {},
+ "aa_coverage": {
+  "compare.cpu_idle": {
+   "aa_rows": 50
+  },
+  "compare.memory_idle": {
+   "aa_rows": 50
+  }
+ },
+ "methodology": {
+  "analyzed_at": "2026-09-28T21:40:23+0000",
+  "source_dir": "/home/ubuntu/bench-cmp5/results-cmp5-20260928/sandbox-runs/idleall-20260928-214009/idleall/results",
+  "published_phases": [
+   "all non-aa phases"
+  ],
+  "aa_rows": "calibration only, never in published stats",
+  "gate": "strict result-validity (bench.analysis.validity)",
+  "denominators": "entry.trials per product per phase"
+ }
+}
