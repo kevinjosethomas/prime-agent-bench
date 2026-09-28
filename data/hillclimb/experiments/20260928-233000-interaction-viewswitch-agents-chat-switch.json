@@ -1,0 +1,144 @@
+{
+ "id": "20260928-233000-interaction-viewswitch-agents-chat-switch",
+ "axis": "interaction",
+ "lane": "perf-view-switch",
+ "worker": "perf-view-switch-fast",
+ "operator_signal": "Kevin's round-5 feel: the agents view -> chat view switch takes ~500ms on bigger sessions; pole <150ms IF POSSIBLE (poles not targets; the honest measurement decides; an unreachable pole gets recorded with evidence).",
+ "hypothesis": "The agents->chat switch re-enters the full interactive run (fresh client connect+hello -> attach with the full retained-window snapshot -> reconstruct/transcript_to_entries(ALL) -> rebuild_view(Rebind) -> first paint); on bigger sessions the dominant terms were hypothesized as the full-transcript rebuild and/or the wire transfer.",
+ "approach": "MEASURE FIRST at the tip (arms sha-asserted, same-VM sequential interleaved ABBA B,C,C,B,B,C x3/arm/class on one ubuntu:22.04 16c/32GB VM dx1amn4gi58i31e78gp629sw, rust 1.98.1 release): a pty 120x40 driver (per-frame CSI ?2026 bracket accounting with byte offsets, raw-drain primary consumer class + pyte-fed control, exact PTY byte capture per switch, per-leg key->needle->settle walls, /proc CPU/RSS sampling, spin calibration pre/mid/post, the fleet I/O probe battery at every phase boundary). Legs per trial: open_chat + (LEFT -> agents view, ENTER -> chat) x2 rounds (the repeat control). 6 session classes. Arms: tip=d82b23c81 (pre-move tip; the parent ruled pre-move baselines stand) vs core=tip+attach-paint's TS-parity newest-400 render window (their c1f8b6bd, cherry-picked patch-byte-identical onto the tip; the lane's final stacked head = their folded 3091de7ee at the current tip). Decomposition: a throwaway env-gated instrumented tip build (pa-types viewswitch_instr phase notes across the TUI attach path, the agents-view open, and the daemon handle_attach).",
+ "fixtures": {
+  "small": "real-small-01a0dad8-1803 (2,394B/9 rows, sha b7a5efc4c51b6ff5d2f3ac35e37f566eb1d6a78c85747798d96dc4ce9f0bbec7)",
+  "medium": "real-small-01a0dad8-ff09 (776,171B/168 rows, sha 69071aca852888ea444cdb5df080b1a06b8a6c98a8791bc3a0684694fb2a1ce)",
+  "large-real": "real-compacted-large-01a0dad3 (11.83MB file/10790 rows BUT compacted: retained window 795 messages, sha 96e9aa55199fc9cedf4b5a3b91b452fe744c0fe8cf4d91cb47746dea33a69d89)",
+  "canon-10mib": "canonical-10mib (10.49MB/7,391 rows, retained window 7,390 messages, sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda)",
+  "synth-70mib": "synth-70mib (72.1MB file/7 unchained canon copies; DISCLOSED: the per-copy parent chains leave the retained window at ONE copy's 7,390 messages \u2014 the honest class = canon + a 7x file for the worker load; sha 1f2ea7e359418eeae12084b873d5d34adfdc9dace694c7109636a86e6be7ae43)",
+  "synth-chained": "synth-chained (144.3MB/14 head-to-tail CHAINED canon copies: retained window ~101k messages \u2014 the honest big-window class, sha 9b08929d66246df6d63324d9991a211ee05eb5bb62b95c52b68e01737127da02)"
+ },
+ "build": {
+  "vm": "dx1amn4gi58i31e78gp629sw (hillclimb-viewswitch, ubuntu:22.04, 16c/32GB/100GB, rust 1.98.1, release)",
+  "tip": "d82b23c8134535217677f1f01194e19e73e8e0ae, binary sha256 d32ed257c3197965112e431560210b80eb6c1ca09",
+  "core": "lane/view-switch 5c895d910 (tip + attach-paint c1f8b6bd, patch byte-identical), binary sha256 2b2d71020dcbb826cbda82f97045bed94dc53c2de",
+  "base_instr": "tip + the env-gated viewswitch_instr patch, binary sha256 deb5601581dff82b85ec17293f559d2c18007adbc"
+ },
+ "measurements": {
+  "method": "key -> first needle-bearing frame (the first visible post-switch content), pty 120x40, raw-drain; p50 of 3 trials/arm/class (ABBA); the chained class n=1/arm",
+  "agents_to_chat_ms_p50": {
+   "small": {
+    "tip": 17.1,
+    "core": 17.5,
+    "repeat_tip": 17.1,
+    "repeat_core": 17.2
+   },
+   "medium": {
+    "tip": 27.1,
+    "core": 27.0,
+    "repeat_tip": 27.6,
+    "repeat_core": 25.7
+   },
+   "large-real_compacted": {
+    "tip": 40.7,
+    "core": 41.0,
+    "repeat_tip": 41.1,
+    "repeat_core": 36.6
+   },
+   "canon-10mib_7390msgs": {
+    "tip": 263.9,
+    "core": 275.1,
+    "repeat_tip": 276.5,
+    "repeat_core": 274.6
+   },
+   "synth-70mib_7390msgs_72MBfile": {
+    "tip": 292.1,
+    "core": 273.3,
+    "repeat_tip": 266.2,
+    "repeat_core": 314.0
+   },
+   "synth-chained_101kmsgs": {
+    "tip": 2497.2,
+    "core": 2526.3,
+    "repeat_tip": 2628.5,
+    "repeat_core": 2508.3
+   }
+  },
+  "chat_to_agents_ms_p50": {
+   "small": {
+    "tip": 10.6,
+    "core": 10.6
+   },
+   "medium": {
+    "tip": 10.6,
+    "core": 10.6
+   },
+   "large-real": {
+    "tip": 10.6,
+    "core": 10.6
+   },
+   "canon-10mib": {
+    "tip": 10.6,
+    "core": 10.5
+   },
+   "synth-70mib": {
+    "tip": 10.5,
+    "core": 10.5
+   },
+   "synth-chained": {
+    "tip": 26.4,
+    "core": 10.5,
+    "note": "the tip pays the big-view teardown flush at the chained class; the core's capped view tears down ~15ms faster"
+   }
+  },
+  "open_chat_ms_p50": {
+   "small": {
+    "tip": 269.7,
+    "core": 251.4
+   },
+   "medium": {
+    "tip": 201.8,
+    "core": 254.5
+   },
+   "large-real": {
+    "tip": 370.7,
+    "core": 332.1
+   },
+   "canon-10mib": {
+    "tip": 924.1,
+    "core": 930.3
+   },
+   "synth-70mib": {
+    "tip": 2252.5,
+    "core": 2159.7
+   },
+   "synth-chained": {
+    "tip": 10161.3,
+    "core": 9687.9
+   }
+  },
+  "decomposition_agents_to_chat_at_7390msgs_instr_ms": {
+   "renderer_setup": 10,
+   "attach_roundtrip_wire_daemon_serialize_client_read_parse": 93,
+   "daemon_messages_clone_plus_serialize": 31,
+   "reconstruct_entries_fold": 8,
+   "roster_sub_dock_fold_open_stats_roundtrips": 30,
+   "first_draw_visible_window_first_pack": 115,
+   "second_frame": 17,
+   "total": 273
+  },
+  "validity": {
+   "consumer_classes": "raw-drain primary; pyte-fed controls agree at canon (259-291ms vs 264-340 raw)",
+   "calibration": "spin pre/mid/post stable; loadavg low; the VM's I/O probe class DEGRADED-relative-to-fleet (fresh p50 29-46ms vs the fleet ~1ms hosts; host-relative baseline=None) \u2014 the switch legs carry no disk writes on the measured path; the open path's worker load pays it",
+   "abba_validity": "12/12 canon+synth trials green in the clean re-run; the first canon/synth round VOIDED by a harness collision (two concurrent runners' trial-scoped sweeps killed each other's daemons) \u2014 the clean re-run stands; the synth-70mib '51.7k rows' class DISCLOSED as a 7,390-message retained window (the unchained copies) \u2014 superseded by synth-chained"
+  }
+ },
+ "key_findings": {
+  "1_the_signal_is_real_and_linear": "The agents->chat switch is LINEAR in the retained message count: 17ms@9, 27ms@168, 41ms@795(compacted), 272ms@7,390, ~2,500ms@~101k (0.0245ms/message). Kevin's ~500ms feel = the ~20k-message class. The <150ms pole is met only below ~5k messages. The reverse switch (chat->agents) is flat ~10.6ms at every class (the #2893/#2916 cuts holding), 26ms at the 101k class (the tip's teardown flush).",
+  "2_the_dominant_term_is_the_full_ship": "At the 7,390-message class the leg = wire+daemon-serialize+client-parse ~93ms + the visible-window first paint ~115ms + the extra round-trips ~30ms + the entries fold 8ms + the frames ~27ms. At 101k the full retained window ships: the wire+parse dominates (~2.4s of 2.5s). THE FULL-SHIP IS TS-PARITY-BOUND: TS's switch (openAgentsViewSession -> fresh DaemonAgentConnection.attach + getInitialSnapshot/get_messages) ships the same full retained window on every switch.",
+  "3_the_core_cap_null_on-the-switch": "The TS-parity newest-400 render window (attach-paint's cut) does NOT cut the switch leg at any class (the entries fold it cuts is 8ms@7,390 / ~110ms@101k of legs dominated by the wire): tip 263.9 vs core 275.1 (canon), 2497.2 vs 2526.3 (chained) \u2014 within noise. Its wins are the OPEN path (the sibling's legs) + the reverse-switch teardown at the big class (26.4 -> 10.5ms at 101k).",
+  "4_served_path_proof_on_the_switch": "The cap SERVES on the switch re-entry exactly per TS: the notice 'Showing latest 400 of 795 messages for faster open.' (large-real) and 'Showing latest 269 of 7,390 messages for faster open.' (canon/synth-70mib) found in the core arm's post-switch frames, absent in the tip arm; under-limit classes (small/medium) show no notice and identical leg timings.",
+  "5_the_honest_floor_and_followups": "The parity-bound floor for the switch at the big classes is the full-ship pipeline. The named follow-up cuts with measured bounds: (a) the resume-cursor incremental snapshot (the attach command already carries resume_cursor; shipping only the delta since the last attach cuts the wire to O(delta) \u2014 a PROTOCOL change beyond TS parity, needs its own lane + the operator's blessing; ~2.4s -> O(ms) at 101k), (b) the cross-switch visible-window layout reuse (the first pack re-renders the same visible entries on every switch; ~115ms -> ~0 on repeats; the repeat legs measured flat 272-310ms confirming the cache dies with the view), (c) the refresh_stats round-trip defer (~20ms; TS does not block its first frame on it)."
+ },
+ "honest_negative": "The switch's cost at the big classes is STRUCTURAL at the TS-parity level (the full retained window ships per switch in both implementations); the cap restores the TS render shape (the sibling's cut) but the wire remains the floor. The decomposition record with the bounds stands as this lane's deliverable; no separate switch-path code fix is warranted by the decomposition (the fold is 8ms of 272ms at canon).",
+ "parity_notes": "The TUI output bytes: the under-limit switch legs are unchanged by the cap (identical visible tails; the residual frame diffs are the A/A-class event/paint-phase non-determinism \u2014 roster rows, goal panels, bash-poll cards, the trial-name artifact \u2014 plus the frame-boundary phase); the capped classes differ exactly by the notice row + the un-rendered older rows (the served-path proof). Editor history/wire stay full-set per TS. TS-parity case: TS renders only the newest 400 at open/rebuild (INITIAL_TRANSCRIPT_RENDER_MESSAGE_LIMIT=400) \u2014 attach-paint's cut restores it; the port's switch inherits it via the shared reconstruct seam (verified: no separate switch call site needed).",
+ "outcome": "MEASURED + DECOMPOSED + the stacked-core verified on the switch path (served-path + ABBA + the byte-class evidence). Kevin's signal confirmed real and attributed: linear in the retained message count, dominated by the TS-parity-bound full-ship wire+parse at the big classes; the pole met only under ~5k messages.",
+ "session": "perf-view-switch-fast",
+ "timestamp": "2026-09-28T23:45:00Z"
+}
