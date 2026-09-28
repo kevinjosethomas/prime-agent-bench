@@ -103,7 +103,10 @@ class FakeBackend(SandboxBackend):
         return 0, ""
 
     def upload(self, handle, local, remote):
-        self.calls.append(("upload", handle.name, str(remote)))
+        # record .txt payload content: the sandbox config + identity
+        # uploads are small text files the regression tests assert on
+        content = Path(local).read_text() if str(local).endswith(".txt") else None
+        self.calls.append(("upload", handle.name, str(remote), content))
 
     def download(self, handle, remote, local):
         self.calls.append(("download", handle.name, str(remote)))
@@ -180,3 +183,34 @@ def test_run_parallel_end_to_end(tmp_path, monkeypatch):
     assert manifest["reference"]["per_sandbox_ms"] == {"compare_cold_start": 100.0,
                                                        "compare_msg_send": 100.0}
     assert manifest["created_at"] and manifest["updated_at"]
+
+def test_run_parallel_deploys_controller_benchmark_overrides(tmp_path, monkeypatch):
+    """Audit: orchestrator materialize dropped the controller cfg, so the
+    sandbox config lost the campaign per-benchmark overrides and a
+    product-level real-api pin silently won a strictly-mock campaign
+    msg_send wave (5 real inference calls before the gap was caught).
+    The controller benchmarks overrides must deploy to sandbox.yaml."""
+    pdir = tmp_path / "parallel.yaml"
+    pdir.write_text(PARALLEL_YAML)
+    cfg = _cfg(tmp_path)
+    cfg["benchmarks"] = {"compare.msg_send": {"msg_routing": "mock"}}
+    made = {}
+
+    def fake_make_backend(_cfg, pcfg, name=None):
+        made["backend"] = FakeBackend(_cfg, pcfg)
+        return made["backend"]
+
+    monkeypatch.setattr("bench.drivers.orchestrator.run.make_backend",
+                        fake_make_backend)
+    monkeypatch.setattr("bench.drivers.orchestrator.run.harness_bundle",
+                        lambda repo_root=None: Path("/tmp/bundle.tar.gz"))
+    monkeypatch.setattr("bench.drivers.orchestrator.run.bundle_identity",
+                        lambda repo_root, bundle: {"git_rev": "deadbee", "dirty": False,
+                                                   "bundle_sha256": "cafe" * 16})
+    run_parallel(cfg, str(pdir), ["compare.msg_send"], ["codex"],
+                 trials=1, aa=False, keep_sandboxes=False)
+    backend = made["backend"]
+    cfg_uploads = [c for c in backend.calls
+                   if c[0] == "upload" and str(c[2]).endswith("sandbox.yaml")]
+    assert len(cfg_uploads) == 1
+    assert "msg_routing: mock" in cfg_uploads[0][3]

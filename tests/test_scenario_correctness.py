@@ -536,8 +536,9 @@ def test_run_trials_requires_the_fixture_to_be_ensured(tmp_path, monkeypatch):
 def test_rust_pin_is_the_campaign_verified_revision(tmp_path):
     from bench.core.config import product_config
     cfg = product_config("rust")
-    # the 2026-09-25 campaign pin (latest continuous rust-branch build)
-    assert cfg["revision"] == "59a9c658d870bfc31dac9a09683d1679d8791011"
+    # the cmp5-20260928-163659 campaign pin (origin/rust frozen at campaign
+    # start, sandbox-built replicating the pinned commit CI recipe)
+    assert cfg["revision"] == "b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5"
 
 
 class _FakeRun:

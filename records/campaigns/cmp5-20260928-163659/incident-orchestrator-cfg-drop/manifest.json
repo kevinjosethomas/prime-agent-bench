@@ -1,0 +1,77 @@
+{
+ "run_id": "20260928-180926",
+ "backend": "prime",
+ "benchmarks": [
+  "compare.cold_start",
+  "compare.msg_send",
+  "daemon.boot"
+ ],
+ "products": [
+  "rust",
+  "ts",
+  "claude",
+  "codex",
+  "pi"
+ ],
+ "wave": {
+  "trials": 5,
+  "phase": "qual",
+  "aa": false,
+  "aa_trials": 10,
+  "run_label": "20260928-180926"
+ },
+ "sandboxes": [
+  {
+   "name": "qual",
+   "benchmarks": [
+    "compare.cold_start",
+    "compare.msg_send",
+    "daemon.boot"
+   ],
+   "reference_ms": 1274.7,
+   "normalize_factor": 1.0,
+   "replaced": false,
+   "retries": 0,
+   "status": "done",
+   "wave": {
+    "exit": 0,
+    "wallclock_s": 374.4,
+    "tail": "sha256\": \n\"69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb\",\n  \"binary_bytes\": 163595464\n }\n}\ntemplate ready: rust\ntemplate ready: ts\ntemplate ready: claude\ntemplate ready: codex\ntemplate ready: pi\nsettle rust: OK\nsettle ts: OK\nsettle claude: OK\nsettle codex: OK\nsettle pi: OK\n rust: kernel venv already ready\n ts: kernel venv already ready\nBENCH-EXIT:0\n\n\nExecution time: 373653.4ms\n"
+   },
+   "notes": [
+    "provisioned as efs1zhhpak2e2ka3aqqq7le5 (vm)",
+    "running bootstrap",
+    "reference 1275ms",
+    "wave exit 0 in 374s"
+   ],
+   "results": {
+    "path": "/home/ubuntu/bench-cmp5/results-cmp5-20260928/parallel/20260928-180926/qual",
+    "tarball": "/home/ubuntu/bench-cmp5/results-cmp5-20260928/parallel/20260928-180926/qual-results.tar.gz"
+   }
+  }
+ ],
+ "reference": {
+  "median_ms": 1274.7,
+  "outliers": {},
+  "policy": "replace",
+  "records": [
+   {
+    "sandbox": "qual",
+    "ms": 1274.7,
+    "collected_at": "2026-09-28T18:12:57+0000",
+    "replaced": false
+   }
+  ],
+  "per_sandbox_ms": {
+   "qual": 1274.7
+  }
+ },
+ "kept_sandboxes": false,
+ "created_at": "2026-09-28T18:09:26+0000",
+ "updated_at": "2026-09-28T18:19:15+0000",
+ "harness": {
+  "git_rev": "b464f812e99303ba1a428f515b1de4807c24057e",
+  "dirty": true,
+  "bundle_sha256": "0bc12be9d270c9b8368eb52a84ab586e8f29731e1246051070d1c8486def64e6"
+ }
+}

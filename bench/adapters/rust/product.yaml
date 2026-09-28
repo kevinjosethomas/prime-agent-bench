@@ -1,12 +1,23 @@
-binary: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
-revision: 59a9c658d870bfc31dac9a09683d1679d8791011
+# Prime Agent (Rust) — the complete product config, one file.
+# binary: the pinned launcher (campaign-private prefix). first_run_dialogs:
+# the onboarding walk (config, not code). vendor: what sandbox setup ships
+# for this product — dsts mirror the binary's ~-path under /root so the
+# sandbox-side adapter (HOME=/root) resolves the same layout.
+binary: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent
+# Campaign cmp5-20260928-163659 frozen pin: origin/rust at campaign start.
+# Built on a 16c/32GB Ubuntu 22.04 Prime VM replicating the pinned commit's
+# continuous.yml Linux x86_64 recipe (rustc 1.98.1, --release --locked,
+# split_debug shipped binary, GLIBC 2.35 gate, commit-stamped tarball).
+revision: b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5
+binary_sha256: 5b1042ecfc495b8e51b3661c3b1c874c04834abcd6499b563fe6a512a430f40f
 needs_kernel_venv: true
 install:
   installed_paths:
-  - ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
-  - ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
-  download_bytes: 53291156
-  note: continuous rust-branch build (run 36193301325) via install-rust.sh into a campaign-private prefix; artifact tarball bytes as download
+  - ~/bench-cmp5/pa-rust-prefix/share/prime-agent
+  - ~/bench-cmp5/pa-rust-prefix/bin/prime-agent
+  download_bytes: 19385942
+  note: sandbox-built release replicating the pinned commit's continuous.yml
+    recipe; artifact tarball bytes as download (tarball sha256 a4b8bb115527318f4268c42fecf48e9f80724ac56752960f72fd1b8abeffdfaf)
 auth_sources:
 - src: ~/.prime/config.json
   note: PRIME_API_KEY for the trial env
@@ -21,10 +32,10 @@ first_run_dialogs:
   - enter
   intent: Not now
 vendor:
-- src: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent-rust
-  dst: root/.local/bin/prime-agent-rust
-- src: ~/bench-cmp5/pa-rust-prefix/share/prime-agent-rust
-  dst: root/.local/share/prime-agent-rust
+- src: ~/bench-cmp5/pa-rust-prefix/bin/prime-agent
+  dst: root/bench-cmp5/pa-rust-prefix/bin/prime-agent
+- src: ~/bench-cmp5/pa-rust-prefix/share/prime-agent
+  dst: root/bench-cmp5/pa-rust-prefix/share/prime-agent
 - src: ~/.prime/config.json
   dst: root/.prime/config.json
 - src: ~/.prime/agent/auth.json

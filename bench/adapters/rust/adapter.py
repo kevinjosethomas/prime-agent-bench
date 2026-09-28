@@ -28,7 +28,7 @@ class PrimeAgentRustProduct(ProductAdapter):
     default_binary_subpath = None
     # The campaign-verified build revision (audit F10: the earlier pin fix
     # landed in a config file no code reads, leaving the live pin stale).
-    default_revision = "59a9c658d870bfc31dac9a09683d1679d8791011"
+    default_revision = "b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5"
 
     @property
     def binary(self) -> Path:
@@ -54,9 +54,16 @@ class PrimeAgentRustProduct(ProductAdapter):
         """
         from bench.core.env import sha256_file
         v = subprocess.run([str(self.binary), "--version"], capture_output=True, text=True, timeout=60)
-        payload = (self.binary.parent / ".." / "share" / "prime-agent-rust"
-                   / "prime-agent").resolve()
-        evidence = payload if payload.exists() else self.binary
+        # the launcher execs the payload under share/: the pinned commit's
+        # takeover layout is share/prime-agent (the pre-takeover layout was
+        # share/prime-agent-rust); resolve whichever this pin installed
+        candidates = [
+            self.binary.parent / ".." / "share" / "prime-agent" / "prime-agent",
+            self.binary.parent / ".." / "share" / "prime-agent-rust" / "prime-agent",
+        ]
+        payload = next((c.resolve() for c in candidates if c.exists()),
+                       self.binary)
+        evidence = payload
         binary_sha256 = sha256_file(evidence)
         info = {"version": v.stdout.strip() or v.stderr.strip(),
                 "revision": self.product_cfg.get("revision", self.default_revision),

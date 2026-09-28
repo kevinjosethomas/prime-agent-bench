@@ -30,7 +30,7 @@ else
 fi
 
 echo "[bootstrap] version checks ($PRODUCTS)"
-RUST=/root/.local/bin/prime-agent-rust
+RUST=/root/bench-cmp5/pa-rust-prefix/bin/prime-agent
 TS=/root/.local/share/prime-agent/bin/prime-agent
 PI=/root/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
 case ",$PRODUCTS," in

@@ -53,10 +53,10 @@ def test_deep_merge_override_wins():
 
 def test_product_config_loads_pinning():
     cfg = product_config("rust")
-    # the 2026-09-25 campaign pin: the latest continuous rust-branch build
-    # (install-rust.sh, run 36193301325)
-    assert cfg["revision"] == "59a9c658d870bfc31dac9a09683d1679d8791011"
-    assert cfg["binary"].endswith("/bin/prime-agent-rust")
+    # the cmp5-20260928-163659 campaign pin: origin/rust frozen at campaign
+    # start, sandbox-built replicating the pinned commit's CI recipe
+    assert cfg["revision"] == "b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5"
+    assert cfg["binary"].endswith("/bin/prime-agent")
     assert "install" in cfg
 
 

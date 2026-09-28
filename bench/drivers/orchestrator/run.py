@@ -76,7 +76,8 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
     handles = {}
     # 1. provision + deploy every sandbox (parallel, bounded)
     with futures.ThreadPoolExecutor(max_workers=_MAX_PARALLEL) as pool:
-        done = {s["name"]: pool.submit(materialize, backend, s, bundle, harness)
+        done = {s["name"]: pool.submit(materialize, backend, s, bundle, harness,
+                                        cfg)
                 for s in specs}
         for name, fut in done.items():
             try:
@@ -95,14 +96,15 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
     ref_cfg = pcfg.get("reference", {})
     comparison = compare_references(times, float(ref_cfg.get("outlier_pct", 5.0)))
     comparison = _handle_outliers(backend, handles, times, comparison, ref_cfg,
-                                  bundle, harness, records)
+                                  bundle, harness, records, cfg=cfg)
     comparison["records"] = records
     comparison["per_sandbox_ms"] = {r["sandbox"]: r["ms"] for r in records}
     manifest["reference"] = comparison
     _write_manifest()
 
     # 3. wave chains in parallel; failures re-provision and re-run
-    wave_state = _run_waves(backend, handles, spec_cfg, bundle, harness)
+    wave_state = _run_waves(backend, handles, spec_cfg, bundle, harness,
+                            cfg=cfg)
 
     # 4. collect results from every sandbox + persist the manifest
     for name, handle in handles.items():
@@ -153,7 +155,8 @@ def _reference_records(backend, handles: dict) -> list:
 
 
 def _handle_outliers(backend, handles: dict, times: dict, comparison: dict,
-                     ref_cfg: dict, bundle, harness, records: list) -> dict:
+                     ref_cfg: dict, bundle, harness, records: list,
+                     cfg: dict | None = None) -> dict:
     """Replace or normalize outlier sandboxes per policy; fresh comparison.
 
     Replacements append a second timestamped record for the sandbox (the
@@ -168,7 +171,7 @@ def _handle_outliers(backend, handles: dict, times: dict, comparison: dict,
             handle.note(f"reference outlier {outlier['dev_pct']:+.1f}% -> replacing")
             backend.destroy(handle)
             try:
-                fresh = materialize(backend, handle.spec, bundle, harness)
+                fresh = materialize(backend, handle.spec, bundle, harness, cfg)
                 fresh.replaced = True
                 ms = run_reference(backend, fresh)
                 fresh.reference_ms = ms
@@ -194,7 +197,7 @@ def _handle_outliers(backend, handles: dict, times: dict, comparison: dict,
 
 
 def _run_waves(backend, handles: dict, spec_cfg: dict, bundle,
-               harness: dict | None = None) -> dict:
+               harness: dict | None = None, cfg: dict | None = None) -> dict:
     """All wave chains in parallel, then bounded re-provision retries."""
     wave_state = {}
     with futures.ThreadPoolExecutor(max_workers=_MAX_PARALLEL) as pool:
@@ -214,7 +217,7 @@ def _run_waves(backend, handles: dict, spec_cfg: dict, bundle,
             handle.note(f"wave failed; re-provision (retry {attempt})")
             backend.destroy(handle)
             try:
-                fresh = materialize(backend, handle.spec, bundle, harness)
+                fresh = materialize(backend, handle.spec, bundle, harness, cfg)
                 fresh.replaced = True
                 fresh.retries = attempt
                 handles[name] = fresh

@@ -1,5 +1,5 @@
 binary: ~/bench-cmp5/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
-revision: d6af72e1857cfb10b41d8ff8e69f0d72b4cf6d31
+revision: 11894012dd461232eb075bc890538b6866860a10  # origin/master HEAD 2026-09-28 (latest stable; rebuilt from source)
 install:
   installed_paths:
   - ~/bench-cmp5/repos/pi-mono/node_modules

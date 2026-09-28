@@ -1,8 +1,9 @@
 # Prime Agent (Rust) — product adapter
 
 ## What it needs
-- The pinned release binary: `~/bench/repos/prime-agent-rust/target/release/prime-agent`
-  (from-source `cargo --release` build of `origin/rust`; revision pinned in `product.yaml`)
+- The pinned launcher: `~/bench-cmp5/pa-rust-prefix/bin/prime-agent`
+  (campaign-private prefix; the launcher execs the `share/prime-agent` payload
+  of the pinned install-rust.sh layout; revision pinned in `product.yaml`)
 - `prime-agent-runtime/` next to the binary (the daemon builds the kernel venv from it)
 - The uv toolchain (`~/.local/bin/uv`, `~/.local/share/uv`) — the kernel venv builder
 - A kernel venv that carries the daemon's OWN `.bootstrap-version` identity marker

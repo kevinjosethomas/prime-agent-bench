@@ -1,0 +1,988 @@
+{
+ "campaign": "cmp5-20260928-163659",
+ "run_id": "20260928-185903",
+ "benchmarks": {
+  "compare.cold_start": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 270.8,
+     "p75": 271.1,
+     "min": 269.8,
+     "max": 281.8
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 542.0,
+     "p75": 556.0,
+     "min": 525.4,
+     "max": 576.5
+    }
+   },
+   "claude": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 308.9,
+     "p75": 314.9,
+     "min": 289.8,
+     "max": 426.1
+    }
+   },
+   "codex": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 299.3,
+     "p75": 303.9,
+     "min": 294.2,
+     "max": 323.0
+    }
+   },
+   "pi": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 246.9,
+     "p75": 248.2,
+     "min": 239.2,
+     "max": 284.1
+    }
+   }
+  },
+  "compare.warm_start": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 265.3,
+     "p75": 267.5,
+     "min": 263.1,
+     "max": 302.4
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 497.1,
+     "p75": 530.7,
+     "min": 404.4,
+     "max": 590.9
+    }
+   },
+   "claude": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 328.3,
+     "p75": 353.1,
+     "min": 319.7,
+     "max": 375.2
+    }
+   },
+   "codex": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 302.7,
+     "p75": 306.0,
+     "min": 296.6,
+     "max": 307.2
+    }
+   },
+   "pi": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 178.3,
+     "p75": 181.8,
+     "min": 169.7,
+     "max": 186.8
+    }
+   }
+  },
+  "compare.msg_send": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "submit_to_ack_ms": {
+     "p50": 0.2,
+     "p75": 0.4,
+     "min": 0.2,
+     "max": 0.4
+    },
+    "submit_to_settle_ms": {
+     "p50": 702.5,
+     "p75": 734.8,
+     "min": 666.9,
+     "max": 735.8
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 10,
+    "submit_to_ack_ms": {
+     "p50": 2.0,
+     "p75": 2.2,
+     "min": 2.0,
+     "max": 2.6
+    },
+    "submit_to_settle_ms": {
+     "p50": 679.8,
+     "p75": 680.4,
+     "min": 677.8,
+     "max": 700.0
+    }
+   },
+   "claude": {
+    "n_total": 10,
+    "n_valid": 10,
+    "submit_to_ack_ms": {
+     "p50": 42.5,
+     "p75": 44.0,
+     "min": 39.7,
+     "max": 49.7
+    },
+    "submit_to_settle_ms": {
+     "p50": 755.1,
+     "p75": 758.3,
+     "min": 751.0,
+     "max": 768.6
+    }
+   },
+   "codex": {
+    "n_total": 10,
+    "n_valid": 0,
+    "submit_to_ack_ms": {
+     "p50": null,
+     "p75": null,
+     "min": null,
+     "max": null
+    },
+    "submit_to_settle_ms": {
+     "p50": null,
+     "p75": null,
+     "min": null,
+     "max": null
+    }
+   },
+   "pi": {
+    "n_total": 10,
+    "n_valid": 10,
+    "submit_to_ack_ms": {
+     "p50": 0.8,
+     "p75": 0.8,
+     "min": 0.6,
+     "max": 1.0
+    },
+    "submit_to_settle_ms": {
+     "p50": 688.4,
+     "p75": 689.2,
+     "min": 687.8,
+     "max": 712.5
+    }
+   }
+  },
+  "compare.scroll_typing": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "typing_ms_p50": {
+     "p50": 1.0,
+     "p75": 1.0,
+     "min": 0.3,
+     "max": 1.1
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 0,
+    "typing_ms_p50": {
+     "p50": null,
+     "p75": null,
+     "min": null,
+     "max": null
+    }
+   }
+  },
+  "compare.memory_idle_load": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "rss_settled_mb": {
+     "p50": 231.7,
+     "p75": 234.8,
+     "min": 225.6,
+     "max": 237.9
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 6,
+    "rss_settled_mb": {
+     "p50": 946.2,
+     "p75": 1128.2,
+     "min": 751.2,
+     "max": 1138.1
+    }
+   }
+  },
+  "compare.install_disk": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "installed_bytes": {
+     "p50": 57883163.0,
+     "p75": 57883163.0,
+     "min": 57883163,
+     "max": 57883163
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 10,
+    "installed_bytes": {
+     "p50": 172192855.0,
+     "p75": 172192855.0,
+     "min": 172192855,
+     "max": 172192855
+    }
+   },
+   "claude": {
+    "n_total": 10,
+    "n_valid": 10,
+    "installed_bytes": {
+     "p50": 483322595.0,
+     "p75": 483322595.0,
+     "min": 483322595,
+     "max": 483322595
+    }
+   },
+   "codex": {
+    "n_total": 10,
+    "n_valid": 10,
+    "installed_bytes": {
+     "p50": 444219856.0,
+     "p75": 444219856.0,
+     "min": 444219856,
+     "max": 444219856
+    }
+   },
+   "pi": {
+    "n_total": 10,
+    "n_valid": 10,
+    "installed_bytes": {
+     "p50": 462745683.0,
+     "p75": 462745683.0,
+     "min": 462745683,
+     "max": 462745683
+    }
+   }
+  },
+  "session.cold_open_10mib": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "launch_to_ready_ms": {
+     "p50": 703.3,
+     "p75": 753.4,
+     "min": 611.9,
+     "max": 777.2
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 6,
+    "launch_to_ready_ms": {
+     "p50": 776.1,
+     "p75": 798.4,
+     "min": 747.8,
+     "max": 829.8
+    }
+   }
+  },
+  "session.agent_view_roundtrip": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "chat_to_agents_ms": {
+     "p50": 13.7,
+     "p75": 14.2,
+     "min": 13.4,
+     "max": 14.7
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 5,
+    "chat_to_agents_ms": {
+     "p50": 66.8,
+     "p75": 68.0,
+     "min": 64.5,
+     "max": 74.3
+    }
+   }
+  },
+  "daemon.boot": {
+   "rust": {
+    "n_total": 10,
+    "n_valid": 10,
+    "spawn_to_accept_ms": {
+     "p50": 53.6,
+     "p75": 70.0,
+     "min": 5.6,
+     "max": 71.3
+    },
+    "spawn_to_first_create_ms": {
+     "p50": 141.2,
+     "p75": 208.8,
+     "min": 86.3,
+     "max": 295.3
+    }
+   },
+   "ts": {
+    "n_total": 10,
+    "n_valid": 10,
+    "spawn_to_accept_ms": {
+     "p50": 112.8,
+     "p75": 116.1,
+     "min": 107.9,
+     "max": 118.0
+    },
+    "spawn_to_first_create_ms": {
+     "p50": 589.3,
+     "p75": 609.4,
+     "min": 550.2,
+     "max": 632.1
+    }
+   }
+  }
+ },
+ "aa": {
+  "compare.cold_start": {
+   "rust": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 301.4,
+     "half_b_p50": 276.9,
+     "spread_pct": 8.8,
+     "noise_annotated": true
+    }
+   },
+   "ts": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 551.4,
+     "half_b_p50": 548.4,
+     "spread_pct": 0.5,
+     "noise_annotated": false
+    }
+   },
+   "claude": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 302.0,
+     "half_b_p50": 331.1,
+     "spread_pct": 9.6,
+     "noise_annotated": true
+    }
+   },
+   "codex": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 304.1,
+     "half_b_p50": 299.3,
+     "spread_pct": 1.6,
+     "noise_annotated": false
+    }
+   },
+   "pi": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 236.5,
+     "half_b_p50": 240.2,
+     "spread_pct": 1.6,
+     "noise_annotated": false
+    }
+   }
+  },
+  "compare.warm_start": {
+   "rust": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 269.7,
+     "half_b_p50": 271.1,
+     "spread_pct": 0.5,
+     "noise_annotated": false
+    }
+   },
+   "ts": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 521.6,
+     "half_b_p50": 550.6,
+     "spread_pct": 5.6,
+     "noise_annotated": true
+    }
+   },
+   "claude": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 384.7,
+     "half_b_p50": 381.0,
+     "spread_pct": 1.0,
+     "noise_annotated": false
+    }
+   },
+   "codex": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 302.1,
+     "half_b_p50": 302.9,
+     "spread_pct": 0.2,
+     "noise_annotated": false
+    }
+   },
+   "pi": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 195.1,
+     "half_b_p50": 176.3,
+     "spread_pct": 10.7,
+     "noise_annotated": true
+    }
+   }
+  },
+  "compare.msg_send": {
+   "rust": {
+    "submit_to_ack_ms": {
+     "half_a_p50": 0.4,
+     "half_b_p50": 0.2,
+     "spread_pct": 100.0,
+     "noise_annotated": true
+    },
+    "submit_to_settle_ms": {
+     "half_a_p50": 736.5,
+     "half_b_p50": 669.7,
+     "spread_pct": 10.0,
+     "noise_annotated": true
+    }
+   },
+   "ts": {
+    "submit_to_ack_ms": {
+     "half_a_p50": 2.0,
+     "half_b_p50": 2.1,
+     "spread_pct": 5.0,
+     "noise_annotated": true
+    },
+    "submit_to_settle_ms": {
+     "half_a_p50": 726.8,
+     "half_b_p50": 705.4,
+     "spread_pct": 3.0,
+     "noise_annotated": false
+    }
+   },
+   "claude": {
+    "submit_to_ack_ms": {
+     "half_a_p50": 43.5,
+     "half_b_p50": 44.2,
+     "spread_pct": 1.6,
+     "noise_annotated": false
+    },
+    "submit_to_settle_ms": {
+     "half_a_p50": 756.6,
+     "half_b_p50": 755.7,
+     "spread_pct": 0.1,
+     "noise_annotated": false
+    }
+   },
+   "pi": {
+    "submit_to_ack_ms": {
+     "half_a_p50": 0.8,
+     "half_b_p50": 0.8,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    },
+    "submit_to_settle_ms": {
+     "half_a_p50": 687.6,
+     "half_b_p50": 688.6,
+     "spread_pct": 0.1,
+     "noise_annotated": false
+    }
+   }
+  },
+  "compare.scroll_typing": {
+   "rust": {
+    "typing_ms_p50": {
+     "half_a_p50": 1.0,
+     "half_b_p50": 1.0,
+     "spread_pct": 6.3,
+     "noise_annotated": true
+    }
+   }
+  },
+  "compare.memory_idle_load": {
+   "rust": {
+    "rss_settled_mb": {
+     "half_a_p50": 233.7,
+     "half_b_p50": 238.0,
+     "spread_pct": 1.8,
+     "noise_annotated": false
+    }
+   },
+   "ts": {
+    "rss_settled_mb": {
+     "half_a_p50": 965.7,
+     "half_b_p50": 1141.2,
+     "spread_pct": 18.2,
+     "noise_annotated": true
+    }
+   }
+  },
+  "compare.install_disk": {
+   "rust": {
+    "installed_bytes": {
+     "half_a_p50": 57883163,
+     "half_b_p50": 57883163,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    }
+   },
+   "ts": {
+    "installed_bytes": {
+     "half_a_p50": 172192855,
+     "half_b_p50": 172192855,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    }
+   },
+   "claude": {
+    "installed_bytes": {
+     "half_a_p50": 483322595,
+     "half_b_p50": 483322595,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    }
+   },
+   "codex": {
+    "installed_bytes": {
+     "half_a_p50": 444219856,
+     "half_b_p50": 444219856,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    }
+   },
+   "pi": {
+    "installed_bytes": {
+     "half_a_p50": 462745683,
+     "half_b_p50": 462745683,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    }
+   }
+  },
+  "session.cold_open_10mib": {
+   "rust": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 736.6,
+     "half_b_p50": 718.9,
+     "spread_pct": 2.5,
+     "noise_annotated": false
+    }
+   },
+   "ts": {
+    "launch_to_ready_ms": {
+     "half_a_p50": 788.0,
+     "half_b_p50": 769.6,
+     "spread_pct": 2.4,
+     "noise_annotated": false
+    }
+   }
+  },
+  "session.agent_view_roundtrip": {
+   "rust": {
+    "chat_to_agents_ms": {
+     "half_a_p50": 13.5,
+     "half_b_p50": 13.6,
+     "spread_pct": 0.7,
+     "noise_annotated": false
+    }
+   },
+   "ts": {
+    "chat_to_agents_ms": {
+     "half_a_p50": 67.5,
+     "half_b_p50": 67.1,
+     "spread_pct": 0.5,
+     "noise_annotated": false
+    }
+   }
+  },
+  "daemon.boot": {
+   "rust": {
+    "spawn_to_accept_ms": {
+     "half_a_p50": 40.9,
+     "half_b_p50": 40.9,
+     "spread_pct": 0.0,
+     "noise_annotated": false
+    },
+    "spawn_to_first_create_ms": {
+     "half_a_p50": 160.7,
+     "half_b_p50": 141.8,
+     "spread_pct": 13.3,
+     "noise_annotated": true
+    }
+   },
+   "ts": {
+    "spawn_to_accept_ms": {
+     "half_a_p50": 108.3,
+     "half_b_p50": 112.4,
+     "spread_pct": 3.8,
+     "noise_annotated": false
+    },
+    "spawn_to_first_create_ms": {
+     "half_a_p50": 563.4,
+     "half_b_p50": 599.6,
+     "spread_pct": 6.4,
+     "noise_annotated": true
+    }
+   }
+  }
+ },
+ "withheld": [
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 0,
+   "reason": "TimeoutError: prompt typing dropped at key 3/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 1,
+   "reason": "TimeoutError: prompt typing dropped at key 4/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 2,
+   "reason": "semantic gate: {\"ack\": true, \"settle\": false}"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 3,
+   "reason": "semantic gate: {\"ack\": true, \"settle\": false}"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 4,
+   "reason": "TimeoutError: prompt typing dropped at key 2/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 5,
+   "reason": "TimeoutError: prompt typing dropped at key 4/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 6,
+   "reason": "TimeoutError: prompt typing dropped at key 2/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 7,
+   "reason": "TimeoutError: prompt typing dropped at key 2/11 (a dialog raced the typing or the editor went dead)"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 8,
+   "reason": "semantic gate: {\"ack\": true, \"settle\": false}"
+  },
+  {
+   "benchmark": "compare.msg_send",
+   "product": "codex",
+   "trial": 9,
+   "reason": "semantic gate: {\"ack\": true, \"settle\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 0,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 1,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 2,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 3,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 4,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 5,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 6,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 7,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 8,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "ts",
+   "trial": 9,
+   "reason": "semantic gate: {\"sentinel\": true, \"echoed\": true, \"typing_ok\": false, \"typing_scrolled_ok\": false}"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "ts",
+   "trial": 1,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true}"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "ts",
+   "trial": 3,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true}"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "ts",
+   "trial": 4,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true}"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "ts",
+   "trial": 5,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true}"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "ts",
+   "trial": 1,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true, \"erased\": true}"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "ts",
+   "trial": 6,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true, \"erased\": true}"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "ts",
+   "trial": 7,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true, \"erased\": true}"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "ts",
+   "trial": 9,
+   "reason": "semantic gate: {\"sentinel\": false, \"echoed\": true, \"erased\": true}"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "ts",
+   "trial": 1,
+   "reason": "semantic gate: {\"sentinel_loaded\": true, \"erased_before_nav\": true, \"dialogs_clear\": true, \"line_cleared\": false, \"agents_chrome\": false, \"roster_row\": false, \"sentinel_gone\":"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "ts",
+   "trial": 2,
+   "reason": "semantic gate: {\"sentinel_loaded\": false, \"erased_before_nav\": true, \"dialogs_clear\": true, \"line_cleared\": true, \"agents_chrome\": true, \"roster_row\": true, \"sentinel_gone\": t"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "ts",
+   "trial": 5,
+   "reason": "semantic gate: {\"sentinel_loaded\": false, \"erased_before_nav\": true, \"dialogs_clear\": true, \"line_cleared\": true, \"agents_chrome\": true, \"roster_row\": true, \"sentinel_gone\": t"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "ts",
+   "trial": 6,
+   "reason": "semantic gate: {\"sentinel_loaded\": false, \"erased_before_nav\": true, \"dialogs_clear\": true, \"line_cleared\": true, \"agents_chrome\": true, \"roster_row\": true, \"sentinel_gone\": t"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "ts",
+   "trial": 9,
+   "reason": "semantic gate: {\"sentinel_loaded\": true, \"erased_before_nav\": true, \"dialogs_clear\": true, \"line_cleared\": false, \"agents_chrome\": false, \"roster_row\": false, \"sentinel_gone\":"
+  }
+ ],
+ "status_rows": [
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "claude",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "codex",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "compare.scroll_typing",
+   "product": "pi",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "claude",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "codex",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "compare.memory_idle_load",
+   "product": "pi",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "claude",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "codex",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.cold_open_10mib",
+   "product": "pi",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "claude",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "codex",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "session.agent_view_roundtrip",
+   "product": "pi",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "daemon.boot",
+   "product": "claude",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "daemon.boot",
+   "product": "codex",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  },
+  {
+   "benchmark": "daemon.boot",
+   "product": "pi",
+   "reason": "no native fixture/daemon (harness F comparability rule); status row, never measured"
+  }
+ ],
+ "versions": {
+  "compare_cold_start": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "compare_warm_start": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "compare_msg_send": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "compare_scroll_typing": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "compare_memory_idle_load": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "compare_install_disk": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "session_cold_open_10mib": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "session_agent_view_roundtrip": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  },
+  "daemon_boot": {
+   "claude": "2.1.283 (Claude Code)",
+   "codex": "codex-cli 0.158.0",
+   "pi": "0.87.1",
+   "rust": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "ts": "0.9.6"
+  }
+ }
+}

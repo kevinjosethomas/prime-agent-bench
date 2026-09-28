@@ -94,10 +94,17 @@ def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None,
             raise RuntimeError(f"bootstrap failed on {handle.name}: {log[-400:]}")
 
 
-def materialize(backend, spec: dict, bundle: Path, identity: dict | None = None):
-    """Provision + deploy + bootstrap one sandbox; returns its handle."""
+def materialize(backend, spec: dict, bundle: Path, identity: dict | None = None,
+                cfg: dict | None = None):
+    """Provision + deploy + bootstrap one sandbox; returns its handle.
+
+    cfg: the controller campaign config — its ``benchmarks:`` overrides
+    (e.g. compare.msg_send msg_routing) must reach the sandbox-side
+    harness config; without them the sandbox silently falls back to
+    per-product declarations (the strictly-mock campaign caught codex
+    product-level real-api rows winning an orchestrator-deployed wave)."""
     handle = backend.provision(spec["name"], spec)
-    deploy_harness(backend, handle, bundle, identity)
+    deploy_harness(backend, handle, bundle, identity, cfg=cfg)
     handle.status = "ready"
     return handle
 
