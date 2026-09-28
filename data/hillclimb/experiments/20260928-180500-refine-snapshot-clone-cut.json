@@ -1,0 +1,132 @@
+{
+ "id": "20260928-180500-refine-snapshot-clone-cut",
+ "axis": "startup",
+ "hypothesis": "The refine PRE-LLM assembly pays a FULL-ENTRIES SNAPSHOT CLONE (the decompose record 61b1f3b's reported-only candidate): history_snapshot's file_entries.clone() over the whole retained set plus a second clone of every message row in AgentSession::refine. The cut: extract only the refine transcript's consumed artifacts (the message rows the prompt serializes + the audit rows the history scan reads) under the first session lock - no owned copy of the full entry set, no second message clone - with the covered-window + sole-lease shared-window gate on the historical read (#2970 precedent). Parity: the LLM-side inputs byte-identical (the frozen surface), proven by a 3-way differential oracle + a wire-level base-vs-candidate byte-sha leg.",
+ "approach": "SAME-VM SEQUENTIAL + PAIRED ABBA, three evidence layers: (1) DECOMPOSE at the pinned tip e2ee82f2d (VM-local instrumented build, env-gated refine.* marks riding the in-tree PA_COMPACTION_TRACE sink, never committed; cold-resume refine trials over the stock-10MiB (n=8) + 256KiB (n=6) fixtures, arrival-accurate pump, quiet gates, fixture prehash, probe pre/mid/post) - the pre-LLM assembly decomposed: retained clone 7.10ms + messages clone 6.31ms = 13.4ms of the 31.3ms assembly (42.8%), conversation build 17.5ms; the historical FILE READ NEVER FIRES on the RPC/CLI path (the full-reader manager holds no window - parse_done/merge_done marks absent, retained_n=7394 served from memory; the record 61b1f3b's 'read+clone' attribution is corrected for this path). (2) THE CUT: SessionManager::refine_transcript_parts extracts the transcript's consumed artifacts (message rows + in-session refinement history) under the first session lock - no owned full-entry copy, no second message clone (the read arm MOVES messages out of the parse result); RefinementTranscript becomes {messages, refinement_history}; both refine callers restructured; the covered-window + sole-lease shared-window gate also lands in history_snapshot (full-history windows skip the historical read; boundary windows keep it; unleased keeps it - fail-closed to the read). (3) PARITY: the 3-way in-repo differential oracle (full-reader / windowed-leased with the file-deleted served-path probe / windowed-unleased historical read) asserts byte-identical (max_tokens, system, user prompt) + the out-of-band-append read-leg proof; the wire-level leg (pure binaries, full-logging mock, base vs cand over the SAME fixture): raw HTTP body sha EQUAL on stock-10MiB (85,980 bytes) + 256KiB + the compacted reference - BYTE_IDENTICAL on all three. (4) PAIRED ABBA (pure binaries, sha-asserted atomic swaps, A1 B1 B2 A2 per class): the campaign ran in the mixed beyond-D regime (fresh-write A_P50 ~465ms with fast ~1ms windows alternating; per-block + per-boundary probe labels; NO-CEILING: the in-leg stalls are regime evidence) - the WALL deltas are NOT resolvable under the regime noise (stock delta_p50 -0.054ms at ~534ms walls; small -2.5ms) - the cut's saving is carried by the ATTRIBUTION PAIR (instrumented base vs instrumented candidate, same marks): see measurements.",
+ "parity_notes": "Frozen surfaces untouched: session-JSONL replay + compaction content n/a (no wire/row shape change); the LLM-side inputs proven BYTE-IDENTICAL (the wire leg + the in-repo oracle); TUI/user-visible bytes unchanged (no TUI code touched). Driver-side findings, all mine, all disclosed: (1) the first paired-ABBA attempt died on my swap-bin exec-bit bug (PermissionError; the driver now chmods the swap temp + asserts X_OK; the failed blocks were discarded and the whole campaign re-run clean). (2) the pkill cleanup of the first attempt raced a second driver instance (the flock file had been deleted) - killed everything, deleted state, re-ran ONE driver; the final state.json is from the single clean run. (3) the instrumented builds are VM-local (the marks ride the in-tree PA_COMPACTION_TRACE sink; env-gated, ~20 file-writeln marks per trial, disclosed; the paired ABBA legs ran PURE binaries). (4) the I/O regime during the ABBA: mixed beyond-D (~465ms fresh-write walls with fast windows at block boundaries) - every block carries its pre-probe label; the CPU-phase attribution is regime-independent.",
+ "base": {
+  "revision": "e2ee82f2d78de41272ccaf52b76a59b0cab33d61",
+  "note": "the hillclimb tip at lane start (42 merges); the decompose record 61b1f3b pinned e99c4a262 (5 merges older); the tip moved to b89b8ffdd mid-lane (+#2989/#2999/#3003, all disjoint from the lane surface) - folded once, append-only, post-fold re-diff byte-identical"
+ },
+ "branch": "lane/refine-snapshot (worktree /home/ubuntu/worktrees/perf-refine-snapshot); bench repo hillclimb (record only)",
+ "commits": [
+  "04fa7a910e19e2dac68c87d1673a95ad8e478d2a",
+  "ac715a9f5c898b9457fa4fde2602313232b68d56"
+ ],
+ "build": {
+  "base_binary": {
+   "sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678ebdbd4c85b05e5c8f36f63",
+   "bytes": 224690088,
+   "rev": "e2ee82f2d (pure)"
+  },
+  "cand_binary": {
+   "sha256": "dd0e8dc7ef90bf13e613ddf211aac7ce21c7015c0644bd39a65e12a13aa01b25",
+   "bytes": 225063752,
+   "rev": "04fa7a910 (pure)"
+  },
+  "inst_base": {
+   "sha256": "1510866bed465eb84454ea7b26072b501af1701a96b5f87aa3762c92e872f880",
+   "bytes": 224820480
+  },
+  "inst_cand": {
+   "sha256": "320e169a8b8d4646e9cae8f7c5f70b7aaeab30b1b720f0fdb8abc5d95945d44a",
+   "bytes": 225292712
+  },
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace"
+ },
+ "gates": {
+  "fmt": "rc=0 (the pool-VM full-suite gate at 04fa7a910: gate_1790615982; re-gate at the folded head ac715a9f5: gate_1790617943)",
+  "clippy": "rc=0 (both gates; the lane tree also clippy-clean on the lane VM)",
+  "test": "gate_1790615982 at 04fa7a910 (pre-fold, stale base): rc=101, EXACTLY 3 failures, all auto-classified KNOWN-REDS non-expired with citations (kernel_restore_guards co-scheduling pair + supervisor_e2e WORKER_NOT_CONNECTED rotator) - verdict RED_KNOWN_REDS; gate_1790617943 at the folded head ac715a9f5 (fresh base, base_state=folded): rc=101, EXACTLY 2 failures, both the kernel_restore_guards pool co-scheduling family (non-expired, cited: fired across the MERGED carrier lanes' pool gates, solo-green at exact heads, the GREEN gate_1790547986 confirms rotation) - verdict RED_KNOWN_REDS; fleet_review pre-flight at ac715a9f5 (review_1790618719): 1 blocker = the focused-test mechanical red dead_sidecar_degrades_to_errors_not_panics, auto-attached KNOWN-RED (a TEST-ASSERTION RACE in pa-core/tests/extension_runner.rs - the sidecar kill/death-detection race, NOT a product bug, disjoint from this lane's diff), 4 advisories (stale_base - the tip moved again, folded; 3 file-size growth advisories per BUGBOT guidance). The known-reds' disposition is the operator's.",
+  "focused": "session:: 86/86 ok incl. the 4 new gate tests; session_engine::refine incl. refine_request_is_identical_across_extraction_paths ok",
+  "benchmark_ci": "the GitHub CI rollup on PR #3013 (the merge bar carries it); the pool gates: gate_1790615982 (RED_KNOWN_REDS x3 cited) at 04fa7a910, gate_1790617943 (RED_KNOWN_REDS x2 cited) at ac715a9f5, gate_1790619281 (the final-head gate at ed5bae4dc) pending at record-push; fleet_review review_1790619149 GREEN at ed5bae4dc"
+ },
+ "measurements": {
+  "method": "same-vm-sequential (ABBA interleave for the paired walls; the attribution pair over instrumented binaries; cold-resume per trial, arrival-accurate pump, quiet gates, per-trial fixture prehash, I/O advisory v1.0 pre/mid/post + per-block)",
+  "pre_llm_assembly_decompose_at_tip_p50_ms_n8_stock": {
+   "retained_clone": 7.1,
+   "messages_clone": 6.31,
+   "clone_pair_total": 13.41,
+   "conversation_build": 17.53,
+   "harness_loads_and_rest": 0.39,
+   "pre_llm_total": 31.33,
+   "command_wall": 114.625,
+   "note": "the FULL-ENTRIES SNAPSHOT CLONE located at SessionManager::history_snapshot (file_entries.clone(), 7394 entries); the second clone at AgentSession::refine's message filter; the historical FILE READ never fires on the RPC/CLI path (the full-reader manager holds no window - parse/merge marks absent, the record 61b1f3b's 'read+clone' attribution corrected for this path)"
+  },
+  "pre_llm_assembly_candidate_p50_ms_n8_stock": {
+   "parts_extraction": 6.34,
+   "conversation_build": 15.39,
+   "harness_loads_and_rest": 0.09,
+   "pre_llm_total": 21.82,
+   "note": "the extraction = the messages clone + the audit scan under the first lock; the clone pair collapses 13.41 -> 6.34 (-7.07ms, exactly the full-entries clone); the conversation build's -2.1ms is an allocator-pressure side effect (the 10MiB clone churn removed); llm_span unchanged (1.46-1.54)"
+  },
+  "pre_llm_delta_stock": {
+   "delta_ms": -9.51,
+   "delta_pct": -30.4
+  },
+  "pre_llm_256kib_control": {
+   "base_total": 1.17,
+   "cand_total": 0.92,
+   "delta_ms": -0.256,
+   "note": "exactly the retained clone's 0.257ms at this size class"
+  },
+  "paired_abba_pure_binaries": {
+   "stock_10mib": {
+    "A_p50_ms": 534.356,
+    "B_p50_ms": 534.302,
+    "delta_p50_ms": -0.054,
+    "A_min": 77.5,
+    "B_min": 66.6,
+    "blocks": "A1 B1 B2 A2 x4 trials each, sha-asserted swaps"
+   },
+   "small_256kib": {
+    "A_p50_ms": 469.518,
+    "B_p50_ms": 467.01,
+    "delta_p50_ms": -2.508,
+    "A_min": 7.0,
+    "B_min": 5.0,
+    "blocks": "A1 B1 B2 A2 x3 trials each"
+   },
+   "regime": "MIXED beyond-D: fresh-write A_P50 ~450-475ms walls (A_STALL_RATE 65-100%) alternating with fast ~1ms windows at some boundaries; every block carries its pre-probe label (CLASS D/H per boundary); NO-CEILING: the in-leg stalls are regime evidence",
+   "verdict": "the WALL deltas are NOT resolvable under the ~470ms regime noise - the cut's saving is carried by the attribution pair (regime-independent CPU spans); the walls are disclosed as regime-bound, not claimed as the pair's timing evidence"
+  },
+  "parity_wire_legs": {
+   "stock_10mib": {
+    "BYTE_IDENTICAL": true,
+    "raw_body_sha_equal": true,
+    "raw_len": 85980,
+    "max_tokens_equal": true,
+    "user_sha": "05bd0762aaf3b7c339727dcff888cfb60a71c87abad7be551373b52e3533418f",
+    "system_sha": "b263ad0e624ece69"
+   },
+   "small_256kib": {
+    "BYTE_IDENTICAL": true,
+    "raw_body_sha_equal": true
+   },
+   "compacted_reference_10mib": {
+    "BYTE_IDENTICAL": true,
+    "raw_body_sha_equal": true,
+    "user_sha": "9385f25fc6ca..."
+   },
+   "note": "base vs cand PURE binaries over the same fixture against a full-logging mock (the bench mock's full-request-logging variant, measurement-neutral, parity legs only): exactly 1 refiner request each; the raw HTTP body byte-equal - the exact entries sequence the refine model sees is byte-identical"
+  },
+  "in_repo_oracle": "refine_request_is_identical_across_extraction_paths (pa-core session_engine/refine tests): the 3-way differential (full-reader / windowed-leased with the file-deleted served-path probe / windowed-unleased historical read) asserts byte-identical (max_tokens, system, user prompt) + the out-of-band-append read-leg proof; green in the gates",
+  "gate_unit_tests": "full_history_snapshot_serves_retained_rows_without_the_file (served-path: file deleted, snapshot Ok + exact-content parity + cache round-trip), full_history_snapshot_without_lease_keeps_the_historical_read (out-of-band row visible), boundary_window_snapshot_keeps_the_historical_read (pre-window rows served under the lease) - green"
+ },
+ "ts_anchor": {
+  "rpc_commands": "packages/coding-agent/src/modes/rpc/rpc-mode.ts:283-291 - case refine: connection.refine({instructions, rollbackId, global})"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "the ABBA wall campaign is regime-labeled (mixed beyond-D) and NOT used as the timing evidence; the attribution pair ran back-to-back on the same VM with the same env-gated instrument (~20 mark lines/trial, disclosed); the instrument's later exec marks were not re-applied to the candidate build (target_loaded/apply/harness_save/rows_appended spans are analyzer artifacts on the cand legs - excluded from the record; the pre-LLM and extraction spans are the cand's own marks); the two ad-hoc pa-cli TUI reds from my first suite run triaged: tui_refused_submit non-deterministic at BOTH heads (failed at base e2ee82f2d isolated, passed on the lane isolated - pre-existing tip flake, #3001/#2999 territory, disjoint from the lane diff), tui_prompt_stash_pasted_image passed isolated at both heads (suite-load co-scheduling); neither fired in the pool-VM full-suite gate; SOLO at the PR head ed5bae4dc: kernel_restore_guards 6/6, krg_rc=0 (the pool co-scheduling classification confirmed at the exact head); fleet_review GREEN at the head (0 blockers; 3 file-size advisories per BUGBOT guidance: manager.rs 2353 LoC, window_tests.rs 1027, refine.rs 1034 - advisory only)"
+ },
+ "outcome": "in-progress (PR open, merge bar pending)",
+ "decision": "The cut measured and landed: the refine pre-LLM full-entries snapshot clone eliminated (-9.51ms/-30.4% pre-LLM assembly at 10MiB; the clone pair 13.41ms -> one 6.34ms parts-extraction; the 256KiB control -0.256ms = exactly the retained clone). The wire parity is BYTE-IDENTICAL on 3 fixtures + the in-repo 3-way oracle green. The ABBA walls regime-bound (mixed beyond-D ~465ms) and disclosed as such - the attribution pair carries the timing claim. PR #3013 at head ed5bae4dc34ffda9bb469b26de50b427f41f5a4c (two append-only folds, each re-diff byte-identical). fleet_review GREEN at the head (0 blockers, 3 file-size advisories, mechanical pre-flight green); the folded-head gates RED_KNOWN_REDS (only the kernel_restore_guards pool co-scheduling family, cited; solo 6/6 at the exact head). The merge bar: the CI rollup + the numeric review + both adversarial reviewers + the operator's known-reds disposition.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3013",
+ "record_path": "data/hillclimb/experiments/20260928-180500-refine-snapshot-clone-cut.json",
+ "session": {
+  "worker": "perf-refine-snapshot-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-aaa56b39/01a0e8cb-cce2-7222-84cc-e0980b7f13b4.jsonl"
+ },
+ "timestamp": "2026-09-28T18:04:30.450387+00:00"
+}
