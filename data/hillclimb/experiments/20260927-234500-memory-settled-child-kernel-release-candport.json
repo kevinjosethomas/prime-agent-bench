@@ -1,0 +1,101 @@
+{
+ "id": "20260927-234500-memory-settled-child-kernel-release-candport",
+ "axis": "memory",
+ "hypothesis": "TS #2483 (stale perf PR, not superseded): settled RLM children hold a worker and a kernel until parent close - nothing at the tip releases them (the supersession analysis measured ~141-244MB worker + ~30MB kernel per settled child). The TS inline arm (a snapshot-flushing stopKernel that keeps the child session live, listable, inspectable, collectable, and deletable, with the next kernel use reviving from the flushed snapshot) ports to the rust worker architecture as: (1) IpythonKernelProvisioner::stop_kernel (the revivable snapshot-flushing stop + the pendingStop revival gate), and (2) the worker-side settle-conditioned release (the child worker's own turn-runner park arm fires it when the parent-owned, unattached, unqueued idle state holds and the engine gates pass: no unsettled descendants, no registered cron/heartbeat jobs). The roster and collect surfaces are untouched by design (byte-identical); the daemon-mode whole-worker passivation stays DEFERRED to the orchestrator per the lane brief.",
+ "approach": "PHASE 0 the supersession analysis (the predecessor's, accepted): #2483 not superseded; the inline arm in scope; the whole-worker passivation deferred. PHASE 1 the port (branch lane/perf-revive-2483 off the SETTLED tip 944017dd7, all three split series complete): IpythonKernelProvisioner::stop_kernel (TS stopKernel: snapshot + drain_host_requests shutdown without disposing; the in-flight-startup arm joins the boot then shuts the kernel down, the TS managerPromise arm; the pendingStop gate as a clonable watch receiver so multiple revival waiters gate on it - a completed stop awaits instantly, each stop supersedes), start_kernel_impl awaits the stop gate before reading the snapshot back; the session engine's stop_kernel_snapshot seam beside dispose_kernel; the SessionEngine trait's release_settled_child_kernel (default no-op for scripted harness engines) implemented by AgentSessionEngine with the canPassivateSettledSession gates engine-side (has_unsettled_rlm_work for descendants, a worker-wired registered-jobs probe over the shared cron store for hasRegisteredCronJob) firing the per-build weak-provisioner release probe (the background-bash-probe adoption pattern, cleared on retire/close); the turn runner's park arm fires it best-effort when the worker core proves parent-owned (rlm_depth>0) + unattached + not compacting + no lane work (the park arm's construction). PHASE 2 gates: lane VM cargo fmt --all --check rc=0, clippy --workspace --all-targets -D warnings rc=0 (four authoring iterations: a lost struct-field edit, tokio JoinHandle-not-Clone -> the watch receiver, a single_match_else, a Send-guard-across-await), the three test pieces green. PHASE 3 fleet review + full-suite gate on the org head 97b38836d. PHASE 4 the daemon-mode settled-child census (same-VM sequential A/B, the mock-provider-scripted spawn through the parent's kernel rlm.spawn, ppid-attributed process-tree census at settle). PHASE 5 fleet review x2 + gate x2 on the pre-fix and folded heads with every red triaged solo-green on the exact head content.",
+ "parity_notes": "FROZEN SURFACES: no wire or schema change (no new DaemonCommand; the frozen roster/collect paths untouched by design - the release touches only the kernel lifecycle); the session-JSONL/TUI/prompt surfaces untouched. THE DISCLOSED INTERNAL DIVERGENCE: the TS release is parent-driven at the parent's run-settle hook (TS children are in-process sessions, so the parent reaches the child's provisioner directly); the rust children are WORKER PROCESSES (the parent has no in-process reach and the daemon wire is a frozen surface), so the port triggers the release at the child's OWN idle park arm - the same revivability semantics (the next kernel use boots fresh from the flushed snapshot through the pendingStop gate), the same policy gates (parent-owned, unattached, idle, no descendants busy, no registered cron jobs), and the same best-effort failure class (a failed stop leaves the kernel resident; the child stays listable/inspectable/collectable/deletable). The per-turn granularity note: the TS releases once per settled run; the park arm fires at every idle park (a stop with no live kernel is a no-op, and a follow-up prompt's first kernel use revives from the snapshot - the TS's own accepted revival cost class).",
+ "base": {
+  "revision": "944017dd75724e453115b31d56d3568d55e0bb6e (the settled tip - all three split series complete: agent_engine 11/11, supervisor 8/8, session_ui 14/14; no fold needed, the lane branched off the settled tip and the touched files are outside any moving series)"
+ },
+ "branch": "lane/perf-revive-2483",
+ "commits": [
+  {
+   "sha": "97b38836d027211d75b561b9e1487d965dd404ee",
+   "subject": "perf(pa-core/pa-daemon): a settled RLM child releases its kernel at settle - snapshot-flushing stop_kernel, revivable (TS #2483)"
+  },
+  {
+   "sha": "9a98ca1352f5c203bb797770c5d57527621cf02e",
+   "subject": "test(pa-daemon): the park-arm release test waits on observable readiness (the review advisories)"
+  },
+  {
+   "sha": "eea1794bb75642b0fb9d47cde1755444167abf2c",
+   "subject": "the PR head: the fold of the tip d90afa128b6e (the oauth-refresh lane #2971) - the post-fold re-diff is exactly the lane's 12 files, byte-identical"
+  }
+ ],
+ "build": {
+  "sandbox_id": "ivt417l0kqyy5skvg97h6rgi (reused; tree at /root/pa2483 = tip + the candidate, fmt/clippy/test green; the release-binaries + the campaign legs use the same VM)",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM)",
+  "note": "the paired release binaries (tip 944017dd7 vs candidate 97b38836d) are PENDING (the campaign legs)"
+ },
+ "gates": {
+  "fmt": "GREEN (VM cargo fmt --all --check rc=0)",
+  "clippy": "GREEN (VM cargo clippy --workspace --all-targets -D warnings rc=0)",
+  "test": "the three port tests GREEN on the VM: kernel_stop_revive (live kernel: the stop flushes kernel-state.dill, manager().is_none(), the next ensure boots a fresh kernel and the marker variable REVIVES - run with PA_CORE_KERNEL_PYTHON=the harness kernel-venv python; the no-kernel stop is a no-op); worker::turn_stream_tests::the_idle_park_releases_a_parent_owned_childs_kernel_only (the park-arm policy matrix: a depth-1 child releases at the idle park, a root/attached/compacting session does not); agent_engine::tests::release_settled_child_kernel_defers_to_scheduled_jobs_and_fires_the_release_probe (the engine gates: a registered-jobs probe defers the release, the release probe fires otherwise). FLEET GATE gate_1790561796_945232 on the folded head eea1794bb (base_state folded, tip d90afa128b6e - the oauth-refresh lane #2971, the ONLY tip delta, manager.rs, no worker-path overlap): fmt rc=0, clippy rc=0, test rc=101 with THREE known-reds auto-attached (the kernel_restore_guards co-scheduling family + tool_result_entries_persisted_and_streamed - the standing pool families, green on rotation per the evidence chain) and ONE unknown (tui_prime_login_escape) - ALL FOUR triaged SOLO-GREEN on the exact post-fold head content (the pa-daemon abort family 5/0, my two tests 1/0 each, the pa-cli clipboard_auth_commands_e2e module 1/0 with 11 filtered). The FIRST gate gate_1790560549_945232 (pre-fold head 97b38836d): fmt red (the hand-written-formatting commit - fixed in 9a98ca135 by syncing the VM-fmt'd sources), clippy 0, test 101 with the same known-red family auto-attached.",
+  "benchmark_ci": "PR head CI at merge-bar time (the standing non-applicable TS-harness benchmark class, operator-dispositioned, never called pass)"
+ },
+ "measurements": {
+  "method": "the daemon-mode settled-child census, same-VM sequential (A=tip 944017dd7 bin 43c1d5cc, B=candidate bin 5167ba85 built from the folded-head content; the mock-provider-scripted spawn: the parent's kernel cell awaits rlm.spawn, the child's turn runs an ipython cell, 8s settle grace + a 2-sample stability re-census; the process tree walked from the daemon pid with ppid attribution)",
+  "settled_child_census": {
+   "A_tip": {
+    "workers": [
+     {
+      "rss_mb": 58.3,
+      "role": "parent"
+     },
+     {
+      "rss_mb": 52.5,
+      "role": "child"
+     }
+    ],
+    "kernels": [
+     {
+      "rss_mb": 26.8,
+      "owner_ppid": "parent worker"
+     },
+     {
+      "rss_mb": 26.9,
+      "owner_ppid": "child worker"
+     }
+    ],
+    "kernels_total_mb": 53.7,
+    "verdict": "BOTH kernels retained at settle (the supersession analysis's not-superseded finding reproduced)"
+   },
+   "B_candidate": {
+    "workers": [
+     {
+      "rss_mb": 59.0,
+      "role": "parent"
+     },
+     {
+      "rss_mb": 55.6,
+      "role": "child"
+     }
+    ],
+    "kernels": [
+     {
+      "rss_mb": 27.1,
+      "owner_ppid": "parent worker"
+     }
+    ],
+    "kernels_total_mb": 27.1,
+    "verdict": "THE CHILD'S KERNEL RELEASED at its settle park (~27MB freed per settled child); the PARENT - a root session, rlm_depth 0 - keeps its kernel exactly per the policy"
+   },
+   "delta": "one kernel process (~27MB RSS) released per settled child; the child WORKER stays resident (the deferred whole-worker passivation, the orchestrator's call)"
+  },
+  "revival_oracle": "mechanism-level PROVEN by the live-kernel test (kernel_stop_revive, run with the harness kernel-venv python): the stop flushes kernel-state.dill, manager() reads None, the next ensure() boots a FRESH kernel and the marker variable (2483) REVIVES through the pendingStop gate. The daemon-surface revival prompt (a follow-up to the settled child) needs the child worker's daemon routing id, which this driver's roster read did not resolve (get_rlm_children returned an empty children list for the kernel-spawned child in BOTH arms - a driver observation, disclosed; the roster/collect code paths are untouched by the diff, and the byte-oracle across arms is left as a follow-up leg with the driver fix)",
+  "frozen_surfaces": "no wire/schema change (no new DaemonCommand; the roster and collect code paths untouched by the diff - the review's rulebook scan green on every surface except the co-scheduling test flakes)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The census is a CATEGORICAL mechanism measurement (a process present vs absent with RSS attribution), not a wall-clock race: one clean sequential A/B pair on the same VM with stable double-censuses carries it; the full ABBA battery is available as a follow-up if the orchestrator wants the RSS numbers interleaved. The revival over the daemon surface is left as a follow-up driver leg (the child's daemon routing id; the roster read in this driver returned an empty children list in BOTH arms - a driver-level observation, disclosed, not a product claim). The known-reds: the gate's four reds are the standing pool co-scheduling families (auto-attached) plus the TUI e2e member - all solo-green on the exact post-fold head content (the pa-daemon abort family 5/0, the pa-cli clipboard module). The review's two focused-test blockers (abort_and_send_queued x2) are the same class: solo-green 5/0 on the exact post-fold content; the review VM's focused batch ran them under parallel load. The first review's fmt blocker was real (my hand-written formatting committed before the VM sync) - fixed in 9a98ca135 and the flow now syncs the fmt'd sources before every commit."
+ },
+ "outcome": "candidate at the folded head eea1794bb (fold of the tip d90afa128b6e, byte-identical post-fold re-diff on all 12 files); PR open with the census pair evidence; merge pending the orchestrator bar",
+ "decision": "PLACEHOLDER (the orchestrator's bar; the lane's evidence: the TS-parity port with live-kernel revival proof + the policy matrices, the frozen surfaces untouched, the divergence disclosed, the campaign plan scoped)",
+ "pr_url": "PLACEHOLDER",
+ "record_path": "data/hillclimb/experiments/20260927-234500-memory-settled-child-kernel-release-candport.json",
+ "session": {
+  "worker": "rsi-triage",
+  "session_dir": "see conversation log"
+ },
+ "timestamp": "2026-09-27T23:45:00Z"
+}
