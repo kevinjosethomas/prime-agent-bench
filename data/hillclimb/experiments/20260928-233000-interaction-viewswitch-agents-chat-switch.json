@@ -164,7 +164,8 @@
    ],
    "note": "single-trial noise at this class (pre-fold spread 829-1022); the switch legs are the confirmation's subject"
   },
-  "verdict": "the switch legs at the PR head stand in the same ~286-330ms class as the pre-fold arms (263.9-340.7) \u2014 the cap null + the ~0.0245ms/message curve confirmed at the folded tree; the byte legs identical frames counts (2) + bytes (4980) across the pair"
+  "verdict": "the switch legs at the PR head stand in the same ~286-330ms class as the pre-fold arms (263.9-340.7) \u2014 the cap null + the ~0.0245ms/message curve confirmed at the folded tree; the byte legs identical frames counts (2) + bytes (4980) across the pair",
+  "pr_head_note": "HEAD LEDGER: attach-paint's PR head moved 3091de7ee -> a8343adec AFTER this confirmation pair ran (the two capped-contract test fixes: drag_select_perf + slow_drain_exit_guard_e2e \u2014 both fixtures crossed the 400 window; ZERO product-code change, test-expectations-only, disclosed in their PR). This confirmation pair at 3091de7ee therefore covers the identical product delta as the a8343adec PR head."
  },
  "evidence_archive": {
   "path": "/home/ubuntu/hillclimb/fixtures/viewswitch/viewswitch-evidence.tar.gz",
@@ -172,5 +173,5 @@
   "bytes": 147493060,
   "note": "the full ABBA traces (per-leg frames with byte offsets + raw.pt), the instr logs, the probes, the chained-fixture pair, the drivers; sha-verified BEFORE the VM deletion"
  },
- "updated": "2026-09-28T23:40:00Z"
+ "updated": "2026-09-29T00:05:00Z"
 }
