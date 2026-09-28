@@ -417,7 +417,23 @@
     "classification": "the co-scheduling family confirmed AT THIS HEAD - the identical evidence pattern to the registry's prior dispositions (rpc-models-persist SOLO 6/6 @2329e6256; rpc-authlock SOLO 6/6 @c711b4c68)",
     "status": "the operator disposition + the reviewer re-bind at 69b2b3556 are the parent's (the standing authorization covers the merge on both re-APPROVEs)"
    },
-   "pair_binary_note": "the staged pair binaries on VM2 bind to the PRE-fold heads (base 13d756ce@944017dd7 / cand f5c0d1c3@542499bdd); a fresh-1+1 authorization would need a re-stage at the new fold"
+   "pair_binary_note": "the staged pair binaries on VM2 bind to the PRE-fold heads (base 13d756ce@944017dd7 / cand f5c0d1c3@542499bdd); a fresh-1+1 authorization would need a re-stage at the new fold",
+   "bot_bar_cycle": {
+    "merge_red": "the zero-unresolved bot bar caught TWO substantive findings the human reviews missed: (1) the raw contains(marker) gate ran before JSON decoding - a customType with a JSON-escaped marker character (rlm_max_depth_\\u0073tate) never reached the row parser while the reference's decoded parse honored it (a strict-contract divergence on the exact mechanism); (2) the goal-seed oracle's windowed fixtures ALWAYS took the full-reader fallback (parentId:\"\" left the walk's expected Some(\"\") -> the post-loop ancestry gate returned Ok(None)) - vacuous exactly where the shared-open matters, and the off-branch class omitted the m1 predecessor its comment described",
+    "fixes": "the exact union gate (contains(marker) || contains(\"\\\\u\") - an escaped marker char can ONLY appear as \\uXXXX; the arm widens the parse set, never narrows a match) + both escaped oracle classes (honored/rejected); the ancestry-terminating fixtures (parentId omitted on the oldest row), the off-branch class's m1 predecessor + correct file order + the provider/model pair the window walk requires (a THIRD latent fixture defect caught by the new anti-vacuity assertion during fix verification), and the hard window_serves assertion per class",
+    "fix_head": "5b75513ff7fb715042f77164f3e02b257703b4b0 (4 commits on 69b2b3556)",
+    "gates_at_fix_head": "fmt 0 / clippy 0 / the oracle battery 3/3 (the window path genuinely served for the first time) / kernel_restore_guards 6/6; the full-suite gate = RED_KNOWN_REDS on the SAME disposed family (zero unknown) with the fix-head solo evidence collected (krg 6/6 on VM2, same machine+venv discipline)",
+    "re_binds": "reviewer #1 SHA-bound APPROVE at 5b75513ff (the union gate verified in source with the bounded-cost concern addressed; the window_serves assertion verified; the bots' own CI pulls at the fix head: Bugbot + Macroscope ALL SUCCESS - the threads resolved on the fixed code)"
+   }
+  },
+  "merge": {
+   "pr": 2970,
+   "merged_as": "c036bafa5f8e01782422d83ff9e1f453dd595164",
+   "merge_class": "squash",
+   "bar": "threads 0 unresolved; head unmoved; mandatory_red empty; the benchmark the only tolerated red (the standing non-applicable class)",
+   "merged_content": "the shared-open (C1: adopt_built_session's single windowed open, seed-before-adoption, the shared fallback) + the depth-scan union gate (C2: the exact marker union with the \\u arm) + the differential oracles (13+2 depth classes, 5 goal classes with the window path genuinely served, the recovery-rebuild flow)",
+   "lane_closed": "the record's outcome: the decomposition + the two full-pass discoveries; the settle-day fold + gates + the honest-negative paired section (the 1+1 event-blocked outcome); the two bot findings fixed with oracle classes; both reviewers SHA-bound at the fix head; MERGED",
+   "cleanup": "the remote branch auto-deleted by the squash-merge; the lane worktree + local branch removed; VM2's staged pair artifacts dropped (the machine left for the pool reclaim)"
   }
  }
 }
