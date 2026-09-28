@@ -35,7 +35,7 @@
  },
  "gates": {
   "fmt_clippy_local": "clean at the folded head 910ccc18e",
-  "vm_full_gate": "gate_1790638005_1111984 armed on pool-1 (bvwr5lk9t7jbsj3e5tc6x7im; pool-0's degraded ykp6mbwtd retired by the pool before this run, the steer's fresh-VM/pool-1 rule honored), verdict pending at record time",
+  "vm_full_gate": "gate_1790638005_1111984 armed on pool-1 (bvwr5lk9t7jbsj3e5tc6x7im) at the PR head 910ccc18e; verdict pending at record time (the PR body carries the missing-gate note until it lands)",
   "in_repo_oracles": "tests/kernel_capture_freshness 6/6 GREEN with the ambient kernel python (the only-on-unchanged directions; the OCAP prune + back-to-back skip; the fresh dispose + crash-resume; the external-manifest defeat; the listing arm)"
  },
  "measurements": {
@@ -248,7 +248,7 @@
  "ts_anchor": "TS scheduleSnapshot is unconditional (repl-manager.ts:1713-1723); consumeRestoredSnapshotSkip is the one-shot post-restore skip (:1727-1741; the completedExecutions+manifest-stat witness, port-faithful on the rust side as restored_namespace_skip); TS prunes unconditionally at compact (agent-session.ts:8604-8606); the rust restore_boot_hold remains the rust-only divergence (the parity ledger). The memo extends the SAME witness class to every capture on the rust side only - the same internal-divergence class as the boot hold, byte-preserving on the observable surfaces.",
  "outcome": "cut-landed (the recurring capture-freshness memo; paired ABBA complete; PR + gate at the folded head; the C1 per-var headline closed unsound as the honest negative with the analysis)",
  "decision": "MERGE-CANDIDATE: the memo delivers the decompose's measured redundant re-dumps (O8m compact -664ms/-87%, O8m exit -551ms, B32m compact -136ms, B32m/B8m exit -32ms, the S2c fast-path dividend at every skipped class) with the #227/OCAP over-cap guard preserving the prune+disclose semantics (the OCAP control arm proves the untouched path), the crash-resume contract re-proven, both readers untouched (no version bump needed - the cross-product scope warning resolved by analysis), and the settle-path frame placed honestly: the turn wall unmoved, the wins at the compaction boundary and the exit; the O8m next-cell interference stays unmoved (the C1 per-var memo is unsound; C3 chunking remains the open candidate for that class).",
- "pr_url": "pending (fleet_pr at the folded head 910ccc18e)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3037 (PR #3037 at the folded head 910ccc18e; the lane delta = the 4-file memo commit f3b121570 + the two byte-identical folds)",
  "record_path": "data/hillclimb/experiments/20260928-232800-interaction-kernel-memo.json",
  "session": {
   "worker": "kernel-dump-freshness-memo (wave-6, Kevin-directed round-4)",
