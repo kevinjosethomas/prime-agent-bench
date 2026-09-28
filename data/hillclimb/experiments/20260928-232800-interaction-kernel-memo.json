@@ -1,0 +1,258 @@
+{
+ "id": "20260928-232800-interaction-kernel-memo",
+ "axis": "interaction",
+ "hypothesis": "The kernel-sync decompose's C1 candidate - a freshness memo skipping the redundant kernel re-dump while the namespace provably cannot have changed - cuts the recurring capture-entry walls (the compact-time S2a prune and the dispose S3 flush measured at 509ms/530ms of the O8m compact/exit walls) WITHOUT touching the cross-product payload format: the memo is manager-side (the settled-user-execution + committed-manifest-stat witness the product already ships for the post-restore fire, generalized to every capture), so the dump format needs NO version bump and both readers are untouched. The decompose's per-variable headline (re-dump only changed names) is UNSOUND in Python and is closed as an honest negative.",
+ "approach": "PAIRED same-VM sequential ABBA on VM e0427kpil34dpotc47emtz30 (fresh, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1): base = the tip head 78f257bf0 (binary sha 22b4298c80a41aa2216149b3bc4fcc549ed48c8d0d6bfbe2e19bdac493973982) vs candidate = the lane merge e6e4ef964 (binary sha e135e88202aba53ffa7eb15f45d468e4a58b85a1b6abbd77791f9ebef28958d9; the lane commit f3b121570 + the fold); the lane's post-run fold to 910ccc18e (tip 4c40e964b) verified re-diff byte-identical. Sha-asserted unlink-then-copy binary swaps with X_OK asserts; the driver asserts base!=cand before arming (the identical-pair trap: a same-VM checkout->cargo build once produced a byte-identical pair - cargo skipped the pa-core recompile across the checkout; remedy = clean the changed crates + assert). Classes E/B64k/B1m/B8m/B32m/O8m/OCAP, n=12/arm/class over ascending+descending passes (arms b,c,c,b asc / c,b,b,c desc, 3 trials/slot), the kernelsync trial shape (build/control/big/interference turns -> compact -> get_state -> stdin-close exit) over the RPC surface with the offline mock + PA_COMPACTION_TRACE spans + the artifact commit watcher + payload/manifest sha + notice-row extraction; plus the stock-10MiB settle-frame phase (E/B8m/O8m, n=6/arm/class) for Kevin's Enter-to-reply marker. Io advisory v1.0 pre/mid/post: CLASS=D at every boundary (re-classified per the phase model).",
+ "parity_notes": "(1) TS-PARITY CASE CLOSED: TS has NO recurring freshness mechanism - repl-manager.ts:1713-1723 schedules the debounced capture unconditionally; only the one-shot post-restore skip exists on both sides (consumeRestoredSnapshotSkip :1727-1741, the completedExecutions+manifest-stat witness). TS's vendored runtime has no per-var skip either (diffed: the rust runtime is the hardened superset). The memo is the same internal-divergence class as the shipped rust-only restore_boot_hold, byte-preserving on every observable surface. (2) THE C1 PER-VARIABLE HEADLINE IS CLOSED UNSOUND: the O8m cost class is mutable nested trees - in-place mutation (tree['k']=v) is invisible to every cheap witness (id/type/len/dirty-dict; the shipped writer already re-measures for exactly this class, repl.py's prune path: 'in-place mutation defeats any name-based size tracking'); the string classes pickle at ~0.9ms/MiB and every SOUND content witness (memcmp vs resident committed bytes / re-read+compare) costs ~the pickle itself; id-only witnesses are unsound (del x; x=<new same-address str>); so 're-dump only changed names' cannot be delivered soundly at the class that carries the cost - the served-path oracle (a changed var MUST re-dump) fails by construction. (3) NO VERSION BUMP NEEDED: the memo never alters on-disk bytes (the skip means the committed payload stands); both readers untouched - proven by the both-readers round-trip oracle 6/6 PASS on the VM (rust-writer->ts-reader, ts-writer->rust-reader, the v1 legacy dict, the per-variable cap; the lane runtime + the TS checkout's runtime, kernel-venv dill 0.4.1). (4) THE LISTING DEFEAT (found by the pre-measurement smoke): the compact's own list_names request settles like a cell and was bumping the witness count - every compact would have defeated the dispose skip. FIX: the witness counts USER settles only (the new user_executions counter, bumped only for !internal requests; internal state ops - the listing, the captures, the repair bootstrap - never move it; the normal boot's bootstrap IS a real execute and still counts). Pinned by the in-repo oracle an_internal_state_request_does_not_defeat_the_fresh_skip. Smoke proof pre/post the fix: the O8m exit 615->63.6ms.",
+ "base": {
+  "revision": "78f257bf0 (org/rust at run time; the lane folded the later tips post-run, re-diff byte-identical)",
+  "note": "the ABBA pair is base-tip vs the lane head at the run; the lane head e6e4ef964 = f3b121570 (the memo) + the fold of 78f257bf0"
+ },
+ "branch": "lane/kernel-dump-memo (org remote); bench repo hillclimb record-only",
+ "commits": [
+  {
+   "sha": "f3b121570",
+   "subject": "perf(pa-core): the recurring capture-freshness memo - skip the redundant kernel re-dump while the namespace provably cannot have changed",
+   "delta": "4 files, 590 insertions: crates/pa-core/src/kernel/manager/mod.rs (the CaptureFreshness memo + the user_executions counter), crates/pa-core/src/kernel/manager/execution.rs (the user-settle bump), crates/pa-core/src/kernel/manager/snapshot.rs (the consult + the arm + the over-cap-reason const), crates/pa-core/tests/kernel_capture_freshness.rs (6 served-path oracles)"
+  },
+  {
+   "sha": "e6e4ef964",
+   "subject": "fold 78f257bf0 (append-only; post-fold re-diff byte-identical)",
+   "delta": ""
+  },
+  {
+   "sha": "910ccc18e",
+   "subject": "fold 4c40e964b post-run (append-only; post-fold re-diff byte-identical)",
+   "delta": "the PR head"
+  }
+ ],
+ "build": {
+  "sandbox_id": "e0427kpil34dpotc47emtz30 (hillclimb-perf-kernel-memo, fresh VM, pool-hazard rule; NOT pool-0)",
+  "base_binary_sha256": "22b4298c80a41aa2216149b3bc4fcc549ed48c8d0d6bfbe2e19bdac493973982",
+  "cand_binary_sha256": "e135e88202aba53ffa7eb15f45d468e4a58b85a1b6abbd77791f9ebef28958d9",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04, cargo build --release --locked --workspace; the changed crates cleaned between arms + the pair-differ assert)",
+  "kernel_venv": "/root/bench/global/rust/kernel-venv (dill 0.4.1; the bench settle path)"
+ },
+ "gates": {
+  "fmt_clippy_local": "clean at the folded head 910ccc18e",
+  "vm_full_gate": "gate_1790638005_1111984 armed on pool-1 (bvwr5lk9t7jbsj3e5tc6x7im; pool-0's degraded ykp6mbwtd retired by the pool before this run, the steer's fresh-VM/pool-1 rule honored), verdict pending at record time",
+  "in_repo_oracles": "tests/kernel_capture_freshness 6/6 GREEN with the ambient kernel python (the only-on-unchanged directions; the OCAP prune + back-to-back skip; the fresh dispose + crash-resume; the external-manifest defeat; the listing arm)"
+ },
+ "measurements": {
+  "method": "same-VM sequential, quiet-gated, io advisory v1.0 pre/mid/post (CLASS=D at every boundary, re-classified per the phase model), binary sha asserted per block (swap_to: unlink-then-copy + chmod + X_OK + sha vs the built source), per-trial fixture prehash, product-only zombie sweep, ascending+descending passes for drift balance, n=12/arm/class (n=18 at E/B8m/O8m incl. the settle phase), the stock-10MiB settle frame (n=6/arm/class)",
+  "paired_p50_ms": {
+   "s2a_prune_span": {
+    "E": [
+     2.74,
+     0.1
+    ],
+    "B64k": [
+     2.69,
+     0.08
+    ],
+    "B1m": [
+     2.9,
+     0.11
+    ],
+    "B8m": [
+     7.83,
+     0.11
+    ],
+    "B32m": [
+     34.84,
+     0.09
+    ],
+    "O8m": [
+     537.27,
+     0.11
+    ],
+    "OCAP": [
+     5.6,
+     5.49
+    ]
+   },
+   "s2b_list_span": {
+    "E": [
+     0.17,
+     0.34
+    ],
+    "B64k": [
+     0.28,
+     0.31
+    ],
+    "B1m": [
+     0.3,
+     0.36
+    ],
+    "B8m": [
+     0.3,
+     0.36
+    ],
+    "B32m": [
+     0.32,
+     0.37
+    ],
+    "O8m": [
+     0.34,
+     0.38
+    ],
+    "OCAP": [
+     0.31,
+     0.34
+    ]
+   },
+   "s2c_notice_tail": {
+    "E": [
+     71.93,
+     0.52
+    ],
+    "B64k": [
+     76.34,
+     0.61
+    ],
+    "B1m": [
+     75.14,
+     0.66
+    ],
+    "B8m": [
+     85.73,
+     0.71
+    ],
+    "B32m": [
+     98.44,
+     0.62
+    ],
+    "O8m": [
+     72.39,
+     0.68
+    ],
+    "OCAP": [
+     84.67,
+     81.56
+    ]
+   },
+   "compact_wall": {
+    "E": [
+     157.14,
+     81.96
+    ],
+    "B64k": [
+     159.4,
+     80.47
+    ],
+    "B1m": [
+     161.63,
+     90.02
+    ],
+    "B8m": [
+     193.45,
+     153.82
+    ],
+    "B32m": [
+     245.12,
+     109.02
+    ],
+    "O8m": [
+     763.01,
+     98.96
+    ],
+    "OCAP": [
+     184.8,
+     182.17
+    ]
+   },
+   "exit_wall": {
+    "E": [
+     31.44,
+     31.46
+    ],
+    "B64k": [
+     31.44,
+     31.44
+    ],
+    "B1m": [
+     31.46,
+     31.49
+    ],
+    "B8m": [
+     63.42,
+     31.44
+    ],
+    "B32m": [
+     63.55,
+     31.45
+    ],
+    "O8m": [
+     614.9,
+     64.29
+    ],
+    "OCAP": [
+     31.51,
+     31.45
+    ]
+   },
+   "commits_per_trial": {
+    "E": [
+     3,
+     1
+    ],
+    "B64k": [
+     6,
+     4
+    ],
+    "B1m": [
+     6,
+     4
+    ],
+    "B8m": [
+     6,
+     4
+    ],
+    "B32m": [
+     6,
+     4
+    ],
+    "O8m": [
+     6,
+     4
+    ],
+    "OCAP": [
+     6,
+     5
+    ]
+   },
+   "td_cell_interference": {
+    "O8m": [
+     424.0,
+     435.0
+    ],
+    "in_window": "18/18 BOTH arms",
+    "others": "1ms both arms (in-window 0-1/12)"
+   }
+  },
+  "headline": "The recurring capture-freshness memo skips the redundant kernel re-dump at every fresh-window capture: the S2a prune span 537->0.1ms at O8m (the over-cap survivor arm OCAP is the honest control: 5.60->5.49, NOT skipped, the #227 prune still runs and discloses), the compact wall O8m 763->99ms (-664ms, -87%) and B32m 245->109 (-136ms), the dispose exit wall O8m 615->64ms (-551ms) and B8m/B32m -32ms, the commit census 6->4 per trial (E: 3->1). THE S2c WRITEBACK-INTERPLAY DIVIDEND (regime-bound, CLASS=D, disclosed as such): with no fresh payload writeback the notice tail rides the fast path - S2c 72-98ms -> 0.5-0.7ms at every skipped class (the compact wall halves at the small classes too: E 157->82, B64k 159->80, B1m 162->90); the OCAP control shows S2c unchanged (84.7->81.6) - the memo touches nothing when it does not skip. HONEST NEGATIVES: the O8m next-cell interference is UNMOVED (the tD cell waits the S1 post-cell fire's dump: 424->435ms p50, in-window 18/18 both arms - the per-var memo is unsound, so the fire still dumps; C3 chunking remains the open candidate for that class); the Enter-to-reply turn wall is unchanged at every class (b~c within pass noise) and at the stock-10MiB settle frame (E 55.5/64.5 n=6, B8m 158/151, O8m 227.5/208.5 p50 with the p90 tail 648/642 unmoved - the interference tail).",
+  "settle_path_frame": "Kevin's marker (msg-send Enter-to-reply ~600ms, poles-not-targets): at the stock-10MiB fixture over the offline-mock path, Enter-to-reply p50 is 151-228ms by class (the real-product settle wall adds the model turn); the memo contributes ~0 to the turn wall itself (honest), and its contribution is at the COMPACTION-BOUNDARY and EXIT points of the settle path: a compact-riding turn recovers 664ms at the O8m class / 136ms at B32m / ~75-80ms at the small classes (the durable-regime interplay included), and the session exit recovers 551ms at O8m / 32ms at B8m-B32m. MARGIN ASSESSMENT vs the best-in-class in this dimension (kernel-persistent agents, the TS product itself included, provenance: the kernel-sync decompose record 20260928-190500 + this lane's base arm): every kernel-persistent product measured pays the unconditional compact-time re-dump (TS prunes unconditionally, agent-session.ts:8604-8606); the memo takes the kernel-sync component of the compact wall to ~0 (0.1ms) at the fresh window - a >1000x reduction of that component vs the best measured unconditional behavior, while KEEPING the persistence semantics (the notice bytes, the payload, the crash-resume contract all byte-preserved). The remaining gap to a hypothetical zero-sync compact is the S2b listing (~0.35ms) - immaterial. The remaining kernel-sync cost on the settle path is the S1 post-cell fire (the O8m p90 tail ~600ms) - NOT addressed by this lane (C3).",
+  "oracles": {
+   "notice_bytes": "1 variant per class PER ARM (the ipython_state row content identical across all trials and both arms); OCAP carries the prune sentence in BOTH arms (the over-cap guard preserved the #227 disclosure)",
+   "ocap_s2a_control": "the S2a prune span b 5.60 vs c 5.49 (NOT skipped - the live 20MiB over-cap survivor forces the prune in both arms); commits 6->5 (only the S3 dispose skip)",
+   "payload_sha": "per-trial sha variation (the payload embeds per-session pickled skill modules) - 6 sha classes per arm at O8m, 5 at OCAP, symmetric across arms; the cross-arm byte-identity oracles are the notice bytes + the in-repo restore equality + the both-readers round-trip (payload-level cross-arm sha identity is not assertable per-trial; disclosed)",
+   "both_readers_roundtrip": "6/6 PASS on the VM (rust-writer->ts-reader, ts-writer->rust-reader, the v1 legacy dict under both, the per-variable cap under both; the exact lane runtime + the TS checkout's runtime; the crash-resume freshness contract re-proven in-repo by dispose_flush_skips_when_fresh_and_still_restores)",
+   "served_path": "the commit census is the e2e served-path assertion (6->4; E 3->1; OCAP 6->5) + the in-repo 6-oracle suite (a settled cell re-dumps + restores; an external manifest re-dumps; the over-cap survivor prunes then the back-to-back compact skips; the fresh dispose leaves the manifest byte-identical and still restores; the listing arm)"
+  },
+  "io_regime": "CLASS=D at io-pre/io-mid/io-post (A_STALL_RATE 100/80/12.5, A_P50 73.6/77.5/7.3, B_STALL_RATE 5/0/0, B_MAX 78.9/3.7/9.4); the durable-row spans (the S2c base arm's notice tail, the compact's regime component) are regime-bound and depth-varying - the PAIRED same-VM arms share the regime (the deltas are within-regime); the CPU-phase spans (the S2a dump, the exit dump) are regime-independent",
+  "validity": {
+   "excluded": [],
+   "notes": "n=12/arm/class (n=18 at E/B8m/O8m incl. the settle trials); the settle phase rides the stock-10MiB fixture (n=6/arm/class at E/B8m/O8m). The interference instrument resolves only dump walls >~40ms (the prompt->cell roundtrip; the small-class in-window counts are 0-1/12 by design, their bound is the raw dump wall). The O8m in-window 18/18 BOTH arms is the honest unmoved signal (the tD cell lands mid the S1 fire's dump at every trial). The stock-class S2a spans (~3ms) are immaterial vs the compact's regime walls; the compact-wall win at the small classes is the S2c writeback interplay (regime-bound, disclosed; the OCAP control arm proves the mechanism). One B64k settle-phase trial at etr 383ms (a regime outlier, kept, disclosed). The pre-measurement smoke caught the listing defeat and the identical-pair trap BEFORE any measurement (both fixed + pinned: the user_executions counter + the in-repo oracle; the cargo clean procedure + the pair-differ assert)."
+  }
+ },
+ "ts_anchor": "TS scheduleSnapshot is unconditional (repl-manager.ts:1713-1723); consumeRestoredSnapshotSkip is the one-shot post-restore skip (:1727-1741; the completedExecutions+manifest-stat witness, port-faithful on the rust side as restored_namespace_skip); TS prunes unconditionally at compact (agent-session.ts:8604-8606); the rust restore_boot_hold remains the rust-only divergence (the parity ledger). The memo extends the SAME witness class to every capture on the rust side only - the same internal-divergence class as the boot hold, byte-preserving on the observable surfaces.",
+ "outcome": "cut-landed (the recurring capture-freshness memo; paired ABBA complete; PR + gate at the folded head; the C1 per-var headline closed unsound as the honest negative with the analysis)",
+ "decision": "MERGE-CANDIDATE: the memo delivers the decompose's measured redundant re-dumps (O8m compact -664ms/-87%, O8m exit -551ms, B32m compact -136ms, B32m/B8m exit -32ms, the S2c fast-path dividend at every skipped class) with the #227/OCAP over-cap guard preserving the prune+disclose semantics (the OCAP control arm proves the untouched path), the crash-resume contract re-proven, both readers untouched (no version bump needed - the cross-product scope warning resolved by analysis), and the settle-path frame placed honestly: the turn wall unmoved, the wins at the compaction boundary and the exit; the O8m next-cell interference stays unmoved (the C1 per-var memo is unsound; C3 chunking remains the open candidate for that class).",
+ "pr_url": "pending (fleet_pr at the folded head 910ccc18e)",
+ "record_path": "data/hillclimb/experiments/20260928-232800-interaction-kernel-memo.json",
+ "session": {
+  "worker": "kernel-dump-freshness-memo (wave-6, Kevin-directed round-4)",
+  "evidence": "hillclimb/archives/perf-kernel-memo/kernelmemo-evidence.tar.gz (sha 884a551c9d0e4abd4ee6e25a7e4a6bb6a6ace2c0801bf3c1b2d074b1374b5794, VM-side sha match verified before the VM's release; the legs + both analyzers' outputs + the roundtrip oracle receipts + the drivers/probes/analyzers + the build/deploy scripts + the io-probe logs)"
+ },
+ "timestamp": "2026-09-28T23:28:00Z"
+}
