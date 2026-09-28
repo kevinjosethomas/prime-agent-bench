@@ -395,6 +395,29 @@
    },
    "pair_measurements": null,
    "note": "NO paired timing evidence exists for the settle-day claim. The candidate's expected deltas remain the HISTORICAL ledger values (recorded at 7064d039a pre-folds): C1 -50.2ms stock / C2 -34.5ms stock (the instrument ledger's within-run phase walls). The oracles + gates at the PR head (542499bdd) are the exact-parity evidence; the paired ABBA is the missing timing claim, event-blocked by the ~40h fleet I/O regime event. The PR carries this as the honest negative; the reviewer/merge-bar call is the operator's."
+  },
+  "re_fold": {
+   "cycle": "the #2896 precedent (fold + re-bind): GitHub reported PR #2970 CONFLICTING at the moved base; the fold re-binds the reviewer approvals",
+   "fold": "append-only --no-ff merge of origin/rust 737229a17 (17 upstream commits: the rlm_children split #2997, interactive.rs split #2998, session_store split #2990, the snapshot/agents_view/compact_session splits, the saved_session_context windowed-first #2969, the scheduling-catalog fan-out #2979, docs); fast-forward push 542499bdd..69b2b3556 (no force)",
+   "conflict": "ONE: tests.rs tail-append (upstream's new battery vs the oracle battery at the same anchor) - resolved keeping BOTH; verified a PURE INSERTION against each side's tip (zero deletions both ways)",
+   "re_diff_verdict": "NO LANE-BEHAVIOR CHANGE: the folded diff (origin/rust..69b2b3556) = exactly the 4-file lane delta (lifecycle 107 / model 60 / tests 327 / goal_state_persist 27; 454/67) with byte-identical hunk content (only @@ context offsets shifted)",
+   "folded_head": "69b2b35566c3f813bc50b444943c12d3bbb7f37b",
+   "gate_at_folded_head": {
+    "note": "the first armed run (gate_1790599056) was VOID for the fold - armed seconds before the push, it fetched the OLD head; re-armed after the push",
+    "binding_run": "gate_1790599916: head 69b2b3556, merge_base=tip 737229a17 (base_state FOLDED, the stale-base rule SATISFIED), hosts_guard OK, fmt 0 / clippy 0 / test 101, 80 suites",
+    "verdict": "RED_KNOWN_REDS: the kernel_restore_guards co-scheduling pair (both ACTIVE, expires 2026-10-01, registry citations attached; zero unknown failures) - the THIRD consecutive pool-gate fire of the family across three head/base combos"
+   },
+   "solo_triage_at_folded_head": {
+    "result": "SOLO 6/6 GREEN at the exact folded head 69b2b3556 (each run 2 passed / 0 failed / ~0.10s; all RC=0; HEAD asserted in the log; PA_CORE_KERNEL_PYTHON = the harness kernel venv)",
+    "tests": [
+     "partial_restore_keeps_the_fuller_on_disk_payload_through_the_dispose_flush",
+     "restored_functions_run_against_live_namespace_globals"
+    ],
+    "log": "cold-open-work/solo-triage-69b2b3556.log",
+    "classification": "the co-scheduling family confirmed AT THIS HEAD - the identical evidence pattern to the registry's prior dispositions (rpc-models-persist SOLO 6/6 @2329e6256; rpc-authlock SOLO 6/6 @c711b4c68)",
+    "status": "the operator disposition + the reviewer re-bind at 69b2b3556 are the parent's (the standing authorization covers the merge on both re-APPROVEs)"
+   },
+   "pair_binary_note": "the staged pair binaries on VM2 bind to the PRE-fold heads (base 13d756ce@944017dd7 / cand f5c0d1c3@542499bdd); a fresh-1+1 authorization would need a re-stage at the new fold"
   }
  }
 }
