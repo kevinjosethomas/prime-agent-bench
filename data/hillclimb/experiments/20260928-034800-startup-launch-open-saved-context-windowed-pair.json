@@ -1,0 +1,161 @@
+{
+ "id": "20260928-034800-startup-launch-open-saved-context-windowed-pair",
+ "axis": "startup",
+ "hypothesis": "PR #2969 evidence: saved_session_context windowed-first \u2014 the resume-path model restore (no provider/model flags -> restore_session_model_at -> saved_session_context) reads the windowed store (open_windowed + restored_settings + has_thinking_level) instead of full-parsing every session row; the full parse was the largest known single item in the ~220ms resume-vs-mock delta (records 20260926-191200/-201400; cold-open-residual's same-shape instrument ~50-60ms at 11,923 rows).",
+ "approach": "Paired ABBA at the final merge-candidate head: base 944017dd7 (bin 13d756ce...) vs cand 959b785a2 (bin f9cd332d...; the fully-settled fold ee9dfa514 + Bugbot-fix commit); resume-path 10+10 BCCBBC PRIMARY + mock-launch 10+10 CBCCB control; sha-asserted atomic swaps per slot; per-trial hardened 8-gate validity; same-VM sequential on VM4 vdvwrc6jlcekbxvbgvp735u1.",
+ "parity_notes": "Frozen surfaces untouched (session-JSONL replay + compaction content, RLM API/wire, prompts, TUI bytes). The differential oracle keeps the pre-change full-parse reader verbatim as the reference; 5 fixture classes; 5/5 green on the cand tree at the final head (810 filtered, 0.25s). Bugbot fixes are comment/test-hygiene-only.",
+ "base": {
+  "revision": "944017dd75724e453115b31d56d3568d55e0bb6e"
+ },
+ "branch": "hillclimb (bench); product branch lane/hillclimb-launch-open @ 959b785a2 (PR #2969)",
+ "commits": [
+  "6cfc3e6f7 (candidate)",
+  "227fc592e (fold onto d3d4e5ca9; manual 3-way on the tests.rs both-added-at-EOF)",
+  "ee9dfa514 (fold onto 944017dd7, clean)",
+  "959b785a2 (Bugbot fixes: current-behavior comments + TempDir ownership)"
+ ],
+ "build": {
+  "sandbox_id": "vdvwrc6jlcekbxvbgvp735u1 (VM4 16c/32GB ubuntu:22.04)",
+  "binary_sha256": "base 13d756ce743220dfecab01fece4e75cbcb3e27929f9c8491abb2d0362cc10d24 | cand f9cd332d13026c777ac78ca0df0a611ebff9c21ec1aac2033d4d979b0f62c2e0",
+  "toolchain": "rustup 1.98.1, --locked release",
+  "cross_vm_repro": "staged-tip arms reproduced VM3's shas byte-identically (b0a28b95/f073ab32) before the settles"
+ },
+ "gates": {
+  "fmt": "pass",
+  "clippy": "pass (-D warnings)",
+  "test": "full-suite VM gates rc=101 with redded sets differing per run \u2014 ALL triaged (red_matrix); GitHub CI at ee9dfa514: 4/4 shards + summary green; at 959b785a2 shard-1 red-red on two DIFFERENT supervisor_e2e members \u2014 family DISPOSITIONED (Hillclimb ruling 2026-09-28; registry renewal+new entry fc0545c; 1+1 discipline exhausted, no third reroll)",
+  "benchmark_ci": "fail \u2014 the tolerated, disclosed non-applicable TS-harness check; never called pass",
+  "fleet_review": "GREEN at ee9dfa514 (sole finding: non-blocking file-size advisory); a singleton family red at 959b785a2 triaged 4/4 solo-green both-tree",
+  "bots": "Bugbot's 2 findings fixed in 959b785a2, both threads RESOLVED (zero unresolved); Bugbot check PASSES; Macroscope skipping"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, sha-asserted atomic swaps, quiet-gated (loadavg<1.0), I/O advisory v1.0+v1.1 both probe classes at every leg boundary",
+  "io_mode_disclosure": "LICENSED MODE per the operator fallback ruling at the 04:00Z mark: after a 4-hour strict exact-HEALTHY watch (7 lulls correctly refused by confirm-then-fire; 6 confirmed windows fired \u2014 attempt 10 survived one leg then a boundary max-gate void on the bursty trap (fresh p50 0.91ms/max 177.7ms); 11-14+18 voided at pre-gates; the unbroken incident stretch 01:22-03:31Z reached ~129min = 2x the day's worst window) with no full pair possible, the legs ran under the pre-declared reference-class license: repeat-fsync in-band at EVERY boundary (p50 0.227-0.328ms, license=OK x13) licenses each leg; the fresh-write class LABELED per boundary (never voiding a leg alone); parse-fail/reference-out-of-band would void per rule_B. All labels below.",
+  "suites": {
+   "resume_path_ready_ms": {
+    "baseline": {
+     "trials": 30,
+     "valid": 30,
+     "p50_ms": 1629.25,
+     "mean_ms": 1553.92,
+     "min_ms": 746.5,
+     "max_ms": 1984.1,
+     "slots": {
+      "rb1": 1398.5,
+      "rb2": 1746.7,
+      "rb3": 1637.0
+     }
+    },
+    "candidate": {
+     "trials": 30,
+     "valid": 30,
+     "p50_ms": 1314.91,
+     "mean_ms": 1363.1,
+     "min_ms": 780.1,
+     "max_ms": 1918.6,
+     "slots": {
+      "rc1": 1270.3,
+      "rc2": 1206.4,
+      "rc3": 1610.7
+     }
+    },
+    "delta_ms": {
+     "p50": 314.34,
+     "mean": 190.82
+    },
+    "delta_pct": 19.3,
+    "regression": false
+   },
+   "resume_path_worker_cpu_s_at_ready": {
+    "baseline": {
+     "p50": 0.53,
+     "n": 30
+    },
+    "candidate": {
+     "p50": 0.39,
+     "n": 30
+    },
+    "reading": "-140ms worker CPU \u2014 the direct mechanism signature (the full parse's CPU at 11,923 rows), regime-independent, right in the clean-instrument band (~50-170ms)"
+   },
+   "mock_launch_ready_ms_control": {
+    "baseline": {
+     "trials": 30,
+     "valid": 30,
+     "p50_ms": 876.05,
+     "mean_ms": 914.17,
+     "slots": {
+      "mb1": 920.9,
+      "mb2": 936.9,
+      "mb3": 870.2
+     }
+    },
+    "candidate": {
+     "trials": 30,
+     "valid": 30,
+     "p50_ms": 996.48,
+     "mean_ms": 987.15,
+     "slots": {
+      "mc1": 1103.2,
+      "mc2": 930.2,
+      "mc3": 964.1
+     }
+    },
+    "delta_ms": {
+     "p50": -120.43,
+     "mean": -72.98
+    },
+    "reading": "the NOISE FLOOR artifact, not a candidate effect: the restore is skipped on the mock path (flagged_model=true) and the worker CPU is IDENTICAL between arms (0.28s vs 0.28s p50, n=30 each) \u2014 the wall spread is regime-residual noise (the mock legs ran in the incident's ENDING phase with residual 2.5-7.5% trap hits, max 144-152ms)"
+   }
+  },
+  "boundary_labels_fresh_class": {
+   "pre": "p50 127.9ms rate 1.0 max 132.5 DEGRADED",
+   "rb1": "129.7/1.0/141.0 DEGRADED",
+   "rc1": "130.4/1.0/134.4 DEGRADED",
+   "rc2": "131.4/1.0/136.1 DEGRADED",
+   "rb2": "133.9/1.0/142.6 DEGRADED",
+   "rb3": "134.2/1.0/138.9 DEGRADED",
+   "rc3": "135.4/1.0/148.1 DEGRADED",
+   "mc1": "p50 0.82ms rate 0.025 max 144.1 (incident ENDING)",
+   "mb1": "0.84/0.075/149.0",
+   "mb2": "0.79/0.025/145.6",
+   "mc2": "0.82/0.025/152.0",
+   "mc3": "0.76/0.025/151.9",
+   "mb3": "0.84/0.0/1.6 HEALTHY",
+   "post": "0.78/0.0/4.4 HEALTHY",
+   "reference_class_repeat_fsync_p50_ms": "0.227-0.328 in-band at ALL 13 boundaries (the license)"
+  },
+  "regime_reading": "The resume leg ran ENTIRELY inside the deep-incident window (fresh p50 128-135ms at 7 boundaries, symmetric across both arms \u2014 the BCCBBC interleave balanced it) and the incident ENDED during the mock leg (mc1-mb3 fresh p50 collapsed to ~0.8ms; mb3/post fully HEALTHY). Consequences, disclosed: (1) the resume-path WALL delta (+314ms p50) is direction-correct but REGIME-AMPLIFIED (the base arm's longer spans absorb more of the fleet-synchronized ~130ms per-op traps; the clean-instrument expectation for the parse's share is ~50-170ms and the CPU signature measures exactly -140ms); (2) the mock leg's wall spread (-120ms artifact) establishes the pair's wall noise floor under residual traps; (3) cross-LEG absolutes are NOT comparable (different regimes mid-pair) \u2014 only the within-leg arm comparisons carry. The CPU-share evidence (0.53s->0.39s worker; 0.28s vs 0.28s control-identical) is the regime-independent primary signature."
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "120/120 trials valid (8-gate contract: fixture pre-sha==source 835c4473 asserted per row; post-bytes differ; sentinel+echo+erase; daemon+worker sighted; replay rendered; ready>150ms). 6/6 sha-asserted swaps per leg boundary in the pair script's fail-closed design; the licensed gates x13 all license=OK. The strict-watch ledger (7 refusals, 6 fires, 1 leg survived) + the licensed-mode disclosure carry the I/O honesty."
+ },
+ "outcome": "candidate-confirmed (pending review+merge): the windowed read cuts the resume-path restore's worker CPU by ~140ms p50 and the ready wall by ~190-314ms p50 under the labeled incident regime; control CPU-identical",
+ "decision": "operator rules (orchestrator numeric review + adversarial reviewers + merge bar)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/2969",
+ "record_path": "data/hillclimb/experiments/20260928-034800-startup-launch-open-saved-context-windowed-pair.json",
+ "evidence": {
+  "archive": "hillclimb/archives/launch-open/launch-open-evidence.tar.gz",
+  "sha256": "befbadcdcaed405a939cb4f0b6554e4d54b7a880739ecc1d04dae8df0481f10e",
+  "contents": "the licensed pair's trials x12 slots (jsonl), io-*.json x13 boundary probes, the pair log, the watcher log"
+ },
+ "red_matrix": {
+  "family": "9 distinct daemon/supervisor/tui/acp e2e tests redded across gate/review/CI/base-rerun contexts 2026-09-27/28; every one 4/4 solo-green on BOTH trees (release, I/O-labeled, 1+1); set-differring per run; never solo-reproducible; base-crossing",
+  "members": [
+   "acp_daemon_attached_cancels_mid_turn",
+   "tui_prompts_queued_behind_a_turn_render_the_queue_strip",
+   "an_owned_stop_kills_a_worker_that_missed_the_shutdown",
+   "partial_restore_keeps_the_fuller_on_disk_payload_through_the_dispose_flush",
+   "restored_functions_run_against_live_namespace_globals",
+   "tui_prime_login_escape_keeps_the_default_team_status",
+   "worker::tests::kill_cancels_a_mid_provider_wait_turn_and_surfaces_the_aborted_row",
+   "abort_and_send_queued_with_only_follow_ups_starts_the_oldest",
+   "chunked_snapshot_attach_streams_begin_chunk_end + tool_result_entries_persisted_and_streamed (the CI pair, both supervisor_e2e)"
+  ],
+  "disposition": "Hillclimb ruling 2026-09-28: supervisor_e2e family = known-flake (shard-concurrency artifact, fleet-wide, not lane-specific); registry: tool_result_entries RENEWED + chunked_snapshot registered (expiry 2026-09-30, auto-citation verified, deadsidecar-triage coordination closed at fc0545c)"
+ },
+ "session": {
+  "worker": "perf-launch-open-fast"
+ },
+ "timestamp": "2026-09-28T03:54:00Z"
+}
