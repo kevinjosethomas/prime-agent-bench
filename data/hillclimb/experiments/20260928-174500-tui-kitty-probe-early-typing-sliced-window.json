@@ -55,9 +55,9 @@
   "excluded": "the first v2-pilot (10 rows) ran concurrent with the candidate cargo build (load-contaminated ttff 15-137ms) \u2014 EXCLUDED from all claims; kept as trials-pilot.jsonl",
   "cross_check": "the pre-slice BASE settle-coupled signature (251.8ms across offsets) + the arm-invariant answered classes + the control keys + TTFF agree across both suites"
  },
- "outcome": "PENDING \u2014 record pushed at PR-open; merge-bar outcome annotates",
- "decision": "PENDING",
- "pr_url": "PENDING",
+ "outcome": "PR #3010 OPEN at head 3e4ee2760 (d75f2be71 the sliced-window patch + 3e4ee2760 the differential e2e): the silent-pty early-typing hold collapses 11-63x (241.8->11.2 / 201.6->3.2 / 131.8->4.3 / 51.8->4.5ms p50 at +10/+50/+120/+200ms), base settle-coupled at query+251.8ms exactly as modeled; answered classes unmoved; TTFF not gated; controls equal; the full-suite VM gate verdict + merge bar to annotate this record when closed",
+ "decision": "PR OPEN \u2014 merge bar pending (both adversarial reviewers SHA-bound at 3e4ee2760 + CI rollup + orchestrator numeric review + dispositions)",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3010",
  "record_path": "data/hillclimb/experiments/20260928-174500-tui-kitty-probe-early-typing-sliced-window.json",
  "evidence": {
   "archive": "hillclimb/archives/kitty-probe-coldstart/kpc-evidence.tar.gz",
