@@ -1,0 +1,73 @@
+{
+ "id": "20260928-043141-memory-worker-passivation-preanalysis",
+ "axis": "memory",
+ "hypothesis": "The DEFERRED arm of the settled-child memory lane (the TS daemon-mode whole-worker passivation - stopping the whole child WORKER process at idle, not just its kernel) needs a design analysis before any lane implements it: what the TS passivation does (what stops, what stays, the revival, the relaunch-on-prompt), what the Rust surface already has, what a Rust worker-restart-at-idle would need, and whether to implement, defer, or discard.",
+ "approach": "RECORD-ONLY DESIGN LANE (no code changes). (1) The TS passivation read in full: the two-tier residency policy (core/session-action-store.ts:377-437: canPassivateSession tier-1 for parent-having children, canEvictWorker tier-2 for whole workers; idle default 90min settings-manager.ts:11), the supervisor sweep (daemon-supervisor.ts:1441-1515, cadence max(60s,min(5min,idle/3)), cap 2/worker/round, mutation-drain fence 5s), the worker-side passivateSession (daemon-mode.ts:3121-3191: single-flight per session file, the fresh-snapshot fence, releaseRlmChildSession detach then the graceful closeSession 'shutdown' - the session disposeAsync with the kernel snapshot flush, agent-session.ts:4915-5130), the passive representation (agent-roster.ts:82-106 passivatedWorkerRosterEntry; rlm-ledger.ts:903-937 the passive descendant merge), the revival paths (daemon-mode.ts:1888/2661 open joins, :3226-3349 hydratePassiveRlmSubagent chain-walk + rehydrateCompletedRlmSubagent single-flight, :3350+ the runtime replay from the session file), and the relaunch-on-prompt (daemon-supervisor.ts:3227-3282 matchWorkers->launchWorker :3467+ fresh worker process with fresh per-incarnation grants; stopWorker :6911-7010 graceful). (2) The Rust surface map: rlm_children.rs (ChildRecord, the wire calls, the watchers, the spawn/roster/collect/delete surfaces #2983 kept byte-identical), the ALREADY-EXISTING machinery (supervisor_roster.rs:249 passivate_roster_worker - the TS flipWorkerRosterEntriesInactive port running on every stop-class path; messaging.rs:192-283 wake_saved_target; rlm_roster.rs/rlm_ledger.rs passive walk; session_store.rs:578-580 header rlmDepth; #2983's stop_kernel snapshot + park arm + engine gates), and the census evidence (#2983 settle tree, worker-rss baseline, spawn-admission decompose). (3) The design doc: the durable state set, the gate set, the driver options, the stop sequence, the revival latency budget, the failure modes, the TS-parity delta table, and the recommendation.",
+ "parity_notes": "NO PRODUCT CHANGE. This lane changed no repo bytes; frozen surfaces untouched by construction. The doc's parity content: the TS tier-1/tier-2 split collapses for Rust children (each child IS a worker process - the structural divergence already disclosed in #2983); the recommendation's deliberate divergences if ever implemented (armed heartbeats BLOCK the Rust stop - TS shields via hasWakeBlindSchedule; the park-arm driver instead of the supervisor sweep) are flagged for the frozen-wire review. The doc lives at /home/ubuntu/hillclimb/wave6/worker-passivation-preanalysis.md and is pushed to the bench at data/hillclimb/designs/20260928-worker-passivation-preanalysis.md.",
+ "base": {
+  "revision": "Rust checkout read at 60e2e198c (#2872; the rlm_children/rlm_roster/supervisor_roster citations); origin/rust read at 95f425a3d on 2026-09-28; TS reference cd1f215 (main, in sync); #2983's stop_kernel/park-arm/engine-gate seams cited from the PR record 20260927-234500 (the branch lane/perf-revive-2483, fold eea1794bb, in review - NOT in this checkout)"
+ },
+ "branch": null,
+ "commits": [],
+ "build": null,
+ "gates": {
+  "fmt": null,
+  "clippy": null,
+  "test": null,
+  "note": "record-only design lane: no build, no product change, no PR (the dead-sidecar registration precedent)"
+ },
+ "measurements": {
+  "method": "design pre-analysis over existing census records + code reads; NO new measurements taken by this lane (all numbers cited from existing records, none fabricated)",
+  "residency_after_2983": {
+   "kernel_mb_per_settled_child": "~27 released by #2983 (in review; census 20260927-234500: tip holds BOTH kernels 26.8+26.9, candidate releases the child's)",
+   "worker_rss_mb_light_shape": "52.5 (tip A) / 55.6 (candidate B) per the #2983 settle census - the deferred arm's marginal win per child",
+   "worker_rss_mb_loaded_shape": "140.9 create-end / 243.5 adopt-end pre-trim / 218.4 settle / 207.5 idle-load p50 on the 10MiB corpus (worker-rss baseline 20260926-183300; the B/C1/C2 redundancy copies ~31MB wire are the dominant derivable cost - the adopt-onecopy lane's cheaper target)"
+  },
+  "relaunch_budget": {
+   "spawn_to_admit_p50_ms": 281.8,
+   "phases_p50_ms": {
+    "spawn_call_to_child_exec": 3.8,
+    "exec_to_registered": 77.3,
+    "registered_to_rereg": 209.6,
+    "rereg_to_admit": 0.8
+   },
+   "regime": "the degraded fresh-write storage regime (38-45ms/op) dominates the re-registration phase; process exec/worker boot/wire/roster seeding/kernel provisioning NOT on the critical path (20260926-204300)",
+   "session_replay": "cold-open ready p50 ~938ms on the 10MiB ceiling fixture; typical settled children far smaller; the kernel boots lazily on first ipython use and revives from kernel-state.dill through the #2983 pendingStop gate (the accepted revival class)",
+   "budget": "sub-second to ~1-2s for typical children"
+  },
+  "machinery_map": {
+   "already_present": [
+    "passivate_roster_worker (supervisor_roster.rs:249, the TS flipWorkerRosterEntriesInactive port, live on every stop-class path: the stopped worker's top-level row passivates and stays in the agents view; subagent rows anchored by ledger edges)",
+    "wake_saved_target (messaging.rs:192-283: catalog resolve -> reuse or launch_worker over the session file, live on the send_message path)",
+    "relaunch_worker (the crash path, supervision.rs)",
+    "the passive child walk + summaries (rlm_roster.rs:1-237, the TS walkPassiveRlmSubagents port)",
+    "the ledger edge + own-usage spend snapshot (rlm_ledger.rs)",
+    "header rlmDepth replay (session_store.rs:578-580)",
+    "#2983: the kernel snapshot stop + the pendingStop revival gate + the child park arm + the engine gates (in review)",
+    "session_file_carries_prompt arbitration (rlm_children.rs:2091)"
+   ],
+   "gaps": [
+    "NO idle driver at all (the TS 90-min idleEviction sweep is unported - the arm is a NEW driver, not a bolt-on)",
+    "the parent-owned child paths assume a live child worker (prompt_child follow-ups :878, delete_subagent kill :1944, refresh_record :978, the usage watcher :1283) - passivation-aware branches needed",
+    "no bash-running gate (a live bash() handle orphans at worker death; TS blocks via isSessionActive)",
+    "no wake-blind schedule / heartbeat-driven child wake (armed heartbeats must BLOCK; TS tier-1 allows but tier-2 shields the worker)",
+    "the roster resident->passive byte-oracle across the transition (frozen TUI surface)",
+    "the unreachable-scorer (rlm_children.rs:1074-1089) would mis-score a passivated child error - passivation must be a POSITIVE record status",
+    "delete of a passivated child needs the no-wire-kill branch (ledger tombstone + file delete)"
+   ]
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Read-state disclosure: the Rust file:line citations are from the checkout at 60e2e198c (the worktree's detached read state), not the live origin/rust tip 95f425a3d; #2983's seams are cited from its PR record (the branch is in review, not in this checkout). The TS read is at cd1f215 (main in sync). All quantitative cells are CITED from existing census records (20260927-234500, 20260926-183300, 20260926-204300); this lane took no new measurements, and no unmeasured number is asserted as measured. The doc is the deliverable; the record points at it."
+ },
+ "outcome": "record-only-design-complete: DEFER recommended (not implement, not discard); doc + record pushed; the wave-backlog entry handed to the orchestrator (hillclimb_wave_backlog_queue, via the parent - the harness backlog lives in the orchestrator's global harness memory)",
+ "decision": "DEFER, with revisit triggers. (1) The marginal win is halved by #2983 (the kernel ~27MB/child banked) and halved again by the worker-rss redundancy lanes (the loaded shape is dominated by the B/C1/C2 derivable copies - the cheaper target already in flight); re-census after both land. (2) The 90-min idle clock rarely fires in hillclimb bench shapes (collect-within-minutes) - the win is production-shaped, not bench-shaped; a lane would ship without in-harness evidence of its own win. (3) The real work is on frozen surfaces: the passivation-aware branches (prompt follow-ups, delete, the unreachable-scorer, the wake extension to parent-owned paths) touch the roster/collect/delete semantics #2983 kept byte-identical - a lane-scale change with a byte-oracle burden. (4) Two orchestrator-owned policy decisions are unresolved: the heartbeat block vs a wake-blind port, and the idle default (TS 90min vs fleet-tuned). REVISIT TRIGGERS (any one): (a) #2983 + the worker-rss redundancy lanes merged and a fresh census still shows >=50MB/child resident at settle in production-like shapes; (b) a production-shape report of many long-idle settled children on one daemon; (c) the operator asks for the daemon idle-RSS floor below the post-#2983 baseline; (d) a TS-parity sweep of the daemon idle-eviction tier is scheduled anyway (this arm rides it: the driver + the settings port are that tier's bulk). IF IMPLEMENTED, the lane shape is scoped in the doc section 4 (the park-arm driver, the gate set with the bash probe + heartbeat block, the graceful stop via the existing stop path + passivate_roster_worker, the POSITIVE passivated status on ChildRecord, the wake extension, the roster byte-oracle + the revival oracle, and a clock-fast-forwarded same-VM A/B census). SCOPE BOUNDARY: the child worker arm only; the TS tier-2 ROOT-worker idle eviction is a separate larger port.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-043141-memory-worker-passivation-preanalysis.json",
+ "session": {
+  "worker": "wave-6-design-worker-passivation-preanalysis",
+  "session_dir": "see conversation log"
+ },
+ "timestamp": "2026-09-28T04:31:41Z"
+}
