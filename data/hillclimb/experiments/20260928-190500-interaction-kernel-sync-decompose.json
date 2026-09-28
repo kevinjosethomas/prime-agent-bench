@@ -1,0 +1,1003 @@
+{
+ "id": "20260928-190500-interaction-kernel-sync-decompose",
+ "axis": "interaction",
+ "hypothesis": "The kernel-sync cost class (the compact-refine decompose's reported-only 8.0ms compact-tail) is the daemon<->kernel state-sync machinery: S1 the 1500ms-debounced full-namespace dill snapshot armed after every settled cell (repl.py _snapshot_state: single-pass per-variable dill.dump into a staged temp + manifest + two renames, NO fsync), S2 the compact-time sync_after_compaction (prune+list+durable notice row), S3 the dispose flush at kernel teardown, S4 the boot restore. All four are TS-parity port-faithful (agent-session.ts:8604 _syncKernelStateAfterCompaction, repl-manager.ts:964 execute->scheduleSnapshot, :1713 the 1500ms debounce, shared.ts:8-9) and serialize on the kernel's SINGLE request queue (requests.rs enqueue_request), so a dump can delay the next cell and rides the compact/teardown walls. The uncharacterized dimensions: the dump cost's size/shape scaling, the recurrence count per session activity, the queue-block interference, and which syncs are load-bearing vs cuttable. Honest negatives (structural/TS-parity-locked) are valid outcomes; candidates are reported with measured bounds.",
+ "approach": "MEASUREMENT ONLY, no product change (decompose lane; the record is the deliverable). Pinned tip e2ee82f2d (origin/rust). VM h7nun5ywykfjsx5edgg4scrv (hillclimb-perf-kernel-sync, ubuntu:22.04 16c/32GB/100GB, rustup 1.98.1), cargo build --release --locked --workspace rc=0, binary sha ae1b2a1b... Bench harness deployed + settled (kernel-venv warm at /root/bench/global/rust). Fixtures: the fleet-known 256KiB session bd18b080... (the compact's other phases already decomposed; the kernel-sync spans are the target) + the 10MiB stock dadaecfc... for the big-file compact boundary. REAL assembly, offline mock (prime-inference/mock-1; queues: turn/summarizer/refiner, live script rewrites per turn) - the cells run through the REAL agent path (prompt -> model toolCall -> ipython tool -> kernel). NAMESPACE SIZE CLASSES built in-kernel per trial: E (boot ns only), B64k/B1m/B8m/B32m (8 strings x 8KiB/128KiB/1MiB/4MiB), O8m (8 nested dict/list trees, CPU-heavy pickle), OCAP (one 20MiB var over the 16MiB per-variable cap + 8x1MiB). INSTRUMENT: the in-tree PA_COMPACTION_TRACE seam (the S2 spans), an artifact-dir commit watcher (payload/manifest mtime+size at 25ms polls - every S1/S2a/S3 commit), a /proc CPU sampler (kernel+daemon utime+stime at 10ms), arrival-accurate frame pump (the cell windows from tool_execution frames), the raw-kernel substrate legs (the product venv's python -m rlm.repl driven over its JSONL protocol: the dump/prune/list/restore/EOF-flush walls per class, n=18 dumps/class/pass), and census legs under strace (fd-map v2.1, structure-only). LEGS (same-VM sequential, per-block probe_v09 preflights + pre/mid/post, binary sha assert per block, quiet gate, product-only zombie sweep, per-trial fixture prehash): raw1/raw2 (ascending/descending class order), prod1/prod2 (the product legs: build turn -> S1 watch -> trivial control turn -> rebuild turn -> interference turn submitted INTO the fire window -> compact (S2) -> get_state -> stdin close (S3 wall)), bigcompact (E/B8m on the 10MiB fixture), restore (a second spawn resuming the mutated session with the first spawn's agent dir - the S4 boot+restore), census (1/class). The interference ABBA is inside each trial: the tD cell (submitted at the estimated fire+~40ms) vs the tB control cell, same trial, same namespace; the artifact events classify in-window vs missed post-hoc.",
+ "parity_notes": "No product source changed in any phase; frozen parity untouched (the RPC surface exercised as a black box over stdio; PA_COMPACTION_TRACE is the product's own off-by-default debug env). Driver-side findings, all mine, all disclosed: (1) the mock's prompt-response is the ADMISSION, not the turn end - the per-turn walls/cell windows are derived from the frame stream (agent/turn/tool_execution frames), not the response receipt. (2) the interference submit lands at the estimated fire (the tC cell's tool_execution_end + 1500ms) + ~40ms (the prompt->cell model roundtrip), so only dump walls >~40ms are hitable from the prompt path (B32m's 29ms window is missed by design - its bound is the raw dump wall; O8m's 530ms window is hit solidly). (3) the artifact watcher's poll resolution is 25ms; commit INSTANTS come from the payload mtime_ns; the watcher's tmp sightings bound the dump windows conservatively. (4) the probe-frame pump's idle drain had the ctxrebuild-lane select-park shape (an idle channel blocked the full max_s): fixed to bound the select wait by the idle deadline BEFORE the legs (the pilot trials' 8s-per-block artifacts disclosed; no leg ran with it). (5) A discovery-lag caveat: the watcher finds the artifact dir only after the first payload exists, so a trial's FIRST commit may be recorded at discovery rather than at its poll - the mtime_ns is always the true commit. (6) the census legs run under strace: structure-only, INVALID for timing. (7) the raw legs' CPU deltas are 100Hz-tick coarse (<10ms unresolvable); the O8m-class CPU (530ms) is resolvable and equals the wall (CPU-bound). (8) one B64k trial's ready_ms=1107 (a cold-boot outlier, disclosed in validity).",
+ "base": {
+  "revision": "e2ee82f2d78de41272ccaf52b76a59b0cab33d61",
+  "note": "the WAVE-6 tip; the kernel-sync surface (ipython_state.rs, kernel/manager snapshot.rs, repl.py) read at this pin; #2995/#2996 (snapshot.rs split) settled before it"
+ },
+ "branch": "hillclimb (bench repo, record only); lane worktree /home/ubuntu/worktrees/perf-kernel-sync (branch lane/kernel-sync, no product change)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "h7nun5ywykfjsx5edgg4scrv (hillclimb-perf-kernel-sync, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678ebdbd4c85b05e5c8f36f63",
+  "binary_bytes": 224690088,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0",
+  "kernel_venv": "/root/bench/global/rust (warm; python 3.11.16, dill 0.4.1)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (no product change; no PR)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated, per-block probe_v09 preflights + pre/mid/post (PHASE MODEL, NO-CEILING), binary sha asserted per block (ae1b2a1b... unchanged throughout), per-trial fixture prehash, product-only zombie sweep, ascending/descending class passes for drift balance",
+  "io_regime": {
+   "io_pre": "PROBEV09 io-pre A_STALL_RATE=100.0 A_MAX=39.6 A_P50=33.01 B_STALL_RATE=5.0 B_MAX=33.0 B_P50=0.11 CLASS=D",
+   "io_mid": "PROBEV09 io-mid A_STALL_RATE=100.0 A_MAX=301.2 A_P50=109.85 B_STALL_RATE=5.0 B_MAX=105.8 B_P50=0.18 CLASS=D",
+   "io_post": "PROBEV09 io-post A_STALL_RATE=100.0 A_MAX=153.1 A_P50=145.09 B_STALL_RATE=5.0 B_MAX=144.7 B_P50=0.19 CLASS=D",
+   "note": "CLASS=D at EVERY leg boundary (the fleet's known VM regime family), but the DEPTH deepened monotonically through the campaign (A_P50 33 -> 110 -> 145ms fresh-write+sync_all+rename wall): the durable-row spans (S2c notice tail, the compaction row) are regime-CONTAMINATED and depth-varying across blocks; the CPU-phase spans (the dumps at every class, the O8m interference, the raw walls) are regime-independent. Every per-class number is from blocks balanced across the two passes (prod1 asc / prod2 desc), and the raw walls' pass-to-pass p50s agree within ~2-5% - the dump/restore walls have NO drift."
+  },
+  "raw_substrate_legs": {
+   "E": {
+    "dump_wall_ms_pass_p50s": [
+     0.25,
+     0.24
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     0.0,
+     0.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     0.2,
+     0.19
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.06,
+     0.05
+    ],
+    "eof_flush_ms_pass_p50s": [
+     15.26,
+     15.28
+    ],
+    "restore_wall_ms_pass_p50s": [
+     4.17,
+     4.26
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     41.03,
+     41.99
+    ],
+    "payload_bytes": [
+     31
+    ]
+   },
+   "B64k": {
+    "dump_wall_ms_pass_p50s": [
+     0.36,
+     0.36
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     0.0,
+     0.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     0.31,
+     0.3
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.06,
+     0.06
+    ],
+    "eof_flush_ms_pass_p50s": [
+     15.26,
+     15.28
+    ],
+    "restore_wall_ms_pass_p50s": [
+     4.22,
+     4.43
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     40.37,
+     41.33
+    ],
+    "payload_bytes": [
+     65823
+    ]
+   },
+   "B1m": {
+    "dump_wall_ms_pass_p50s": [
+     0.65,
+     0.61
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     0.0,
+     0.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     0.6,
+     0.55
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.06,
+     0.04
+    ],
+    "eof_flush_ms_pass_p50s": [
+     15.27,
+     15.26
+    ],
+    "restore_wall_ms_pass_p50s": [
+     4.69,
+     4.91
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     40.91,
+     41.92
+    ],
+    "payload_bytes": [
+     1048791
+    ]
+   },
+   "B8m": {
+    "dump_wall_ms_pass_p50s": [
+     4.16,
+     4.4
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     0.0,
+     0.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     4.04,
+     4.0
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.07,
+     0.04
+    ],
+    "eof_flush_ms_pass_p50s": [
+     15.27,
+     15.33
+    ],
+    "restore_wall_ms_pass_p50s": [
+     9.73,
+     9.71
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     39.88,
+     41.62
+    ],
+    "payload_bytes": [
+     8388823
+    ]
+   },
+   "B32m": {
+    "dump_wall_ms_pass_p50s": [
+     28.93,
+     29.95
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     30.0,
+     30.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     27.82,
+     28.22
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.06,
+     0.07
+    ],
+    "eof_flush_ms_pass_p50s": [
+     63.41,
+     63.44
+    ],
+    "restore_wall_ms_pass_p50s": [
+     24.42,
+     23.43
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     40.63,
+     41.99
+    ],
+    "payload_bytes": [
+     33554647
+    ]
+   },
+   "O8m": {
+    "dump_wall_ms_pass_p50s": [
+     529.42,
+     525.48
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     530.0,
+     525.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     524.61,
+     524.31
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.04,
+     0.06
+    ],
+    "eof_flush_ms_pass_p50s": [
+     614.22,
+     564.19
+    ],
+    "restore_wall_ms_pass_p50s": [
+     157.92,
+     156.97
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     41.42,
+     42.18
+    ],
+    "payload_bytes": [
+     2010615
+    ]
+   },
+   "OCAP": {
+    "dump_wall_ms_pass_p50s": [
+     2.95,
+     3.04
+    ],
+    "dump_cpu_ms_pass_p50s": [
+     5.0,
+     0.0
+    ],
+    "prune_wall_ms_pass_p50s": [
+     2.73,
+     2.77
+    ],
+    "list_wall_ms_pass_p50s": [
+     0.06,
+     0.05
+    ],
+    "eof_flush_ms_pass_p50s": [
+     15.27,
+     15.29
+    ],
+    "restore_wall_ms_pass_p50s": [
+     9.11,
+     9.37
+    ],
+    "kernel_boot_ms_pass_p50s": [
+     40.24,
+     42.56
+    ],
+    "payload_bytes": [
+     8388823
+    ]
+   }
+  },
+  "product_legs": {
+   "E": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     3,
+     3,
+     3,
+     3,
+     4,
+     4,
+     4,
+     4
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 2.0
+    },
+    "interference_cell_ms": null,
+    "interference_in_window": "0/0",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 3.08,
+     "min": 2.82,
+     "max": 3.33
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.17,
+     "min": 0.13,
+     "max": 0.23
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 37.86,
+     "min": 0.65,
+     "max": 115.71
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 110.7,
+     "min": 83.43,
+     "max": 231.52
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 31.44,
+     "min": 31.34,
+     "max": 31.47
+    }
+   },
+   "B64k": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_in_window": "0/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 2.9,
+     "min": 2.62,
+     "max": 3.49
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.2,
+     "min": 0.11,
+     "max": 0.44
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 49.34,
+     "min": 0.77,
+     "max": 110.19
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 140.88,
+     "min": 120.13,
+     "max": 399.66
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 31.43,
+     "min": 31.33,
+     "max": 33.27
+    }
+   },
+   "B1m": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 0.5,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 0.5,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_in_window": "0/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 3.17,
+     "min": 2.71,
+     "max": 3.46
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.28,
+     "min": 0.14,
+     "max": 0.43
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 80.91,
+     "min": 53.08,
+     "max": 113.06
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 231.19,
+     "min": 115.41,
+     "max": 443.27
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 31.41,
+     "min": 31.34,
+     "max": 63.48
+    }
+   },
+   "B8m": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 1.0,
+     "max": 1.0
+    },
+    "interference_in_window": "0/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 7.63,
+     "min": 6.5,
+     "max": 8.61
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.3,
+     "min": 0.19,
+     "max": 0.41
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 79.78,
+     "min": 9.12,
+     "max": 127.76
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 256.97,
+     "min": 32.14,
+     "max": 521.37
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 31.38,
+     "min": 31.34,
+     "max": 31.42
+    }
+   },
+   "B32m": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 0.5,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_in_window": "0/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 32.7,
+     "min": 30.96,
+     "max": 33.84
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.24,
+     "min": 0.17,
+     "max": 0.28
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 116.62,
+     "min": 96.21,
+     "max": 134.03
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 274.29,
+     "min": 232.62,
+     "max": 299.76
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 63.47,
+     "min": 63.4,
+     "max": 63.55
+    }
+   },
+   "O8m": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 325.0,
+     "min": 44.0,
+     "max": 505.0
+    },
+    "interference_in_window": "8/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 509.49,
+     "min": 503.19,
+     "max": 522.9
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.27,
+     "min": 0.24,
+     "max": 0.46
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 104.31,
+     "min": 88.12,
+     "max": 112.27
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 730.07,
+     "min": 681.64,
+     "max": 952.94
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 614.47,
+     "min": 564.17,
+     "max": 617.81
+    }
+   },
+   "OCAP": {
+    "n_trials": 8,
+    "s1_fires_per_trial_theory": "one per settled cell burst (the tA/tB/tC/tD turns) + none at boot (the restore_boot_hold skip)",
+    "commits_per_trial": [
+     6,
+     6,
+     6,
+     6,
+     7,
+     7,
+     7,
+     7
+    ],
+    "control_cell_ms": {
+     "n": 8,
+     "p50": 1.0,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_cell_ms": {
+     "n": 8,
+     "p50": 0.5,
+     "min": 0.0,
+     "max": 1.0
+    },
+    "interference_in_window": "0/8",
+    "S2a_prune_span_ms": {
+     "n": 8,
+     "p50": 6.67,
+     "min": 5.41,
+     "max": 15.72
+    },
+    "S2b_list_span_ms": {
+     "n": 8,
+     "p50": 0.29,
+     "min": 0.17,
+     "max": 0.42
+    },
+    "S2c_notice_tail_ms": {
+     "n": 8,
+     "p50": 108.79,
+     "min": 10.26,
+     "max": 125.24
+    },
+    "compaction_row_span_ms": null,
+    "compact_wall_ms": {
+     "n": 8,
+     "p50": 261.43,
+     "min": 134.85,
+     "max": 541.46
+    },
+    "dispose_exit_wall_ms": {
+     "n": 8,
+     "p50": 31.45,
+     "min": 31.4,
+     "max": 65.65
+    }
+   }
+  },
+  "restore_legs_s4": {
+   "E": [
+    {
+     "ready_ms": 160.8746010001596,
+     "kernel_found_ms": 1890.4418019997138,
+     "payload_bytes": 7133,
+     "manifest_saved_n": 7,
+     "exit_ms": 31.373524000173347
+    },
+    {
+     "ready_ms": 150.01152100012405,
+     "kernel_found_ms": 1681.7905369998698,
+     "payload_bytes": 7133,
+     "manifest_saved_n": 7,
+     "exit_ms": 31.385299999783456
+    },
+    {
+     "ready_ms": 225.75793999976668,
+     "kernel_found_ms": 2290.998273999776,
+     "payload_bytes": 7133,
+     "manifest_saved_n": 7,
+     "exit_ms": 31.399288999637065
+    }
+   ],
+   "B8m": [
+    {
+     "ready_ms": 145.52070299987463,
+     "kernel_found_ms": 2306.518624000091,
+     "payload_bytes": 8395925,
+     "manifest_saved_n": 15,
+     "exit_ms": 31.38010300017413
+    },
+    {
+     "ready_ms": 412.22538700003497,
+     "kernel_found_ms": 1587.9794470001798,
+     "payload_bytes": 8395925,
+     "manifest_saved_n": 15,
+     "exit_ms": 31.488403999901493
+    },
+    {
+     "ready_ms": 147.80857699997796,
+     "kernel_found_ms": 2197.5018049997743,
+     "payload_bytes": 8395925,
+     "manifest_saved_n": 15,
+     "exit_ms": 31.416282999998657
+    }
+   ]
+  },
+  "bigcompact_legs_10mib_fixture": {
+   "E": {
+    "compact_wall_ms": {
+     "n": 4,
+     "p50": 182.49,
+     "min": 114.33,
+     "max": 241.34
+    },
+    "S2a_prune_span_ms": {
+     "n": 4,
+     "p50": 2.94,
+     "min": 2.7,
+     "max": 3.13
+    },
+    "S2b_list_span_ms": {
+     "n": 4,
+     "p50": 0.17,
+     "min": 0.13,
+     "max": 0.21
+    },
+    "S2c_notice_tail_ms": {
+     "n": 4,
+     "p50": 113.49,
+     "min": 105.5,
+     "max": 118.04
+    }
+   },
+   "B8m": {
+    "compact_wall_ms": {
+     "n": 4,
+     "p50": 140.56,
+     "min": 134.95,
+     "max": 255.88
+    },
+    "S2a_prune_span_ms": {
+     "n": 4,
+     "p50": 7.38,
+     "min": 7.19,
+     "max": 7.42
+    },
+    "S2b_list_span_ms": {
+     "n": 4,
+     "p50": 0.26,
+     "min": 0.17,
+     "max": 0.45
+    },
+    "S2c_notice_tail_ms": {
+     "n": 4,
+     "p50": 8.56,
+     "min": 6.43,
+     "max": 119.38
+    }
+   }
+  },
+  "census_structure": {
+   "census-E-00": {
+    "counts": {
+     "write:?": 24799,
+     "rename:other": 1763,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 10,
+     "unlink:other": 754,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 6,
+     "rename:kernel_state": 6,
+     "unlink:kernel_state": 6
+    },
+    "session_jsonl_sync_durs": [
+     "0.111830",
+     "0.000420",
+     "0.111677",
+     "0.116489",
+     "0.000440",
+     "0.000426",
+     "0.000305",
+     "0.121690",
+     "0.000695"
+    ]
+   },
+   "census-B64k-00": {
+    "counts": {
+     "write:?": 26202,
+     "rename:other": 1763,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 22,
+     "unlink:other": 754,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 12,
+     "rename:kernel_state": 12,
+     "unlink:kernel_state": 12,
+     "payload_read": 18
+    },
+    "session_jsonl_sync_durs": [
+     "0.121971",
+     "0.000392",
+     "0.121389",
+     "0.126138",
+     "0.000426",
+     "0.000403",
+     "0.000284",
+     "0.000599",
+     "0.116392",
+     "0.000457",
+     "0.000551",
+     "0.118452"
+    ]
+   },
+   "census-B1m-00": {
+    "counts": {
+     "write:?": 26298,
+     "rename:other": 1763,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 22,
+     "unlink:other": 754,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 12,
+     "rename:kernel_state": 12,
+     "unlink:kernel_state": 12,
+     "payload_read": 18
+    },
+    "session_jsonl_sync_durs": [
+     "0.133464",
+     "0.000544",
+     "0.121693",
+     "0.135365",
+     "0.000657",
+     "0.000339",
+     "0.000342",
+     "0.000840",
+     "0.121277",
+     "0.000546",
+     "0.000384",
+     "0.122334"
+    ]
+   },
+   "census-B8m-00": {
+    "counts": {
+     "write:?": 25029,
+     "rename:other": 1766,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 42,
+     "unlink:other": 757,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 24,
+     "rename:kernel_state": 24,
+     "unlink:kernel_state": 24,
+     "payload_read": 55
+    },
+    "session_jsonl_sync_durs": [
+     "0.122039",
+     "0.000397",
+     "0.138094",
+     "0.127360",
+     "0.000452",
+     "0.000255",
+     "0.000793",
+     "0.127562",
+     "0.123019",
+     "0.000525",
+     "0.000498",
+     "0.134388"
+    ]
+   },
+   "census-B32m-00": {
+    "counts": {
+     "write:?": 27602,
+     "rename:other": 1763,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 22,
+     "unlink:other": 754,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 12,
+     "rename:kernel_state": 12,
+     "unlink:kernel_state": 12,
+     "payload_read": 18
+    },
+    "session_jsonl_sync_durs": [
+     "0.129964",
+     "0.000464",
+     "0.122481",
+     "0.130881",
+     "0.000587",
+     "0.000496",
+     "0.000469",
+     "0.123548",
+     "0.123543",
+     "0.000461",
+     "0.000399",
+     "0.151929"
+    ]
+   },
+   "census-OCAP-00": {
+    "counts": {
+     "write:?": 29408,
+     "rename:other": 1763,
+     "fsync": 3,
+     "unlink:staged_temp": 1,
+     "fdatasync": 22,
+     "unlink:other": 754,
+     "rename:models_json": 1,
+     "rename:harness_state": 1,
+     "temp_create": 12,
+     "rename:kernel_state": 12,
+     "unlink:kernel_state": 12,
+     "payload_read": 18
+    },
+    "session_jsonl_sync_durs": [
+     "0.138800",
+     "0.000400",
+     "0.122989",
+     "0.137768",
+     "0.000435",
+     "0.000299",
+     "0.000386",
+     "0.136954",
+     "0.132453",
+     "0.000531",
+     "0.000309",
+     "0.185103"
+    ]
+   }
+  },
+  "headline": {
+   "raw_dump_walls_p50_ms": {
+    "E_boot_ns": "0.24-0.25 (31B payload)",
+    "B64k": "0.36 (64KiB)",
+    "B1m": "0.61-0.65 (1MiB)",
+    "B8m": "4.16-4.40 (8MiB strings)",
+    "B32m": "28.9-30.0 (32MiB, cpu ~30ms)",
+    "O8m": "525-529 (2MiB PICKLED nested tree, cpu 525-530 - ~260ms/MiB-pickled, ~250x the string class)",
+    "OCAP": "2.95-3.04 (the 20MiB over-cap var SKIPPED per fire; the pickle-to-cap abort is cheap for strings - for a CPU-heavy object the abort would cost the pickle time to 16MiB of output, an unmeasured bound, disclosed)"
+   },
+   "s1_recurrence": "one full-namespace dump per settled cell burst (the 1500ms debounce resets per cell); 6-7 dumps per product trial (4 cell fires + S2a + S3); the boot fire is SKIPPED (restore_boot_hold, rust-only)",
+   "queue_block_interference": "O8m: the tD cell submitted into the fire window waited p50 325ms (44-505) vs the 1ms tB control, in-window 8/8 - the kernel's single request queue serializes the dump with cells; the bound for fast-dump classes is the dump wall itself (B32m 29ms, missed by the ~40ms prompt->cell roundtrip, 0/8)",
+   "s2_compact_sync": "S2a prune span = the dump wall + ~2.8ms plumbing: 3.1ms (boot ns) / 7.6 (B8m) / 32.7 (B32m) / 509.5 (O8m, 70% of the 730ms compact wall); S2b list 0.1-0.5ms everywhere; S2c the notice row: bimodal regime (fast-path 0.7-9ms vs the 88-135ms deep-D wall + the fresh payload's writeback interplay - E 39ms at the shallow-D start, 105-118ms at the deep-D end, session-size-INDEPENDENT: the 10MiB-fixture bigcompact S2a/S2b match the 256KiB ones)",
+   "s3_dispose": "the final dump inside the exit wall: the 31.4ms teardown floor hides dumps <=8MiB; B32m exit 63.5 (+32 = the dump); O8m exit 614 (the 530ms dump + the big-ns teardown)",
+   "s4_restore": "the unpickle wall on the prewarm path: 4.2ms (31B) / 9.7 (8.4MiB strings) / 24.4 (32MiB) / 158 (the object class); the restore legs prove the revive through the shared agent dir (manifest savedN=15 at B8m)",
+   "cross_check_with_the_prior_lane": "the compact-refine record's 256KiB control kernel_sync 3.5ms matches this lane's E/B64k S2a+S2b (3.1+0.2, 2.9+0.2) - the instruments agree"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All legs ran in the D-regime at every boundary (CLASS=D), with the depth DEEPENING monotonically through the campaign (A_P50 33 -> 110 -> 145ms): the durable-row spans (S2c, the compaction row, the exit floor's regime component) are regime-contaminated and depth-varying across blocks - the S2c numbers are reported as the bimodal fast-path/wall distribution they are, and the CPU-phase spans (the dumps, the O8m interference, the raw walls) are regime-independent (pass-to-pass raw p50s agree within ~2-5%). The interference instrument resolves only dump walls >~40ms (the prompt->cell model roundtrip lands the cell ~40ms after the submit; B32m's 29ms window is missed by design - its bound is the raw dump wall; O8m's 530ms window is hit 8/8). The product-side dump windows are poll-bounded (25ms); the O8m windows (p50 527ms) corroborate the raw walls. The raw legs' CPU deltas are 100Hz-tick coarse (<10ms unresolvable; the O8m CPU 525-530ms equals its wall - the dump is CPU-bound there). One B64k trial's ready_ms=1107 (a cold-boot outlier, kept, disclosed). The census trials under strace: structure-only, INVALID for timing; the B8m census trial shows 12 dumps (the strace overhead shifted the debounce/queue interleavings - disclosed). 5 of the 11 skill modules are unpicklable (_PrimeAgentCallableSkillModule instances: dill skips them every dump - the manifest savedNames carries only 6 skills + user names; the notice's list_names reports all 20) - a per-dump skip overhead, structural, ~free. The snapshot payload writes carry NO fsync (staged temp + two renames only - the crash-freshness window is the rename), so the D-regime's fresh-write wall applies to the session-jsonl fdatasyncs (S2c), not the payload writes. The EOF-flush legs (raw) measure the CRASH path (stdin close without a shutdown request); the product's graceful teardown sends the shutdown request first, so the runtime's EOF flush never runs there (verified in teardown.rs + the exit walls carry only the dispose flush). The restore legs prove the S4 revive through the shared agent dir (manifest savedN=15 at B8m) but the restore wall itself is a PREWARM-path (background) cost - the raw legs carry its wall per class.",
+  "evidence": "hillclimb/archives/perf-kernel-sync/kernelsync-evidence.tar.gz (sha 248d7bcc11d8482db42a090c77528ee871b89e50318f48c44e48bd21d1045706, VM-side sha match verified before VM deletion; all 39 leg blocks + both analyzers' outputs + the probes, sample receipts (O8m interference, OCAP prune, E, B32m), the B8m census strace per-tid files, the driver/probe/analyzer scripts, the setup/build/deploy scripts)"
+ },
+ "ts_anchor": {
+  "s2_compact_sync": "packages/coding-agent/src/core/agent-session.ts:8604 _syncKernelStateAfterCompaction (pruneOversizedVariables -> listNamespaceNames under KERNEL_STATE_LISTING_TIMEOUT_MS=5000 (agent-session.ts:1114) -> the ipython_state notice -> appendCustomMessageEntry); rust ipython_state.rs:230 sync_after_compaction (port-faithful, the #227 back-to-back semantics)",
+  "s1_debounce": "repl-manager.ts:962-966 execute -> scheduleSnapshot on ok; :1713-1723 scheduleSnapshot (clearTimeout + cfg.debounceMs ?? DEFAULT_SNAPSHOT_DEBOUNCE_MS) -> consumeRestoredSnapshotSkip -> captureSnapshot; shared.ts:8-9 DEFAULT_SNAPSHOT_DEBOUNCE_MS=1500, SNAPSHOT_EXECUTION_TIMEOUT_MS=5000; rust snapshot.rs schedule_snapshot (port-faithful) PLUS the restore_boot_hold arm (rust-only; see parity_finding)",
+  "s3_dispose": "teardown.rs perform_shutdown (flush_snapshot_for_dispose -> the shutdown request); the runtime's EOF flush (_flush_final_snapshot, repl.py) is a rust-vendored-runtime addition NOT present in the TS repo's vendored runtime copy (checked 2026-09-28, TS checkout cd1f215's runtime at 8ee46be) - the graceful path never reaches it (the shutdown request precedes stdin close)",
+  "s4_restore": "provisioner.rs start: restore_state() called UNCONDITIONALLY when a snapshot dir is configured (even with no payload), then the bootstrap through manager.execute(); state_snapshot.rs DEFAULT_SNAPSHOT_MAX_BYTES=256MiB / DEFAULT_SNAPSHOT_MAX_VARIABLE_BYTES=16MiB (TS state-snapshot.ts:12-14 identical)",
+  "s2_span_marks": "the in-tree PA_COMPACTION_TRACE seam (compaction_trace.rs): kernel_pruned/kernel_listed/returned - the S2a/S2b/S2c spans",
+  "parity_finding_boot_hold": "RUST-ONLY: schedule_snapshot's timer task skips the post-bootstrap fire when restore_boot_hold is armed (snapshot.rs: 'The boot that followed a restore owns this window... the +1 is the bootstrap's own settle'), and restore_state() arms the hold at EVERY start (the unconditional call) - so the rust kernel NEVER fires the post-bootstrap debounced snapshot. TS has NO hold arm (repl-manager.ts): TS fires the tiny boot-ns dump at every boot. Product evidence: the trials' first commit is always the FIRST USER CELL's fire (E: 3 commits = tB fire + S2a + S3), never a boot commit. A rust-side perf-positive divergence, user-invisible (the payloads identical after the first cell); flagged for the parity ledger, not actioned here."
+ },
+ "candidates_reported_only": [
+  "C1 THE RECURRING RE-DUMP (the biggest): S1 re-serializes the ENTIRE namespace after every cell burst even when nothing changed - the tB trivial cell (xt=1) re-dumped the full 8.4MiB at B8m and the 2MB tree at ~530ms CPU at O8m; every settled cell pays a full dump of everything. A per-variable freshness memo (re-dump only changed names; the payload is per-variable records) would cut the recurring fire to the changed-vars cost: O8m 530ms -> ~ms when unchanged; B32m 29ms -> ~ms. BOUND: the recurring cost is the full dump wall per burst, measured per class. PARITY SURFACE: the payload format is internal BUT cross-product (the same session resumed by the TS product must restore a rust-written payload and vice versa; the shared runtime's version marker governs) - an incremental format needs a version bump + both-side readers; a substantial lane, not a clean single-side cut.",
+  "C2 THE COMPACT-TIME PRUNE REDUNDANCY: at compact, S2a re-dumps the namespace that the last S1 fire committed when no cell ran between (every trial: the prune's commit is byte-identical in size to the last fire's commit, zero settled executions between). A skip-if-fresh (the committed manifest stat + the no-settled-execution-since counter, both already tracked in snapshot.rs's skip machinery) would save the prune span on the compact wall: O8m 509ms -> ~0 (the compact 730 -> ~220ms); B32m 33 -> ~0; at the stock-fixture classes only ~3-8ms (vs the 88-135ms regime walls on the same command - immaterial there). PARITY: TS prunes UNCONDITIONALLY (agent-session.ts:8606) - an internal-behavior divergence needing a TS-parity case + a served-path assertion oracle (the notice bytes identical when fresh; the stale path still dumps AND prunes - the live-ns cap enforcement must not be skipped when anything settled).",
+  "C3 THE QUEUE-BLOCK INTERFERENCE: the dump shares the kernel's single request queue with cells; a cell landing mid-dump waits the full wall (O8m p50 325ms, in-window 8/8 vs the 1ms control). The C1 memo shrinks the dump below notice; alternatively a chunked dump (yield the queue between per-variable records) bounds the block to one record's cost - a runtime change, TS-divergent (the TS kernel blocks identically), and it stretches the dump wall. BOUND: the block = the in-flight dump wall.",
+  "C4 THE DISPOSE FLUSH: the same dump-wall bound inside the exit wall (B32m exit 63.5 vs the 31.4 floor; O8m 614). The C1 memo bounds it identically; no standalone cut."
+ ],
+ "not_candidates_load_bearing": [
+  "the notice row (S2c): TS parity, the #227 back-to-back compact semantics, model-visible content - by design (the regime wall on its fdatasync is the host's D-class, not product logic)",
+  "S2b list: 0.1-0.5ms at every class - nothing to cut",
+  "S4 restore: the resume contract; the hasSnapshot prewarm arm is TS parity; the wall is the unpickle",
+  "the caps (256MiB aggregate / 16MiB per-variable): TS parity; the OCAP semantics verified END-TO-END (S1 skips the 20MiB var every fire; S2a DELETES it from the live ns at compact and the notice names it - 'Variables above the per-variable snapshot limit were removed: big' observed in the session file; the post-compact payloads carry 15 names without it)",
+  "the boot-fire skip (restore_boot_hold): already-optimal on the rust side (a rust-only arm TS lacks - the parity ledger item, not a cost)"
+ ],
+ "outcome": "decompose-complete (honest record; no product change, no PR - measurement-only exploration lane per the brief; the record and the reported candidates are the deliverables)",
+ "decision": "The kernel-sync class is decomposed end-to-end across the size/shape classes. ANSWER: the reported-only 8.0ms compact-tail from the compact-refine record is the SMALL end of a four-sync class whose cost is OBJECT-SHAPE-bound, not size-bound: the strings scale at ~0.9ms/MiB (page-cache memcpy, regime-light) while a nested-object namespace scales at ~260ms per MiB-PICKLED (100% CPU dill.dump - the O8m class: a 530ms dump for a 2MB-pickled tree). The four syncs: S1 arms after EVERY settled cell (one full-namespace dump per burst; the boot fire is skipped by the rust-only restore_boot_hold arm), S2's prune span is the dump wall + ~2.8ms on the compact's critical path (3.1ms at the boot ns -> 509.5ms at the object class = 70% of that compact's 730ms wall), S3's dispose flush rides the exit wall (31.4ms floor; +32ms at 32MiB; 614ms at the object class), S4's restore is the unpickle wall on the prewarm path (4.2ms -> 158ms). THE MECHANISM FINDING: the kernel's SINGLE request queue serializes every dump with cells - a cell landing mid-dump waits the full wall (O8m: 325ms p50 vs the 1ms control, in-window 8/8) - and the debounced dump fires after every cell burst, so an object-heavy session pays the full dump repeatedly (6-7 dumps per measured trial) AND blocks the next cell behind it. The S2c notice row and the compaction row are regime-bound (the D-class fdatasync walls, 0.7-9ms fast path vs 88-135ms deep-D, plus the fresh payload's writeback interplay); S2b is 0.1-0.5ms; the whole S2 spans are session-size-INDEPENDENT (the 10MiB-fixture legs match the 256KiB ones). HONEST NEGATIVE ON THE CUT QUESTION: the four-sync structure is TS-parity port-faithful and load-bearing (crash-resume freshness, the 16MiB per-variable cap policy verified end-to-end on OCAP, the #227 notice semantics, the resume contract); at the stock-fixture classes the kernel-sync spans (3-8ms) are immaterial next to the regime walls (88-135ms) on the same command, so NO cut is warranted there; at object-heavy namespaces the signal is real and large, and the two candidate cuts (C1 the per-variable freshness memo - the recurring re-dump; C2 the compact-time skip-if-fresh - the redundant prune) have measured bounds but each carries a parity surface (C1 the cross-product payload format; C2 the TS-unconditional-prune divergence) that needs its own implementation lane with the full oracle discipline. One parity-ledger finding shipped with the record: the rust-only restore_boot_hold boot-fire skip (TS fires the tiny boot dump at every boot; rust never does).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-190500-interaction-kernel-sync-decompose.json",
+ "session": {
+  "worker": "perf-kernel-sync",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-3022b1dd/01a0e8cb-e872-72fe-a81a-57a5d45fded0.jsonl"
+ },
+ "timestamp": "2026-09-28T17:49:26Z"
+}
