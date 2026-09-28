@@ -1,0 +1,50 @@
+{
+ "_meta": {
+  "run": {
+   "label": "20260928-185903"
+  },
+  "harness": {
+   "git_rev": "b464f812e99303ba1a428f515b1de4807c24057e",
+   "dirty": true,
+   "bundle_sha256": "f6e49ba40bb9139eb309501ff9570649c38d07538343d7c54d23b3062d69ed82"
+  },
+  "collected_at": "2026-09-28T19:18:57+0000"
+ },
+ "products": {
+  "claude": {
+   "version": "2.1.283 (Claude Code)",
+   "revision": "npm@latest",
+   "binary": "/usr/bin/claude",
+   "binary_sha256": "1859583ce32920595c61ef868bee52e1b1594f7486db209935e01f1e5e804ae2"
+  },
+  "codex": {
+   "version": "codex-cli 0.158.0",
+   "revision": "npm@latest",
+   "binary": "/usr/bin/codex",
+   "binary_sha256": "61b0194f3bb6534439c8d26a3ed57d0805f84b884588b761795323eeb92fcf70",
+   "auth_limited": true
+  },
+  "pi": {
+   "version": "0.87.1",
+   "revision": "11894012dd461232eb075bc890538b6866860a10",
+   "binary": "node /root/bench-cmp5/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js",
+   "binary_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774"
+  },
+  "rust": {
+   "version": "0.1.0-continuous.b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "revision": "b5bf28f1d752ca9bea0ab1d3d24b572e682d69e5",
+   "binary": "/root/bench-cmp5/pa-rust-prefix/bin/prime-agent",
+   "payload": "/root/bench-cmp5/pa-rust-prefix/share/prime-agent/prime-agent",
+   "binary_sha256": "5b1042ecfc495b8e51b3661c3b1c874c04834abcd6499b563fe6a512a430f40f",
+   "binary_bytes": 57108704
+  },
+  "ts": {
+   "version": "0.9.6",
+   "revision": "official-0.9.6",
+   "binary": "/root/.local/share/prime-agent/bin/prime-agent",
+   "payload": "/root/.local/share/prime-agent/bin/prime-agent",
+   "binary_sha256": "69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb",
+   "binary_bytes": 163595464
+  }
+ }
+}
