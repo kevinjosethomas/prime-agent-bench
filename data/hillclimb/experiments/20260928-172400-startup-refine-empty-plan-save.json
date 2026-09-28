@@ -1,0 +1,231 @@
+{
+ "id": "20260928-172400-startup-refine-empty-plan-save",
+ "axis": "startup",
+ "hypothesis": "Record 61b1f3b's reported-only candidate: 'REFINE HARNESS SAVE ON EMPTY PLANS: the harness state save (write+fsync+rename) runs even when 0 edits applied (the empty-plan case measured) — skipping the save when the plan applies nothing saves one durable write per empty refine; TS-parity check first.' The lane's brief: (1) confirm the empty-plan save at the tip and measure its share of the refine path (256KiB controls), (2) implement the parity-safe cut (skip the save when the plan is empty AND the harness state is unchanged, the guard PROVING no-change), (3) the byte-identity differential oracle, or the honest negative. OUTCOME: the TS-parity check — the candidate's own stated precondition — REFUTES the cut before any product code. The empty-plan save is NOT a wasted byte-no-op rewrite: it is the write that persists the refinement event.",
+ "approach": "MEASUREMENT ONLY, no product change (the honest-negative lane; the refutation is the deliverable). (1) CODE-LEVEL REFUTATION at the tip e2ee82f2d: apply_refinement_proposal UNCONDITIONALLY appends a HarnessRefinementEvent to the target state (pa-core refinement/planner.rs:439) — for the empty-edits plan too (the refine prompt explicitly solicits it: executor.rs:250 'Return only JSON edits. If no useful edit is justified, return an empty edits array with a rationale.'); execute_refinement then saves the FULL state including that event (session_engine/refine.rs:326 -> refinement/mod.rs:250 save_harness_state: to_string_pretty + '\\n' via settings::storage::atomic_write = write(tmp,pid-suffixed) + sync_all + rename). TS is identical: agent-session.ts:10039 applyRefinementProposal -> refinement.ts:1142 state.refinements.push (unconditional) -> :10045 result.harnessStatePath = saveHarnessState(...) -> :399-405 JSON.stringify(state,null,2)+'\\n' via writeFileAtomicSync({mode}). The event is user/model-visible: the harness digest renders it (ranking.rs:330 'recent refinements: N' + :341 changes:[] -> 'no applied edits' = TS refinement.ts:756/:765 the same strings) and rlm.get_harness_state exposes the refinements array. (2) RUNTIME CAMPAIGN on a fresh VM (hillclimb-perf-empty-plan-save, ubuntu:22.04 16c/32GB/100GB vm=True, rustup 1.98.1, cargo build --release --locked --workspace rc=0): the bench harness (settle: template + kernel-venv warm) with the offline mock (prime-inference/mock-1; the refiner queue returns the empty plan {summary:'bench',edits:[]} for every call); per-trial cold-resume legs over the REAL assembly with TWO sequential empty-plan refines per trial (cmd1: the file created with event #1; cmd2: the file-present rewrite with event #2 — the byte-no-op refutation evidence), the harness_state.json hashed+parsed before launch and after EVERY command, the full response data recorded (appliedEdits + harnessStatePath = the served-path assertion), session rows pre/post, arrival-accurate frame pump, per-command mock-log windows. Classes: small=session-256kib (the fixed-floor control, fleet sha bd18b080..., 190 rows), stock=session-10mib (the size-scaled control, dadaecfc..., 7391 rows), seeded=session-256kib + the realistic 705,444-byte harness state pre-seeded (sha 0cc5c3d2..., 296 memories + 10 prompts + 5 skills + 6 refinement events — the save's realistic-size cost + the entries-survival proof). Legs: block-interleaved timing A1(small) B1(stock) C1(seeded) C2(seeded) B2(stock) A2(small), 3 trials each (18 trials); census legs under strace -ff -f -tt -T (fd-mapped, path-classified) 2 trials per class (6 trials, structure + span evidence, INVALID for timing); I/O advisory v1.0 probe_v09 pre/mid/post + before EVERY block (12 probes, PHASE MODEL re-classified at every boundary, NO-CEILING); binary sha asserted at every block start+end (ae1b2a1b... unchanged throughout); quiet gate + product-only zombie sweep; per-trial fixture prehash assert.",
+ "parity_notes": "No product source changed in any phase; frozen parity untouched (the RPC surface exercised as a black box over stdio). THE REFUTATION IS ITSELF THE PARITY FINDING, in two independent mechanisms: (1) EVENT APPEND: any candidate that skips the empty-plan save (or drops the event append to make the state 'unchanged') diverges the on-disk harness state from the TS reference — TS persists the same event through the same unconditional save (agent-session.ts:10045; refinement.ts:1142), and the harness digest + rlm.get_harness_state render the refinements array identically in both products (ranking.rs:330/341 = refinement.ts:756/765). The brief's byte-identity oracle (the harness-state file byte-identical across baseline/candidate in the empty-plan class) is therefore UNSATISFIABLE for any skip: the baseline's post-refine file always contains the fresh event (fresh id refine_<ts> + created_at), so the candidate must write it too — the write is load-bearing, and a guard that honestly proves no-change (byte-compare would-be content vs the on-disk file) NEVER fires for refine. (2) CROSS-WRITER NORMALIZATION: the save is also a format-normalizing write — a TS-written harness file (insertion-ordered entries) round-trips through the Rust writer to BTreeMap-sorted key order with identical entry semantics but reordered bytes (measured: the seeded 705,444-byte TS-written state -> the post-refine file's entries section byte-reorders while the canonicalized entries sha stays 5921887a...); so even a genuinely unchanged state is never a byte-no-op across writers. Neither mechanism touches a frozen surface (the file is a data store, not wire/TUI bytes); both make the skip class dead.",
+ "base": {
+  "revision": "e2ee82f2d78de41272ccaf52b76a59b0cab33d61",
+  "note": "origin/rust at lane start (the #3001 tip); refine.rs + refinement/ byte-identical to the decompose pin e99c4a262 (git diff e99c4a262..e2ee82f2d -- crates/pa-core/src/refinement/ crates/pa-core/src/session_engine/refine.rs = empty)"
+ },
+ "branch": "hillclimb (bench repo, record only); lane worktree /home/ubuntu/worktrees/perf-empty-plan-save (branch lane/empty-plan-save, NO product commits)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ppnek3ah5zn3ulkquw8hw21x (hillclimb-perf-empty-plan-save, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "binary_sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678ebdbd4c85b05e5c8f36f63",
+  "binary_bytes": 224690088,
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (no product change; no PR)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, single binary (the candidate was refuted at code level — no candidate binary exists; no ABBA binary pair applies), quiet-gated (loadavg<1.0 at launch), binary sha asserted at every block start+end (ae1b2a1b... unchanged throughout), block-interleaved fixture classes A1 B1 C1 C2 B2 A2 for drift balance, I/O advisory v1.0 probe_v09 pre/mid/post + before every block (PHASE MODEL, NO-CEILING), arrival-accurate frame pump (parse timestamps, the select-park lesson), per-trial fixture prehash assert, census legs strace -ff -f -tt -T fd-mapped (structure + spans, INVALID for timing)",
+  "io_regime": "EVERY one of the 12 leg-boundary probes read CLASS=D (A_STALL_RATE=100.0%, A_P50 24.57-27.11ms fresh+sync_all+rename wall, A_MAX up to 64.4; repeat-fsync B mostly fast p50 0.10-0.20ms with ~5% stall hits at 23.7-30.9ms) — the whole campaign ran in the D regime, the same family as the decompose's campaign (its A_P50 34-37ms) and the rpc-baseline lane. All durable-write spans are regime-labeled: the ~25-35ms fresh-file-fsync walls are the HOST's A-regime class, not product logic; the save's span tracks the probe's A_P50 almost exactly (see the size-independence finding).",
+  "command_walls_arrival_accurate_empty_plan_refine": {
+   "small_256kib": {
+    "trials": 6,
+    "cmd1_p50_ms": 33.0,
+    "cmd1_min": 29.4,
+    "cmd1_max": 45.8,
+    "cmd2_p50_ms": 32.7,
+    "cmd2_min": 30.7,
+    "cmd2_max": 35.5
+   },
+   "stock_10mib": {
+    "trials": 6,
+    "cmd1_p50_ms": 114.0,
+    "cmd1_min": 96.2,
+    "cmd1_max": 119.6,
+    "cmd2_p50_ms": 98.6,
+    "cmd2_min": 76.4,
+    "cmd2_max": 124.1
+   },
+   "seeded_705kb_256kib_fixture": {
+    "trials": 6,
+    "cmd1_p50_ms": 38.2,
+    "cmd1_min": 36.4,
+    "cmd1_max": 39.3,
+    "cmd2_p50_ms": 38.8,
+    "cmd2_min": 36.6,
+    "cmd2_max": 44.2
+   },
+   "note": "two sequential empty-plan refines per trial; the decompose's single-refine anchors (256KiB p50 40.3, 10MiB p50 107.6 at e99c4a262) bracket these; both campaigns D-regime"
+  },
+  "pre_llm_assembly_send_to_mock_arrival_p50_ms": {
+   "small": {
+    "cmd1": 2.27,
+    "cmd2": 2.14
+   },
+   "stock": {
+    "cmd1": 32.92,
+    "cmd2": 28.73
+   },
+   "seeded": {
+    "cmd1": 6.32,
+    "cmd2": 5.86
+   },
+   "note": "the seeded state adds ~4ms of harness-state parsing to the assembly (the 4 loads parse the 705KB file); the stock class is the history-snapshot clone (the decompose's 31.3ms class)"
+  },
+  "harness_save_census_per_command": {
+   "classes": {
+    "small_256kib": {
+     "clusters": 4,
+     "bytes": [
+      323,
+      513
+     ],
+     "span_ms": [
+      28.45,
+      25.58,
+      25.44,
+      28.25
+     ],
+     "fsync_dur_ms": [
+      28.29,
+      25.46,
+      25.33,
+      28.01
+     ],
+     "rename_dur_ms": [
+      0.033,
+      0.04,
+      0.031,
+      0.084
+     ]
+    },
+    "stock_10mib": {
+     "clusters": 4,
+     "bytes": [
+      323,
+      513
+     ],
+     "span_ms": [
+      29.68,
+      32.56,
+      25.7,
+      34.75
+     ],
+     "fsync_dur_ms": [
+      29.48,
+      32.34,
+      25.61,
+      34.58
+     ],
+     "rename_dur_ms": [
+      0.037,
+      0.079,
+      0.02,
+      0.058
+     ]
+    },
+    "seeded_705kb": {
+     "clusters": 4,
+     "bytes": [
+      705635,
+      705825
+     ],
+     "span_ms": [
+      27.72,
+      27.05,
+      27.12,
+      27.93
+     ],
+     "fsync_dur_ms": [
+      27.48,
+      26.89,
+      26.83,
+      27.68
+     ],
+     "rename_dur_ms": [
+      0.067,
+      0.05,
+      0.089,
+      0.066
+     ]
+    }
+   },
+   "structure": "per empty-plan refine command: 1 harness save = write(tmp, pid-suffixed) + fsync + rename onto harness_state.json (the settings::storage::atomic_write shape), then the audit row (371B) + outcome row (290B) as write+fdatasync appends on the session file, then the response stdout write; the notice row is ABSENT (0 applied edits — correct); NO refinement_history.jsonl write (local scope: append_global_refinement is global-only)",
+   "size_independence_finding": "the save's span is SIZE-INDEPENDENT in the D regime: 323B and 705,635B pay the same ~25-35ms (fsync 25.3-28.3 vs 26.8-27.7); the wall is the host's fresh-file-fsync class (the probe's A class), not the payload; the write itself is 10-33us for either size",
+   "decompose_correction": "record 61b1f3b's census line '1 global refinement-history append' per refine is NOT supported by the write census (neither its own census-v2.json nor this lane's): the local-scope refine writes NO refinement_history.jsonl row; the per-command durable set is exactly: 1 harness save + 2 session rows (audit + outcome) + 1 stdout write"
+  },
+  "save_share_of_the_refine_wall": {
+   "same_trial_census_shares": {
+    "small": [
+     80.8,
+     81.5,
+     80.1,
+     81.7
+    ],
+    "stock": [
+     15.7,
+     23.5,
+     20.0,
+     18.8
+    ],
+    "seeded": [
+     68.1,
+     71.5,
+     38.3,
+     65.7
+    ],
+    "note": "save span / same-trial cmd wall (both under strace; the census walls: small 31.4-35.2, stock 128.6-189.1, seeded 37.8-70.8)"
+   },
+   "cross_referenced_vs_uninstrumented_p50": {
+    "small": "25.4-28.5 of 33.0 = 77-86% of the empty-plan refine wall",
+    "stock": "25.7-34.8 of 114.0 = 22-30% (the 10MiB wall is dominated by the CPU phases: assembly 32.9 + materialization)",
+    "seeded": "27.0-27.9 of 38.2-38.8 = 70-73%"
+   },
+   "regime_label": "ALL D-regime shares; the fast-path anchor exists (the decompose's own census at e99c4a262 measured 1.43ms and 1.10ms save spans on its 10MiB census trials — the fresh-file fsync CAN hit the fast path): the fast-path share is ~1.4/40.3 = ~3.5% at 256KiB; this campaign's 12 save clusters ALL stalled (100%, matching the probe's A class), so the shares above are the D-regime shares",
+   "conclusion": "in the D regime the harness save is THE dominant term of the empty-plan refine at the small/seeded classes (~80% / ~70% of the wall) and a ~22-30% term at 10MiB; the candidate's 'one wasted durable write' was actually the biggest single cost of the empty-plan refine in this regime — which makes the parity refutation the more consequential: the write is unskippable AND expensive"
+  },
+  "harness_file_evidence_the_event_persistence": {
+   "small_and_stock_trials": "per trial (fresh agent dir): pre = NO harness file; after cmd1 = harness_state.json 323 bytes, refinements_count=1, last event {id: refine_<fresh-ts>, trigger: 'bench', changes: [], created_at: fresh}; after cmd2 = 513 bytes, refinements_count=2, a SECOND fresh event; every step's file sha256 distinct (24 trials; the empty-plan save persists a NEW event every time — the file is never byte-stable across a refine)",
+   "seeded_trials": "pre = the realistic state (705,444 bytes, 6 events, entries sha 5921887a...); after cmd1 = 705,635 bytes (7 events, entries canonically IDENTICAL — the 296 memories + 10 prompts + 5 skills survive the round-trip unchanged); after cmd2 = 705,825 bytes (8 events, entries still identical); the +191/+190 byte deltas are exactly the two appended events",
+   "served_path_assertion": "every refine response carries appliedEdits: [] AND harnessStatePath set to the on-disk harness_state.json (48/48 commands across 24 trials) — the save served its path; the census independently shows the write+fsync+rename cluster inside every command window",
+   "entries_stability": "the entries section is semantically frozen by the empty plan (canonicalized entries sha stable across pre/cmd1/cmd2 in every trial); ONLY the refinements array grows — the state change the save persists is exactly the refinement event"
+  },
+  "session_row_census_per_trial": {
+   "rows_delta": "190 -> 197 per trial: +3 resume/boot rows (thinking_level_change 132B, service_tier_change 132B, a 5497B custom_message — written at session resume, OUTSIDE the refine windows) + 2+2 refine rows (audit 'prime-agent.refinement' 371B + outcome 'refinement_outcome' 290B per command)",
+   "in_command_row_costs": "the audit+outcome fdatasyncs inside the command windows are FAST (0.15-4.9ms — the append class; the boot rows paid the block-allocation boundary stalls ~24-26ms each before the commands)",
+   "telemetry_note": "the 'agent started' 902B write goes to agent/telemetry.jsonl, not the session file"
+  },
+  "mock_request_shapes": {
+   "refiner": "size-independent per session: system 5091 + user 80730 chars (cmd1) / 80756 (cmd2) — the 80K conversation cap; every call answered with the empty plan {summary: 'bench', edits: []}"
+  },
+  "refutation_the_skip_class_is_dead": {
+   "theorem": "(1) apply_refinement_proposal appends a HarnessRefinementEvent with a fresh id (refine_<17 digits>) and fresh created_at to the target state on EVERY refine — empty plan included (planner.rs:439 = TS refinement.ts:1142). (2) save_harness_state serializes the FULL state (mod.rs:250/256 = TS refinement.ts:399-405). (3) Therefore the post-refine file always differs from the pre-refine file. (4) The brief's byte-identity oracle (baseline vs candidate, empty-plan class) requires the candidate's post-file to equal the baseline's post-file — which contains the event. (5) A skip that leaves the file's bytes unchanged cannot produce the event; therefore no skip satisfies the oracle; the guard that proves no-change (byte-compare) never fires. QED.",
+   "runtime_proof": "the harness-file evidence above: 24/24 trials, file absent->created->rewritten (or 6->7->8 events seeded), shas distinct at every step",
+   "visibility_proof": "the event renders in the harness digest ('[refine_x] <trigger>: no applied edits') and rides rlm.get_harness_state — dropping it is a user/model-visible divergence from TS, not an internal-only optimization",
+   "guard_verdict": "an honest no-change guard would be DEAD CODE for the refine path (it can never fire); shipping it would green-fish the diff — the lane ships NOTHING",
+   "skip_class_future_readers": "any future 'skip no-op saves' lane must FIRST prove the save is a byte-no-op — which this lane proves it NEVER is for refine: the event append changes the content every run (fresh id/created_at), and the cross-writer normalization (TS insertion-order -> Rust BTreeMap-sorted) reorders even a semantically-unchanged state. The only byte-stable case is a Rust-written file re-saved with an unchanged event list — impossible after any refine. The skip class is closed for refine; audit it per-call-site before reviving it anywhere else."
+  },
+  "durability_finding_the_real_cost_is_a_port_side_fsync": {
+   "finding": "the harness save's measured cost is the fresh-file FSYNC — and the TS reference DOES NOT PERFORM IT. TS's writeFileAtomicSync (utils/atomic-file.ts:52) fsyncs the temp file only when options.fsync is passed (:65 'if (options.fsync) fsyncSync(descriptor)'), and the harness save passes only {mode} (refinement.ts:404) — write + atomic rename, NO fsync. So do the TS settings (settings-manager.ts:390 {mode: 0o600}) and auth writes (auth-storage.ts:206/250); only a few daemon-side paths opt in (e.g. rlm-subagent-display.ts:79 fsync:true). The Rust port's shared atomic_write (pa-core settings/storage.rs:~300: write_all + sync_all + rename) fsyncs ALWAYS — the port added durability uniformly. TS's session rows are plain appendFileSync (session-manager.ts:961/:2042 — no fsync at all) while the Rust port appends + fdatasyncs every row.",
+   "measured_cost_of_the_addition": "the save's fsync is the dominant term of the empty-plan refine in the D regime (25.3-34.6ms, size-independent 323B<->705KB, = the probe's A-regime wall; the write itself 10-33us, the rename 0.02-0.09ms); the session rows' fdatasyncs are mostly fast-path (0.15-4.9ms in-command) but stall at block-allocation boundaries (the boot rows paid 24-26ms each)",
+   "candidate_class": "a parity-ALIGNMENT candidate (NOT this lane's skip): match TS's per-call durability for the harness save — write+rename without the temp-fsync. The on-disk content is byte-identical, the write choreography order and all frozen surfaces unchanged; the semantics delta is the crash window: a power loss may lose the last harness-state write exactly as the TS reference does today. Expected saving: the D-regime save span 25-35ms -> ~0.03-0.09ms (the write+rename pair), i.e. the empty-plan refine wall -80% at 256KiB / -70% seeded / -22-30% at 10MiB; the healthy-regime saving ~1-1.5ms. SCOPE WARNING: settings::storage::atomic_write is the SHARED helper (settings/auth/harness all ride it in the port) — the lane must re-derive the durability contract per call site (TS's own call-site survey: settings/auth/harness all fsync-less; daemon journal/display paths fsync) and decide the port's crash-safety policy explicitly, with the merge bar's oracle discipline (the byte-identity of every store's content across baseline/candidate + the crash-window disclosure). TS-parity check FIRST, as this lane's refutation demonstrates."
+  }
+ },
+ "ts_anchor": {
+  "rust_save_path": "pa-core session_engine/refine.rs execute_refinement :244 (the synchronous apply phase :318-326: re-read target :325 -> apply :326 -> save :327 wait check) ; pa-core refinement/planner.rs apply_refinement_proposal :283-444 (the unconditional event push at :439) ; pa-core refinement/mod.rs save_harness_state :250-258 (to_string_pretty + atomic_write) ; pa-core settings/storage.rs atomic_write :299-310 (write tmp + sync_all :307 + rename) ; pa-daemon rpc/commands.rs refine :522 (global defaults false -> local scope)",
+  "ts_save_path": "core/agent-session.ts _applyRefine :10020 (loadHarnessState re-read) -> :10039 applyRefinementProposal -> :10045 saveHarnessState ; core/refinement/refinement.ts applyRefinementProposal :1103-1160 (refinements.push :1142) ; saveHarnessState :399-405 (JSON.stringify(,2)+\\n via writeFileAtomicSync {mode}) ; utils/atomic-file.ts writeFileAtomicSync :52 (fsync only at :65 on options.fsync)",
+  "parity_note": "the Rust chain is port-faithful to the TS sequence (same loads, same unconditional event append, same full-state save, same audit->outcome->notice row order, notice skipped on 0 applied edits); the ONE deliberate divergence the lane found is the durability addition (the temp-fsync), documented above"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Single-binary measurement campaign (no candidate exists — the cut was refuted at code level; the ABBA binary-swap discipline does not apply; the block interleave + per-boundary probes carry the regime balance). Census legs are structure+span evidence, INVALID for command timing (strace inflation: the stock census walls 128-189ms vs the un-instrumented 96-124ms); the fsync/rename DURATIONS and the I/O spans are syscall walls largely insensitive to strace, and the same-trial shares are computed from them; the cross-referenced shares use the un-instrumented p50 walls. ALL 12 probes CLASS=D: every share is a D-regime share; the fast-path anchor (save span ~1.1-1.4ms) comes from the decompose's census at e99c4a262 (its 10MiB trials), not this campaign — disclosed. The seeded control used the live orchestrator harness state (705,444B, TS-written) — the round-trip normalization finding (BTreeMap reorder) is a byproduct, disclosed in parity_notes. The mock's refiner queue answers every refiner call with the same empty plan (the clamp-to-last cursor); both commands per trial are genuine empty-plan refines (appliedEdits [] in every response). The session rows' in-command fdatasyncs rode a pre-paid block boundary (the boot rows allocated the block) — in a fresh-session refine the first row append may pay the allocation stall instead; the harness save (fresh tmp file) always pays the A-class wall regardless. The 902B 'agent started' write is telemetry, not a session row.",
+  "evidence": "hillclimb/archives/perf-empty-plan-save/emptyplan-save-evidence.tar.gz (sha 7710a9d7149bfd6e2969a541ce2f1062976584ef6b502ca693f8bd04e9e289bf, VM-side sha match verified before VM deletion; all 24 trial receipts with full frame timelines + harness-file snapshots after every command + per-command mock windows, the legs state with all 12 probe outputs + per-block sha asserts, the 6 census strace sets + the fd-mapped census analysis (12 harness-save clusters with -T durations), the as-run driver/probe/analyzer scripts, the setup/build/deploy logs, the seeded state file)"
+ },
+ "outcome": "HONEST NEGATIVE (the candidate is closed, refuted at code level and confirmed at runtime): the empty-plan harness save is NOT a wasted write — it is the write that persists the refinement event (changes: []) that both products append unconditionally and render in the harness digest; NO parity-safe skip exists in the empty-plan class (the byte-identity oracle is unsatisfiable for any skip; an honest no-change guard never fires), so no product change, no PR. The lane's second deliverable is the share measurement: in the D regime the save is the DOMINANT term of the empty-plan refine (~80% of the 256KiB wall, ~70% seeded, ~22-30% at 10MiB) and the cost decomposes to a port-side durability fsync the TS reference does not pay — reported as the follow-up candidate with its scope warning.",
+ "decision": "The skip candidate from record 61b1f3b is CLOSED as refuted (do not revive without new evidence that the event append is dropped upstream — an upstream change that removes the empty-plan event WOULD reopen the skip class, and this record's oracle construction is the template). The measured share re-scopes the cost from 'one wasted durable write' to 'the dominant term of the empty-plan refine in the D regime, caused by the port's durability addition' — the follow-up candidate (TS-per-call-durability alignment for the harness save) is reported-only and needs its own lane: the shared atomic_write helper's contract must be re-derived per call site, the crash-window semantics disclosed, and the merge bar carried.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-172400-startup-refine-empty-plan-save.json",
+ "session": {
+  "worker": "empty-plan-save lane (wave-6 perf)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-4186c0bc/01a0e8cb-df57-72f3-bec8-9a7af65aa4cc.jsonl"
+ },
+ "timestamp": "2026-09-28T17:24:00Z"
+}
