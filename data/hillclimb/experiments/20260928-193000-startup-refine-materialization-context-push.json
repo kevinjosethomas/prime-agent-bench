@@ -16,16 +16,16 @@
  ],
  "build": {
   "tip_binary_sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678dbd4c85b05e5c8f36f63",
-  "cand_binary_sha256": "a4bdb23455f56c6241f97b87a4d78db18f27b7091b94585254cb1ddde4387d2e",
+  "cand_binary_sha256": "f14d120abc2a7601887f0f8508f3ff76a9717cfe2bcd169e08f787dd458fb885 (the folded head f3a9757dd; the pre-fold pair legs ran a4bdb234... at a65ae6c89's ancestor fed06cd0b / the fix head 14348fcb...)",
   "sandbox_id": "r0f7f1r4zmocfoovsylo7vc5 (hillclimb-perf-refine-mat, ubuntu:22.04 16c/32GB/100GB vm=True)",
   "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0 both arms",
   "note": "both arms cargo build --release --locked --workspace rc=0; per-block binary sha asserted on every ABBA swap (tip ae1b2a1b..., cand a4bdb234...)"
  },
  "gates": {
-  "fmt": "cargo fmt --all -- --check CLEAN at fed06cd0b (after one rustfmt pass on the lane's new code)",
-  "clippy": "cargo clippy --workspace --all-targets --locked CLEAN at fed06cd0b (0 errors; the lane's one warning fixed: match_wildcard_for_single_variants in the oracle test)",
-  "test": "cargo test --workspace --locked --no-fail-fast at fed06cd0b: ALL GREEN except pa-cli --test interactive_daemon_e2e (parallel-load flake: solo-green 32/32 x2 at the exact heads; the gate4 failures triaged: packages::tests npm ENOENT = VM env gap, npm installed -> 6/6 solo-green; auto_refine_trigger declining-review + pa-tui browser::opener + the gate4 tui_refused_submit flake = solo-green at the head)",
-  "benchmark_ci": "n/a (no bench-repo change)"
+  "folded_head_f3a9757dd": "VM (r0f7f1r4): cargo fmt --all -- --check CLEAN; cargo clippy --workspace --all-targets --locked CLEAN; cargo test --workspace --locked --no-fail-fast ALL 10 TARGETS PASS (zero failures, zero flakes); the 4 oracle tests 4/4 (incl. sequential_refines); binary f14d120abc2a7601887f0f8508f3ff76a9717cfe2bcd169e08f787dd458fb885. GitHub CI at the same head: fmt / check+clippy / loc / request / Cursor Bugbot / Macroscope / test shards 1-4 / test summary ALL PASS. The only red: the benchmark workflow = the standing fleet-wide infra failure (identical on #3013/#3017; pr-arm zero trials, main arm clean).",
+  "pre_fold_head_fed06cd0b": "VM gates as recorded (the registered-family flakes solo-green at the head; the CI shard-1 rlm_spawn_replacement_e2e registered daemon-timing family solo-green x3; npm env gap fixed). The folded-head run cleared ALL of them in-suite.",
+  "bot_threads": "Bugbot (the pre_refine_rows window) FIXED at a65ae6c89 \u2014 the mechanism removed (the by-id selection); Macroscope (concurrent-refine) FIXED + SELF-RETRACTED ('No longer relevant as of f3a9757dd...'); both bots PASS at the folded head.",
+  "benchmark_ci": "n/a (no bench-repo product change); the PR's benchmark check = the fleet-wide infra red, disposed."
  },
  "measurements": {
   "io_regime": "EVERY boundary probe CLASS=D (A_P50 30.7-37.4ms fresh+sync_all+rename wall, A_STALL_RATE 100%, ceilings: io-pre 109ms, io-mid 233.6ms - NO-CEILING labeled; B repeat-fsync mostly fast p50 0.14-0.20ms with ~5% ~30ms singles) - the same D-regime family the decompose campaign ran in; durable-write-bounded spans regime-labeled; ABBA interleave balances the arms; CPU-phase spans are the primary evidence.",
