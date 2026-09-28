@@ -1,0 +1,321 @@
+{
+ "id": "20260928-224735-cpu-idle-rebaseline-decompose",
+ "axis": "cpu",
+ "hypothesis": "The wave-6 idle dimensions have floors that pre-date the recent hillclimb merges (the abort-poll park #2880, worker onecopy #2890, supervisor heap return #2899, zero-copy relay #2935, settled-child kernel release #2983, the compacting gate #3021, the refine clone cut #3013, the kitty-probe #3010 at the measured tip): the composite idle floor was UNMEASURED. (1) idle CPU + wake rate: the prior floor (worker 2.0/s, TUI ~183/s, tree 0.36% of one core) was measured at the pre-merge era with a leader-thread-only instrument. (2) idle memory: the worker-RSS, daemon-RSS and settled-child floors were measured per-lane at different heads, never as a composite. (3) launch-to-ready: cold/warm TUI and daemon-boot floors existed at b5bf28f1d (the cmp5 corpus) but not at the lane tip. (4) the TS daemon idle-eviction tier (idleEvictionMinutes: per-child passivation + whole-worker eviction) is absent from the Rust port - the setting parses but has NO consumer - so N long-idle settled children hold N x child-worker RSS indefinitely. The census re-baselines all four at the tip, scores each against the operator poles (idle CPU <1% of one core with single-digit wakes/s tree-wide; a 10MiB session settled ~200MB or better) and the best-in-class margin (reach guideline: a comfortable lead over the best reference figure), and surfaces the next candidates with measured bounds. Poles are markers, not targets; honest negatives are valid outcomes.",
+ "approach": "MEASUREMENT ONLY, no product change (characterization-first decompose; the record is the deliverable). Measured tip 50e011b78 (origin/rust, the 45th hillclimb merge in; the tip moved to 78f257bf0 (#2741) DURING the census - these legs are the PRE-MOVE baseline, disclosed), fresh VM z921x7dc78inrg9s4w26gjh8 (16c/32GB, ubuntu:22.04, rustup 1.98.1, AMD EPYC 9255 - NOT pool-0 per the pool hazard), cargo build --release --locked --workspace (binary d32ed257c3197965112e431560210b80eb6c1ca096079204c950fa55d177da33, 223998912 bytes), TS reference = official 0.9.6 (69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb; the idle-eviction tier confirmed present in the release bundle: worker_passivate_idle_children / runIdleEvictionSweep / 'Passivated idle child' / 'Evicted idle worker' strings present; the sweep arms at supervisor startup, cadence max(60s, idle/3), verified in TS main cd1f215 source). LEGS (same-VM sequential, probe_v09 preflights pre/mid/post, noop-control pre/post, per-phase versions.json provenance, binary sha asserts per block): L1 daemon.boot (spawn->accept->hello->first_create) n=10 warm-pages + n=5 COLD-PAGES (drop_caches, disclosed) per product; L2 compare.cold_start + compare.warm_start (TUI launch_to_ready / first_paint / input_ready_gap) n=10 per product - the same harness drivers as the cmp5 corpus (the attach-paint lane's driver-shape family); L3 compare.memory_idle_load (10MiB fixture loaded, 3s settle, tree RSS+PSS) n=5 per product; L4 the TUI idle wake probe (2x180s windows, per-thread ctxt-switch attribution, keystroke latency after); L5 the parked-children census + headless baseline (parked_census.py): boot daemon with the offline mock, create parent, spawn K RLM children through the parent's kernel (rlm.spawn, each child runs an ipython cell - kernel boots, marker set - then settles), census+wake windows at settle / +150s / detach-the-owner-client then +360s, revival probes (child then parent); roles interleaved R,T,T,R at k=8 plus a k=0 headless rust leg; idleEvictionMinutes=1 via settings.json in BOTH the agent dir (PRIME_AGENT_CODING_AGENT_DIR is the live config root under the harness env) and the default home layout - the product's own global daemon policy surface, SAME config both sides, disclosed. L6 the TS tier-2 detached probe (one session, one turn, client detached immediately, tree watched 300s). INSTRUMENT: /proc statm RSS + smaps_rollup PSS per process, ppid-attributed tree walk from the daemon pid, utime/stime + per-thread voluntary/nonvoluntary ctxt switches (endpoint-only window sampling), a sleep-600 noop control riding every window, raw wire responses logged. INSTRUMENT FINDING (disclosed): /proc/PID/status ctxt counters are the LEADER THREAD's only - the prior fleet wake floors (106.4->2.0/s, TUI ~183/s) were leader rates; this census records leader AND thread-sum rates (the thread-sum is the true per-process rate). DRIVER BUGS FOUND+FIXED DURING AUTHORING (the fixture-shape lesson): the mock queue match must be a LIST (pick() iterates a bare string's characters, so every queue matched every request), and the settings file must land in the agent dir (a home-path settings.json is invisible under the env override).",
+ "parity_notes": "No product change: wire/API/session-replay/prompts/TUI-output surfaces untouched. The TS legs use the product's own settings surface (idleEvictionMinutes) and its official release binary, not a clock hack; the drop_caches cold-pages legs are disclosed VM-state manipulations on the bench VM only. The comparison runs are bench-harness drivers, not product code.",
+ "base": {
+  "revision": "50e011b78c0b57a154d1ca9079ce439e1db92474",
+  "note": "origin/rust at census time; the tip moved to 78f257bf0 (#2741) mid-census - these legs are the pre-move baseline"
+ },
+ "branch": null,
+ "commits": [],
+ "build": {
+  "sandbox_id": "z921x7dc78inrg9s4w26gjh8",
+  "binary_sha256": "d32ed257c3197965112e431560210b80eb6c1ca096079204c950fa55d177da33",
+  "binary_bytes": 223998912,
+  "build_seconds": 105,
+  "toolchain": "rustup 1.98.1 (cargo build --release --locked --workspace), ubuntu:22.04 VM"
+ },
+ "gates": {
+  "fmt": "not applicable (no product change)",
+  "clippy": "not applicable (no product change)",
+  "test": "not applicable (no product change)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "io_regime": {
+   "preflight_pre": "PROBEV09 pre A_N=40 A_STALL_RATE=100.0 A_MAX=52.9 A_P50=36.97 B_N=20 B_STALL_RATE=5.0 B_MAX=37.8 B_P50=0.21 CLASS=D",
+   "postflight_post": "PROBEV09 post A_N=40 A_STALL_RATE=100.0 A_MAX=53.0 A_P50=34.55 B_N=20 B_STALL_RATE=5.0 B_MAX=34.1 B_P50=0.21 CLASS=D",
+   "noop_control_pre": {
+    "min_ms": 0.051,
+    "p50_ms": 0.08,
+    "p95_ms": 0.106
+   },
+   "noop_control_post": {
+    "min_ms": 0.037,
+    "p50_ms": 0.069,
+    "p95_ms": 0.093
+   },
+   "note": "DEGRADED fresh-write durability regime for the whole census (the same class the spawn-admission decompose disclosed: isolated fresh+sync_all+rename ~34.6-37.0ms p50; repeat-fsync 0.21-0.25ms with one stall per 20). Launch legs' absolute numbers carry this regime; every rust-vs-ts margin is same-VM same-regime."
+  },
+  "wake_instrument": {
+   "finding": "/proc/PID/status ctxt counters are the leader thread's only; thread-sum over /proc/PID/task is the true process rate",
+   "noop_control": "the sleep-600 control measured 0.0 wakes/s in every window (both instruments)"
+  },
+  "launch_legs": {
+   "daemon_boot": {
+    "rust_warm_pages_n10": {
+     "spawn_to_accept_ms_p50": 81.7,
+     "spawn_to_hello_ms_p50": 81.9,
+     "spawn_to_first_create_ms_p50": 294.4
+    },
+    "rust_cold_pages_n5_dropcaches": {
+     "spawn_to_accept_ms_p50": 86.9,
+     "spawn_to_hello_ms_p50": 89.3,
+     "spawn_to_first_create_ms_p50": 309.6
+    },
+    "ts_warm_pages_n10": {
+     "spawn_to_accept_ms_p50": 112.35,
+     "spawn_to_hello_ms_p50": 115.45,
+     "spawn_to_first_create_ms_p50": 958.75
+    },
+    "ts_cold_pages_n5_dropcaches": {
+     "spawn_to_accept_ms_p50": 139.8,
+     "spawn_to_hello_ms_p50": 141.4,
+     "spawn_to_first_create_ms_p50": 1079.8
+    }
+   },
+   "tui_launch_to_ready": {
+    "rust_cold_n10": {
+     "launch_to_ready_ms_p50": 265.75,
+     "launch_to_first_paint_ms_p50": 52.25,
+     "input_ready_gap_ms_p50": 216.11
+    },
+    "rust_warm_n10": {
+     "launch_to_ready_ms_p50": 219.4,
+     "launch_to_first_paint_ms_p50": 5.35,
+     "input_ready_gap_ms_p50": 213.77
+    },
+    "ts_cold_n10": {
+     "launch_to_ready_ms_p50": 731.39,
+     "launch_to_first_paint_ms_p50": 717.9,
+     "input_ready_gap_ms_p50": 13.77
+    },
+    "ts_warm_n10": {
+     "launch_to_ready_ms_p50": 581.4,
+     "launch_to_first_paint_ms_p50": 565.75,
+     "input_ready_gap_ms_p50": 13.99
+    },
+    "note": "the input_ready_gap ~214ms is the attach-paint co-gate (the sibling lane's subject) - it persists at the tip and is the launch-to-ready residual class; also observed: the probe-token erase path is 8.1-9.2s on rust vs 36ms on ts (the kitty-probe territory, disclosed as an observed surface)"
+   }
+  },
+  "idle_memory_legs": {
+   "memory_idle_load_10mib_tree": {
+    "rust_n5": {
+     "tree_rss_mb": [
+      239.5,
+      236.8,
+      236.5,
+      232.0,
+      241.9
+     ],
+     "tree_rss_p50_mb": 236.8,
+     "tree_pss_mb": [
+      201.7,
+      198.9,
+      198.9,
+      194.8,
+      204.1
+     ],
+     "tree_pss_p50_mb": 198.9,
+     "derived_worker_rss_mb_approx": "153.7-163.6 (tree minus TUI ~27.9, daemon ~24.9, kernel ~25.6)",
+     "launch_to_ready_ms_p50": 751.67
+    },
+    "ts_n5": {
+     "tree_rss_mb": [
+      774.1,
+      770.6,
+      1118.3,
+      770.5,
+      1110.1
+     ],
+     "tree_rss_p50_mb": 774.1,
+     "tree_pss_mb": [
+      553.0,
+      549.5,
+      897.3,
+      550.0,
+      889.5
+     ],
+     "tree_pss_p50_mb": 550.0,
+     "launch_to_ready_ms_p50": 804.74
+    },
+    "prior_floor_reference": "tree 498.5-517.3MB at b0afcdbe (record 20260926-025743) - the current tree is ~52% lower; worker 168->147.6 onecopy (20260926-210500); daemon relay-shape 107.7->54.4 (20260926-213000)",
+    "pole_check": "the ~200MB pole: MET on the worker reading (~158MB) and on tree PSS (~199MB); tree RSS ~237MB is ~18% over the pole reading"
+   }
+  },
+  "wake_idle_legs": {
+   "tui_attached_rust_180s": {
+    "trials": 2,
+    "tree_wakeups_thread_sum_per_s": [
+     189.05,
+     184.15
+    ],
+    "tree_wakeups_leader_per_s": [
+     20.06,
+     20.06
+    ],
+    "tree_cpu_pct_of_core": [
+     0.25,
+     0.244
+    ],
+    "keypress_p50_ms": [
+     0.25,
+     0.41
+    ],
+    "attribution": "the TUI process itself: thread-sum 178-183/s (threads at ~99.4/s + ~29/s + ~28/s + the leader 20.06/s); the rest of the tree: daemon 2.5/s, worker 2.0/s, kernel 1.5/s",
+    "pole_check": "single-digit tree-wide: NOT MET in the TUI-attached shape; CPU <1% core: MET (0.24-0.25%)"
+   },
+   "headless_rust_k0_120s": {
+    "trials": 1,
+    "tree_wakeups_thread_sum_per_s": [
+     4.54,
+     4.63
+    ],
+    "tree_cpu_pct_of_core": "~0.04",
+    "shape": "daemon + 1 worker (56.3MB) + 1 kernel (26.9MB); tree 82.9MB (daemon's own ~25MB excluded from the walk)",
+    "pole_check": "single-digit tree-wide: MET (4.5-4.6/s); CPU: MET"
+   },
+   "parked_rust_k8_120s": {
+    "trials": 2,
+    "tree_wakeups_thread_sum_per_s": [
+     11.13,
+     11.32,
+     10.97,
+     11.16
+    ],
+    "leader": [
+     0.0
+    ],
+    "per_process": "daemon 2.8/s (one thread), parent worker 0.8/s, parent kernel 1.0/s, each of the 8 parked child workers ~0.8/s",
+    "pole_check": "single-digit tree-wide: NOT MET with 9 workers resident (11.0-11.3/s) - the per-worker floor ~0.8/s x N; CPU: MET (~0.04% core)"
+   },
+   "parked_ts_k8_120s": {
+    "trials": 2,
+    "tree_wakeups_thread_sum_per_s": [
+     273.49,
+     295.37,
+     223.64
+    ],
+    "leader": [
+     -2
+    ],
+    "per_process": "the node event loops: supervisor 130-134/s, worker 129-132/s; kernels 1.0/s each",
+    "note": "rust is ~25x better than the TS reference on idle wakes in the same shape (thread-sum, same instrument, same VM)"
+   }
+  },
+  "parked_children_census": {
+   "rust_k8": {
+    "trials": 2,
+    "shape_at_settle": "9 workers (parent 65.4-67.6MB + 8 children 50.5-59.4MB) + 1 kernel (the parent's, 26.9MB)",
+    "child_worker_rss_mb_combined_median": 54.6,
+    "child_worker_rss_mb_range": [
+     50.5,
+     59.4
+    ],
+    "child_kernels": "RELEASED at settle in 2/2 trials (#2983 park arm fired; the parent root keeps its kernel per policy)",
+    "tree_mb_at_settle_excluding_daemon": [
+     536.7,
+     524.0
+    ],
+    "tree_mb_at_150s": [
+     532.0,
+     520.4
+    ],
+    "tree_mb_at_360s": [
+     532.9,
+     519.7
+    ],
+    "eviction": "NONE in either trial at +150s or +360s (the idleEvictionMinutes=1 setting is parse-dead in the port: no consumer; residency flat)",
+    "revival": "child prompt->done 0.16-0.19s, parent 0.12s (resident workers; the child kernel revives through the #2983 gate)"
+   },
+   "ts_k8_official_0.9.6": {
+    "trials_full_shape": 1,
+    "trials_partial_shape": 1,
+    "shape_at_settle_full": "1 worker (234.0MB, parent + 8 in-process children) + 9 kernels (30.1-30.5MB each: parent + 8 children)",
+    "tree_mb_at_settle_excluding_supervisor": 506.3,
+    "tree_mb_at_150s": 499.0,
+    "tier1_passivation": "NOT OBSERVED in 4/4 census trials (incl. 2 settings-invisible controls): all child kernels resident at +150s with idleEvictionMinutes=1 visible in the agent dir",
+    "tier2_eviction": "not observed in the census windows (the original worker alive at +360s after a 90s detached window - borderline vs the 60s sweep cadence; no 'Evicted idle worker' log line)",
+    "bare_connect_observation": "a bare client CONNECT to the 0.9.6 daemon socket spawned a SECOND worker (166.5-166.7MB) in the detached window in 4/4 trials - reproduced, disclosed as a 0.9.6 observation",
+    "revival": "child 0.12s, parent 0.07-0.08s (resident)"
+   },
+   "ts_tier2_detached_probe": {
+    "shape": "one session, one turn, client detached immediately, idleEvictionMinutes=1",
+    "result": "TIER-2 EVICTION PROVEN: the worker AND its kernel are GONE by the +120s mark (resident at +60s, 0 workers 0 kernels at +120/180/240/300s)",
+    "note": "the TS 0.9.6 whole-worker eviction fires detached within <=120s at a 1-minute threshold; the census's 90s detached window was too short to observe it in-tree"
+   },
+   "parity_verdict": "The TS idle-eviction tier exists in the official release and fires at tier 2 (detached, whole-worker, proven); tier-1 child passivation was not observed in the census shape. The Rust port has NO idle eviction of any kind: the idleEvictionMinutes setting parses (pa-core settings manager, IdleEviction::Minutes) but has NO consumer - verified in source (no get_idle_eviction caller outside settings) and behaviorally (residency flat 2/2 at k=8 with the same settings both sides). With N settled children the port holds N x 54.6MB (median, range 50.5-59.4) indefinitely vs the TS reference's passivate-to-catalog-rows policy - the park-design reopen arm's trigger (a) (>=50MB/child at settle in production-like shapes) FIRES with the measured bound; this census is the arm's trigger (d) (the TS-parity sweep), so the arm rides with: the measured holding cost (54.6MB/child), the reference policy (tier-2 eviction <=120s detached at 1min), the revival budget (resident 0.12-0.19s; relaunch-class bounded by the launch legs ~0.3-1s), and the sweep's marginal wake cost in the port (+1 wake per cadence on the daemon's 2.5-2.8/s floor vs TS's already-130/s event loop)."
+  }
+ },
+ "margin_assessment": {
+  "reach_guideline": "a comfortable lead (~10-20%) over the best reference figure per dimension; a dimension whose margin holds and whose further gains are negligible closes",
+  "reference_class_provenance": "the cmp5 five-product corpus (campaign cmp5-20260928-185903/180926/182851, harness b464f812, rust b5bf28f1d, ts official-0.9.6, n=10/phase, a different VM, healthy write regime) + this census's same-VM TS reference legs; product names withheld per the steer - figures carry campaign provenance",
+  "dimensions": [
+   {
+    "dimension": "idle memory (10MiB session settled)",
+    "rust_floor": "tree ~237MB RSS / ~199MB PSS (worker ~158MB, TUI 27.9, daemon 24.9, kernel 25.6)",
+    "best_reference": "the TS reference implementation: 770-1118MB RSS / 550-897MB PSS tree in the same suite; no other-product idle-load RSS exists in any corpus (cmp5 memory_idle_load is not_comparable for the CLI-only products - an honest reference gap)",
+    "margin": "HOLDS: 2.8-4.5x better than the only available reference; the pole is met (worker ~158MB; tree PSS ~199MB)",
+    "verdict": "CLOSES for the single-session shape; the parked-children class (N x 54.6MB) is the remaining candidate - the park-design whole-worker passivation arm (the reopen trigger (a) FIRES)"
+   },
+   {
+    "dimension": "idle CPU + wake rate",
+    "rust_floor": "headless single-session: 4.5-4.6 wakes/s tree-wide, ~0.04% of one core; parked k=8: 11.0-11.3/s (~0.8/s per parked worker); TUI-attached: 184-189/s (the TUI's own threads), 0.24-0.25% core",
+    "best_reference": "the TS reference in the same shape: 273-295/s headless-parked (node event loops 130-134/s each) and ~0.9% core - rust is ~25x better; no other-product idle wake figures exist in any corpus (an honest reference gap)",
+    "margin": "HOLDS vs the reference; the pole: MET headless and on CPU everywhere; NOT MET TUI-attached (184-189/s vs single-digit)",
+    "verdict": "headless CLOSES; the TUI-attached wake class is the candidate: threads at ~99.4/s + ~29/s + ~28/s (the 99.4/s thread is a ~10ms poll - the same class as the merged #2880 abort-poll fix); parking them is bounded to take the attached tree from ~186/s to ~20-30/s"
+   },
+   {
+    "dimension": "launch-to-ready (TUI)",
+    "rust_floor": "cold 265.75ms / warm 219.4ms p50 (first_paint 52.25/5.35ms)",
+    "best_reference": "the cmp5 corpus's best cold-start figure 238.76ms / best warm-start 178.34ms (n=10, b5bf28f1d, healthy write regime); the TS reference: 731/581ms",
+    "margin": "THIN vs the best figure: 11% behind on cold, 23% behind on warm (the reach bar wants ~10-20% ahead); 2.4-2.7x ahead of the TS reference; this VM's degraded write regime inflates both products' absolute numbers (~+30-45% vs the cmp5 VM)",
+    "verdict": "the residual is the input_ready_gap ~214ms (the attach-snapshot paint co-gate - the sibling attach-paint lane's subject, cross-referenced not duplicated); the daemon-boot half holds a 2.5-3.2x margin vs the only other daemon (the TS reference)"
+   },
+   {
+    "dimension": "daemon.boot (headless launch-to-ready)",
+    "rust_floor": "accept 81.7ms / hello 81.9 / first_create 294.4 (warm-pages); 86.9/89.3/309.6 (cold-pages)",
+    "best_reference": "the TS reference daemon: 112.35/115.45/958.75 - the only daemon in the reference corpus (the CLI-only products have no resident daemon)",
+    "margin": "HOLDS: 1.4x on accept, 3.3x on first_create",
+    "verdict": "CLOSES (the reference class is one implementation; the margin is large)"
+   }
+  ]
+ },
+ "candidates_surfaced": [
+  {
+   "candidate": "the park-design whole-worker passivation arm (the deferred idle-eviction tier port)",
+   "bound": "54.6MB median per parked child (range 50.5-59.4, n=16 over 2 trials), held indefinitely today; the TS tier-2 reference evicts detached within <=120s at a 1-min threshold; revival budget 0.12-0.19s resident / ~0.3-1s relaunch-class; the arm's design already exists (wave6/worker-passivation-preanalysis.md) and this census is its trigger (d)"
+  },
+  {
+   "candidate": "the TUI idle wake class",
+   "bound": "184-189/s attached tree vs the single-digit pole; the TUI's threads at ~99.4/s (a ~10ms poll), ~29/s, ~28/s; parking them bounds the attached tree at ~20-30/s; the class matches the merged #2880 abort-poll fix (a 10ms watcher)"
+  },
+  {
+   "candidate": "the input_ready_gap launch residual",
+   "bound": "~214-216ms p50 cold/warm at the tip (first_paint is 5-52ms; the ready gate is the gap) - the attach-paint lane's subject; cross-referenced, not duplicated here"
+  },
+  {
+   "candidate": "small residuals (recorded, no lane yet)",
+   "bound": "daemon idle wake 2.5-2.8/s (one thread); worker idle 0.8/s; kernel idle 1.0-1.5/s; headless tree total 4.5/s - all small; the k=8 tree at 11/s scales at ~0.8/s per parked worker (bounded by the passivation arm above)"
+  },
+  {
+   "candidate": "the TUI erase-path anomaly (observed surface)",
+   "bound": "the probe-token erase is 8.1-9.2s on rust vs 36ms on ts (n=10 each, the harness erase_all path) - the kitty-probe lane's territory; disclosed as an observed surface for the next TUI lanes"
+  }
+ ],
+ "validity": {
+  "excluded": [
+   "census-r1 (rust k=8, old instrument): the trial's output file was lost to an orchestrator-side pkill self-match race during the instrument fix; replaced by r2+r3",
+   "census-t1/t2 (ts k=8, the first TS pair): run before two driver fixes (settings.json invisible at the home path under the agent-dir env override; the mock queue match bug served every request from the wrong queue) - kept only as settings-invisibility negative controls, excluded from the parity verdict",
+   "census-t2b (ts k=8, corrected driver): partial spawn shape (2 kernels instead of 9 - the spawn under-served in that trial); the full-shape TS trial is t1b"
+  ],
+  "notes": "The wake instrument finding: /proc/PID/status ctxt counters are the leader thread's only; the prior fleet wake floors (worker 106.4->2.0/s, TUI ~183/s) were leader rates - this census records leader AND thread-sum rates and the record's comparisons state which. All legs ran in the probe_v09 CLASS=D degraded fresh-write regime at every boundary (pre and post, A p50 34.6-37.0ms); launch-leg absolute numbers carry the regime; every rust-vs-ts margin is same-VM same-regime and the cmp5 cross-VM figures carry their own campaign provenance. The noop floor was clean (p50 0.069-0.08ms) and the sleep-600 control measured 0.0 wakes/s in every window. The parked census's owner-client detach window was 90s - too short to observe the TS tier-2 eviction in-tree (the dedicated detached probe proves it at <=120s). The TS reference is the official 0.9.6 release (what users run); the parity-frozen surface (TS main cd1f215) carries the tier source-verified - the sweep arms at supervisor startup, cadence max(60s, idle/3), cap 2 child passivations per round."
+ },
+ "outcome": "decompose-complete (honest characterization record; no product change, no PR - measurement-only lane per the brief; the record, the margin ranking, and the surfaced candidates are the deliverables)",
+ "decision": "The idle re-baseline at 50e011b78 (pre-#2741): (1) IDLE MEMORY - the composite floor is ~52% below the last measured tree baseline (498-517 -> ~237MB RSS/~199MB PSS at 10MiB loaded; worker ~158MB): the pole is MET and the margin vs the TS reference (770-1118MB) HOLDS at 2.8-4.5x - the single-session shape CLOSES. (2) IDLE CPU/WAKE - headless the tree is 4.5-4.6 wakes/s and ~0.04% of a core: both poles MET, the shape CLOSES; the TUI-attached tree is 184-189 wakes/s (the TUI's own ~10ms-poll thread class) - the pole is NOT met there and the candidate is bounded (park -> ~20-30/s); rust is ~25x better than the TS reference on idle wakes. (3) LAUNCH-TO-READY - daemon.boot HOLDS a 2.5-3.3x margin vs the only other daemon; the TUI leg is THIN vs the corpus best (11% behind cold / 23% behind warm) with the residual isolated to the ~214ms input_ready_gap (the attach-paint lane's co-gate, confirmed at the tip). (4) THE IDLE-EVICTION PARITY GAP - the port has NO idle eviction (dead setting, no consumer; residency flat 2/2 at k=8) while the TS reference evicts detached within <=120s: the parked-child cost is 54.6MB/child (median) held forever - the park-design whole-worker passivation arm's trigger (a) FIRES and the arm RIDES this census (trigger (d)); its measured bounds: 54.6MB/child reclaimable, revival 0.12-0.19s resident / ~0.3-1s relaunch-class, sweep cost +1 wake per cadence. NEXT-LANE RANKING (by the reach guideline): the parked-children passivation arm (the measured production-shape idle-memory class), then the TUI wake thread (~99.4/s, the #2880 class), with the input_ready_gap owned by attach-paint. The wake-instrument finding (leader-only /proc counters) retroactively qualifies every prior fleet wake figure - future wake lanes must record thread-sum rates.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-224735-cpu-idle-rebaseline-decompose.json",
+ "session": {
+  "worker": "perf-idle-rebaseline",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-f6efedbf/01a0e9a2-c8b5-71df-9c87-e8110ddf3510.jsonl"
+ },
+ "timestamp": "2026-09-28T22:47:35Z",
+ "evidence": {
+  "archive": "idleb-evidence.tar.gz",
+  "sha256": "cb99a2abbc20f1d2ec42935cab901edcac1143a8f0c80aa8ea0e5fd169b4fabf",
+  "bytes": 367665,
+  "contents": "the full idleb trial set (census records + mock request logs + probe/noop outputs + env + binary shas) + the harness bench/results trial jsonl + versions.json per phase"
+ }
+}
