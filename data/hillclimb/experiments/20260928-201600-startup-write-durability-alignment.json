@@ -1,0 +1,101 @@
+{
+ "id": "20260928-201600-startup-write-durability-alignment",
+ "axis": "startup",
+ "hypothesis": "Record 7213f11's reported-only follow-up candidate: 'the save's cost is the port-side temp-fsync the TS reference does NOT pay (writeFileAtomicSync fsync is opt-in: atomic-file.ts:65; the harness save passes only {mode}: refinement.ts:404; so do TS settings/auth; TS session rows are plain appendFileSync) - the follow-up candidate is the per-call-durability alignment with the shared atomic_write contract re-derived per call site, the crash-window semantics disclosed, and the merge bar carried.' THE LANE: (1) the per-call-site audit (every atomic_write call site + the session-row writers, need derived per site - the audit is the deliverable's core); (2) the TS-parity alignment (the aligned sites on the TS shape, the genuine needs kept with the need documented in-code, the session family audited separately); (3) the oracles (per-site byte-identity, the crash-window disclosure matrix, the served-path assertion on the opt-in); (4) the paired suite on the D-regime empty-plan refine wall + the seeded control + a settings-save leg.",
+ "approach": "(A) AUDIT (the deliverable's core; see the PR body's full matrix): the shared helper's 6 call sites split 5 ALIGN (settings lock write, auth store, save_harness_state - the measured signal, mcp registry, the refetchable prime auth cache; each TS counterpart passes only {mode:0o600}) + 1 KEEP (the cron jobs state: TS cron-jobs.ts:1697 itself passes {mode:0o600, fsync:true}, the 'one fsync per write' comment ported in-code). The session family audited separately and ruled a DELIBERATE STRENGTHENING (per-row sync_data in window_cache::append_cached from #2545's 'harden fast session persistence' - every append funnels there: manager persist, lease append, session_store persist_entry; the rewrite/repair fsyncs never regress durable rows) - KEPT + DISCLOSED, strictly narrower than TS. Adjacent fsync owners inventoried (journal family aligned in both products; 3 out-of-family port-stronger divergences disclosed-but-not-changed: descriptor.rs, pa-models cache.rs, telemetry install_id.rs; the update flow crash-critical). (B) IMPLEMENTATION at 8e63333e1 (folded to 2acae69ed): atomic_write mirrors the TS WriteFileAtomicOptions - AtomicWriteOptions{fsync} DEFAULT OFF (the TS default); aligned sites keep their call lines (the default flip IS the alignment); cron opts in via atomic_write_with. (C) ORACLES: (i) per-site served-path tests via a cfg(test) per-thread fsync counter at the helper seam (aligned sites assert 0 through their REAL writers, cron exactly 1 - the anti-vacuity pattern), per-site byte-identity + 0600 + no-leaked-temp; (ii) the A/B strace census on the real binary: base exactly 1 fsync per harness-save and per settings-save cluster, candidate ZERO fsync calls, the session-row fdatasyncs present on BOTH arms; (iii) campaign byte-identity across arms. (D) CAMPAIGN on hillclimb-perf-write-durability (ubuntu:22.04 16c/32GB/100GB vm=True, rustup 1.98.1): same-VM sequential ABBA, sha-asserted unlink-then-copy atomic binary swaps (base 2034fc8a = b89b8ffdd clean; cand 6d760b7c = 8e63333e1), I/O advisory v1.0 probe_v09 at io-pre + EVERY leg boundary + io-post (24 probes, PHASE MODEL), quiet gate + product-only zombie sweep, 16 timing blocks (refine small/stock/seeded per-class ABBA palindromes spanning the run, drift-balanced interleave + the settings-save leg) x3 trials = 48 trials, census blocks x2 trials = 12 trials (strace, INVALID for timing). The settings leg drives 4 set_auto_compaction RPC commands per trial (the command whose only durable write is the aligned save).",
+ "parity_notes": "No frozen surface touched: the RPC surface exercised as a black box over stdio; file CONTENTS are byte-identical per class (proven: settings.json final bytes identical across arms sha a7fe2d80...; harness entries canonicalized sha identical across arms per class db15a2fa... small/stock + 5921887a... seeded - the seeded class REPRODUCES the finding record's canonical sha; census write byte-classes identical across arms: 323/513, 705635/705825, 1453/1454). The durability semantics ARE the change - the crash-window matrix discloses every aligned site's post-crash state as exactly the TS one (the atomic rename still prevents torn reads; a hard crash leaves either the previous or the new file; the journal family + cron state + the session family keep their fsync - the port's session window stays strictly narrower than TS).",
+ "base": {
+  "revision": "b89b8ffdd9ba68375599de041debcabe4b230c48",
+  "note": "origin/rust tip at lane start (42+ hillclimb merges; the finding record's tip e2ee82f2d + 4 more); folded to d82b23c81 at PR time (hunk-content re-diff byte-identical: 301 lines)"
+ },
+ "branch": "lane/atomic-write-durability (worktree /home/ubuntu/worktrees/perf-atomic-write-durability)",
+ "commits": [
+  "8e63333e1da790e76a56edd0d78467f32514f307",
+  "2acae69edf1fdec692bbfdc26e7f09928e09df9e (the fold merge)"
+ ],
+ "build": {
+  "sandbox_id": "ny350iprtfx4rallfylty6yh (hillclimb-perf-write-durability, ubuntu:22.04 16c/32GB/100GB vm=True)",
+  "base_binary_sha256": "2034fc8a980dd69570aa1ca5fe4af25e6cfb783413f79ae0d49367485949b39b",
+  "cand_binary_sha256": "6d760b7cb293317c8de519f8115f70b3df7b622ca119c335d813f3bcfbe413b1",
+  "toolchain": "rustup 1.98.1 (ubuntu:22.04 VM, glibc 2.35), cargo build --release --locked --workspace rc=0 (both arms)"
+ },
+ "gates": {
+  "fmt": "PASS at 8e63333e1 and at the folded head 2acae69ed (VM)",
+  "clippy": "CLEAN (-D warnings, 0 errors) at 8e63333e1 and at 2acae69ed (VM)",
+  "test": "pa-core 949/949 GREEN incl. the 7 new served-path/byte-identity tests; workspace full-suite at 8e63333e1: the only reds = 2 e2e render-timing flakes (tui_prompt_stash + tui_refused_submit, the registered rotating family) + 1 supervisor_e2e flake (tool_result_entries_persisted_and_streamed, the registered renewed family, expiry 09-30) - ALL SOLO-GREEN at the exact head (1+1 discipline); the packages::* (6) + browser::opener reds were ENVIRONMENTAL (the measurement-recipe VM lacked node/xdg-open; reproduced solo at BASE; with nodejs+npm+xdg-utils installed all 7 went GREEN at the cand head with zero code change)",
+  "benchmark_ci": "PR #3023 CI rollup in flight at the folded head 2acae69ed; will be carried in the reviewer requests"
+ },
+ "measurements": {
+  "method": "same-VM sequential ABBA, sha-asserted unlink-then-copy atomic binary swaps, quiet-gated, block-interleaved classes + per-class ABBA palindromes spanning the run, I/O advisory v1.0 probe_v09 at io-pre + EVERY leg boundary + io-post (24 probes), PHASE MODEL, NO-CEILING, arrival-accurate frame pump, per-trial fixture prehash assert, census legs strace -ff -f -tt -T fd-mapped (INVALID for timing)",
+  "io_regime": "The calm-dwell band held end-to-end: A_P50 0.87-1.36ms at ALL 24 boundaries (one fully-H probe; 23 CLASS=D ONLY by the max rule: the fresh+sync_all+rename stall TAIL fired 2.5-15% at 256-1094ms). DISCLOSED: under real product load the tail fires far more often than the isolated probe sees (spawn writeback congestion) - the base arm's product fsyncs paid 651-940ms on most saves in this window.",
+  "settings_save_leg_p50_ms": {
+   "base": {
+    "sa1": 667.3,
+    "sa2": 4.2,
+    "sa3": 339.0,
+    "sa4": 658.0
+   },
+   "cand": {
+    "sa1": 1.05,
+    "sa2": 1.05,
+    "sa3": 0.99,
+    "sa4": 0.98
+   },
+   "base_min": {
+    "sa1": 654.4,
+    "sa2": 1.8,
+    "sa3": 2.1,
+    "sa4": 1.7
+   },
+   "base_max": {
+    "sa1": 746.1,
+    "sa2": 722.2,
+    "sa3": 712.9,
+    "sa4": 774.2
+   },
+   "cand_max": {
+    "sa1": 3.8,
+    "sa2": 3.1,
+    "sa3": 1.9,
+    "sa4": 2.0
+   },
+   "served_ok": "8/8 per cid per arm",
+   "ratio_p50": [
+    0.0016,
+    0.25,
+    0.0029,
+    0.0015
+   ]
+  },
+  "census_served_path": {
+   "verdicts": "6/6 GREEN",
+   "base": "exactly 1 fsync per save (harness 4/4, settings 8/8); harness fsync durations small [651.8, 1.0, 87.0, 940.1]ms seeded [735.7, 743.0, 670.6, 780.0]ms settings [651.6, 1.3, 0.8, 698.0, 659.4, 1.4, 680.9, 1.5]ms",
+   "cand": "ZERO fsync calls on every save class; write 0.009-0.165ms + rename 0.015-0.456ms",
+   "session_rows": "fdatasync present on BOTH arms (14/14 refine trials' rows, 6/6 settings) - the deliberate strengthening untouched on the real binary"
+  },
+  "refine_walls_disclosed": "In THIS window the refine cmd walls are stall-class-dominated on BOTH arms (cmd1 p50 base 677-797ms vs cand 715-1049ms; cmd2 mixed 12.6-782ms): the ~700ms writeback-congestion tail hits both arms' kept session-row writes, so the WALL level is NOT the differential signal in this phase - the per-save census durations + the settings leg carry the claim. The finding record's ~80% share was the milder D phase (fsync 25.3-34.6ms); the alignment removes the ENTIRE term in either phase (the candidate makes no fsync call at all).",
+  "byte_identity": {
+   "settings_json_final": "identical across arms (sha a7fe2d80...)",
+   "harness_entries_canonical": "identical across arms per class (db15a2fa... small/stock; 5921887a... seeded - reproduces the finding record's canonical sha)",
+   "census_write_bytes": "identical classes across arms (323/513, 705635/705825, 1453/1454)"
+  }
+ },
+ "ts_anchor": {
+  "rust_align": "settings/storage.rs atomic_write -> AtomicWriteOptions{fsync} default OFF (atomic_write_with for the opt-in); cron/store/state.rs write_jobs_state opts in (the TS comment ported); session family docs now state the strengthening honestly",
+  "ts_ref": "atomic-file.ts:52-88 (writeFileAtomicSync, fsync opt-in at :65, fsyncDir best-effort); the call-site map: refinement.ts:404, settings-manager.ts:390, auth-storage.ts:206/:250, mcp/connection-store.ts:890, model-registry.ts:1185 (all {mode} only), cron-jobs.ts:1697 ({mode:0o600, fsync:true}), session-manager.ts:722/:1924 (no fsync) + :961/:2042 (plain appendFileSync rows), the journal family's direct fsyncSync"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Campaign ran at the PRE-FOLD head 8e63333e1 (binary 6d760b7c...); the fold to 2acae69ed (base d82b23c81) verified by the fleet_fold GREEN verdict + the hunk-by-hunk re-diff (301 hunk-content lines byte-identical; only index lines + one hunk-header line-number drift) + the full re-gate at the folded head on the same VM. Round-1 driver-script bug (missing probe mode arg; settings-probe enumerate/argv bug) burned 16 empty blocks - preserved as state-failed-round1.json, zero product trials ran, the state was reset and the campaign rerun clean. The block summaries were reconstructed from the intact per-trial receipts (the driver's summary write hit a missing dir; the receipts are the primary evidence). Census legs are structure+span evidence, INVALID for command timing. The 902B 'agent started' telemetry write unchanged. The I/O trap's extreme phase hit the FIRST campaign attempt's io-pre (A_P50 633ms) - that probe is preserved in the failed-round state; the campaign ran in the calm dwell that followed.",
+  "evidence": "hillclimb/archives/perf-write-durability-alignment/write-durability-evidence.tar.gz (VM-side sha 466bc338fb316bd8aefe716cf2616d1fa0544a023f5dd19620f31ecf52e82a29; all 60 trial receipts with full frame timelines + per-command settings/harness snapshots, the legs state with all 24 probe outputs + per-block sha asserts, the 6 census strace sets + the fd-mapped census analysis with per-save -T durations + 6/6 GREEN arm-bound served-path verdicts, the as-run driver/probe/analyzer scripts, the gate logs incl. the folded-head rerun, the failed-round state)"
+ },
+ "outcome": "THE ALIGNMENT LANDED: the per-call-site audit derived every shared-helper site's durability need (5 align / 1 keep / the session family a deliberate strengthening kept+disclosed); the helper now mirrors the TS WriteFileAtomicOptions (fsync opt-in, default off); the oracles are green at three levels (in-repo served-path tests through the real writers; the A/B syscall census: base 1 fsync/save, cand ZERO, session rows untouched on both arms; byte-identity across arms everywhere). The settings-save leg shows the clean wall: base p50 339-667ms (the fsync pays the writeback-congestion wall when it fires; min 1.7ms when clean) vs cand 0.98-1.05ms FLAT. The refine walls in this window are stall-class-dominated on both arms (disclosed honest negative); the per-save census durations carry the differential (base 651-940ms fsync per save vs cand no fsync syscall at all).",
+ "decision": "Carry the PR at the folded head 2acae69ed with the crash-window disclosure matrix in the body; the merge bar = the orchestrator numeric review (ACCEPTED as logged) + both adversarial reviewers SHA-bound + the completed CI rollup + the red dispositions (all three e2e flakes registered families with head-bound solo evidence; the environmental packages/browser reds disclosed with the base-reproduced + env-install-green proof).",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3023",
+ "record_path": "data/hillclimb/experiments/20260928-201600-startup-write-durability-alignment.json",
+ "session": {
+  "worker": "atomic-write-durability-alignment lane (wave-6 perf)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-ce564842/01a0e911-a00d-754c-8982-6b8c70abb42a.jsonl"
+ },
+ "timestamp": "2026-09-28T20:16:00Z"
+}
