@@ -804,3 +804,65 @@ class _FakeSocketModule:
 
     AF_UNIX = 1
     SOCK_STREAM = 1
+
+
+# ---- follow-up benchmarks: plain idle memory + idle CPU/wake rate --------
+
+def test_memory_idle_samples_settled_tree_rss(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks import memory_idle as mod
+    monkeypatch.setattr(mod, "rss_tree", lambda pid: {"rss_mb": 7.5, "pss_mb": 7.0, "nproc": 3})
+    monkeypatch.setattr(mod, "loadavg", lambda: 0.0)
+    monkeypatch.setattr(mod, "IDLE_SETTLE_S", 0.0)
+    session = FakeSession()
+    bench = mod.MemoryIdle(_cfg(tmp_path))
+    record = _record()
+    bench.measure(FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
+                  _ctx(tmp_path), record, FakeDriver(session))
+    assert record["resource"]["rss_settled"] == {"rss_mb": 7.5, "pss_mb": 7.0, "nproc": 3}
+    assert record["validation"] == pytest.approx({"echoed": True, "erased": True})
+    assert bench.validate(record) is True
+
+
+def test_cpu_idle_deltas_and_validation(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks import cpu_idle as mod
+    monkeypatch.setattr(mod, "loadavg", lambda: 0.0)
+    monkeypatch.setattr(mod, "IDLE_SETTLE_S", 0.0)
+    window = {"n": 0}
+    def fake_tree(pid):
+        window["n"] += 1
+        return ({"utime_ticks": 10, "stime_ticks": 5, "nvcsw": 40, "nivcsw": 2, "nproc": 2},
+                {"utime_ticks": 13, "stime_ticks": 6, "nvcsw": 60, "nivcsw": 3, "nproc": 2})[window["n"] - 1]
+    monkeypatch.setattr(mod, "cpu_tree", fake_tree)
+    session = FakeSession()
+    bench = mod.CpuIdle(_cfg(tmp_path, {"compare.cpu_idle": {"idle_window_s": 0.05}}))
+    record = _record()
+    bench.measure(FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
+                  _ctx(tmp_path), record, FakeDriver(session))
+    m = record["metrics"]
+    # deltas: 4 ticks over the window -> cpu% scales by CLK_TCK; 21 switches
+    assert record["resource"]["cpu_window"]["ticks"] == 4
+    assert record["resource"]["cpu_window"]["ctx_switches"] == 21
+    assert m["wakes_per_s"] * m["idle_window_s"] == pytest.approx(21, abs=3.0)
+    assert record["validation"] == pytest.approx(
+        {"echoed": True, "erased": True, "tree_alive": True, "tree_stable": True})
+    assert bench.validate(record) is True
+
+
+def test_cpu_idle_tree_change_flags_instability(tmp_path, monkeypatch):
+    from bench.adapters.benchmarks import cpu_idle as mod
+    monkeypatch.setattr(mod, "loadavg", lambda: 0.0)
+    monkeypatch.setattr(mod, "IDLE_SETTLE_S", 0.0)
+    window = {"n": 0}
+    def fake_tree(pid):
+        window["n"] += 1
+        return ({"utime_ticks": 0, "stime_ticks": 0, "nvcsw": 0, "nivcsw": 0, "nproc": 2},
+                {"utime_ticks": 1, "stime_ticks": 0, "nvcsw": 1, "nivcsw": 0, "nproc": 3})[window["n"] - 1]
+    monkeypatch.setattr(mod, "cpu_tree", fake_tree)
+    session = FakeSession()
+    bench = mod.CpuIdle(_cfg(tmp_path, {"compare.cpu_idle": {"idle_window_s": 0.05}}))
+    record = _record()
+    bench.measure(FakeProduct({"layout": None, "product": {}, "mock": {}}, session),
+                  _ctx(tmp_path), record, FakeDriver(session))
+    # the tree gained a member mid-window: the tick delta is unattributable
+    assert record["validation"]["tree_stable"] is False
+    assert bench.validate(record) is False
