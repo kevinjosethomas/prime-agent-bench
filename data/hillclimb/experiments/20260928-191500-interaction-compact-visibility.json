@@ -1,0 +1,166 @@
+{
+ "id": "20260928-191500-interaction-compact-visibility",
+ "axis": "interaction",
+ "lane": "compact-visibility (perf-compact-visibility, wave-6)",
+ "hypothesis": "The compact-refine decompose (61b1f3b, 20260928-070500) measured the compaction_start frame QUEUED at command dispatch (+0.2ms) but ARRIVING at the client +48.2ms p50 at stock-10MiB: the pre-summarizer CPU phases (digest capture + cut scan + token estimation + details/aux resolution ~= 46ms) run without an executor yield, so the RPC LineWriter's writer task cannot flush the queued frame until the pipeline's first true await (the aux spawn_blocking join). The lane: reproduce the delay at the tip on both client surfaces (headless RPC + the kitty TUI), locate the non-yielding span, implement the parity-safe fix (a bounded writer flush between the compaction_start emit and the pipeline), prove the frozen surfaces byte-identical, and pair-measure the visibility metric. Honest negative if the TUI surface shows no starvation (the decompose record's '(TUI included)' parenthetical was an inference, not a measurement).",
+ "source_finding": "bench 61b1f3b event_visibility_flush_starvation: 'the compaction_start event frame is QUEUED at command dispatch (~+0.2ms) but ARRIVES at the client +48.2ms p50 (n=8, stock-10MiB) - the pre-summarizer CPU phases run without an await point on the async runtime, so the LineWriter writer task cannot flush the queued frame until the pipeline's first await'; candidates_reported_only #2: 'COMPACT EVENT-VISIBILITY (+46ms at 10MiB)'",
+ "approach": "(1) CODE DECOMPOSE at the tip e2ee82f2d: the RPC mode hosts the session in-process on the CLI's multi-thread runtime; rpc/commands.rs compact queues compaction_start through LineWriter (mpsc -> one writer task) then enters engine.session.compact() whose pre-summarizer span (harness_digest_inputs -> recent_message_texts/session.lock all Ready-fast-path, prepare_compaction cut scan, context_tokens, details_for) has NO true executor yield until the aux spawn_blocking join - the mpsc send wakes the writer task into the busy worker's LIFO slot (tokio: not stealable), so the frame waits the span out. print mode emits directly (println at the emit - no starvation); the daemon worker path (the TUI) emits CompactionStart BEFORE the pipeline and the pipeline runs on the engine's PRIVATE runtime (block_on from spawn_blocking) while the event fan-out rides the worker runtime - architecturally not starved. (2) BASELINE FIRST at the tip (base binary sha ae1b2a1b33256abc, VM yyovso7v3awsm7ojgu2bfi1l 16c/32GB ubuntu:22.04 rustup 1.98.1): the decompose harness replicated verbatim (cvis_probe.py: arrival-accurate frame pump, fresh agent dir/home/tmp per trial, models.json -> offline mock prime-inference/mock-1, per-trial fixture prehash, quiet gate, zombie sweep): cs (compaction_start client-arrival) p50 +51.80ms n=8 stock-10MiB (the record's +48.2ms reproduced; ce p50 +136.46 = the command wall, start->end gap 84.1ms - the frame strands behind the first-yield point); the 256KiB control cs p50 +1.14ms n=6 (the size-scaling of the CPU span). (3) CANDIDATE: both RPC emit sites (the direct compact command handler + the prompt-admitted /compact) await a bounded LineWriter drain (drain_within, COMPACT_FRAME_FLUSH_BUDGET 50ms) right after queueing compaction_start, before the pipeline; the budget keeps a stalled reader (a full pipe) from wedging the compaction (TS never blocks a command on the reader). (4) PAIRED ABBA same-VM sequential, sha-asserted unlink-then-copy binary swaps (base ae1b2a1b33 / cand 0f2f85f4d), I/O advisory v1.0 preflights at every leg boundary (PHASE MODEL, re-classified per boundary; NO-CEILING), blocks A/B/B/A stock x4 + small x3 + the pristine-fixture stock rerun R1..R4. (5) TUI legs: the tui-typing lane's PTYSession protocol (TUI --offline --resume 10MiB over the daemon worker, per-trial HOME/agent-dir/socket, settings patched: no allowedModels + auto-compaction disabled so the loader is the MANUAL /compact's), typed /compact (30ms inter-key), the chunk-ledger first-byte search for the loader label 'Compacting context', ABBA T1..T4 x3. (6) TS ANCHOR: official TS 0.9.6 (vendored install, in-place exec) under the SAME driver/mock/fixture, n=4. (7) ORACLES: two in-tree e2e served-path tests (the start frame must arrive inside the flush budget AND after it the pipeline must span the stranding window - the anti-vacuity side; plus the stalled-reader bound: get_messages fills the 64KB pipe for real, the compaction must run BEHIND the stall - the durable row lands while no reader drains, which bites against an unbounded drain), per-trial frame-stream byte-identity across arms, compaction-row identity, and the rpc_mode_e2e suite regression.",
+ "parity_notes": "Frozen surfaces untouched and ORACLE-PROVEN: the RPC frame streams are byte-identical across arms per trial (16/16 stock + 6/6 small, normalized only for per-trial session ids/paths/timestamps - the compaction_start/compaction_end shapes, the CompactionResult, and every response byte identical); the compaction row (summary, details, tokensBefore, firstKeptEntryId) identical across arms on both fixtures; response success all trials; session-JSONL rows identical modulo the kernel ipython_state notice row whose presence is kernel-boot-dependent WITHIN arms (7396-7398 stock, 194-195 small - disclosed). RLM wire, prompts, TUI output bytes: untouched (the change is a timing-only flush inside the RPC stdio transport; the TUI surface is not on the changed path). THE TIMING PARITY STORY (measured, not assumed): TS 0.9.6 ITSELF strands the frame (+187.47ms p50 n=4, its own pre-summarizer CPU behind Node's async stdout write) - the Rust base (+48.80ms) is not a timing divergence from TS, and the candidate (+0.143ms) is a strict improvement over BOTH; the PR claim is the client-visibility improvement with TS's own delay disclosed as the anchor. The fix adds one bounded await (<=50ms, normally ~0.2ms) to the compact handler; against a fully stalled reader the compact proceeds after the budget (the unbounded-drain class would wedge - the stalled-reader oracle bites on exactly that).",
+ "base": {
+  "revision": "e2ee82f2d6b8b1c26da00da54ea96b9ba0b1ac6fe (origin/rust at lane create; base binary sha256 ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678ebdbd4c85b05e5c8f36f63)",
+  "note": "the decompose record's pin e99c4a262 -> the lane tip e2ee82f2d; the fold over b89b8ffdd (#2989 print_boundary split) is disjoint from the rpc files"
+ },
+ "branch": "lane/compact-visibility",
+ "commits": [
+  {
+   "sha": "93e527b7b",
+   "note": "the fix at the pre-fold tip e2ee82f2d: drain_within (LineWriter) + COMPACT_FRAME_FLUSH_BUDGET (50ms) + the flush at both RPC emit sites + the two e2e oracles"
+  },
+  {
+   "sha": "7121cabcb",
+   "note": "fold of origin/rust b89b8ffdd (#2989 pa-cli print_boundary split; conflict-free; post-fold re-diff vs b89b8ffdd = EXACTLY the 4-file lane delta, hunk-by-hunk, both emit sites re-verified)"
+  },
+  {
+   "sha": "bdf734eec",
+   "note": "the missing import in the direct compact handler + fmt (the gate's compile findings)"
+  },
+  {
+   "sha": "1afb9a306",
+   "note": "the gate's fmt/clippy findings (reader closure, i64 literal separators, json! shaping, import order, a needless mut)"
+  },
+  {
+   "sha": "d4c14bfbb",
+   "note": "the stalled-reader oracle's poll-to-deadline (the fixed sleep raced the row's landing under pipe-stall CPU contention - one flake caught and closed)"
+  }
+ ],
+ "build": {
+  "vm": "yyovso7v3awsm7ojgu2bfi1l (hillclimb-perf-compact-visibility, ubuntu:22.04 16c/32GB/120GB vm=True, rustup 1.98.1)",
+  "base_binary_sha256": "ae1b2a1b33256abc21e0b4c0f77ccfd2ea47fe1678ebdbd4c85b05e5c8f36f63 (e2ee82f2d)",
+  "cand_binary_sha256": "0f2f85f4d32de4abc8ddccd56015b77c9dafab2dd8c862b8b0daf5347b7b3901 (built at bdf734eec; the post commits are test-only)",
+  "fixtures": "the archived canonical set re-uploaded byte-identical: stock-10mib dadaecfcac51..., 256kib bd18b0809818..., compacted 97beb5ebb2f5... (verified on the VM before the legs)"
+ },
+ "gates": {
+  "rpc_mode_e2e": "20 passed 0 failed at the candidate build (the 18 pre-existing + the 2 new oracles; run twice consecutive after the flake fix)",
+  "fleet_gate": "see pr/gates fields - the first gate run RED on exactly the mid-iteration head's fmt/clippy/test findings (all fixed in 1afb9a306/d4c14bfbb); the final-head gate rerun carried by the PR",
+  "fmt_clippy": "GREEN at the final head (the gate phases)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential, quiet-gated (loadavg<1.0), ABBA blocks across arms, binary sha asserted per block (unlink-then-copy swap), per-trial fixture prehash assert (the receipts record fixture_sha256 - which caught the harness incident below), I/O advisory v1.0 probe_v09 preflights pre/mid/post + before every block (PHASE MODEL, re-classified at every leg boundary; NO-CEILING in-leg stalls labeled)",
+  "io_regime": "io-pre CLASS=D (A_STALL_RATE 67.5%, A_P50 34.65ms fresh-write wall), base-stock-1-pre re-classified CLASS=H (A_P50 0.76ms, zero stalls), io-post CLASS=D (A_P50 37.59ms) - the legs spanned both regimes; the visibility metric (cs_ms) is a CPU-path frame-arrival latency, regime-independent; the command-wall (resp) numbers are regime-labeled (the ~35-56ms durable-commit draws dominate their variance; the ABBA interleave balances them)",
+  "visibility_metric_compaction_start_client_arrival_ms": {
+   "stock_10mib_canonical_fixture_dadaecfc": {
+    "base": {
+     "n": 16,
+     "p50": 48.801,
+     "min": 42.805,
+     "max": 95.255,
+     "note": "baseline block n=8 (p50 51.80) + the R1/R4 ABBA arms n=8"
+    },
+    "cand": {
+     "n": 8,
+     "p50": 0.143,
+     "min": 0.099,
+     "max": 0.228,
+     "note": "the R2/R3 ABBA arms"
+    },
+    "delta_p50_ms": -48.658,
+    "ratio": "341x",
+    "disclosed_invalid_arms": "the first ABBA's stock arms (A1/A2/B1/B2, n=8+8) ran on a fixture a debug compact had appended to in place (sha 6cdf9f13 - caught by the per-trial prehash receipts; the fixture restored to dadaecfc and the arms rerun as R1..R4): base p50 35.262 / cand p50 0.255 - the SAME direction and magnitude class, reported for completeness, EXCLUDED from the canonical numbers"
+   },
+   "small_256kib_control_bd18b080": {
+    "base": {
+     "n": 12,
+     "p50": 1.178,
+     "min": 0.975,
+     "max": 1.867
+    },
+    "cand": {
+     "n": 6,
+     "p50": 0.219,
+     "min": 0.086,
+     "max": 0.274
+    },
+    "delta_p50_ms": -0.959,
+    "note": "the small CPU span barely delays the flush at base - the fix still removes ~5x of it"
+   },
+   "ts_anchor_official_096": {
+    "n": 4,
+    "p50": 187.47,
+    "min": 149.91,
+    "max": 194.78,
+    "note": "TS ITSELF strands the frame behind its own pre-summarizer CPU (Node's async stdout write flushes at the first event-loop yield); the candidate beats TS 1300x - the improvement-with-anchor framing"
+   }
+  },
+  "command_wall_resp_ms_regime_labeled": {
+   "stock_base": "p50 178.6 (n=8, first ABBA) / 204.0 (n=16 mixed) - the ~35-56ms D-regime durable draws dominate the spread",
+   "stock_cand": "p50 140.5 (n=8, the R arms) - within regime noise of base; the flush costs ~0.2ms p50 (invisible)",
+   "note": "the start->end gap at base p50 84.1ms (the frame strands behind the first-yield point) collapses to the true pipeline span at cand"
+  },
+  "tui_legs_first_client_visible_byte_ms": {
+   "protocol": "the PTY chunk-ledger arrival of the first byte rendering the manual /compact loader ('Compacting context'); TUI over the daemon worker; ABBA T1(base)/T2(cand)/T3(cand)/T4(base) x3 each",
+   "base": {
+    "blocks": {
+     "T1": {
+      "n": 3,
+      "p50": 35.163,
+      "min": 18.404,
+      "max": 109.978
+     },
+     "T4": {
+      "n": 3,
+      "p50": 18.215,
+      "min": 17.473,
+      "max": 256.231
+     }
+    }
+   },
+   "cand": {
+    "blocks": {
+     "T2": {
+      "n": 3,
+      "p50": 35.394,
+      "min": 34.946,
+      "max": 130.892
+     },
+     "T3": {
+      "n": 3,
+      "p50": 35.016,
+      "min": 34.845,
+      "max": 131.344
+     }
+    }
+   },
+   "verdict": "HONEST NEGATIVE - NO compaction_start starvation on the TUI surface: the arms overlap (base 18-35ms, cand 35ms, block-to-block variance ~2x in BOTH arms); the worker path emits CompactionStart BEFORE the pipeline and the pipeline runs on the engine's private runtime while the fan-out rides the worker runtime; the ~18-35ms is the TUI's own admission/render path (a separate class, not this lane's territory). The decompose record's '(TUI included)' parenthetical was an inference error - REFUTED by measurement"
+  },
+  "e2e_oracles": {
+   "served_path": "rpc_compact_flushes_the_start_frame_before_the_pipeline: the start frame must arrive <20ms after the command (the base strands it 42-95ms at the same 10MiB corpus fixture) AND the pipeline after it must span >20ms (the anti-vacuity side: a fixture too small to strand a frame would make the arrival assert vacuous); PASSES at the candidate, FAILS at the base by the paired legs' own numbers",
+   "stalled_reader_bound": "rpc_compact_flush_is_bounded_against_a_stalled_reader: get_messages (the whole 10MiB session) fills the 64KB pipe for real, the writer task blocks mid-write, and the compaction must still run BEHIND the stall (the durable compaction row lands while no reader drains - the poll deadline fails against an unbounded drain, the exact regression class the budget exists for); one flake closed (the fixed sleep raced the row's landing under pipe-stall CPU contention - now a 4s poll, 10x the observed landing)"
+  }
+ },
+ "parity_oracles": {
+  "frame_streams": "byte-identical per trial across arms: stock 16/16, small 6/6 (normalized session ids/paths/timestamps only)",
+  "compaction_row": "identical across arms on both fixtures (summary/details/tokensBefore/firstKeptEntryId)",
+  "response_success": "all trials both arms",
+  "rpc_mode_e2e_suite": "20/20 at the candidate (the 18 pre-existing green - no regression)"
+ },
+ "ts_anchor": {
+  "rpc_commands": "TS 0.9.6 main.ts: parsed.mode === 'rpc' - the same CLI surface the port serves",
+  "compact": "TS agent-session.ts compact(): the compaction_start emit -> _performCompaction; the TS stdout write is ASYNC (libuv) - the same stranding mechanism, slower JS scan (+187.47ms p50)",
+  "conclusion": "the candidate is a strict client-visibility improvement over both the Rust base and TS; NOT a timing-parity restoration (the initial framing corrected after the TS leg landed)"
+ },
+ "harness_incident": "a debug driver (dbg6.py) compacted the canonical stock-10mib fixture IN PLACE (the compaction appends its row to the resumed file), changing its sha to 6cdf9f13; caught by the per-trial fixture prehash receipts (every receipt records fixture_sha256); the fixture restored byte-identical (dadaecfc re-verified on the VM), the affected arms rerun clean as R1..R4, the corrupted-fixture arms disclosed-invalid (same-direction results, excluded from the canonical numbers). Lesson recorded: debug drivers must resume a COPY, never the canonical fixture path",
+ "validity": {
+  "excluded": "the 6cdf9f13-fixture arms (disclosed above)",
+  "notes": "The visibility metric is a CPU-path frame-arrival latency (regime-independent); the command walls are regime-labeled with the ABBA interleave balancing; the TS leg ran the same driver/mock/fixture; the TUI legs' honest negative is the refutation of the decompose record's TUI inference; the e2e oracle's 20ms thresholds sit between the measured arms (base 42.8-95.3ms, cand 0.099-0.228ms) with >=2x margin on both sides"
+ },
+ "evidence": "hillclimb/archives/perf-compact-visibility/cvis-evidence.tar.gz (sha256 dbae20020be3e41ec653c06b112d77fdba47192642b5b1663cc6a7b33fbcc1a4; VM-side sha match verified before download): all legs state + every block's receipts (cs/ce/resp/gap + raw frame lines + compaction rows + fixture shas), the io-probe logs, the TUI receipts (screens + loader timings), the TS leg, the drivers/probe/analyzers, the mock script, the e2e suite logs",
+ "outcome": "fix-complete (the +48.66ms client-visibility delay collapsed to +0.143ms p50, 341x; the TUI surface honestly negative; the frozen surfaces byte-identical; the TS anchor discloses TS's own +187ms stranding)",
+ "decision": "MERGE CLASS: the RPC stdio surface's compaction_start visibility fix - a bounded writer flush (drain_within 50ms) at both emit sites before the pre-summarizer CPU span. Evidence: the paired ABBA (base +48.80ms p50 n=16 -> cand +0.143ms p50 n=8 on the canonical fixture; the 256KiB control 1.178 -> 0.219ms), byte-identical frame streams + compaction rows across arms, the in-tree served-path oracle (arrival < the stranding span, with the anti-vacuity span assert) + the stalled-reader bound oracle, the 20/20 rpc_mode_e2e suite, the TUI honest negative, and the TS anchor (+187.47ms - TS itself strands the frame; the candidate improves on both). The '(TUI included)' parenthetical in the decompose record is REFUTED by measurement (the worker's private-runtime architecture is not starved).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260928-191500-interaction-compact-visibility.json",
+ "session": {
+  "worker": "perf-compact-visibility",
+  "session_dir": "~/.prime/agent/sessions/sub-2692cfe5/01a0e8cb-c466-77a8-8666-23835265f880.jsonl"
+ },
+ "timestamp": "2026-09-28T19:15:00Z"
+}
