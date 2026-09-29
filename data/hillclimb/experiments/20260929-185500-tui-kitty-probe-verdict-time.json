@@ -26,7 +26,7 @@
   "full_suite": "BINDING GATE FULLY GREEN at the folded head 4f69f0a5d (gate_1790708084_1423357, pool slot 0, sandbox sabwmtsfwuv26cbqdjksvb2v, 17:22 wall: fmt rc=0 + clippy rc=0 + cargo test --workspace rc=0 with ZERO failures and ZERO unknowns across every shard, base_state=Folded, merge_base=0971eb388==tip, release_killverify TRUE, hosts_guard OK, kernel_guard OK) - no triage was needed at all",
   "pre_gate_pre_check": "BOTH halves run before every gate ask: cargo fmt --all --check CLEAN + cargo clippy --workspace --all-targets -- -D warnings RC=0 on the lane VM feq0mhg7yk19ycrk2ytuhuww",
   "pr": "PR #3138 OPEN at the folded head 4f69f0a5d (fleet_pr pr_1790709253, plain-push route, the evidence block with the binding gate attached)",
-  "merge_bar": "pending (both adversarial reviewers sha-bound + the CI rollup + the dispositions + the orchestrator numeric review)"
+  "merge_bar": "BOTH ADVERSARIAL REVIEWERS' SHA-BOUND APPROVEs at 760f2e2751343cb30fed788e0577833ae77ef005 (kvt-parity-adversary-1, the oracle-vacuity arm: no vacuity found, the counterfactual traced, all served-path assertions verified in source; kvt-parity-adversary-2, the claim/evidence arm: every docs number traced to a measured row, the receipts + live CI verified, the fold byte-identity independently re-proven) + the deterministic fleet_review GREEN (0 blockers, 8 advisories justified in the PR body) + the CI rollup green at the exact head (shards 1-4 + summary + clippy + fmt + loc + request + Bugbot PASS; Macroscope skip-with-last-green; benchmark the standing class) + ZERO unresolved bot threads. The orchestrator's numeric review + fleet_merge follow."
  },
  "measurements": {
   "verdict_time_distribution": {
@@ -53,5 +53,11 @@
  "record_path": "data/hillclimb/experiments/20260929-185500-tui-kitty-probe-verdict-time.json",
  "evidence": "the sweep rows (28 SWEEP_ROW cells) + the real tmux/screen probe rows + the RTT pings + the family e2e logs + the fmt/clippy receipts, archived with this record",
  "session": "the kitty-verdict-time lane (subagent of the Hillclimb orchestrator)",
- "timestamp": "2026-09-29T18:56:26.068814+00:00"
+ "timestamp": "2026-09-29T18:56:26.068814+00:00",
+ "reviewer_disclosures": [
+  "(a) kitty_verdict_time_e2e.rs:22 doc comment says the DA1 classes answer 'locally in ~1-10ms' - the archived rows say MICROSECONDS (15-33us; enhanced_keys.rs and PRIME_AGENT_PATCH.md say microseconds correctly). Loose prose, no oracle or decision depends on it; flagged for the next doc touch (R2).",
+  "(b) the flat-cut rejection's 80-250ms intercontinental RTT figure is an external class constant, honestly presented as a class estimate in the docs; the fleet's own measured hop (24-29ms) IS archived; the silent arm's >=200ms lock forces any future deadline cut to re-justify at the bar (R2).",
+  "(d) BOTH reviewers independently flagged the same latent harness subtlety: LedgerReader::time_of returns the FIRST occurrence's chunk time stream-wide, while the mark-scanned waits look for first-since-mark - sound in every shipped flow (at most one teardown/push per child, query-count asserted) but a future two-suspends-per-child test would read the earlier occurrence's time. Carried here for the next lane touching the family harness (R1+R2).",
+  "the packet prose once said '9 advisories' where the binding receipt says 8 (0 blockers) - the receipt governs (R1)."
+ ]
 }
