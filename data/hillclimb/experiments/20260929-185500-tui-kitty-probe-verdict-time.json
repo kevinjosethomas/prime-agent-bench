@@ -26,7 +26,7 @@
   "full_suite": "BINDING GATE FULLY GREEN at the folded head 4f69f0a5d (gate_1790708084_1423357, pool slot 0, sandbox sabwmtsfwuv26cbqdjksvb2v, 17:22 wall: fmt rc=0 + clippy rc=0 + cargo test --workspace rc=0 with ZERO failures and ZERO unknowns across every shard, base_state=Folded, merge_base=0971eb388==tip, release_killverify TRUE, hosts_guard OK, kernel_guard OK) - no triage was needed at all",
   "pre_gate_pre_check": "BOTH halves run before every gate ask: cargo fmt --all --check CLEAN + cargo clippy --workspace --all-targets -- -D warnings RC=0 on the lane VM feq0mhg7yk19ycrk2ytuhuww",
   "pr": "PR #3138 OPEN at the folded head 4f69f0a5d (fleet_pr pr_1790709253, plain-push route, the evidence block with the binding gate attached)",
-  "merge_bar": "BOTH ADVERSARIAL REVIEWERS' SHA-BOUND APPROVEs at 760f2e2751343cb30fed788e0577833ae77ef005 (kvt-parity-adversary-1, the oracle-vacuity arm: no vacuity found, the counterfactual traced, all served-path assertions verified in source; kvt-parity-adversary-2, the claim/evidence arm: every docs number traced to a measured row, the receipts + live CI verified, the fold byte-identity independently re-proven) + the deterministic fleet_review GREEN (0 blockers, 8 advisories justified in the PR body) + the CI rollup green at the exact head (shards 1-4 + summary + clippy + fmt + loc + request + Bugbot PASS; Macroscope skip-with-last-green; benchmark the standing class) + ZERO unresolved bot threads. The orchestrator's numeric review + fleet_merge follow."
+  "merge_bar": "CLOSED: PR #3138 squash-MERGED as f6135f5e723e88b010895f5117a6412a9b2179db (the 57th hillclimb merge) - the bar held at 760f2e2751343cb30fed788e0577833ae77ef005 with BOTH STANDING adversarial reviewers' sha-bound APPROVEs (parity-adversary-fast: no further conditions - the premise chain, the anti-vacuity differential, the zero-product-code diff, the needles' byte-exactness, every docs number traced, the receipts re-verified, the fold byte-identity re-proven; parity-adversary-2-fast: no further conditions - the premise at all three anchors, the differential non-vacuous by construction, the MODE_LOCK hold verified across the probe thread + disable() + render.rs, the archive shas verified) + the fresh lane pair's two APPROVEs as ADDITIVE evidence (kvt-parity-adversary-1/2, the vacuity-counterfactual trace + the claim/evidence trace) + the orchestrator's numeric review ACCEPTED + the deterministic fleet_review GREEN (0 blockers) + the binding gate gate_1790709491 FULLY GREEN at the exact head + the settled CI rollup (benchmark the standing tolerated class) + ZERO unresolved bot threads + head UNMOVED. The merge driver's bar: threads_unresolved=0, mandatory_red=[], head_unmoved=true, tolerated_red=[benchmark]."
  },
  "measurements": {
   "verdict_time_distribution": {
@@ -59,5 +59,13 @@
   "(b) the flat-cut rejection's 80-250ms intercontinental RTT figure is an external class constant, honestly presented as a class estimate in the docs; the fleet's own measured hop (24-29ms) IS archived; the silent arm's >=200ms lock forces any future deadline cut to re-justify at the bar (R2).",
   "(d) BOTH reviewers independently flagged the same latent harness subtlety: LedgerReader::time_of returns the FIRST occurrence's chunk time stream-wide, while the mark-scanned waits look for first-since-mark - sound in every shipped flow (at most one teardown/push per child, query-count asserted) but a future two-suspends-per-child test would read the earlier occurrence's time. Carried here for the next lane touching the family harness (R1+R2).",
   "the packet prose once said '9 advisories' where the binding receipt says 8 (0 blockers) - the receipt governs (R1)."
- ]
+ ],
+ "merge": {
+  "pr": 3138,
+  "squash_sha": "f6135f5e723e88b010895f5117a6412a9b2179db",
+  "pre_merge_head": "760f2e2751343cb30fed788e0577833ae77ef005",
+  "merge_count": "the 57th hillclimb merge",
+  "coordination_seam": "the orchestrator's merge driver (merge_1790712654) executed the squash; the lane's parallel driver (merge_1790712657) reported the same squash sha - the double-arm was the clearance message and the arm action crossing; lesson: the orchestrator arms the merge after the clearance, the lane reports the clearance"
+ },
+ "cleanup": "VM feq0mhg7yk19ycrk2ytuhuww DESTROYED (TERMINATED) after the archives were sha-verified byte-identical against the VM's own receipts (verdict-sweep.log 4791c798..., da1-tmux 4be4ae41..., kitty-tmux 27b81f7e..., da1-screen 5fa18cda... pulled as raw + family-e2e/clippy/verdict-e2e logs); the worktree + the lane branch removed"
 }
