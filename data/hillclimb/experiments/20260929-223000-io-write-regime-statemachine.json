@@ -1,0 +1,223 @@
+{
+ "id": "20260929-223000-io-write-regime-statemachine",
+ "axis": "io",
+ "lane": "write-regime-sm (perf-write-regime-fast, WAVE-6 probe-only; the standing [BACKLOG] per-host baseline state machine)",
+ "hypothesis": "The fleet's flush-sensitive measurements keep hitting an uncharacterized host write regime (imageheavy's 6-97ms fdatasync band, record 20260929-035000; createwall's 1ms->65ms->245ms fresh-class crossing with the 65-refusal confirm-then-fire watch, record 20260929-150000): a per-host state machine with fast/slow/lifted states switching on minutes-hours scales underlies the advisory's DEGRADED flags, and lanes cannot tell a host state transition from a fleet event from a product effect. Characterize the state set, latency bands, dwell times, switching scales, triggers, and state memory on the standard fleet class; deliver the state machine model + the VALIDATION RECIPE (which windows are valid for which measurement classes; detect-and-wait vs detect-and-abort; expected dwell so watches can be sized).",
+ "approach": "3 fresh same-class VMs (hillclimb-regimesm-a/b/c, 16c/32GB/40GB ubuntu:22.04, provisioned together) + a light 60s control probe on the orchestrator box (the calendar's LOCAL-BOX control). Instrument = probe_regime.py (the hoststat census instrument, v0.9-structural, + per-sample statvfs fill), flock-guarded single instance, 6h continuous (2026-09-29T16:07:30Z->22:08:40Z): DENSE 0.5s ISOLATED fresh4k+sync_all+rename (advisory class 1, 37,390-38,127 ops/VM) + 30s rich dual-class samples (advisory class 2 repeat-fsync + fresh4k/64k/256k+sync_all+rename, fresh4k+fdatasync+rename, nofsync-rename noop control, append+fsync, cached-read, O_DIRECT controls; pre/post host counters; 633-637 samples/VM). ARMS: a+c quiet ambient; b + load_emulator.py (the working-churn arm: 16MB trickle/30s + 128MB build-cycle/5min, ~4GB/h, standing fill 0.005->0.287, the bench working-VM shape) \u2014 the H4 working-condition arm (both trigger instances were working bench VMs). Pre-registered questions/analysis in the lane DESIGN.md; time-based decomposition: fleet phases (all-VMs degraded) vs b-local episodes (b degraded, a/c healthy) vs the per-host state machine (remaining windows, log-space k-means on 30s non-stall medians, centroids >=1.6x apart, >=4% occupancy, the census method).",
+ "parity_notes": "Infra lane, record only: NO product code changed, no product build measured; frozen parity surfaces untouched by construction. All claims are about host/storage infrastructure.",
+ "base": {
+  "revision": "origin/rust e2ee82f2d at series time (anchor only; no product binary involved)"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_ids": {
+   "a": "znsl5ybu610nwtq8ow825muk (16c/32GB/40GB ubuntu:22.04, quiet)",
+   "b": "iatd90xmg8tmwo4kr8e22pf9 (16c/32GB/40GB ubuntu:22.04, quiet + working-load emulator)",
+   "c": "hs0aqyjrd182wrd765xux4h7 (16c/32GB/40GB ubuntu:22.04, quiet)"
+  },
+  "series": "2026-09-29T16:07:30Z -> 22:08:40Z (6.00h); orchestrator control probe 16:07:30Z -> 22:04:56Z",
+  "orchestrator_probe": "Nebius GCE-style box (LOCAL-BOX control, different infra class)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code)",
+  "clippy": "n/a",
+  "test": "n/a",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; standing disposition; never called pass"
+ },
+ "measurements": {
+  "method": "flock-guarded detached probe_regime.py (the validated census instrument) + load_emulator.py on b; raw JSONL, no transcription; VM clock offsets bounded by launcher_wall handshake (<2s); analysis rs_final2.py (time-based class decomposition) + rs_loadcoupling.py; all numbers parsed from the raw JSONLs",
+  "env": "cloud-hypervisor microVMs, kernel 6.16.9+, AMD EPYC 9255, ext4 on virtio vda, cgroup 0::/ (root)",
+  "series_scale": {
+   "dense_ops": {
+    "a": 38070,
+    "b": 37390,
+    "c": 38127
+   },
+   "rich_samples": {
+    "a": 636,
+    "b": 633,
+    "c": 637
+   },
+   "orch_samples": 339,
+   "load_ops": "720 trickles + 72 build cycles (16MB/128MB files)"
+  },
+  "state_machine_quiet_hosts": {
+   "bands": {
+    "a": [
+     1.017,
+     2.827
+    ],
+    "c": [
+     1.027,
+     2.785
+    ]
+   },
+   "occupancy_fast": {
+    "a": 0.777,
+    "c": 0.806
+   },
+   "flips_per_h": {
+    "a": 8.83,
+    "c": 7.49
+   },
+   "dwell_slow_s": {
+    "a": "med 120 / p90 300 / max 1080",
+    "c": "med 120 / p90 210 / max 1170"
+   },
+   "dwell_fast_s": {
+    "a": "med 390 / p90 1170 / max 3330",
+    "c": "med 420 / p90 1860 / max 5250"
+   },
+   "ruleB_class_structure": {
+    "a": {
+     "fast": {
+      "fresh4k": 0.889,
+      "repeat": 0.634,
+      "ratio": 1.4
+     },
+     "slow": {
+      "fresh4k": 2.75,
+      "repeat": 0.655,
+      "ratio": 4.2
+     }
+    },
+    "c": {
+     "fast": {
+      "fresh4k": 0.893,
+      "repeat": 0.643,
+      "ratio": 1.39
+     },
+     "slow": {
+      "fresh4k": 2.617,
+      "repeat": 0.658,
+      "ratio": 3.98
+     }
+    }
+   },
+   "fdatasync_lifts_with_state": "0.63-0.93 fast -> 2.0-2.4 slow; nofsync control 0.05-0.15 flat both states",
+   "trap_incidence_state_windows": {
+    "a": "st15 123/36874 (0.33%), st50 22, st100 1 (max 260.1ms)",
+    "c": "st15 115/36923 (0.31%), st50 13, st100 1 (max 259.1ms)",
+    "note": "the two st100 traps are a MATCHED INSTANT PAIR at 16:27:24Z within 0.1s (260.1 vs 259.1ms) - a fleet trap event OUTSIDE any phase"
+   },
+   "verdict": "the census's fast/slow machine REPLICATED on fresh quiet hosts: fast 0.89-1.03, slow 2.6-2.8 (2.7-2.8x), flips every ~7-8min, slow episodes med 2min/max 18-19.5min, fast stretches med 6.5-7min/max 55-87.5min, repeat-fsync STATE-INVARIANT (the reference class), fdatasync lifts with the state"
+  },
+  "fleet_incident_phase": {
+   "n_phases_this_window": 1,
+   "phase_1": {
+    "window": "17:43:00-17:55:30Z (12.5min)",
+    "onset": "17:42:36-17:42:44Z matched within +/-8s on ALL 3 VMs",
+    "recovery": "17:55:16/17Z on a AND c within 1s"
+   },
+   "band": "all-3-VM fresh4k medians 8-13ms during the phase; probe op counts drop (n 29-58 vs 52-60)",
+   "class_structure": {
+    "a": {
+     "fresh4k": 16.635,
+     "fdatasync": 15.05,
+     "repeat_fsync": 8.695,
+     "append": 9.994,
+     "nofsync": 0.153,
+     "cached_read": 0.07,
+     "odirect": 0.996
+    },
+    "b": {
+     "fresh4k": 15.833,
+     "fdatasync": 13.805,
+     "repeat_fsync": 9.146,
+     "append": 9.554,
+     "nofsync": 0.146,
+     "odirect": 0.723
+    },
+    "c": {
+     "fresh4k": 17.964,
+     "fdatasync": 15.739,
+     "repeat_fsync": 7.874,
+     "append": 8.535,
+     "nofsync": 0.146,
+     "odirect": 1.204
+    }
+   },
+   "trap_census": {
+    "a": "st50 230/1196 (19%), st100 86 (7.2%), max 1799.7ms",
+    "b": "st50 427/1099 (39%), st100 225 (20%), max 1429.5ms",
+    "c": "st50 233/1204 (19%), st100 87 (7.2%), max 2254.7ms"
+   },
+   "matched_instants": "232 matched stall>50ms instants a~c (vs 45.9 chance-expected, 5.1x enrichment); the phase's BIGGEST traps matched within 0.1s (a 1799.7ms and c 2254.7ms both at 17:48:18Z)",
+   "ruleB_verdict": "repeat-fsync LIFTED 7.9-9.1ms (12-16x its 0.55-0.77 floor) + append lifted + nofsync/cached-read/O_DIRECT FLAT => the TRAP/REGIME EVENT class (v1.1 rule B), NOT a host state",
+   "b_load_co_trapping": "the load emulator's own 16MB fsyncs hit [129,351,254,239,1790,461,237,210]ms in the 17:44:17Z build cycle (1.79s max) - the fleet trap process hits the tenant's OWN flush streams too",
+   "orch_control": "the orchestrator box UNTOUCHED through the phase (fresh4k p50-of-medians 2.05ms, range 1.44-3.57, repeat 1.77, max single 13.33ms, 1/339 samples >3.5ms) => different infra class; the phase is the sandbox-fleet shared backend"
+  },
+  "working_load_arm_b": {
+   "b_local_episodes": "25 episodes (b degraded while a AND c healthy in the same epochs), 0.5-8min each (med ~2.5min), ~67min total of 360min (~19% of b's wall time); CLUSTERED not periodic (7 lift-era episodes 16:12-17:21, then the fleet phase, then 17 burst-era episodes 17:27-21:56 through the long quiet stretch)",
+   "two_shapes": {
+    "lift_era": "elevated fresh medians 3.9-14.7ms, all-ops bands, peak 14.7 (17:03-17:10)",
+    "burst_era": "non-stall median stays fast ~1.0 but sr15~1.0 (ALL ops >15ms), per-op traps 33-391ms, st50 5-51/episode"
+   },
+   "deep_episode": "17:59:00-18:01:30Z: fresh4k p50 62.51 / fdatasync 45.07 (the createwall '~65ms class' reproduced on the loaded arm) with repeat 1.53",
+   "class_structure": {
+    "fresh4k": 19.679,
+    "fdatasync": 17.933,
+    "fresh64k": 19.605,
+    "fresh256k": 4.199,
+    "repeat_fsync": 0.687,
+    "nofsync": 0.099,
+    "append": 0.731
+   },
+   "ruleB_verdict": "repeat-fsync FLAT (0.687) + nofsync FLAT (0.099) while ALL fresh classes lift => STATE-LIKE (the host deep band), cleanly DISCRIMINATED from the fleet phase by rule B",
+   "quiet_host_contrast": "a/c had ZERO such episodes in the same 6h (same class, same provision batch, same window)",
+   "b_trap_incidence_when_fast": "st50 168/29094 (0.58%) in b's fast windows vs a/c 22/36874 and 13/36923 (0.03-0.06%) - the loaded VM pays ~10x the isolated traps even when its median is fast",
+   "load_coupling": {
+    "direct_queueing": "REFUTED: the emulator's own 16MB-fsync latencies do NOT track the probe's episodes (in-episode p50 30.1ms vs out 53.4ms - its own amortized 16-110ms flush cost is continuous; during the fleet phase it co-traps to 1.79s)",
+    "fill_vs_severity": "r=-0.577 (n=24) - the disk-fill escalation hypothesis REFUTED (later, higher-fill episodes were not more severe; the two eras have different shapes, not a ladder)",
+    "causality_caveat": "n=1 loaded VM cannot fully separate 'load-induced' from 'node-specific' (b may sit on a busier node); what is PROVEN: the deep-band class appears on the working-churn arm at ~19% wall-time and 0% on both quiet arms, over 6h, same class/batch"
+   }
+  },
+  "matched_instant_summary": {
+   "stall50_pairs": {
+    "a_b": 235,
+    "a_c": 232,
+    "b_c": 432
+   },
+   "chance_expected": {
+    "a_b": 431.5,
+    "a_c": 45.9,
+    "b_c": 421.1
+   },
+   "sharp_a_c": "5.1x enrichment at the +/-8s scale; the pre-phase twin (16:27:24Z, 260.1/259.1ms, 0.1s apart) and the phase-max pair (17:48:18Z, 1799.7/2254.7ms, 0.1s apart) are same-instant events on independent VMs",
+   "b_sidedness": "b's own burst traps inflate its stall50 count, so a_b/b_c pair counts are chance-dominated; a_c is the clean pair"
+  },
+  "onset_structure": {
+   "a_c_onsets": "21 of 54/46 state-machine onsets matched within 60s vs 13.8 chance (1.5x; enrichment, not determinism) with 7 pairs within 1s (adjacent windows); shared 90s fast episode 16:18:46-16:20:16 on both; the census's onset-clustering finding replicated at sharper resolution",
+   "solo_transitions": "also common (c's 16:57 slow episode unmatched by a) - the fleet structure is layered on per-host independence, not replacing it"
+  },
+  "state_memory": {
+   "window_level_p_same": {
+    "a": "0.78@2min -> 0.70@30min",
+    "c": "0.81@2min -> 0.72@30min",
+    "b": "0.92@2min -> 0.85@30min"
+   },
+   "marginal_note": "30min p_same ~ marginal occupancy (no long-term persistence); SHORT-TERM memory only (minutes); the dwell distributions ARE the operational memory - a host leaving a band returns to the ordinary flip cadence (post-phase: a/c returned to normal fast/slow within 90s; a's post-incident transient slow excursion 3.2-4.0ms for ~90s then normal)"
+  },
+  "honest_negatives": [
+   "NO lifted band on the QUIET hosts in 6h (H1 negative on quiet arms): the fresh-quiet state set is {fast, slow} only - the lifted/deep classes are working-conditioned or node-specific (the calendar's historical ~5ms lifted state remains covered by the >4x-floor suspect rule)",
+   "NO multi-second trap outside the fleet phase (max non-phase trap 391ms on b, 260ms a/c twin); the calendar's 19.4s class did not recur this window",
+   "Trap rate OUTSIDE the phase ~0.75/h/host vs the census's 8.4/h - DAY-VARIABLE; never assume, always re-probe",
+   "fill escalation refuted; direct load queueing refuted",
+   "ONE fleet phase in 6h (12.5min); the calendar's 2h incident phases exist but did not recur - the phase dwell PRIOR remains the calendar range (10min-2h) with today's point at 12.5min"
+  ]
+ },
+ "validity": {
+  "excluded": "the launch/install window 16:04-16:12Z (apt python3 install on all 3 + first ~3min; NON-AMBIENT per the calendar precedent; the born-slow first minutes are labeled launch-residue and excluded from dwell stats); the orch box's own busy-box properties (LOCAL-BOX; its repeat-fsync ~1.8 is its own I/O, never flat like the quiet VMs - excluded from fleet claims, kept as the different-infra control)",
+  "notes": "probes flock-guarded single instance (pgrep-verified each check-in); raw JSONL parsed, no transcription; VM clock offsets bounded (<2s); the k-means band census on the state windows uses the census's separation/occupancy rules; b's remaining-window census collapses to a single fast band (its early born-slow windows fell below the 4% occupancy rule - disclosed; its early lift-era windows are classified in the b-local census instead); the sample-to-window class assignment is at 30s resolution (a sample at a band boundary may straddle; the rule-B tables use medians over many samples so boundary samples cannot flip a verdict)"
+ },
+ "key_findings": "THE WRITE-REGIME STATE MACHINE IS THREE DISTINCT CLASSES, NOT ONE: (1) the PER-HOST STATE MACHINE {fast ~1.0, slow ~2.6-2.8} flips every ~7-8min (slow med 2min/max 19.5min), lifts ONLY the fresh-write-rename classes (fresh4k 0.89->2.6-2.8, fdatasync 0.9->2.0-2.4) with repeat-fsync STATE-INVARIANT (0.63-0.66) - the census replicated on fresh hosts; (2) the FLEET INCIDENT PHASE (the trap regime event): all-VM onset within +/-8s, 12.5min this window, ALL flush-path ops lifted INCLUDING repeat-fsync (7.9-9.1, 12-16x) and append, nofsync/cached/O_DIRECT flat, traps 19-39% st50 / 7-20% st100 to 1.8-2.25s, matched to 0.1s across independent VMs, the tenant's own flush streams co-trapped (the load emulator's 16MB fsyncs to 1.79s), the orch box untouched => the shared sandbox-storage backend; (3) the WORKING-VM DEEP BAND (the b arm): 25 host-local episodes (b degraded while a+c healthy), ~19% of b's wall time, two shapes (lift-era elevated medians 3.9-14.7ms; burst-era fast medians with ALL-ops-stall and tails to 391ms), the createwall '~65ms class' reproduced (fresh4k 62.5/fdatasync 45.1 in the 17:59 episode), repeat-fsync FLAT in every episode (state-like, NOT the trap class), ZERO episodes on both quiet arms in the same 6h. THE DISCRIMINATOR (v1.1 rule B) SEPARATES ALL THREE LIVE: repeat flat + fresh lifted = host state; repeat lifted = fleet regime event; repeat+fresh fast with isolated st50/st100 = ordinary trap incidence. The fleet-sync evidence is sharpest at the trap level: a/c twin traps at 16:27:24Z (260.1/259.1ms, 0.1s apart) and the phase-max pair at 17:48:18Z (1799.7/2254.7ms, 0.1s apart) on independent VMs; 232 matched a~c stall instants (5.1x chance).",
+ "recipe": "VALIDATION RECIPE v1.2 (supersedes the v1.1 addendum's state rules; v1.0's stall-rate/max/host-relative/phase-model/no-ceiling core UNCHANGED; both probe classes at EVERY boundary, never back-to-back):\n(A) THREE-WAY CLASSIFICATION at every leg boundary (fresh4k p50 AND repeat-fsync p50 from the same probe): (i) fresh <=2x its state band AND repeat <=2x its 0.55-0.77 floor AND stall-rate(>15ms)<=2% AND max<=50ms => HEALTHY (label fast or slow by the state band); (ii) repeat-fsync >2x its floor => FLEET REGIME EVENT - NO timing legs (any class), re-probe ~5min, expected phase dwell 10min-2h (today 12.5min); (iii) fresh >4x the fast floor (or all-ops-stall windows) with repeat FLAT => HOST DEEP STATE (working-VM class; on quiet VMs rare - treat as suspect; on working VMs expected ~19% of wall time).\n(B) WHICH WINDOWS VALID FOR WHICH CLASSES: CPU/read-bound legs (parse/fold/render; the nofsync/cached-read controls are flat in ALL classes) - proceed in any state, label. Fresh-durability timing legs - proceed-with-label in fast or slow (the 2.8x slow floor is tolerable or wait ~10min: slow episodes med 2min, max 19.5min); ABORT in fleet phases and deep states. Single-durability-write absolute walls - fast/slow windows with pairing survive (v1.0 rule 6); in fleet phases ABORT (20-40% op-loss asymmetry defeats pairing).\n(C) DETECT-AND-WAIT vs DETECT-AND-ABORT (watch-sizing - the createwall 65-refusal lesson): slow state => wait ~10min OR proceed-with-label (v1.1 rule C confirmed by dwell: med 2min). Deep state on a working VM => wait ~5min (episodes med 2.5min, p90 ~8min) - if bursts recur (clustered), abort/relocate. Fleet phase => NEVER watch for an exact-HEALTHY lull mid-phase: the phase traps 20-40% of ops continuously for 10min-2h; lulls are inter-trap gaps, not healthy windows; ABORT the leg, re-probe at 5min cadence, resume only on TWO consecutive HEALTHY classifications. Deep-state windows on QUIET VMs => suspect (0 observed in 6h): re-probe, then relocate.\n(D) TRAP INCIDENCE is DAY-VARIABLE (0.75/h today vs 8.4/h census): never assume; the state-window floors (st15 ~0.3%, st100 ~0.003%) are the calm-day reference, not a guarantee. Matched-instant pairing across VMs (two probe VMs) is the cheapest fleet-phase detector if a lane runs one.\n(E) WORKING-VM POLICY: a VM under sustained GB/h churn should expect ~1 deep episode/12min wall time (25 in 5.7h today), elevated isolated traps even when fast (0.58% st50 vs 0.03-0.06% quiet), and ~10x the deep-band wall-time; flush-sensitive campaigns on working VMs need the boundary probes at EVERY leg (the phase model) and should prefer quiet VMs for single-durability-write walls.",
+ "archive": "/home/ubuntu/hillclimb/archives/perf-regimesm/regimesm-evidence-20260929T225101Z.tar.gz sha256 5e900e9a61a18df218e84690279b0f1a9f3bacb8ba2fb22d05e33a1a5a02c5ce",
+ "vm": {
+  "released": "pending (destroyed after this record's commit; ids in build.sandbox_ids; evidence downloaded + archive sha-verified BEFORE deletion)"
+ },
+ "timestamp": "2026-09-29T22:30:00Z",
+ "outcome": "complete - the per-host write-regime state machine characterized as THREE distinct classes (per-host fast/slow state machine; fleet incident phase; working-VM deep band), each cleanly separated live by the v1.1 rule-B discriminator; dwell/trigger/memory measured; VALIDATION RECIPE v1.2 delivered",
+ "decision": "Record-only lane (infra characterization; no product change, no PR, no merge). The recipe v1.2 (three-way boundary classification + watch-sizing + valid-window rules + working-VM policy) is the fleet gate addendum for flush-sensitive lanes; v1.0's stall-rate/max/host-relative/phase-model/no-ceiling core unchanged."
+}
