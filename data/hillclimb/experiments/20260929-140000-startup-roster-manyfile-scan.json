@@ -535,7 +535,9 @@
  "record_path": "data/hillclimb/experiments/20260929-140000-startup-roster-manyfile-scan.json",
  "session": {
   "worker": "perf-roster-manyfile-fast",
-  "vm": "rsqkejooqyhh3oexkwa9kb0v"
+  "vm": "rsqkejooqyhh3oexkwa9kb0v",
+  "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-9297eba3/01a0ed40-3e53-740b-870f-f08e5c4258f4.jsonl",
+  "note": "the worker transcript (the verbatim VM exec outputs survive there per the dead-session recovery lesson); the lane is a subagent of session 01a0daa4-39c1-740d-a03a-f9e68d9f88bc (Hillclimb)"
  },
  "timestamp": "2026-09-29T14:00:00+00:00",
  "advisory_conformance": {
