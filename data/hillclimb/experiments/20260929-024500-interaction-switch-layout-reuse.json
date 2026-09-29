@@ -127,5 +127,6 @@
   },
   "chat_to_agents": "10.5 both arms; open arm-neutral (cold-load drift)",
   "verdict": "round1 -100.1ms (-35.7%), round2 -104.4ms (-36.6%); the legs' frames/bytes identical across the pair (2/4986 + 0/1442+1415 + 2/4950) \u2014 the bound confirmed at the PR head"
- }
+ },
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3103 (OPEN at the folded PR head a259a79107c764f1af05278ef83b91c0f4326c80; the binding gate gate_1790661482 GREEN auto-attached to the PR body; the merge bar pending: both adversaries' SHA-bound APPROVEs + the completed CI rollup + the orchestrator's numeric review + the operator's dispositions; the re-fold + re-gate before merging per the stale-head rule)"
 }
