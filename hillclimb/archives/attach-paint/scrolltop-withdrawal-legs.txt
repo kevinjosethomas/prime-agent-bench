@@ -1,0 +1,89 @@
+PRIME AGENT RUST — SCROLLTOP SALVAGE (PR #3065) WITHDRAWAL EVIDENCE — 2026-09-29
+The two Cursor bot threads (4129010438 'ScrollTop dirty assignment is a no-op';
+4129010454 'Regression test does not pin the fix') — both CONFIRMED.
+Experiment VM: zonxvpjzpd2954mtb044c8ub (dedicated, ubuntu:22.04, 16c/32GB, rustc 1.98.1,
+repo clone fetched 2026-09-29; origin/rust=fde0ceb08, PR head=2653e5f2bc).
+Test: cargo test --release -p pa-tui --test scroll_top_renders_head_headless
+(the PR's own pin e2e, scroll_top_renders_the_transcript_head_in_headless_captures).
+
+LEG B (control): the PR head 2653e5f2bc as-is (the arm's dirty line present).
+  tree verified: HEAD 2653e5f2bc, clean.
+  result: test result: ok. 1 passed; 0 failed; finished in 0.11s.   [LEGB_RC 0]
+
+LEG C (the discriminating experiment): the PR head with
+  crates/pa-tui/src/interactive/run.rs byte-restored from the parent a68a84980 —
+  the arm verified WITHOUT the dirty line:
+      UiInput::ScrollTop => {
+          session.stop_selection_auto_scroll();
+          view.scroll_to_top();
+      }
+  and the drain's per-pop dirty verified PRESENT:
+      767:            } else if let Some(input) = pending.pop_front() {
+      768-                session.dirty = true;
+      769-                match input {
+  result: test result: ok. 1 passed; 0 failed; finished in 0.11s.   [LEGC_RC 0]
+  => the scrolled head frame renders WITHOUT the arm's line: the input drain's
+     per-pop session.dirty=true carries the repaint; the fix line is inert.
+
+LEG D (the pin's double vacuity): LEG C's tree PLUS the drain's per-pop dirty
+  removed (the single `session.dirty = true;` after `pending.pop_front()` —
+  pattern-count assert == 1, DRAIN_DIRTY_REMOVED).
+  tree verified:
+      767:            } else if let Some(input) = pending.pop_front() {
+      768-                match input {
+      769-                    UiInput::Key(key) => {
+  result: test result: ok. 1 passed; 0 failed; finished in 10.06s.   [LEGD_RC 0]
+  => the pin STILL passes with the repaint mechanism gone: the WaitRender
+     {"message row 00"} 10s barrier times out, pops with
+     session.note("timed out waiting for the headless render condition");
+     note_as sets self.dirty = true (session_ui.rs:1579); the note frame renders
+     the ALREADY-SCROLLED view (the head window + the note row); the post-run
+     .find(|frame| frame.contains("message row 00")) accepts it.
+     PASS/FAIL is uninformative in both directions — the duration
+     (0.11s vs 10.06s) is the only observable difference.
+  (Re-run note: an accidental re-run of this same tree, when a blocked checkout
+   left LEG D's tree in place, reproduced GREEN 10.06s exactly.)
+
+LEG A (the drain covers it at the head): the CURRENT tip fde0ceb08
+  (git reset --hard; git checkout --detach origin/rust) + the PR's e2e file
+  copied in (untracked). Tree verified: HEAD fde0ceb08ab0ad8bc29867bc286fdfc57ddd97fb,
+  the drain at run.rs:764-765 (session.dirty = true on pop), the arm at
+  run.rs:897-900 WITHOUT any dirty line.
+  result: test result: ok. 1 passed; 0 failed; finished in 0.10s.   [LEGA_RC 0]
+  => the headless ScrollTop repaint holds at the tip with no fix line anywhere.
+
+THE DRAIN TRACE (the code-level no-op proof):
+  - The only UiInput::ScrollTop send site: interactive/render.rs:281
+    (ui_tx.send(UiInput::ScrollTop)).
+  - The run loop's select arm pushes it into `pending`: interactive/run.rs:1288
+    (pending.push_back(input)).
+  - The input drain pops it at the head of the batch and sets session.dirty=true
+    BEFORE the match dispatch (run.rs:767-768 at the PR head; 764-765 at the tip).
+  - The arm's session.dirty=true is therefore a true-to-true assignment.
+  - git log -S traces the pop-site dirty-set to the INITIAL PORT f492609c6
+    (crates/pa-tui/src/interactive.rs:829-831), unchanged through the
+    interactive.rs split #2998 (737229a17), the observation-era lane head
+    (dfc6f00bb), the fix base (a68a84980), and the current tip.
+
+THE OBSERVATION'S PREMISE WAS DEAD AT ITS OWN ERA (the history):
+  - 2026-09-28T21:45-21:50Z: the capped-replay headless e2e failed on a WRONG
+    NEEDLE — the notice rendered "Showing latest 399 of 460 messages for faster
+    open." (the post-dangling-drop count) while the test waited for "400"; the
+    panic dumps read at the time were truncated by grep windows.
+  - 21:52:54Z: the dirty line added (lane commit 71042e9b8) — the failing test
+    STAYED RED (21:53:43Z).
+  - 21:55:25Z: the full dump pulled — the head frame WAS captured, with the
+    "399" notice; the needle corrected (400 -> 399, commit 7c4f436cc) — the
+    test went green at 21:57:03Z on the needle fix alone.
+  - 2026-09-29T01:59-02:02Z: the pin e2e PASSED on the clean base twice
+    (FRAMES n=2: the tail attach frame + the scrolled head frame, clean, no
+    timeout note), and a dbg trace showed `gate dirty=true` immediately after
+    the scrolltop arm ON THE BASE — the drain's assignment, never attributed.
+  - The salvage PR #3065 shipped on the twin-consistency argument without a
+    red-on-base control; both adversarial reviewers approved the argument as
+    stated; the two Cursor threads then forced the re-derivation that killed it.
+
+DISPOSITION: WITHDRAW CLEAN. PR #3065 closed 2026-09-29T04:50:39Z with the
+finding documented (close comment on record); both bot threads resolved with
+the evidence (replies 4129734877, 4129735007). The headless ScrollTop repaint
+was never broken: the drain has guaranteed it per-input since the initial port.
