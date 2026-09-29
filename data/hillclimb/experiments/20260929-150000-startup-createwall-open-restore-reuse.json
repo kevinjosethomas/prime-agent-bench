@@ -1,0 +1,212 @@
+{
+ "id": "20260929-150000-startup-createwall-open-restore-reuse",
+ "axis": "startup",
+ "lane": "perf-create-wall",
+ "worker": "perf-createwall",
+ "operator_signal": "The imageheavy-open record's follow-ups (record 20260929-035000): the create-wall residual (the hc2 class) is the biggest remaining measured wall on the session-open path — the queue note's pre-step: #3098 landed at a92c0b3fb and the record's numbers predate it, so the FIRST LEG is a re-measure at the current tip (846b3901c) with the same fixture + the same open-p50 method (the pre/post-#3098 delta is itself a finding), then the targets: (1) the double windowed open's merge/reuse (the model restore re-reading what the open already read), (2) the create-tail decomposition (the ~140-240ms unmarked class), (3) the fdatasync regime (advisory v1.0 probes at the boundaries, HEALTHY windows only).",
+ "hypothesis": "The resume create's model restore re-opens the session file a second time (saved_session_context -> open_windowed #2) AND folds restored_settings off it, while the create then folds restored_settings AGAIN off its own store for the thinking-level adoption: TS createAgentSession reads the session's loaded entries ONCE (sdk.ts buildSessionContext + hasThinkingEntry). Merging the second open and the duplicate fold into the create's own open removes a measured ~62-70ms class from the create wall on the 22.9MB image-heavy fixture (image-independent, the pure read/CPU part of the hc2 residual).",
+ "approach": "(1) RE-MEASURE at the tip: one lane-private VM (hillclimb-createwall gn6tb3a8488wjl12nuno5l2f, ubuntu:22.04 16c/32GB, rustup 1.98.1, release), three sha-recorded binaries — pre f134e9e55 (ace10a6d, the record's base), tip 846b3901c (79634670), probe=tip+env-gated instrument v2 (1794ed83; the image-open rig re-anchored to the tip: session_ui->lifecycle.rs, view->frame.rs, the #3098 attach shape + NEW create-tail marks: lease/open, the restore's own open#2/savedctx/registry/readiness, tail settings, core-lock summary fold, rlm identity, sched-jobs, recovery, serialize) — 33 trials (open/agents x fx-real/fx-mid x {pre,tip,probe} interleaved + a drop-caches cold block), the advisory v1.0 both probe classes (repeat-fsync n=50 + isolated fresh n=40 @0.5s) at every boundary. (2) THE CUT at the lane head 43d1d12d0 (binary ebec4fd9; fmt+clippy -D warnings clean on the VM, agent_engine tests 83/83): restore_session_model(path, saved: Option<SavedSessionContext>) + saved_session_context_from_parts; the create folds once and hands the restore its share; the replacements/tests keep the file-read path (None). (3) THE ABBA: probe-tip vs probe-cand (eca3ff1c) 4+4 interleaved (the attribution pair) + plain tip vs plain cand 12+12 strict interleave (the wall pair) + a confirm-then-fire HEALTHY-window watcher for the wall settle.",
+ "parity_notes": "TS anchor: createAgentSession (sdk.ts) reads the session's loaded entries once (sessionManager.buildSessionContext() + hasThinkingEntry); the port's second windowed open + duplicate fold were port-only cost — the cut CONVERGES toward the TS shape. Frozen surfaces untouched by construction: no session-JSONL rows (the restore never writes), no RLM API/wire/tool schema (the SessionEngine trait is daemon-internal), no prompts, no TUI bytes (the create reply is the same summary serialization). The A/A control: the instrument's needle bands overlapped (tip 593-692 vs probe 633-707 on fx-real). TS-parity tests added: a_pre_read_saved_context_restores_like_the_file_read (file-read vs pre-read decide identically: pinned model + thinking level + fallback record) and saved_context_from_the_open_store_matches_the_file_read_and_the_reference (the from-parts reader vs the full-parse oracle).",
+ "base": {
+  "revision": "846b3901c1f449d6b59693222cfbf9f4a3bdab5a7 (origin/rust at lane start; the tip per the standing directive)"
+ },
+ "branch": "lane/perf-create-wall @ f5384e379 (PR #3127; the squash lands on origin/rust)",
+ "commits": [
+  "43d1d12d0 (the cut)",
+  "2bd526d8d (the rustfmt-canonical shapes of the two new tests - the CI fmt catch)",
+  "f5384e379 (the fold onto aa12a2eda, byte-identical re-diff)"
+ ],
+ "build": {
+  "sandbox_id": "gn6tb3a8488wjl12nuno5l2f (hillclimb-createwall, ubuntu:22.04 16c/32GB/120GB)",
+  "binaries_sha256": {
+   "pre_f134e9e55": "ace10a6d33b2f7acb23c4c5b664b438067591a2a50f167b72bd185604141ff73",
+   "tip_846b3901c": "79634670e90a216f1c4d24fe32f337b94f29fbf1135aff9a0f6b1d0417d72f73",
+   "probe_tip_instrument_v2": "1794ed832022908c53db73b8f5a0d7f03e82528c7a561cc5b1105e5eae3d24e7",
+   "cand_43d1d12d0": "ebec4fd9163972e53013883f53af4517bcd0f6c38a360dbf2c986715e8f5c747",
+   "probe_cand_instrument_v3": "eca3ff1c38a36cc04c859915958790736be881d12bcc3d7b7683fdcce307a53b"
+  },
+  "toolchain": "rustup 1.98.1, --locked release",
+  "precheck": "cargo fmt --all --check + cargo clippy --workspace --all-targets -- -D warnings CLEAN on the VM at the lane head before the PR"
+ },
+ "measurements": {
+  "method": "same-VM sequential (one lane-private VM), raw-pty 120x40, needle = the retained window's last visible row (the image-open record's method verbatim), per-arm interleaved trials, per-phase wall-clock ledger from the env-gated trace, fresh fixture copy per trial with pre/post sha, binary sha recorded per trial",
+  "leg_A_remeasure_at_tip_846b3901c": {
+   "open_fx_real_needle_p50_ms": {
+    "pre_f134e9e55": 653.2,
+    "tip": 683.3,
+    "probe": 645.2,
+    "bands": "pre 642-655 | tip 593-692 | probe 633-707 - overlapping: NO pre->tip needle delta on the fixture whose retained window carries zero images (#3098 did not move this open)"
+   },
+   "open_fx_mid_needle_p50_ms": {
+    "pre": 461.3,
+    "tip": 506.7,
+    "probe": 486.4,
+    "bands_overlap": true
+   },
+   "agents_fx_real": {
+    "roster_row_paint_ms": "14.2-16.1 (record: 15.8-17.4)",
+    "enter_to_chat_p50": {
+     "pre": 662.8,
+     "tip": 624.3,
+     "probe": 631.8
+    }
+   },
+   "cold_block": "pre 608/653/677 | tip 614/663/667 - drop_caches adds nothing (matches the record)",
+   "the_3098_phase_delta": {
+    "fx_mid_wire_438msgs_ms": "record(f134e9e55) 19.6 -> tip 10.8-13.9 = the record's strip-arm baseline (9.8): the elision REMOVED the in-window image wire share",
+    "fx_mid_frame_ms": "15.0-17.0 (record 17.2 p50 / strip 16.7): p50 unchanged - the render skip targets the visible-image tail",
+    "fx_real_wire_1387msgs_ms": "24.1-31.8 (record 34.1, image-free window: cross-VM class delta)"
+   },
+   "create_tail_decomposition_probe_arm_fx_real_p50_ms": {
+    "boot_to_create_in": 121.9,
+    "open1": 57.5,
+    "open1_scan": "42.2-44.6 (351 ranges, 22,921,799 bytes, retained 2,762)",
+    "open2_sidecar_reread": 36.3,
+    "the_restore_class_savedctx": 76.6,
+    "restore_total": 78.8,
+    "registry": 0.1,
+    "ready_wait": 0.3,
+    "pre_persist_configure_prefix_fold": 30.0,
+    "persist_fdatasync_regime": 94.8,
+    "post_persist_to_corelock": 34.1,
+    "rlm_identity": 9.6,
+    "sched_jobs": 0.2,
+    "record_recovery_journal": 64.3,
+    "note": "record_recovery carries the journal's durable write (regime class) + a CONCURRENT third sidecar open by the background prewarm (off the response path); the two durable writes (persist + recovery journal) are the flush-trap-exposed classes",
+    "wire": 25.6,
+    "fold": 1.9,
+    "frame": 7.2,
+    "compose_rows": 40
+   },
+   "aa_control": "the instrument's needle bands overlapped on every shared cell (open/fx-real tip 593-692 vs probe 633-707)"
+  },
+  "leg_B_the_cut_attribution_probe_pair_fx_real_4p4_ms": {
+   "the_restore_class": {
+    "probetip_p50": 63.2,
+    "probecand_p50": 1.2,
+    "delta": -62.0,
+    "delta_pct": -98.1
+   },
+   "savedctx_span": {
+    "probetip_p50": 61.9,
+    "probecand": "absent - the pre-read path taken (the file-read marks never fire)"
+   },
+   "open2_sidecar_reread": {
+    "probetip_p50": 32.65,
+    "probecand": "GONE - store opens per create: 2 -> 1"
+   },
+   "open1": {
+    "probetip_p50": 54.4,
+    "probecand_p50": 56.95,
+    "reading": "unchanged (the A/A mark)"
+   },
+   "wire_fold_frame": "unchanged across the pair",
+   "binaries": "probetip 1794ed83 | probecand eca3ff1c (cand = tip + the cut at 43d1d12d0)"
+  },
+  "leg_B_wall_pair_plain_tip_vs_plain_cand_12p12_fx_real": {
+   "needles_ms": {
+    "tip": [
+     528.9,
+     772.4,
+     790.4,
+     1019.6,
+     1037.0,
+     1069.0,
+     1103.0,
+     1269.9,
+     1272.3,
+     1493.1,
+     1703.6,
+     1707.3
+    ],
+    "cand": [
+     472.2,
+     696.6,
+     745.9,
+     944.2,
+     948.1,
+     1356.6,
+     1383.5,
+     1388.2,
+     1458.2,
+     1581.4,
+     1671.2,
+     1698.2
+    ]
+   },
+   "paired_deltas_ms": [
+    907.8,
+    -75.4,
+    -315.4,
+    -120.9,
+    -249.1,
+    1142.3,
+    584.2,
+    -630.8,
+    346.5,
+    -796.5,
+    -524.0,
+    309.1
+   ],
+   "reading": "the window sat in the fleet's ambient flush-trap regime: FRESH_ISOLATED p50 1.02ms at the pre boundary (a HEALTHY class) collapsed to 240-271ms mid-campaign (the deep-incident class), per-trial fdatasync traps +200-800ms on the create's two durable writes; the paired deltas span -796..+1142ms - the -62ms effect is BELOW this window's noise floor. HONEST DISCLOSURE: the wall p50 settle is unresolved at this noise floor; the phase marks (the regime-insensitive read/CPU class) carry the attribution. A confirm-then-fire HEALTHY-window watcher (45 attempts, advisory v1.0 exact-HEALTHY gate) watched for a re-run window."
+  },
+  "io_advisory_v1_0": {
+   "legA_boundaries": "fresh ISOLATED n=40 @0.5s: p50 64.4-66.4ms stall 100% (the VM's fresh-write host-trap class) at ALL 6 boundaries; repeat-fsync n=50: p50 0.16-0.18 in-band with 1-2 gt50 outliers (63-74ms) labeled per boundary",
+   "abba_boundaries": "pre: fresh p50 1.02ms (HEALTHY class!) + fsync p50 0.15; after: fresh p50 1.05 stall15 5/40 max 266 (the traps returned mid-leg); the attr block ran inside the deep incident (fresh 245-271ms, fsync p50 3.29 out-of-band at its after boundary - labeled)",
+   "phase_model": "re-classified at every boundary: the campaign crossed the fast class, the ~65ms trap class, and the ~245ms deep-incident class; every leg labeled; NO-CEILING - in-leg stalls are regime evidence, never silently dropped"
+  }
+ },
+ "gates": {
+  "fmt": "pre-check CLEAN on the VM (cargo fmt --all --check) after the fmt-canonical test shapes; GitHub CI's fmt check caught the missing reflow at the first head (43d1d12d0) -> fixed at 2bd526d8d (fmt-only, same content)",
+  "clippy": "pre-check CLEAN on the VM (cargo clippy --workspace --all-targets -- -D warnings) at the lane head; two found-and-fixed lints during iteration: single_match_else (the pre_read match -> if-let), redundant_clone (the test's clone pair); the private_interfaces warning fixed by the pub struct (fields stay crate-private)",
+  "test": "cargo test --release -p pa-daemon --lib agent_engine:: 83/83 on the VM (incl. the two new parity tests); the full-suite VM gate at the final head per the fleet_pipeline gate run",
+  "binding_gate": "fleet_pipeline.fleet_gate mode=full on the exact PR head (see the record's gates table)",
+  "ci": "GitHub CI on PR #3127: check+clippy PASS, Cursor Bugbot PASS, Macroscope PASS, the 4 test shards at the final head; 'benchmark' = the tolerated non-applicable class per the standing ruling",
+  "disclosed_reds_and_triage": {
+   "autobg_a_blocking_bash_await_degrades": "fired in the co-scheduled pool gates (2 occurrences across the lane's gates: gate_1790692814 at 43d1d12d0, gate_1790693256 at 2bd526d8d - both auto-classified ACTIVE known-red, the pool co-scheduling machine class) AND once in the CI 4-shard split at the folded head f5384e379 (shard 2/4, the test's 28.60s wall vs its <8s assert bound - the CI shard shares the runner with 3 parallel shards, the same co-scheduling load shape). FRESH TRIAGE at the exact head (the 1+1 discipline): solo x2 on the bench VM (the triage receipt in the archive) + the 1+1 CI shard rerun. The entry's own annotation: the bound's margin is load-sensitive, the entry never auto-dismisses (expires 2026-10-02).",
+   "bounded_wait_starvation_family": "the worker::turn_stream_tests::queue::abort_and_send_queued_acks member fired in the post-fold re-review's focused run (auto-classified ACTIVE, the rotating co-scheduled family: never the same member twice in a row, never solo, never in CI - registered by the kitty-probe-coldstart lane)",
+   "kernel_restore_guards": "NEVER fired in any of the lane's gates (the 2026-10-01 expiry stands; no fresh triage required on a non-fire)",
+   "benchmark_ci": "fail - the tolerated, disclosed non-applicable TS-harness check per the standing ruling (never called pass)"
+  },
+  "fleet_review": "RED at the post-fold head f5384e379: the rulebook scan found ZERO code findings (no module-organization / lint-discipline / comment findings); the ONLY blockers are the two auto-classified known-red co-scheduling members (above) + the earlier fmt blocker (fixed at 2bd526d8d; the post-fold review's mechanical: fmt_rc 0, clippy_rc 0). The stale-base advisory cleared by the fold (base_state: folded).",
+  "binding_gate_final": "gate_1790693874 at the exact head f5384e379 (base_state FOLDED, merge-base == tip == aa12a2eda): fmt rc=0, clippy rc=0, test rc=101 with EXACTLY ONE fired member - the autobg load-class known-red (auto-cited, expires 2026-10-02) - zero unknowns: RED_KNOWN_REDS, the acceptable bar form (the #2969 precedent)",
+  "ci_final": "GitHub CI at f5384e379: fmt PASS | check+clippy(workspace) PASS | test shard 1/4 PASS | shard 2/4 PASS after the 1+1 rerun (the autobg load-class fire on the first pass, 28.60s wall vs the <8s bound under the 4-shard co-scheduling; the rerun green) | shard 3/4 PASS | shard 4/4 PASS | test summary PASS | Cursor Bugbot PASS | Macroscope SKIPPING (identical patch content vs the prior head) | loc PASS | request PASS | benchmark FAIL = the tolerated non-applicable TS-harness class per the standing ruling",
+  "bots": "Bugbot: PASS (zero findings); Macroscope: skipping at the head + its earlier PASS at the same diff content - zero unresolved bot threads at f5384e379",
+  "reviews": "parity-adversary-fast: APPROVE sha-bound at f5384e379 (the head + delta verified GitHub-side; the core change verified sound; the TS anchor verified; the frozen surfaces verified by construction; both parity tests located at the head; the wall disclosure credited; the archive sha verified byte-for-byte; the condition - the gate RED_KNOWN_REDS-or-better with zero unknowns - SATISFIED by gate_1790693874) | parity-adversary-2-fast: APPROVE sha-bound at f5384e379 (the read-once cut verified hunk-by-hunk; the TOCTOU note: the OLD two-read flow had the stale-data risk, one fold serves both consumers consistently; the honest wall disclosure accepted and credited) | the orchestrator's (Hillclimb) numeric review: ACCEPTED (the archive sha-verified independently; the two flags - the record push + the archive bench-commit - closed by this push)"
+ },
+ "validity": {
+  "aa_control": "the instrument's needle bands overlapped on every shared cell (leg A: tip 593-692 vs probe 633-707; the attribution pair ran under the same interleave)",
+  "phase_stability": "the read/CPU marks are the tight instruments (open#1 54.0-60.3 across ALL cells; the restore class 62.9-70.0 across the probe-tip cells): the differential is read off the stable marks, never the needle - the imageheavy record's own ruling",
+  "disclosed_variance": "the create's two durable writes (the creation-prefix persist + the recovery journal) sit in the flush-trap regime: this VM crossed the fast class (fresh p50 ~1ms), the ~65ms trap class, and the ~245ms deep-incident class across the campaign; the wall pair's needles are regime-bound and the -62ms effect is below that window's noise floor (paired deltas -796..+1142ms) - the wall p50 settle is DISCLOSED UNRESOLVED; the phase-marks attribution carries the finding",
+  "fixture_integrity": "fresh fixture copy per trial (the open appends creation rows); pre/post sha recorded per trial; fx-mid rebuilt from the SAME real session truncated at row 1750 (9,377,003 bytes, 651 retained rows, 438 wire msgs - the record's shapes)",
+  "binaries": "five sha-recorded binaries (pre/tip/probe/cand/probe-cand); every trial's binary sha captured in trace.json meta",
+  "probes": "advisory v1.0 both classes at every block boundary; the confirm-then-fire watcher refused every lull in the deep-incident stretch (exact-HEALTHY gate: fresh p50 <2ms AND gt50=0 AND fsync p50 <1ms AND gt50=0)"
+ },
+ "key_findings": {
+  "1_the_remeasure": "At the tip (846b3901c) the fx-real open needle p50 is 645-683ms on this VM (pre-arm 653.2 vs tip 683.3 - bands overlap): #3098 did NOT move the open on Kevin's fixture - its retained window carries zero images, exactly as the record predicted. #3098's measured effect sits where the record's in-window differential said: the fx-mid wire dropped from 19.6ms (f134e9e55) to 10.8-13.9ms (the record's strip-arm baseline) - the elision removed the in-window image wire share; the frame p50 is unchanged (the render skip targets the visible-image tail).",
+  "2_the_create_tail_decomposition": "The ~140-240ms unmarked class decomposes at the tip into: the restore class 78.8 (open#2 36.3 sidecar re-read + a ~39ms branch_file_entries serde round-trip fold) + pre-persist 30.0 (configure + prefix + the create's own fold) + post-persist->corelock 34.1 + rlm identity 9.6 + the recovery journal 64.3 (a SECOND durable write on the create path) - plus the boot class 67-133 (bimodal) and the persist 94.8 (the fdatasync regime). The record's 'triple open' is confirmed: the third sidecar open is the BACKGROUND prewarm's (concurrent, off the response path).",
+  "3_the_cut": "The resume create now folds the saved context once and hands the restore its share: the restore class drops 63.2 -> 1.2ms p50 (-62.0ms / -98.1%) on fx-real, the second windowed open is GONE (store opens per create: 2 -> 1), and the file-read path (None) remains for the replacement flows and tests. TS createAgentSession reads its loaded entries once (sdk.ts) - the port's second open + duplicate fold were port-only cost; the cut converges to the TS shape.",
+  "4_the_wall_settle": "The -62ms effect is real at the phase level but BELOW the flush-trap noise floor at the wall level in this campaign's windows (the fresh class crossed 1ms -> 65ms -> 245ms classes across the legs; the create's two durable writes eat +200-800ms traps per trial). The honest wall claim: regime-bound, unresolved at this sample size; the attribution pair (the regime-insensitive marks) is the finding. The residual wall classes for follow-ups: boot 67-133 (bimodal), open#1 57.5 (the 42ms whole-file scan), the two durable writes (~95 + ~64 on this VM, both flush-regime-amplified), post-persist->corelock 34.1, rlm identity 9.6."
+ },
+ "reported_only_findings_and_followups": [
+  "THE RESIDUAL WALL CLASSES (the honest follow-up map, probe-arm p50s at fx-real): the boot class 67-133ms (BIMODAL - two boot populations; the bootstorm record's territory), open#1 57.5ms (the 42.2-44.6ms whole-file backward scan - an mmap/sidecar-warm lane is the natural next cut), the TWO durable writes on the create path (the creation-prefix persist ~95ms + the recovery journal ~64.3ms on this VM, both flush-trap-amplified - a durability-batching or journal-placement lane with the write-regime calendar), post-persist->corelock 34.1ms (the settings read + service tier + the summary fold under the core lock), rlm identity 9.6ms",
+  "THE THIRD SIDECAR OPEN (the background prewarm's, concurrent, off the response path): it competes for CPU/disk with the create tail - a deferral candidate only on new evidence (it never blocks the reply)",
+  "THE REPLACEMENT FLOWS (session_navigation replace_session / branch_navigation replace_with_fork) keep the file-read restore (None): their walls are unmeasured - the same reuse applies once someone measures them",
+  "THE WALL SETTLE: the -62ms effect needs a HEALTHY-window wall pair (the confirm-then-fire watcher's exact-HEALTHY gate) - the fresh class held the ~240ms deep-incident class through the whole watch on this VM; the write-regime calendar's territory"
+ ],
+ "evidence": {
+  "archive": "hillclimb/archives/createwall/cw-evidence.tar.gz",
+  "sha256": "10b21e6dcbd28b1c42f337f7e1059f0d10f39172986b947820a1fc6d800f5e12",
+  "bytes": 113084,
+  "contents": "the rig (the pty driver, the instrument patchers v2/v3 re-anchored to the tip + the create-tail marks, the runners, the analyzer, the advisory probes, the confirm-then-fire watcher, the matrices, the cand patch, the VM scripts); the full phase ledgers (leg A 33 trials + the attribution 8 + the wall pair 24) with per-trial trace.json/trace.jsonl/frames.jsonl; the probe log (both classes at every boundary); the runner logs; 2 representative raw pty captures (.gz); the binaries sha table; the FINDINGS-legA note"
+ },
+ "vm": "gn6tb3a8488wjl12nuno5l2f (hillclimb-createwall, ubuntu:22.04 16c/32GB/120GB) - released after the record lands + the archive is sha-verified in the bench repo",
+ "session": {
+  "worker": "perf-createwall",
+  "session_dir": "the lane's own session"
+ },
+ "timestamp": "2026-09-29T15:00:00Z",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3127",
+ "outcome": "IMPLEMENTED + MEASURED + THE MERGE BAR CLOSED AT f5384e379: the re-measure (leg A) delivered the pre/post-#3098 finding (no fx-real needle delta; the fx-mid wire elision confirmed at the record's strip baseline); the create-tail decomposed (the ~140-240ms unmarked class mapped); the cut landed with the attribution pair (the restore class -62.0ms p50 / -98.1% at fx-real, open#2 GONE, opens/create 2->1) and the honest wall disclosure (regime-bound, unresolved at the flush-trap noise floor; the phase marks carry the finding); CI green + the gate RED_KNOWN_REDS (one registered member, zero unknowns) + both adversarial reviewers' sha-bound APPROVEs + the orchestrator's accepted numeric review + zero unresolved bot threads; the merge executed via fleet_pipeline.fleet_merge on PR #3127.",
+ "decision": "Positive: the mechanism is measured, TS-convergent, and oracle-pinned; the wall p50 settle is honestly regime-bound and the residual create-wall classes are mapped for follow-up lanes (open#1's 42ms whole-file scan, the two durable writes, the bimodal boot 67-133ms, post-persist->corelock 34ms, rlm identity 9.6ms)."
+}
