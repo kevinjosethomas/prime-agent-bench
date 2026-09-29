@@ -1,0 +1,131 @@
+{
+ "id": "20260929-024500-interaction-switch-layout-reuse",
+ "axis": "interaction",
+ "lane": "perf-switch-layout-reuse",
+ "worker": "perf-switch-layout-reuse-fast",
+ "operator_signal": "Kevin's round-5 feel (the agents view -> chat view switch); the view-switch record's follow-up (b): the first draw's visible-window pack dies with the view on every switch. The operator CONFIRMED the switch-speed direction (2026-09-29: the agents->chat speed is the target; the port's current full-scroll behavior stays) \u2014 the record's cited next-biggest switch cost (the resume-cursor incremental snapshot for the wire+parse share) stays queued for his blessing.",
+ "hypothesis": "The re-entry's first draw re-packs the same visible window every switch because AgentView \u2014 holding the entry_layout packs \u2014 is a per-RUN struct dropped at the agents-view handoff; at the canon class the visible window is ONE 4.3MB tail entry (36,410 wrapped rows), so the whole first-pack is that single entry's render_entry + RowPack::pack. If the packs survive the round-trip when the transcript is unchanged, the re-entry's first draw serves the window from the pack (the second-frame class) instead of re-rendering.",
+ "approach": "(1) DECOMPOSE FIRST at the tip 4c40e964b (env-gated per-draw span instrument, the view-switch lane's pty driver): the first draw after every rebind = 104.6-108.5ms = render_entry of ONE entry (idx=7389, the tail 4.3MB pad message, 36,410 rows) 98.0-101.5ms (93-95%) + RowPack::pack 1.6-1.9ms + compose/paint ~3-5ms; the second frame on the same view = 0.30-0.45ms (the packs serve); the walk touches exactly 1 chat entry; no dense layout_pass runs on the first draw (the sparse path holds); medium (168 rows, ordinary entries): first draw 5.7ms across 34 entries. (2) THE CUT: a pa-tui process-lifetime handoff store (view/handoff.rs) written at the agents-view handoff seam (the draft stash's sibling: run.rs stash_draft -> stash_layout_handoff), holding the LAST frame's visible-window entry packs (the click surface's recorded window sections) keyed (session id, worker generation, the ATTACH's event sequence, the entry count); the adopt at the re-entry (run.rs, after the rebuild + the notice fold) on the new attach's EXACT key match; the pending handoff validates the render shape (width + layout options) at the first prepare_layout and seeds the packs; EVERY chat mutation (push_entry/clear_chat/mark_entry_stale/prepare_entry_mutation) retires a held handoff; the spacing self-guard stays at read; one process-wide slot (the next handoff overwrites). Soundness rides the attach's own freshness contract (the resume cursor's): the worker's monotonic event sequence bumps on every transcript change (appends, tool settles, the same-count in-place stream growth, compaction rewrites), a worker restart changes the generation, a different session changes the id \u2014 a match means the packs were rendered from exactly the entries the rebuild pushed. (3) TS code-read (prime-agent-ts @ cd1f215): returnToAgentsView tears down the whole InteractiveMode; the re-entry mounts fresh components \u2014 NO cross-view render cache; measured per the timing-parity rule (below). (4) THE EVIDENCE: the served-path instr legs (hit/miss counters on both arms), the unit oracles (6 tests incl. ENTRY_RENDERS==0 + the full-frame byte identity), the real-daemon round-trip e2e, the same-VM sequential ABBA (B,C,C,B... sha-asserted swaps, canon 9/arm + medium/large-real 4/arm), the pre-fold confirmation pair, and the TS 0.9.6 leg.",
+ "fixtures": {
+  "canon-10mib": "canonical-10mib (10.49MB/7,391 rows, retained window 7,390 messages, the 4.3MB tail pad entry; sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda)",
+  "medium": "real-small-01a0dad8-ff09 (776,171B/168 rows; sha 69071aca852888ea444cdb5df080b1a06b8a6c98a8791bc3a0684694fb2fa1ce)",
+  "large-real": "real-compacted-large-01a0dad3 (11.83MB file/10,790 rows, compacted: retained window 795 messages, sha 96e9aa55199fc9cedf4b5a3b91b452fe744c0fe8cf4d91cb47746dea33a69d89)"
+ },
+ "build": {
+  "sandbox_id": "yy88n7ygei57j2nc8tn70jhd (16c/32GB ubuntu:22.04, rustup 1.98.1 release)",
+  "base_binary_sha256": "818e15929de0679c1b5ec338e39da4280872df0ebcf522b4d5aeca05f046ea95",
+  "cand_binary_sha256": "58a924395e1b6bde4c1985216858090981e73ad99d0860fd2093c2113427d407 (the ABBA arms; the fmt/clippy-fixed head rebuilt for the confirmation pair)",
+  "toolchain": "rustup 1.98.1"
+ },
+ "measurements": {
+  "method": "same-VM sequential, ABBA B,C,C,B,B,C... interleaved (canon 9/arm; medium + large-real 4/arm), sha-asserted unlink-then-copy binary swaps, the view-switch lane's pty 120x40 driver (per-frame CSI ?2026 bracket accounting, raw-drain primary consumer, exact PTY byte capture per leg, per-leg key->needle walls, spin calibration pre/mid/post, the fleet I/O probe battery at every phase boundary); the served-path legs with the env-gated instrument on both arms (the tip+instr vs the cut+instr); the pre-fold confirmation pair at the final head; the TS leg (official 0.9.6, the same driver/fixture)",
+  "abba_agents_to_chat_p50_ms": {
+   "canon-10mib_7390msgs": {
+    "base": [
+     290.5,
+     284.9
+    ],
+    "cand": [
+     186.5,
+     190.0
+    ],
+    "n_per_arm": 9,
+    "note": "round1: -104.0ms (-35.8%); round2: -94.9ms (-33.3%); the repeat legs"
+   },
+   "medium_168rows": {
+    "base": [
+     28.0,
+     26.4
+    ],
+    "cand": [
+     21.2,
+     20.5
+    ],
+    "n_per_arm": 4
+   },
+   "large-real_795msgs": {
+    "base": [
+     43.7,
+     39.3
+    ],
+    "cand": [
+     36.8,
+     35.1
+    ],
+    "n_per_arm": 4
+   }
+  },
+  "chat_to_agents_ms": {
+   "canon": "10.5-10.6 BOTH ARMS (arm-neutral, the #2893/#2916 cuts holding)",
+   "medium/large-real": "10.5-10.6 both arms"
+  },
+  "open_chat_ms": "arm-neutral within the cold-load drift (both arms' min equal at every class; canon base 980.2/cand 885.0 p50 at n=9 with 787-1370 spreads)",
+  "frozen_surface_byte_class": "the per-leg frames + bytes IDENTICAL across the arms at EVERY class: agents_to_chat 2 frames/4995 bytes (canon), 6154 (medium), 4270 (large-real); chat_to_agents 0/1432+1405; open 2/4959 \u2014 the re-entry renders the same frames off the adopted packs",
+  "served_path_instr": "cand+instr canon: the OPEN leg match=false -> first draw 110.9ms (render 103.9ms, miss=1, visit=1); the LEFT exit handoff_stored entries=7390 packs=1; the RE-ENTRY match=true -> handoff_seeded packs=1 -> first draw 1.01ms (hit=2, miss=0, visit=0, ZERO renders, 33 rows expanded from the pack); the second re-entry 0.63ms. medium: open 11.3ms -> re-entry 0.79ms (hit=59, miss=9 \u2014 the 9 misses are zero-row sections at ~1us). The tip+instr arm re-renders on every re-entry (the base behavior)",
+  "confirmation_pair_at_final_head": "pre-fold conf at the fmt/clippy-fixed head: canon round1 base 286.5 -> cand 188.8 (-97.7ms, -34.1%), round2 286.4 -> 195.9 (-90.5ms); the legs' frames/bytes identical across the pair (2/4986)",
+  "ts_leg_official_096": "TS 0.9.6 (69e5bb91), the same driver/fixture, canon, n=3 green: agents_to_chat 1705.2ms round1 / 1667.0ms round2 p50 \u2014 FLAT across the repeat rounds: TS's render cache does NOT survive its view transitions (measured; the code-read confirmed). The Rust base is 5.8x faster than TS at this class (290.5 vs 1705.2); the candidate takes it to 9.1x (186.5 vs 1705.2). IMPROVEMENT-WITH-ANCHOR over both products (the compact-visibility precedent), NOT a parity restoration",
+  "decomposition_first_pack_at_tip_4c40e964b_ms": {
+   "first_draw": "104.6-108.5",
+   "render_entry_one_43mb_tail_entry": "98.0-101.5 (93-95%)",
+   "row_pack": "1.6-1.9",
+   "compose_paint": "~3-5",
+   "second_frame_same_view": "0.30-0.45",
+   "walk_entries_touched": 1,
+   "dense_layout_pass": "never (the sparse path holds)"
+  }
+ },
+ "key_findings": {
+  "1_the_bound_achieved": "The reuse cuts the canon agents->chat repeat legs by ~95-104ms (-33 to -36%), matching the decompose's first-pack bound exactly; the mechanism is general (medium -6.8ms, large-real -6.9ms; the small-class first-packs measured 5.7-11.3ms)",
+  "2_the_key_matches_on_the_real_wire": "The store writes at every LEFT exit and the adopt matches on the real flow (seq unchanged across the idle round trip; the worker generation disambiguates worker restarts); the pre-fold confirmation and the e2e agree",
+  "3_ts_has_no_cross_view_cache_measured": "TS 0.9.6 re-pays the re-entry class on every switch (1705->1667ms flat); the candidate is an improvement-with-anchor over both products",
+  "4_the_frozen_surface_holds": "The re-entry's frames are byte-identical (the per-leg frames/bytes equal across the arms at every class; the unit full-frame oracle + the e2e)",
+  "5_the_residual": "The remaining canon leg (~186-190ms) is the TS-parity-bound full-ship wire+serialize+parse (~93ms) + the roster/stats round-trips (~30ms) + the renderer setup (~10ms) + the first draw now ~1ms \u2014 the next-biggest switch cost is the resume-cursor incremental snapshot (queued for the operator's blessing per his confirmation)"
+ },
+ "parity_notes": "TUI OUTPUT BYTES: the re-entry renders the same frames off the adopted packs (pack storage is output-neutral \u2014 the tui-scroll-retain2 contract; the per-leg frames/bytes identical across the ABBA arms at every class; the unit full-frame oracle; the real-daemon round-trip e2e). TS-PARITY CASE (measured per the timing-parity rule): TS keeps no cross-view render cache \u2014 returnToAgentsView tears down the InteractiveMode; TS's own re-entry re-pays the class (1705/1667ms flat at canon) \u2014 so the cut is an improvement-with-anchor, not a parity restoration; the port keeps the operator's confirmed full-scroll behavior. Session-JSONL replay, RLM API/wire/tool schemas, prompts: untouched (the store is client-side, in-memory, process-lifetime). MEMORY: the held packs are the visible window's entries only (canon: 1 pack ~4.6MB between the surfaces \u2014 the same packs that already stay resident during a run; ordinary classes: a few KB); the slot is one process-wide and the next handoff overwrites it.",
+ "validity": {
+  "io_advisory_v1_0": "The fresh-write class sat DEGRADED-relative-to-fleet through the measured blocks (pre p50 33.55ms then 84.67ms; the boundary probes 91-93ms; post flipped to ~0.9ms \u2014 the per-host state machine per the v1.1 addendum); repeat-fsync healthy 0.13-0.27ms throughout. The switch legs carry no disk writes on the measured path (the parent record's validity note); the arms were compared same-VM sequential under the SAME phase, so the leg deltas stand",
+  "abba_validity": "All 34 ABBA trials green (canon 9/9 per arm; medium + large-real 4/4); the arms' binary shas asserted at every swap; the pre-fold confirmation pair at the final head agrees (-97.7/-90.5ms); the byte counts are identical across the arms within each comparison set (the trial-dir-name artifact disclosed: the byte counts differ across RUN-SET shapes, never across arms within one)",
+  "test_isolation": "The handoff store is process-wide: the unit tests serialize through a lock + reset the slot per test"
+ },
+ "gates": {
+  "fmt": "pass (cargo fmt --all --check, the final head + the fold)",
+  "clippy": "pass (cargo clippy --workspace --all-targets -D warnings)",
+  "test": "the full-suite pool gate at the folded head (gate_1790649273 at 1c9349993: fmt/clippy rc=0, ONE unknown fire = the login-panel pty member, triaged 12/12 solo-green at head+base, registered as the bounded_wait family member b384b92; the re-gate gate_1790651551 at a259a7910 carries the binding verdict)",
+  "unit": "view::handoff 6/6; snapshot 54/54; the real-daemon round-trip e2e 1/1"
+ },
+ "outcome": "MEASURED + CUT + ORACLE-PROVEN: the cross-view layout handoff reuses the visible-window packs on the unchanged-session re-entry (the agents->chat repeat legs -104.0/-94.9ms at canon, -35.8%/-33.3%; the post-fold confirmation at the PR head -100.1/-104.4ms), the served path proven on the real flow (the re-entry's first draw 110.9ms -> 1.01ms, hit=2/miss=0/visit=0, ZERO renders), the frozen surface byte-identical (the per-leg frames/bytes equal across the arms at every class + the unit full-frame oracle + the e2e), and the TS-parity anchor MEASURED (TS 0.9.6 flat at ~1700ms across repeat rounds \u2014 TS has no cross-view render cache; the candidate is an improvement-with-anchor over both products).",
+ "decision": "PLACEHOLDER-PENDING-GATE",
+ "branch": "lane/switch-layout-reuse (product); hillclimb (bench)",
+ "base": {
+  "revision": "4c40e964b (the pre-fold base; the lane folded twice mid-flight - 29ba04282 then 625bb396d at #3070/#3074 - the post-fold re-diffs verified hunk-by-hunk each time, 882 insertions/0 deletions, no dropped hunks)"
+ },
+ "commits": [
+  "a259a7910 (the PR head: the cut over 4c40e964b + the folds of 29ba04282 and 625bb396d)"
+ ],
+ "evidence_archive": {
+  "evidence": "/home/ubuntu/hillclimb/archives/switch-layout-reuse/slr-evidence.tar.gz (sha256 6f92089aca7282ba2a91e2421507f6219519525ed1f5ec94663dc20af957aaa3, 40,388,553 bytes; the ABBA + both confirmation pairs + the served-path instr legs + the TS legs + the decompose legs, the per-leg raw.pt/trace/frames, the probes, the drivers' logs; sha-verified BEFORE the VM deletion and re-verified after the download)",
+  "drivers": "/home/ubuntu/hillclimb/archives/switch-layout-reuse/slr-drivers.tar.gz (sha256 8b3ce0f44f4c5cb6ff42b278d62dd17328bd427d50e325615936282cfc862a5c)",
+  "instrument_patches": "slr-instr.patch (the tip instrument) + slr-instr-on-cut.patch (the cut + instrument) in the same directory"
+ },
+ "session": "perf-switch-layout-reuse-fast",
+ "timestamp": "2026-09-29T02:45:00Z",
+ "record_path": "data/hillclimb/experiments/20260929-024500-interaction-switch-layout-reuse.json",
+ "confirmation_pair_at_folded_head": {
+  "purpose": "the re-bind discipline: the PR-head switch-path numbers (the folded head 1c9349993)",
+  "conf_base": "29ba04282 (the folded tree WITHOUT the cut), binary sha256 8e753900487f99836e83e8ad1d3e8cffbd6eec605d7bef595b0aff1d8adad84b",
+  "conf_core": "1c9349993 (the folded lane head = the PR head), binary sha256 6923dd9e15f569a2dac4b6fba8205ef8e03f1198a4abd762e5c02f395da84396",
+  "canon_agents_to_chat_ms": {
+   "conf_base": [
+    280.5,
+    285.0
+   ],
+   "conf_core": [
+    180.4,
+    180.6
+   ],
+   "n": 4
+  },
+  "chat_to_agents": "10.5 both arms; open arm-neutral (cold-load drift)",
+  "verdict": "round1 -100.1ms (-35.7%), round2 -104.4ms (-36.6%); the legs' frames/bytes identical across the pair (2/4986 + 0/1442+1415 + 2/4950) \u2014 the bound confirmed at the PR head"
+ }
+}
