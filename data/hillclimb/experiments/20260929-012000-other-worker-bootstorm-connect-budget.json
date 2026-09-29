@@ -1,0 +1,99 @@
+{
+ "id": "20260929-012000-other-worker-bootstorm-connect-budget",
+ "axis": "other",
+ "hypothesis": "The registry's rlm_spawn_replacement_concurrent_spawns class (warm ~12.5% connect-budget exhaustion on the 4-launch e2e storm, failing EXACTLY at the ~90s budget, machine-independent, CI-green) is not a budget/resource/serialization problem: the port's connect_worker installs the resident's routable command channel BEFORE the worker auth handshake, so a supervisor route that fires in the install-to-auth window (the observed producer: the registration handler's own roster refresh, handle_worker_register -> refresh_roster_entry -> get_state) rides the same unauthenticated connection, the worker answers the non-worker_auth FIRST command with the auth refusal and CLOSES it, and the queued handshake never answers - the launch burns its whole connect budget from a fully-healthy, fully-booted worker. The wait is permanent at ANY budget (the reader pump resolves nothing on EOF), so the 30s unix product default fires it too.",
+ "approach": "Characterization first (fresh VM m5acphnyyyhygzz7jg2jf957, folded head 8c0ab98b0, the env-gated us launch-trace build b3c493a34 + a scratch storm driver): stage A = 24x the unmodified e2e with FULL panic capture -> 3/24 at exactly 90.06/90.07/90.08s, identical worker-side signature (full boot chain -> bound -> probe accepted (normal probe EPIPE) -> real connection accepted -> NO auth ever received -> a late get_state); stage B = the N-sweep storm driver (independent connections per create, the link's real shape; CLIENT_DISPATCH_CONCURRENCY=64 dispatch) -> N=1/2/4 clean (88-612ms/launch, 0 wedges/112 storms; the e2e's rlm-admission load widens the race window), N=8 fired once (1/16, c2 at exactly 90040ms while 7 siblings took 391ms) with the supervisor-side trace: probe-ok attempts=1 -> connect-ok -> auth-enter budget~89.9s -> 90s silence -> auth-budget-out -> launch-fail phase=connect-auth; the 200ms sampler: load max 2.34/8 vCPU, fork spikes 149/200ms, up to 20 concurrent worker processes (the e2e loop's 15s orphan window) - a scheduling race, not resources. FIX (TS pendingClient/client boundary restored): connect_worker rides the auth on a PRIVATE channel clone (route_command_on/route_command_on_typed - the same admission/enqueue/reply machinery, the channel as a parameter); install_command_channel(epoch, channel) installs for routing ONLY after the auth answer, epoch-guarded; pre-auth routes fail fast with the retryable not-connected error (the registration refresh skips - a failed refresh was already its no-op; route_command_ready retries until install; the rebind seam keeps the launch path; the update-snapshot treats mid-handshake as not-collectible). Oracles: handshake_channel_stays_private_until_auth_answers (a hand-driven fake worker socket drives the REAL connect_worker: mid-handshake cmd_tx None -> the answer -> installed) + a_mid_handshake_registration_cannot_kill_the_handshake (the deterministic forced interleave: registration mid-handshake, the wire must carry EXACTLY the auth frame, the handshake completes; RED pre-fix / GREEN post-fix).",
+ "parity_notes": "TS's connectWorker holds the handshake client PRIVATELY (worker.pendingClient) and installs the routable handle (worker.client = client) ONLY AFTER authenticateWorker answers; TS has no registration-pull (the worker PUSHES its roster snapshot right after auth). The port's pre-auth channel install was the divergence that created the wedge; the fix restores the TS boundary at the port's channel seam. The launch budget constants are untouched (30s unix default, the 90s test override, the 10s auth floor, the probe/backoff grid); no frozen surface changes (no wire, schema, prompt, TUI, or session-JSONL bytes touched - the supervisor's internal channel ownership only).",
+ "base": {
+  "revision": "43606cb7e95f14b9439233a83827a1fa482fc04b"
+ },
+ "branch": "lane/worker-bootstorm-connect-budget (product); hillclimb (bench)",
+ "commits": [
+  "8f47314a5",
+  "987f08d1d",
+  "42934bbc9",
+  "d52ca6fd4",
+  "1288565c6",
+  "f51a8490d",
+  "f8c949f1c (the Macroscope TOCTOU hardening: the recheck under the channel lock + its stale-epoch oracle; the fake-listener allow carries its reason - Bugbot)",
+  "c634b7484 (the append-only rust fold)",
+  "66a877afb (the stale-epoch oracle v2: a REAL issued stale epoch per the follow-up Macroscope Medium finding + the rustfmt chain shape - the CI fmt red at the folded head)",
+  "80e9fe600 (the second fold: the tip 69274555d into the lane; the product delta byte-identical hunk-by-hunk vs both tips)"
+ ],
+ "build": {
+  "sandbox_id": "m5acphnyyyhygzz7jg2jf957 (the characterization VM; the gates ran on the fleet pool VMs bvwr5lk9t/sabwmtsfw - see the gate saga)",
+  "toolchain": "rustup 1.98.1",
+  "binary_sha256": null,
+  "binary_bytes": null,
+  "build_seconds": null
+ },
+ "gates": {
+  "fmt": "pass",
+  "clippy": "pass (gate form -D warnings, pa-daemon --all-targets)",
+  "test": "THE PRE-FOLD HEAD VERDICT (R1's condition, upheld by the orchestrator - the stale-head rule; disclosure per R1's nit 3): gate_1790667852 GREEN at the PR head 66a877afb (armed 07:44:12Z per the run dir, pool slot 0, the RESEEDED env-fixed VM sabwmtsfwuv26cbqdjksvb2v: fmt/clippy/test rc=0, the full suite in 855s - the NORMAL battery shape, ZERO failures, zero unknowns; checkout DIRTY=0; base_state=stale - the org tip 61b94ef8c1 moved past the fold base 1b6f3b4fa, the merge applies the delta onto the moved tip per the standing convention). THE GATE SAGA (all legs triaged + closed, zero lane reds): (1) gate_1790648826 (the pool-1 warm VM bvwr5lk9t, the machine class that produced the wedge): FULL-SUITE GREEN at the fix head d52ca6fd4 - the e2e green co-scheduled, zero family fires; (2) gate_1790649709: RED_KNOWN_REDS with ZERO unknown failures at the folded head f51a8490d - the single fire the registered chunked_snapshot_attach_streams co-scheduling member (auto-attached, unexpired); fmt+clippy clean; (3) gate_1790651777: QUEUED when the box-wide kernel restart killed its driver - NO VERDICT (the recovery re-arm); (4) gate_1790655716 at 66a877afb pre-reseed: RED with 29 failures = 1 registered known-red (tui_refused_submit..., the rotating co-scheduled bounded-wait family member, receipt auto-attached) + 28 the FLEET-WIDE ENVIRONMENTAL CLASS (upstream #3063 - folded into this PR head - hardened pa-core's RUNTIME_READY_CHECK with the rlm.mcp discovery assert; the pooled gate VMs' kernel venvs carried pre-#3063 runtimes so every kernel-spawning e2e failed the check in ~55ms as 'no kernel process appeared'; DETERMINISTIC rc=1 on the venv assert, IDENTICAL 28-member set reproduced cross-branch by the layout-reuse lane's gate_1790651551 on lane/switch-layout-reuse at a different head; owner: the layout-reuse lane's record; the pools were reseeded + verified 05:04Z/07:43Z with the product's exact RUNTIME_READY_CHECK rc=0; the class confirmed CLOSED by the binding GREEN on the same VM); (5) the GitHub CI at 66a877afb: 11/12 SUCCESS (fmt, clippy, ALL FOUR test shards, test summary, loc, request, both bots SUCCESS; the single benchmark FAILURE = the standing non-applicable class on rust-branch PRs, the operator's standing disposition - mechanism per the run log (R2's correction, accepted): the comparison is PARTIAL with ZERO PR-leg trial lines, the PR leg never ran (the pr-prepare npm ci failure on the no-package.json rust tree); the main leg's numbers are present in the table; both accounts agree the PR leg never ran and the standing disposition covers it). Bot threads at the final head: ALL RESOLVED with evidence replies (the Macroscope High TOCTOU fixed at f8c949f1c; the Bugbot dead-code allow fixed at f8c949f1c; the Macroscope Medium epoch-0-oracle vacuity fixed at 66a877afb per the bot's own suggestion - Macroscope's re-run marks it 'No longer relevant as of 66a877afb'); ZERO unresolved. (6) THE FOLD + THE BINDING RE-GATE (the stale-head rule, R1's merge-bar condition; the base_state of the pre-fold GREEN was STALE - tip 61b94ef8 vs merge_base 1b6f3b4f - so the post-fold fresh-base verdict is the merge-binding one): fold_1790670540 folded the tip a9a61eef1 into the lane at the clean boundary -> the folded head 937c69d21050f5051b7fc077b7ec082c2cb2ce59 (descending from 66a877afb); the product delta BYTE-IDENTICAL hunk-by-hunk at the folded head (git diff 1b6f3b4fa..66a877afb == git diff a9a61eef1..937c69d21 modulo the index lines: 5 files, +451/-2, the same hunks) - the fold carried zero semantic drift; the binding re-gate gate_1790670608 (full suite at the folded head, the fixed pool) is THE MERGE-BINDING VERDICT. (7) THE FD DECIDER (the operator's routing): the pre-fold re-gate's one unknown, worker_fd_count_stable_across_prompts (fd_lifecycle_e2e.rs:454, the grow-assert tripped at sample 5: 20 vs baseline 13, ALL transient sockets, the samples OSCILLATE 13/14/13/15/14/20 - a real leak grows monotonically, this shape never does): SOLO x3 GREEN at the exact fire head 937c69d21 (0.63/0.08/0.08s, RC=0 each; receipts bootstorm-fdcount-solo.log sha256 6ebc90a4409a8f50a9816ef3fc005eccc3c58c07c6673434deef6ebe6faa50fd) -> the LOAD CLASS, registered as fd_lifecycle_worker_fd_count_co_scheduling (fleet-tools a0f63d0; the census: my fire + the compact-visibility lane's disjoint-head UNKNOWN fire + their pr-op GREEN co-scheduled rerun; expiry 2026-10-06; reopen on any solo/CI repro or a monotonic growth signature). (8) THE SECOND FOLD (the stale-head chase, the tip moved to 69274555d): fold_1790675600 -> the folded head 80e9fe60091eba92e38f04ff5b91ce8137eb5e85 (descends from 66a877afb and the tip; the product delta BYTE-IDENTICAL hunk-by-hunk vs BOTH tips: the same 5 files, +451/-2); the binding re-gate at the final folded head: gate_1790677560 (the pool, slot 0, armed 10:26Z): **RED_KNOWN_REDS with ZERO unknown failures** at the EXACT final folded head 80e9fe60091eba92e38f04ff5b91ce8137eb5e85 \u2014 fmt rc=0, clippy rc=0, cargo test --workspace rc=101 with exactly ONE failure = the registered autobg_blocking_bash_turn_bound_co_scheduling member (auto-attached, unexpired, receipt carried: solo-green x2 at its fire head, three co-scheduled pool-gate fires, the CI 4-shard split green at the same head - the load class, never the head; the operator's pre-made disposition); the escape member and the fd member SILENT this run (the registry covering every member that fired today); checkout DIRTY=0; merge_base 69274555d = the tip at the fold. THE ORCHESTRATOR'S ADJUDICATION (the fresh-at-fold standard, adopted for the merge-hour treadmill): the binding bar is satisfied when the fold was of the CURRENT TIP AT FOLD TIME (fold_1790675600's parent-2 = 69274555d, the tip at 10:13Z), the product delta verified byte-identical through the fold (it is), and the gate ran at that folded head with the registered-only/zero-unknowns shape (it did) - requiring fresh-at-gate on a tip moving ~hourly would make the treadmill an infinite chase; the gate proves the COMBINED tree at 80e9fe600. THE BINDING BAR COMPLETE at 80e9fe600: known-reds satisfied (1 registered unexpired, 0 unknowns), fold satisfied (fresh-at-fold, byte-identical), fresh-base satisfied per the fresh-at-fold standard."
+ },
+ "measurements": {
+  "method": "same-vm-sequential (fresh characterization VM, solo runs)",
+  "suites": {
+   "rlm_spawn_replacement_e2e_wedge_rate": {
+    "baseline": {
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 1800,
+     "p95_ms": 90070,
+     "values_ms": "stage A at 8c0ab98b0: 3/24 failed at exactly 90060/90070/90080ms; passing runs 1690-1870ms",
+     "failures": 3
+    },
+    "candidate": {
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 2000,
+     "p95_ms": 3000,
+     "values_ms": "post-fix: 24/24 pass at 2-3s per run (the fix battery); the pool-1 full-suite gate GREEN with the e2e co-scheduled (the wedge silent in the run class that produced it)",
+     "failures": 0
+    },
+    "delta_pct": null,
+    "regression": false
+   },
+   "launch_storm_driver_N_sweep": {
+    "baseline": {
+     "trials": 64,
+     "valid": 64,
+     "notes": "N=1/2/4 x16 all clean (88-612ms/launch); N=8: 1/16 wedged at exactly 90040ms (the pre-fix head, the driver shape)",
+     "failures": 1
+    },
+    "candidate": {
+     "trials": 0,
+     "valid": 0,
+     "notes": "the driver is characterization-only (scratch, not shipped); the post-fix storm is covered by the e2e battery + the oracle",
+     "failures": null
+    },
+    "delta_pct": null,
+    "regression": false
+   }
+  },
+  "extra": {
+   "evidence_archive_sha256": "1eb2b60b4380293140bee611aab8151f7b1590ad50b1719aec9f53f3833ed12c",
+   "contention": {
+    "load_max": 2.34,
+    "vcpus": 8,
+    "fork_spike_per_200ms": 149,
+    "max_concurrent_worker_processes": 20
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The wedge rate is scheduling-dependent (a race): the e2e battery's 24/24 is a smoke, not the proof - the proof is the deterministic forced-interleave oracle (RED pre-fix, GREEN post-fix) + the root-caused mechanism; stage C (300s budget, N=4, 12x) and stage D (30s budget, N=8, 16x) stayed clean in those batches (the driver shape's N=4/8 race rate is ~0.8%/launch), the wedge-vs-tail question is settled by the mechanism (the auth's oneshot resolves only from the worker or the route's own timeout; the worker closed the connection) and the N=8/90s observation. RED CONTROL at the pre-fix head 8c0ab98b0 + the same oracle file: oracle A fails in 0.15s panicking 'the handshake channel is private until the auth answers' (pre-fix: the channel WAS installed mid-handshake); oracle B fails panicking 'the registration installs no channel of its own' (pre-fix: the pre-auth install WAS visible to the registration path) with the 30.07s auth-budget signature - the wedge reproduced deterministically in the unit oracle. At the fix head 42934bbc9 both pass. The oracle is not vacuous. RED-CONTROL ARTIFACT (R1's nit 1, closed): the VM's /workspace/logs died with the characterization VM (max runtime exceeded, terminated); the two red-control runs' verbatim stdout survived in the predecessor session's transcript and is archived as /home/ubuntu/bootstorm-redcontrol-artifact.log (sha256 25e38b6e0f57ef77991a95aa9203a8a540b3e43a4754349726ac5a636faa8117): RUN 1 both oracles FAILED at the pre-fix head (PRE_FIX_HEAD=8c0ab98b0aca466d8ded4749b810302b42b4c5d4: RED_A_RC=101 finished in 0.15s; RED_B_RC=101 finished in 30.07s - the auth-budget signature); RUN 2 the exact panic texts (oracle A at tests.rs:903 'the handshake channel is private until the auth answers'; oracle B at tests.rs:1008 'the registration installs no channel of its own')."
+ },
+ "outcome": "MERGED (the 52nd hillclimb merge, squash 06d901dff041aa7f83aa1688b55f0cd5880bbe6c, verified in the rust tip) - ROOT-CAUSED + FIXED + ORACLE-PROVEN + GATE-BOUND: the launch-storm connect-budget wedge was the port's pre-auth channel install racing the handshake (the TS pendingClient/worker.client boundary restored at the port's channel seam); the wedge reproduced in the deterministic forced-interleave oracle (RED pre-fix, GREEN post-fix, the RED control archived) and the storm battery 24/24 post-fix; the e2e's warm 12.5% wedge rate at the 90s budget is gone (and the 30s unix product default is protected by the same fix); the binding merge-bar gate at the final folded head 80e9fe600 is RED_KNOWN_REDS with exactly the registered autobg co-scheduling member and ZERO unknowns, on the reseeded pool, per the orchestrator's fresh-at-fold adjudication; the GitHub CI green at every head (the benchmark standing class disclosed with the corrected mechanism note); zero unresolved bot threads (all three findings fixed with evidence: the TOCTOU hardening f8c949f1c, the dead-code allow reason f8c949f1c, the stale-epoch oracle v2 66a877afb).",
+ "decision": "SHIP at the final folded head 80e9fe60091eba92e38f04ff5b91ce8137eb5e85: the merge bar COMPLETE \u2014 (1) BOTH adversaries' EXPLICIT SHA-bound APPROVEs at 80e9fe600 (R1: the re-bind GRANTED with the merge condition SATISFIED \u2014 the fold + fresh-base binding re-gate prongs under the fresh-at-fold standard, 'no further conditions'; R2: the re-bound APPROVE with the parity ruling carrying unchanged, 'no capability reduction', the byte-identity verified by direct diff at all three boundaries); (2) the orchestrator's numeric review ACCEPTED + the fresh-at-fold adjudication (the binding bar: known-reds 1 registered unexpired + 0 unknowns, the fold fresh-at-fold 10:13Z byte-identical, the fresh-base prong per the standard); (3) the CI rollup COMPLETE at the exact head (10 SUCCESS: fmt, check+clippy workspace, all four shards, test summary, loc, request, Bugbot; the benchmark standing non-applicable class with the corrected mechanism note; Macroscope skipped on the merge heads with all three findings resolved); (4) the operator's pre-made dispositions (the registered family members, the benchmark standing, the #3063 environmental class closed by the pool reseeds). THE MERGE: armed by the orchestrator at 80e9fe600 (MERGEABLE confirmed) \u2014 MERGED: PR #3075 squash-merged as 06d901dff041aa7f83aa1688b55f0cd5880bbe6c (2026-09-29; the merge bar at squash: zero unresolved bot threads, the head unmoved at 80e9fe600, mandatory_red empty, the benchmark the only tolerated red per the standing ruling); origin/rust verified at 06d901dff ('pa-daemon: the handshake channel stays private until the auth answer installs it - the launch-storm connect-budget wedge closes (#3075)') - THE 52ND HILLCLIMB MERGE.. The registry contributions from this lane's legs: the union reconciliation f44b7d6 (4 repo-only entries restored incl. the autobg member the binding gate auto-attaches) + the fd-count sampling-race member a0f63d0 (solo x3 receipts + the census + the monotonic-growth reopener).",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3075 (MERGED at the final folded PR head 80e9fe60091eba92e38f04ff5b91ce8137eb5e85; the squash landed as 06d901dff041aa7f83aa1688b55f0cd5880bbe6c in origin/rust, base rust, MERGEABLE; the binding gate gate_1790677560 RED_KNOWN_REDS zero-unknowns at this exact head; the CI rollup complete at both folded heads (10 SUCCESS, the benchmark standing class, Macroscope skipped on the merge heads with its findings resolved); ZERO unresolved bot threads; both adversaries' SHA-bound APPROVEs at 66a877afb + the re-bind requests at 80e9fe600 per R1's condition)",
+ "record_path": "data/hillclimb/experiments/20260929-012000-other-worker-bootstorm-connect-budget.json",
+ "session": {
+  "worker": "worker-bootstorm-connect-budget (wave-6)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-845d862e/",
+  "recovery": "the box-wide kernel restart orphaned the predecessor's session (the queued binding gate_1790651777 died with NO VERDICT); this lane was recovered by the worker-bootstorm recovery session (sub-32a64c93): the state re-read, the CI fmt red + the follow-up Macroscope Medium finding closed in one append-only commit 66a877afb, the binding gate re-armed at the fixed head (the #3063 environmental class disclosed + the pools reseeded by the layout-reuse lane), the reviewer packets sent to both standing adversaries"
+ },
+ "timestamp": "2026-09-29T01:11:17Z"
+}
