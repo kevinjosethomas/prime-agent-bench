@@ -1,0 +1,259 @@
+{
+ "id": "20260929-161500-interaction-warmturn-fdatasync-spread",
+ "axis": "interaction",
+ "hypothesis": "The model-resolve-cache record's reported-only finding #2 (20260927-013300): 'the warm-turn ack->user_row spread includes the durable-append fdatasync - flush-regime sensitive per the fleet advisory', and the imageheavy record's session-open persist band (6-97ms, 'the warm-turn append is the same flush-regime class' assumption) leave the warm-turn durable-append fdatasync UNCHARACTERIZED on its own surface: is its distribution as wide as the 6-97ms band, and if so which members are the fsync regime (host state) vs the real per-row cost (the append's own work)? Falsifiable predictions: (P1) the warm per-row fdatasync on a settled real-session fixture is the repeat-fsync latency-floor class (sub-ms, state-invariant), NOT the 6-97ms class; (P2) the 6-97ms session-open band is the VOLUME class (flushing a bulk-written/copied file's dirty pages), reproducible only when the file's pages are dirty at the first sync (the fixture-copy shape), never on the production warm surface where the per-row sync discipline bounds the dirty set to the row; (P3) the trap exposure of the warm phase concentrates on the phase's FIRST sync (the queue-checkpoint journal fsync), with the session-row fdatasyncs amortizing on the primed pipeline (the wave-5 tail anatomy generalized).",
+ "approach": "Characterization-only (no code change): one VM (hillclimb-perf-warmturn-fdatasync, ubuntu:22.04 16c/32GB), one binary at origin/rust a8ebf4c64 (the lane tip at start; append_cached's per-row sync_data unchanged since wave-5), 22 sequential strace-censused trials in 3 arms + 2 instrument probes, everything labeled per I/O advisory v1.0/v1.1 (probe_v09 dual-class preflight at EVERY leg boundary - 24 pre/post flights total - plus the continuous isolated product-shape sidecar probe (open+append+fdatasync @2s, n=609) labeling every turn). ARMS: (A) fixture_settled: the bench-repo real-session fixture session-imageheavy-vizbuilder.jsonl (22.9MB/6,870 rows, sha f6ab958a) copied into the trial session dir, fsync-settled (the copy's dirty pages flushed by the driver - the production shape), resumed via the TUI --resume, 3 warm turns/trial x 12 trials = 36 warm turns (EVERY turn on the resumed fixture is warm); (B) fixture_dirty: the same fixture copied and resumed IMMEDIATELY (pages dirty - the imageheavy session-open shape), 2 turns/trial x 4 trials, the within-trial turn-1/turn-2 contrast; (C) fresh_mock: the wave-5 msgsettle protocol verbatim (fresh mock session, 4 turns, turns 2-4 warm) x 6 trials = 18 warm turns - the small-file continuity arm. All trials: bench compare.msg_send mock-regime protocol replicated verbatim (120x40 PTY, probe-input-ready, typed prompt, Enter->first-chunk ack, needle + 600ms stability settle), PI_REQUEST_TIMING on, strace -f -tt -T -y on the daemon (lean filter; census/durations evidence, never phase timing). PROBES: the per-row VOLUME-term probe (isolated open+append+fdatasync at 4K/64K/512K/4M/16M x 20 ops @0.5s) + the in-product write/open census (the non-sync per-row cost). HEALTHY-window top-up: a strict-HEALTHY-gated battery (waits for probe A stall<=2% AND B stall=0 AND B max<=2ms, then 4 settled-fixture trials).",
+ "parity_notes": "No product code changed (characterization-only): frozen surfaces untouched by construction (no branch, no commit, no PR). The TS-parity analysis (leg 3, code-level, both trees read at the lane tip): (1) TS session rows are PLAIN appendFileSync with NO durability sync EVER - session-manager.ts:2042 (_persist -> appendFileSync) and :961 (appendEntryToExistingFile), user/assistant/toolResult rows all via agent-session.ts:4648 (appendMessage on message_end); TS rewrites are writeFileAtomicSync WITHOUT the fsync option (session-manager.ts:722/:1924; atomic-file.ts:65's fsync is opt-in) - so the TS warm-turn user row costs only the page-cache append (~tens of us) and carries ZERO flush-regime exposure on this surface (its crash window is the OS's, unbounded). (2) TS's per-turn durable sync is the worker recovery journal: worker-recovery-journal.ts:96-101 (append + fsyncSync per record) at prompt_accepted and turn_end - the same 1-fsync-per-checkpoint shape the port has since #2936's batching (journal.rs append_records). (3) The port's session-row fdatasync (window_cache.rs append_cached: open+write+flush+sync_data, every append funnels there) is the DELIBERATE durability strengthening: introduced by #2545 ('harden fast session persistence'), re-derived and ruled KEPT+DISCLOSED by the #3023 per-call-site audit ('the session family a deliberate strengthening kept+disclosed, strictly narrower than TS'). A TS-parity-RESTORING cut (drop the per-row fdatasync) would reverse that disclosed product decision - out of a lane's mandate (Kevin's call, recorded twice).",
+ "base": {
+  "revision": "a8ebf4c64dc4fd1563ca384b6697251c60ec72cf (origin/rust tip at lane start; the warm-path files verified unchanged from the wave-5 base e6e7a26e4 in the append path: append_cached's sync_data line identical)"
+ },
+ "branch": "none (characterization-only record; no lane branch, no commits, no PR)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "npqmmcgl2rr5nax226fy77d6 (hillclimb-perf-warmturn-fdatasync, ubuntu:22.04, 16c/32GB/100GB, glibc 2.35)",
+  "binary_sha256": "bffab33d53c11a2e1d0bae2611a4effbfe54cddf1548b625ce877ac424c2d494",
+  "binary_bytes": 227739000,
+  "build_seconds": 84,
+  "toolchain": "rustup 1.98.1",
+  "source_tar_sha256": "667b985cb4065b78215f082d667ae0ce95af41626479d91b2aaec4b884d61dab",
+  "fixture_sha256": "f6ab958a80bc1c3730001b1ce68fac550126b96851b25219292c02070db3f753"
+ },
+ "gates": {
+  "fmt": "n/a - no code change (characterization-only)",
+  "clippy": "n/a",
+  "test": "n/a"
+ },
+ "measurements": {
+  "method": "same-vm sequential arms, one binary, strace census (-f -tt -T -y, lean filter) + advisory v1.0/v1.1 dual-class preflights at every leg boundary + the continuous isolated product-shape sidecar probe + the isolated volume-term probe; every turn labeled with its bracketing sidecar samples and its leg preflight",
+  "window_labels": "The battery ran through labeled windows per the advisory's phase model: quiet minutes (sidecar 1-9 stalls/30 ops), scattered-trap minutes, and one full trap episode (15:19-15:22Z: sidecar p50 30-35ms, 100% of ops stalled 15-62ms); preflight A-class (fresh+sync_all+rename) episodes lifted to p50 26-28ms at 100% stall (the create/fresh-file surface's wall), B-class (repeat-fsync) stayed 0.15-0.26ms p50 with ~5% pierce members (26-33ms), and the sidecar's product-shape append+fdatasync p50 per quiet minute was 0.64-0.93ms. The HEALTHY-window top-up battery (strict gate: A stall<=2% AND B stall=0 AND B max<=2ms) result: HEALTHY-window top-up result: TWO 25-minute top-up batteries gated on a strictly-HEALTHY preflight found NO such window on this host (the A class's best was 2.5% stall = exactly 1 trap member per 40 isolated fresh-file ops, with full episodes at 20-100% stall between; the strict-A-H window is a rarity on this host class - the no-ceiling class lives on the fresh-file surface). The CORRECTED probe (wtf_probe_h: the B-class pre-sync + a 12s settle sleep isolating true repeat syncs) classified the B class HEALTHY (CLASS_B=H: 0 stalls, max 0.4-1.4ms, p50 0.14-0.22ms) in EVERY flight of both top-ups - the warm surface's reference class sat at its known-good band throughout the battery, which is the healthy-window evidence the primary census rests on (the v1.1 per-state per-class rule)..",
+  "arms": {
+   "fixture_settled": {
+    "fixture": "session-imageheavy-vizbuilder.jsonl (22.9MB, 6,870 rows; bench-repo real-session class)",
+    "shape": "copy + driver-side fsync-settle (production shape: the file's pages clean at resume; a warm append's dirty set = the new row only), TUI --resume, 3 warm turns/trial",
+    "trials": 12,
+    "warm_turns": 36,
+    "user_row_fdatasync_ms": {
+     "n": 36,
+     "p50": 0.482,
+     "p90": 0.828,
+     "min": 0.355,
+     "max": 2.434
+    },
+    "assistant_row_fdatasync_ms": {
+     "n": 36,
+     "p50": 0.607,
+     "p90": 0.73,
+     "min": 0.426,
+     "max": 1.692
+    },
+    "all_session_file_fdatasync_ms": {
+     "n": 72,
+     "p50": 0.548,
+     "p90": 0.733,
+     "max": 2.434
+    },
+    "adoption_persist_ms": {
+     "n": 12,
+     "values": [
+      0.456,
+      0.491,
+      0.517,
+      0.566,
+      0.57,
+      0.614,
+      0.648,
+      0.655,
+      0.683,
+      0.719,
+      2.917,
+      34.352
+     ],
+     "note": "the resume-time first session-file sync; 10/12 sub-ms, one 2.9ms member, one 34.35ms trap pierce (ra5, the episode window)"
+    },
+    "journal_checkpoint_fsync_ms": {
+     "n": 72,
+     "p50": 0.673,
+     "p90": 1.531,
+     "max": 7.72,
+     "note": "admission+settle per turn; the phase's FIRST sync class"
+    },
+    "phase": {
+     "ack_to_user_row_ms": {
+      "n": 36,
+      "p50": 5.59,
+      "p90": 8.77,
+      "max": 11.45
+     },
+     "reply_visible_ms": {
+      "n": 36,
+      "p50": 95.3
+     },
+     "settle_ms": {
+      "n": 36,
+      "p50": 734.1
+     }
+    }
+   },
+   "fixture_dirty": {
+    "shape": "copy with pages DIRTY at resume (the imageheavy session-open shape), 2 turns/trial",
+    "trials": 4,
+    "turns": 8,
+    "adoption_persist_ms": {
+     "n": 4,
+     "values": [
+      42.25,
+      42.663,
+      44.894,
+      47.462
+     ],
+     "note": "THE VOLUME CLASS REPRODUCED: the first session-file fdatasync on the freshly-copied 22.9MB fixture pays the whole-file flush - squarely in the 6-97ms session-open band"
+    },
+    "driver_side_copy_fsync_ms": {
+     "n": 12,
+     "p50": 52.9,
+     "min": 44.7,
+     "max": 63.2,
+     "note": "the settled arm's driver paid the SAME volume flush at copy time (the fsync-settle step) - the volume class is state-modulated (44-63ms this window), confirming the band's mechanism"
+    },
+    "user_row_fdatasync_ms": {
+     "n": 8,
+     "p50": 0.546,
+     "max": 4.356,
+     "note": "turn-1 rows are ALREADY clean-file appends: the adoption persist flushed the copy first; the warm class reappears immediately"
+    },
+    "journal_checkpoint_fsync_ms": {
+     "n": 16,
+     "p50": 0.698,
+     "max": 34.927,
+     "note": "the trap's pierce member on the phase's first sync (the ack_to_user_row max 39.62ms turn)"
+    },
+    "phase": {
+     "ack_to_user_row_ms": {
+      "n": 8,
+      "p50": 5.15,
+      "max": 39.62
+     }
+    }
+   },
+   "fresh_mock": {
+    "shape": "the wave-5 msgsettle protocol verbatim (fresh session, small file), 4 turns (2-4 warm)",
+    "trials": 6,
+    "warm_turns": 18,
+    "user_row_fdatasync_ms": {
+     "n": 24,
+     "p50": 0.377,
+     "p90": 0.433,
+     "max": 0.452
+    },
+    "assistant_row_fdatasync_ms": {
+     "n": 24,
+     "p50": 0.377,
+     "max": 0.452
+    },
+    "all_session_file_fdatasync_ms": {
+     "n": 48,
+     "p50": 0.401,
+     "max": 0.862
+    },
+    "journal_checkpoint_fsync_ms": {
+     "n": 48,
+     "p50": 0.533,
+     "max": 29.322
+    },
+    "phase": {
+     "ack_to_user_row_ms": {
+      "n": 24,
+      "p50": 2.05,
+      "max": 30.64
+     }
+    }
+   }
+  },
+  "probes": {
+   "volume_term_isolated_append_fdatasync": {
+    "note": "isolated product-shaped appends at each row size (open O_APPEND|O_CREAT + write + fdatasync + close, 20 ops @0.5s per class)",
+    "4096B": {
+     "n": 20,
+     "p50": 0.74,
+     "min": 0.52,
+     "max": 0.95
+    },
+    "65536B": {
+     "n": 20,
+     "p50": 0.89,
+     "min": 0.62,
+     "max": 28.53,
+     "note": "4 trap members 25-28ms"
+    },
+    "524288B": {
+     "n": 20,
+     "p50": 1.27,
+     "min": 1.02,
+     "max": 25.95,
+     "note": "1 trap member"
+    },
+    "4194304B": {
+     "n": 20,
+     "values_bands": "4.37-6.75ms (10 ops, fast-state ~1.0us/byte) vs 29.8-32.8ms (10 ops, slow-state)"
+    },
+    "16777216B": {
+     "n": 20,
+     "values_bands": "14.62-16.49ms (5 ops) vs 41.91-49.61ms (15 ops)"
+    },
+    "implication": "the per-row VOLUME term is ~1us/KB fast-state (~7-8us/KB at 4MB slow-state); a 23MB bulk dirty set flushes in 42-63ms (the driver-side + adoption measurements) - the 6-97ms session-open band's mechanism; production rows are KB-class, so the warm per-row volume term is negligible"
+   },
+   "in_product_per_row_non_sync_cost": {
+    "session_file_write_ms": {
+     "n": 78,
+     "p50": 0.015,
+     "max": 0.029
+    },
+    "o_append_open_ms": {
+     "p50": 0.015,
+     "max": 0.02
+    },
+    "note": "the fdatasync IS ~95% of the per-row durable-append cost"
+   },
+   "sidecar_isolated_product_shape": {
+    "n": 609,
+    "p50": 0.863,
+    "bands": {
+     "<1ms": 374,
+     "1-5ms": 58,
+     "5-15ms": 8,
+     "15-50ms": 165,
+     ">=50ms": 4
+    },
+    "stall_gt15ms_pct": 27.8,
+    "note": "the isolated-op trap exposure across the same window the trials ran in; the per-minute stall clustering + the 15:19-15:22Z full episode are in the legs log"
+   }
+  },
+  "headline": "The warm-turn durable-append fdatasync is the TIGHT SUB-MS band on its own surface: 0.36-0.72ms p50 across BOTH file classes (0.377 small-file / 0.482-0.607 user-vs-assistant on the 22.9MB fixture), max 4.36ms over 136 in-product session-file fdatasyncs in 68 warm turns - NOT ONE pierced >5ms, through quiet, scattered-trap, AND full-episode windows. The 6-97ms session-open band did NOT transfer to the warm surface: it is the VOLUME class (the bulk-dirty file's first sync; reproduced at 42-47ms on the dirty arm's adoption persist + 44-63ms driver-side), which the per-row sync discipline itself keeps off the warm surface. The trap exposure of the warm phase concentrates on the phase's FIRST sync - the queue-checkpoint journal fsync (4/136 members >5ms, max 34.9ms) - while every session-row fdatasync amortizes on the primed pipeline (wave-5's 3-tail anatomy generalized to 68 turns, now including quiet windows where nothing stalls)."
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "Instrument lessons (disclosed): (1) THE PROBE_V09 B-CLASS ARTIFACT (a measurement-methodology finding for the fleet): the B-class census's first timed op rides the A-run's writeback tail (the systematic exactly-1/20 'pierce' in every flight) - the corrected probe (pre-sync the census file outside the timed loop + a 12s settle sleep between the classes) isolates true repeat syncs and classified the B class HEALTHY in every flight thereafter; the one-off settle test is in the evidence. The advisory's future flights should use the corrected B shape. (2) The strace census uses -T syscall durations only (never phase timing) per the wave-5 discipline; the resumed-fixture protocol is the bench compare.msg_send mock-regime protocol verbatim (a pilot trial verified the driver shape before the matrix; the pilot's orphan-daemon socket collision was cleaned and re-run - the fleet's daemon-socket hygiene). (3) The fixture bytes are unmodified (sha f6ab958a asserted per trial); the fixture's own model (openai-codex/gpt-6-sol) was served from the mock via models.json (the provider override, no fixture edit). (4) The f-armed fresh trials' create-path rows (5 null-role rows: the create-time session_info/session_state persists) are the create-wall class, out of this lane's surface; the analyzer keys only role-bearing rows for the warm census.",
+  "window_disclosure": "The advisory's DEGRADED-invalidates-the-leg rule was adjudicated per the v1.1 per-state per-class bands, and every leg is labeled: 24 preflight classifications bracket the 22 trials (the legs log carries every PROBE line); the preflight A-class (fresh-file+sync_all+rename) sat in lifted episodes for much of the battery (p50 26-28ms at up to 100% stall) - that is the CREATE/fresh-file surface's class, NOT the warm-append surface; the warm surface's matched classes (the preflight B-class repeat-fsync: p50 0.15-0.26ms throughout; the sidecar product-shape append+fdatasync: per-minute p50 0.64-0.93ms in quiet minutes, 30-35ms in the one full episode) stayed at their known-good bands except the labeled trap members. The primary quantities (the session-file fdatasync census) are the surface-matched class, so the A-class episode context is disclosed but does not inflate them - and the strongest form of the claim survives the strictest reading: 0/136 in-product session-file fdatasyncs exceeded 5ms THROUGH the full trap episode (15:19-15:22Z) that stalled 100% of isolated probes. The structural settled-vs-dirty differential is state-independent (the arms interleaved round-by-round: [ra,rb] x4, same windows for each pair). The strict-HEALTHY top-up (gate: BOTH probe classes HEALTHY): the first 25-min budget expired with NO strict window (the host sat in trap-active periods; every probe showed ~5% B-class pierce members - the no-ceiling class); the second top-up ran with the corrected probe. TOP-UPS: budget 1 (25 min, the original probe_v09, gate A<=2% AND B clean) expired NO_HEALTHY_WINDOW - the probe's B-class 5.0% 'pierce' in every flight is the PHANTOM FIRST-OP MEMBER (the B census starts immediately after the A run's 40 fresh-file syncs; its first timed op rides the writeback tail): proven by the one-off settle test (12s sleep between the classes -> B fully clean 0.14-0.49ms, zero pierces, in a window where the A class itself carried 25% stall members) and by the corrected probe's CLASS_B=H in every subsequent flight. Budget 2 (25 min, the corrected probe, gate CLASS==H AND CLASS_B==H) also expired NO_HEALTHY_WINDOW: the A class's best window was 2.5% (1 member per 40 ops) - the no-ceiling class on the fresh-file surface; full episodes (20-100% stall, members to 66.2ms) filled the rest. The honest adjudication: the measured surface's matched classes were healthy (B: clean in every corrected flight; sidecar quiet minutes 0.64-0.93ms p50); the A-class trap members/episodes are the create/fresh-file surface's regime, disclosed per leg; and the primary claim is window-ROBUST (0/136 in-product session-file fdatasyncs >5ms through the full 15:19-15:22Z episode that stalled 100% of isolated probes).",
+  "ts_parity_analysis": {
+   "ts_reference": "prime-agent-ts @ /home/ubuntu/prime-agent-ts (the TS reference tree read at the lane tip; the files cited are the product's own)",
+   "ts_warm_turn_session_append": "BUFFERED, NO durability sync ever: session-manager.ts:2042 (_persist -> plain appendFileSync; the existsSync guard + _rewriteFile fallback also unsynced: writeFileAtomicSync without the fsync option at session-manager.ts:722), :961 (appendEntryToExistingFile -> appendFileSync); all row roles via agent-session.ts:4648 (message_end -> appendMessage). The TS warm user row costs the page-cache append only (~tens of us) and carries ZERO flush-regime exposure on this surface; its crash window is the OS's (unbounded).",
+   "ts_per_turn_durable_sync": "the worker recovery journal ONLY: worker-recovery-journal.ts:96-101 (open a + writeSync + fsyncSync per record) at prompt_accepted/turn_end - 1 fsync per checkpoint, the same shape as the port post-#2936 (journal.rs append_records: the queue-snapshot + verdict pair in ONE open+write+fsync).",
+   "port": "window_cache.rs append_cached (open+write+flush+sync_data per row; every append funnels there: manager persist, lease append, session_store persist_entry) = the DELIBERATE strengthening: #2545 'harden fast session persistence' -> #3023's per-call-site audit ruled the session family KEPT+DISCLOSED ('strictly narrower than TS'). The warm durable-append sync census per turn at the tip: 1 journal fsync (admission checkpoint) + 1 fdatasync per row (user, assistant, toolResult, custom) + 1 journal fsync (settle checkpoint).",
+   "verdict": "TS's shape is NOT the port's shape on this surface (buffered vs per-row-durable): a TS-parity-RESTORING cut exists in the abstract but was already evaluated and ruled a deliberate strengthening twice (#2545, #3023); reversing it is a product-contract decision (Kevin's), not a lane's. The bounded/batched-flush candidate (the brief's (4)) WEAKENS that contract and buys only sub-ms members (see outcome)."
+  }
+ },
+ "outcome": "characterization-complete; HONEST NEGATIVE for the cut candidate (no in-discipline cut). The standing BACKLOG item is closed with the spread decomposed: (1) the warm-turn durable-append fdatasync is the TIGHT SUB-MS band on its own surface (0.36-0.72ms p50 across both file classes, 0/136 in-product syncs >5ms through quiet AND trap-episode windows) - the 6-97ms session-open band does NOT transfer to the warm surface; (2) the 6-97ms band is the VOLUME class: the first sync of a bulk-dirty file (the fixture-copy shape) flushing ~23MB (42-47ms worker-side, 44-63ms driver-side this window; state-modulated) - the imageheavy session-open persist is exactly this class and is a measurement-shape artifact of the copied fixture, not a production warm-turn cost; the per-row sync discipline itself is what keeps the warm surface out of this class; (3) the trap exposure of the warm phase concentrates on the phase's FIRST sync (the queue-checkpoint journal fsync: 4/136 >5ms, max 34.9ms) while every session-row fdatasync amortizes on the primed pipeline (wave-5's tail anatomy generalized to 68 turns); the isolated same-shape probe pierced at 27.8% in the same window - the burst-amortization effect, now measured on the product's own surface; (4) the real per-row cost is open 0.015 + write 0.015 + fdatasync 0.36-0.72ms (~95% of it the fdatasync), with the volume term ~1us/KB fast-state scaling to 4.4-49.6ms only at multi-MB rows (a big-paste/tool-result row class, honest per-row cost, not regime); (5) TS-parity: TS pays ZERO syncs on session rows (plain appendFileSync) and 1 journal fsync per checkpoint - the port's per-row fdatasync is the DELIBERATE strengthening (#2545 -> #3023 kept+disclosed), so the parity-restoring cut is a product-contract reversal (Kevin's call), and the bounded/batched flush WEAKENS the contract while buying only sub-ms members it cannot remove the trap exposure (wave-5 proved the first-sync trap survives batching: 51.17ms on the merged candidate) nor the visible-path member. No mechanism-side waste remains on the warm surface after #2936's journal batching.",
+ "decision": "NO PR, no code change (characterization-only). The finding's disposition: the warm-turn durable-append fdatasync spread is characterized and the cut candidates are CLOSED in-discipline: (a) 'drop the per-row fdatasync to match TS' - foreclosed as the reversal of the twice-recorded deliberate strengthening (#2545, #3023 kept+disclosed); if the operator (Kevin) ever wants the TS-exact crash window, the measured price to reclaim is ~0.4-0.6ms/row at healthy windows plus the per-row trap exposure (measured 0/136 pierces in-product, so small) - a one-line change in append_cached plus the crash-window disclosure, but it is HIS contract call, not a lane's; (b) 'bounded/batched flush' - weakens the per-row durability contract, buys <=~0.5ms x (rows-1) on turn tails, does not touch the user-row member on the TTFB path, and leaves the phase's first-sync trap exposure intact (already proven on the batched journal at #2936) - below any bar, REJECTED; (c) the residual ~5ms of the big-fixture ack->user_row phase (the fdatasync is ~0.5ms of it) is the queue-handoff/dispatch cost on the resumed big session - adjacent to the createwall/launch-open surfaces, no new lane without a trigger. REPORTED-ONLY (for the backlog queue): (1) the fixture-copy dirty-pages measurement-shape class - any lane quoting a 'persist' measured right after copying a fixture into place is quoting the volume class (the imageheavy session-open persist band should be re-quoted as the copy-volume class by the createwall lane); (2) the advisory-methodology note - isolated-op probes OVERSTATE the in-product exposure of burst-y sync surfaces (27.8% isolated pierce vs 0/136 in-product here); the advisory's 'bursts amortize' rule now has a product-surface measurement behind it; (3) the multi-MB row class (a huge paste/tool-result row) pays the volume term per row (4.4-49.6ms at 4-16MB) - a real per-row cost member worth knowing when a lane touches big-row surfaces (the image-heavy/tool-result classes).",
+ "record_path": "data/hillclimb/experiments/20260929-161500-interaction-warmturn-fdatasync-spread.json",
+ "session": {
+  "worker": "perf-warmturn-fdatasync-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-561b1b74/01a0ed86-f9c8-7102-8b3e-9e5f31788ac9.jsonl"
+ },
+ "timestamp": "2026-09-29T16:30:00Z",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/warmturn-fdatasync/ (evidence.tar.gz sha256 a19ee69c80461f57638bcc1decf0e0e049a882c0cc5678eb966e8617974d7133, sha-verified before VM teardown: 22 trials' trace.json + gzipped daemon.strace each, the legs log (24 preflight classifications), both top-up logs, both sidecar logs, the volume-probe log, the analysis JSON, the setup log, the drivers)",
+  "vm": "npqmmcgl2rr5nax226fy77d6 (hillclimb-perf-warmturn-fdatasync) - retained until the record lands, then destroyed",
+  "fixture": "bench-repo fixtures/session-imageheavy-vizbuilder.jsonl sha256 f6ab958a80bc1c3730001b1ce68fac550126b96851b25219292c02070db3f753 (unmodified; asserted per trial)"
+ },
+ "status": "final"
+}
