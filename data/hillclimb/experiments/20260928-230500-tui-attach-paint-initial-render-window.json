@@ -69,5 +69,5 @@
   "contents": "the ABBA main rows (96 valid new/resume) + the warm pair rows (48 valid) + the 12-row pre-move pilot + the pre/mid/post calibration + the count-verify pair (8 rows, attach_msgs) + the measurement driver + the phase-instrument patcher + its Rust module + the analysis script + the TS-parity recon file"
  },
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3044",
- "salvage_pr": "lane/headless-scrolltop-dirty @ 2653e5f2b (branch pushed; the PR opens with its gate verdict)"
+ "salvage_pr": "lane/headless-scrolltop-dirty @ 2653e5f2bc \u2014 PR https://github.com/PrimeIntellect-ai/prime-agent/pull/3065 (gate_1790647774 RED_KNOWN_REDS with exactly the 2 registered members, zero unknowns; fmt/clippy rc=0; the pin e2e 1/1)"
 }
