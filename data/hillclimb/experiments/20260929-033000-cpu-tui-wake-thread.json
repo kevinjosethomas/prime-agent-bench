@@ -1,0 +1,157 @@
+{
+ "id": "20260929-033000-cpu-tui-wake-thread",
+ "axis": "cpu",
+ "hypothesis": "The wave-6 idle-rebaseline census (record 20260928-224735, bench 57cf412) found the TUI-attached idle wake pole NOT met: tree 184-189/s thread-sum (the census instrument lesson: /proc ctxt counters are leader-thread-only; the thread-sum over /proc/PID/task is the true rate), with the TUI process owning essentially all of it on four waking threads (~99.4/s + ~29/s + ~28/s + the leader 20.06/s) while the headless tree meets the pole at 4.5-4.6/s. HYPOTHESIS: the three non-leader classes are port artifacts with exact source homes \u2014 (a) the input reader's free-running 10ms crossterm poll (input.rs POLL_TIMEOUT_MS=10, present since the original port commit f492609c6; the 10ms bounds only the stop-flag check and the escape-guard hold flush), (b)+(c) the run loop's fixed 50ms tick arm (run.rs) and the tokio timer/wake churn it drives \u2014 and each has a TS-anchored event/conditional form (TS's stdin is a data-event stream with no idle poll; TS's TUI keeps NO periodic timer at idle: the loader interval runs only while animating, scheduleRender arms only on render requests, the auto-scroll timer only during a held drag), so an edge-driven reader and a work-conditional tick remove ~all of the TUI's idle wakes without deferring any work TS does eagerly and without changing the TUI output bytes.",
+ "approach": "(1) fold: the lane branched fresh off the tip 4c40e964b (nothing to fold). (2) the tip re-decompose with the census instrument extended with per-thread comm capture (wake_probe.py): 180s attached windows, thread-sum + leader rates, noop sleep-600 control riding every window, keypress latency after. (3) the TS-attached parity leg, the same instrument on the official 0.9.6 release binary run in place (sha 69e5bb9173d0...). (4) THE CUT: (a) READER: the vendored crossterm's event-stream waker machinery enabled + three additive exports (poll_opt(Option<Duration>) = the park-until-input form of poll; waker() -> Option<Waker> = the global event source's wake handle, None when the source failed to open; the Waker type/visibility bumps) \u2014 input.rs parks poll_opt(None) whenever the sequence guard holds nothing, keeps POLL_TIMEOUT_MS=10 ONLY while the kitty-probe's answer window is open (enhanced_keys::query_in_flight \u2014 the probe's 10ms slices and the reader share crossterm's process-global event-reader lock; a park would starve the #3010 interleave) and when no wake handle exists (a source that failed to open the tty), and the stop flag is observed through Waker::wake at teardown (handoff latency 10ms -> ~0; the flush-to-old-surface and chunk-boundary semantics unchanged); the stop-before-drain ordering added at every teardown choke point that polls crossterm directly (Renderer::finish, the agents-view finish, exit_restore::restore_terminal) so a parked reader can never hold the global lock across a drain or a mount join; (b) TICK: the fixed 50ms arm fires only while a parked autocomplete request or an armed selection auto-scroll exists (predicates snapshotted per iteration; the fresh-sleep-per-iteration timing is unchanged from the base's select shape), and the 2s bash-activity poll moves to its own absolute sleep_until arm (same cadence); (c) TWO LATENT-TIMER DEPENDENCIES the unconditional tick was masking got their own deadline arms: the action toasts' TTL repaint and the Ctrl+C exit-hint expiry (both were tick-driven repaints on an otherwise idle surface; both now arm render_deadline exactly like the hint expiry already did). (5) ORACLES: the TUI OUTPUT BYTES frozen \u2014 a PTY byte-capture differential (tui_bytes_oracle.py: typing bursts, the autocomplete park (the conditional tick's served path), Esc, the hint arm + a 2.5s silence (the deadline-armed expiry), a marker-less multiline burst paste, an SGR mouse press-hold-release at the edge (the auto-scroll arming), a 2s silent park then a keystroke (the parked reader wakes on real input), the double-Ctrl+C exit incl. the restore bytes), base vs cand on the same VM, byte-identical required; the served-path tests (sequence_guard's poll_deadline pair, kitty_early_typing_e2e (the probe-window interleave), view_switch_latency_e2e (the stop/join path)) + the full suite in the gate. (6) THE A/B: paired same-VM sequential ABBA (base,cand,cand,base; 180s attached windows, thread-sum rates, sha-asserted unlink-then-copy binary swaps with comm=prime-agent staging, probe_v09 preflights pre/mid/post, noop control in every window, keypress latency rider). FOLD + THE GATE-RED CYCLE (the lane's own discovery arc, disclosed in full): the first full-suite gate on the cut's first head (ccf7cff5c) came back RED with two UNKNOWN failures beside one registered known-red family member (bounded_wait_starvation_kill_cancels_mid_provider_wait, auto-attached, current): (a) tui_renames_session_through_slash_command \u2014 GREEN SOLO 2/2 on the candidate (the co-scheduled class, never solo); (b) every_exit_route_restores_the_kitty_mode/force_quit \u2014 DETERMINISTIC SOLO, a REAL regression of the cut, root-caused by paired strace (base vs cand, same VM, same route): the non-handoff exit (double-Ctrl+C, /exit) is consumed at the loop condition AFTER ONE SELECT PERIOD BY DESIGN (the code's own comment: 'the select after it parks the exit for the tick' \u2014 the unconditional quiet tick was the guaranteed wake), and the parked tick left the exit waiting 1.33s for the next armed timer (the 2s bash poll), sliding the whole exit path out of the force-quit watchdog's stall shape. THE FIX: a pending non-handoff exit now takes the frame arm immediately (render_deadline = now; the frame arm is the one that can wake now), so the exit's tail pass and the loop condition run in the same iteration \u2014 strictly sooner than the tick ever delivered it; the force-quit route then passed at the base's exact 4.00s solo and the full exit-route matrix went green. The same cycle surfaced two adjacent hardenings: the 2s bash-activity poll now arms only on daemons that advertise the kernel-bash registry (the spawn's own capability gate hoisted into the arm \u2014 every fire on a non-advertising daemon was a no-op), and the restore_pristine driver-script bug (a stale file list that let one v5 hunk poison a verification run) was fixed and the poisoned run's evidence discarded. THE BYTE ORACLE'S OWN ARC: the first comparison caught the harness's settle-walk retry race (the probe token re-typed once more on one arm \u2014 the first 1889 bytes of keystroke renders byte-identical); the comparison window was narrowed to the post-settle scripted session (the instrument's fix, not the code's), and the second comparison found EXACTLY ONE divergence island: 44 bytes on base, zero on cand, streams realigned and identical for the remaining 4.6KB \u2014 a single tick-driven cursor-only followup paint after the paste frame (the cursor to the paste's end column + sync markers, no cell content), the same tick-artifact class the cut removes and the shape TS's event-driven loop produces; the base-vs-base determinism control (two oracle runs on the base arm) returned byte-identical (7326/7326, first diff None), proving the island is the candidate's change, not run noise \u2014 disclosed as the lane's one characterized byte divergence with content-frame byte-identity everywhere else.",
+ "parity_notes": "Parity-frozen surfaces: TUI output bytes (the differential oracle) + all RLM/API/session surfaces untouched. TS-parity: TS's TUI at idle-attached was measured directly (thread-sum honest): 619.68/535.31/s tree at 5.24-5.39% of a core \u2014 bun/node RUNTIME churn (HeapHelper GC threads ~30-35/s each + the event loops), NOT deliberate timers \u2014 so the port (184/s at 0.28-0.41%) already leads ~3x on wakes and ~13x on CPU in the attached shape, and the cut defers NOTHING TS does eagerly: TS's own input is event-driven and its TUI keeps no idle timer. The port's 10ms poll and unconditional 50ms tick are port artifacts; the cut only extends the lead. The kitty-probe window keeps the base's 10ms interleave (the #3010 contract), the reader handoff's stop is FASTER (wake vs poll tick), and the autocomplete/auto-scroll/quiet-tick timing is the same fresh-sleep shape as the base select.",
+ "base": {
+  "revision": "4c40e964bbac75811872b9450e3086703cf1d519",
+  "note": "origin/rust at lane start (the 49th hillclimb merge in); the tip moved DURING the lane (0635314e..e67f682d7..407ca3f29) - folded append-only before the record, twice"
+ },
+ "branch": "lane/tui-wake",
+ "commits": [
+  "5438c6401c459721c8367a29c791be8d18db02be",
+  "e4e0c6ae72fcac6581d566f6f053e6970a3baf4e",
+  "6b8a568fa9ca0c6f4b4d38244b64722f8d78dcbc",
+  "dbbdbceefd9f76ee82eed703a8b262e7c58b25e0",
+  "98bd8000c59a441905b63a209ee2fdacd23fb0ee",
+  "f9e5b276c924b71c4c6a2abad83d3ff00951de8a",
+  "8d09bd09dd3e2bff10d993c1dddbd37587cb1049"
+ ],
+ "build": {
+  "sandbox_id": "b0jfmh9qx7vefd06u1g6e4z6",
+  "base_binary_sha256": "2e7a6380dfebe30098d0eab46379caf9bd55e8877955f4fc73fafb84218fa44e",
+  "cand_binary_sha256": "8e6641b5f7fe4db4f8741744a030c2d5af9cb7191f75fa78fbba5f3a7bb5cc2e",
+  "toolchain": "rustup 1.98.1 (cargo build --release --locked --workspace), ubuntu:22.04 VM (16c/32GB, AMD EPYC 9255)",
+  "ts_reference": "official 0.9.6 (69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb), run in place"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "io_regime": {
+   "phase1_preflight_pre": "PROBEV09 pre A_N=40 A_STALL_RATE=100.0 A_MAX=58.0 A_P50=41.74 B_STALL_RATE=5.0 B_P50=0.15 CLASS=D",
+   "phase1_preflight_mid": "PROBEV09 mid A_N=40 A_STALL_RATE=100.0 A_MAX=64.9 A_P50=40.60 B_STALL_RATE=5.0 B_P50=0.19 CLASS=D",
+   "abba_preflight": "stormy-regime window: A class p50 5.69 max 529.1 in one leg (the wake metric is context-switch counting, I/O-regime-insensitive; the noop control and per-window attribution hold); disclosed per the advisory's phase model",
+   "note": "the same CLASS=D shape the census's own wake legs ran under; no timing legs in this lane"
+  },
+  "tip_redecompose_rust_180s": {
+   "trials": 2,
+   "tree_thread_sum_per_s": [
+    183.95,
+    184.65
+   ],
+   "tree_leader_per_s": [
+    20.06,
+    20.04
+   ],
+   "cpu_pct_of_core": [
+    0.283,
+    0.406
+   ],
+   "keypress_p50_ms": [
+    0.38,
+    0.38
+   ],
+   "tui_process_thread_sum_per_s": [
+    177.9,
+    178.54
+   ],
+   "attribution": "the input reader [prime-agent] 99.29-99.34/s (the 10ms poll) + two [tokio-rt-worker] 28.43-31.93/s (the 50ms tick's timer/wake churn) + the leader [prime-agent] 20.04-20.06/s (the fixed tick arm); rest of tree: daemon 2.51-2.56, worker 2.05-2.06, kernel 1.49-1.5",
+   "noop_control": "0.0 wakes/s in every window",
+   "pole_check": "identical anatomy to the census at the moved tip - the classes persisted through the four tip moves"
+  },
+  "ts_attached_parity_180s": {
+   "trials": 2,
+   "tree_thread_sum_per_s": [
+    619.68,
+    535.31
+   ],
+   "tree_leader_per_s": [
+    83.31,
+    72.67
+   ],
+   "cpu_pct_of_core": [
+    5.389,
+    5.239
+   ],
+   "keypress_p50_ms": [
+    4.29,
+    3.56
+   ],
+   "attribution": "bun/node RUNTIME churn, NOT deliberate timers: the TUI client leader 46.39-50.2/s + 7-8 [HeapHelper] GC threads ~30-35/s each (~319/s); the daemon node process 121.33-150.57/s; the worker 125.64-148.88/s",
+   "verdict": "the port led ~3x on wakes and ~13x on CPU in the attached shape BEFORE the cut; TS keeps no idle timer (its stdin is a data-event stream; the loader interval runs only while animating; scheduleRender arms only on render requests) - the cut defers nothing TS does eagerly and only extends the lead"
+  },
+  "abba_wake_180s": {
+   "order": [
+    "base",
+    "cand",
+    "cand",
+    "base"
+   ],
+   "base_tree_thread_sum_per_s": [
+    192.17,
+    184.62
+   ],
+   "cand_tree_thread_sum_per_s": [
+    10.43,
+    10.43
+   ],
+   "base_tui_thread_sum_per_s": "180.7-182.0 (reader 98-98.9, workers 26.8-36, leader 19.9-20)",
+   "cand_tui_thread_sum_per_s": [
+    4.28
+   ],
+   "cand_tui_attribution": "leader 1.0 + two tokio workers 1.58-1.69 = the 2s kernel-bash activity poll (the daemon advertises the capability; TS-parity behavior, the same poll the base ran on its tick)",
+   "reduction": "the TUI's own artifact classes 176.4-177.6 -> 4.28/s (97.6%); tree 18.1x; cpu 0.36-0.38% -> 0.056-0.061%; keypress p50 0.37-0.44ms (both sub-ms, no regression)",
+   "pole_check": "the single-digit TREE pole at 10.43 (missed by 0.4/s - the gap owned by the TS-parity bash poll + the non-TUI floor the census itself scoped: daemon 2.56 + worker 2.09 + kernel 1.5); the TUI-attached class itself single-digit MET (4.28)",
+   "sha_discipline": "arms staged as /root/bins/arm-<arm>/prime-agent (comm=prime-agent), sha-asserted per unlink-then-copy swap, base!=cand asserted at arming"
+  },
+  "bytes_differential_oracle": {
+   "instrument": "the raw-PTY byte capture over the scripted session (typing bursts, the '/' autocomplete park, Esc, the Ctrl+C hint arm + a 2.5s silence expiry, a marker-less multiline burst paste, an SGR mouse edge press-hold-release, a 2s silent park then a keystroke, the double-Ctrl+C exit incl. the restore bytes), base vs cand on the same VM",
+   "settle_window_note": "the comparison window is the post-settle scripted session (the harness's settle walk re-types its probe token a nondeterministic number of times - harness input, not product surface)",
+   "verdict": "content frames byte-identical; EXACTLY ONE divergence island: 44 bytes on base, zero on cand, realigned immediately, identical for the remaining 4.6KB: a single tick-driven cursor-only followup paint after the paste frame (cursor-to-end + sync markers, no cell content) - the tick-artifact class the cut removes, the shape TS's event-driven loop produces",
+   "determinism_control": "base-vs-base: two oracle runs on the base arm returned byte-identical (7326/7326, same sha, first diff None) - the island is the candidate's characterized change, not run noise",
+   "served_paths": "the autocomplete dropdown materialized on the conditional quiet tick (in-stream), the parked reader delivered every scripted input (the 2s-silence-then-keystroke leg), the hint expiry repainted on its deadline arm, the double-Ctrl+C exit + restore bytes identical"
+  },
+  "served_path_tests": {
+   "sequence_guard": "30 passed (the poll_deadline pair: parks when nothing held, the remaining hold at the deadline)",
+   "kitty_early_typing_e2e": "3/3 (the probe-window interleave with the parked reader; the DA1 settle; the kitty upgrade)",
+   "view_switch_latency_e2e": "green (the stop/join path under the ceiling)",
+   "kitty_exit_routes": "the full matrix green (the force-quit route at the base's exact 4.00s after the exit-wake fix)",
+   "rename_solo": "2/2 green (the gate red was the co-scheduled class)"
+  }
+ },
+ "fold": {
+  "folded_base": "fda40b56a14cd6b3353693261f51a6104c860987",
+  "head_after": "8d09bd09dd3e2bff10d993c1dddbd37587cb1049",
+  "note": "THREE append-only folds at the moving tip, all pre-record: fold 1 (e67f682d7) clean; fold 2 (407ca3f29) one conflict (the base's #3083 sequence_guard split vs the lane's poll_deadline pair - resolved by taking the base's split + transplanting the pair text-identical into tests.rs); fold 3 (fda40b56a: #3122, #3103 the layout-reuse lane's landed handoff, #3119/#3120 splits, #3113, #3075) clean. Every fold's post-fold re-diff verified hunk-by-hunk: all 20 lane files content-identical (the flags: exit_restore.rs's shifted context from #3089's restart_output block above the lane's hunk - the same class as fold-1's renumbered offsets). The net lane delta vs the folded base: 20 files +286/-68 then the one-line clippy fixup 8d09bd09d (the settle fix's dead settled-branch clear dropped: the branch breaks immediately, so the clear was never read - clippy -D warnings; the miss disclosed: the lane's VM solo verification ran the focused tests, not clippy, on the fix head; the pre-gate battery must clippy every fix head. The fixup verified at its head: clippy -p pa-tui --all-targets -D warnings RC=0, the bang battery 8/8 in 5.08s, chat_detail 2/2)"
+ },
+ "gates": {
+  "fmt": "cargo fmt --all --check RC=0 at every lane head (the pre-gate battery + the final gate's fmt leg)",
+  "clippy": "clippy --workspace --all-targets -- -D warnings RC=0 at every lane head (the pre-gate battery + the final gate's clippy leg)",
+  "test": "THE GATE SAGA (four armed gates, three killed, all disclosed; the binding gate on the final head): (1) gate_1790656050 (dbbdbceef, pool-1) killed by the orchestrator's ruling - its test leg ran on the stale pre-#3063 pool VM (the kernel-lifecycle batteries red at the exact RUNTIME_READY_CHECK assert; the environmental class the switch-layout-reuse lane root-caused and whose record owns it), compounded by the v1.4.7 single-stream module layering three suite-runs; (2) gate_1790667892 (dbbdbceef, pool-0 FIXED) killed at 3h04m - fmt/clippy rc=0 then ZERO test output (the deeper single-stream hang shape); (3) gate_1790679072 (dbbdbceef, pool-0) killed at the >60min watch-discipline threshold - the bash_bang_headless battery wedged at 11:16 with all 8 tests >60s at 0.0% CPU and the chat_detail cascade the same; THE HARVEST: the orphaned cargo completed the suite-minus-wedge shape = TWO REGISTERED KNOWN-REDS ONLY (bounded_wait_starvation_kill_cancels_mid_provider_wait + autobg_blocking_bash_turn_bound_co_scheduling), ZERO unknown test reds; THE SOLO: the bang battery DETERMINISTICALLY wedges at the exact head on a quiet VM (SOLO_RC=124) - the tree-dependent red, root-caused (see the wedge disclosure below) and FIXED on the lane (98bd8000c); (4) gate_1790688996 (f9e5b276c, the folded head with the fix) - THE BINDING GATE; (5) gate_1790688996 (the folded head f9e5b276c with the settle fix) - clippy RED on the settle fix's dead settled-branch clear (my miss; the fixup 8d09bd09d verified clippy-clean on the VM + the bang battery 8/8 + chat_detail 2/2 at the fixup head), its test leg running the FULL SUITE at the settle-fixed folded tree (the first full-suite co-scheduled run with the fix - the evidence cited in the record); (6) the binding re-arm at the fixup head 8d09bd09d",
+  "known_reds_encountered": "bounded_wait_starvation_kill_cancels_mid_provider_wait (auto-attached, current registration) + autobg_blocking_bash_turn_bound_co_scheduling (the #3076 fold's own new test, the registered load-class member, expiry 2026-10-02) + the #3063 stale-venv environmental class (the kernel batteries on the stale pool VMs - the switch-layout-reuse lane's root-cause, its record owns it; the pool VMs reseeded per its recipe)",
+  "gate_final": "gate_1790690261 at the final head f127c3cb9 (base_state FOLDED - the head IS the tip at checkout): fmt RC=0, clippy --workspace --all-targets -D warnings RC=0 (the fixup's own gate-leg proof), the full suite: 1,909 passed, ZERO unknown reds, EXACTLY TWO registered known-reds auto-classified live - autobg_blocking_bash_turn_bound_co_scheduling (the #3076 fold's own new test, the load class, its 4th full-suite occurrence; solo-green x2 at the exact head per its registration; the CI's 4-shard split runs it green) + dead_sidecar_degrades_to_errors_not_panics (the registered test-assertion-race member, expiry 2026-10-02). VERDICT: RED_KNOWN_REDS - the merge-bar-acceptable form: every failure classified, zero unknowns. THE CO-SCHEDULED SETTLE PROOF in the same run's shape: the bang battery 8/8 in the suite (gate_1790688996's leg at f9e5b276c: 8 passed in 5.10s, and the battery green again here), the wedge class gone under full-suite load."
+ },
+ "evidence": {
+  "archive": "tuiwake-evidence.tar.gz",
+  "sha256": "678c965f88ede6bb7e8538f1635a69a8111fa37c9276db0cd5b765056ba92612",
+  "bytes": 1213256,
+  "contents": "the full tuiwake measurement set + the root-cause straces + the wchan samplings + every phase log + the driver scripts (unchanged, sha-pinned)",
+  "wedge_archive": "tuiwake-wedge-evidence.tar.gz",
+  "wedge_sha256": "728cadac4b5f6dde9c6d742c3cf9447d2de715e7a4f9bd26fbe73413eb60fc7f",
+  "wedge_bytes": 323370,
+  "wedge_contents": "the settle-wedge investigation: the 49,572-line strace of the wedged run, the settle-instrument receipts (the loop-top trace + the 'an unpainted frame' naming), the gate-saga disclosure json, the settle-fix diff, the verification receipts at both heads (the pre-fold trio + the folded-head quartet), the pool-VM harvest shape"
+ },
+ "validity": "Same-VM sequential, sha-asserted binary swaps (base!=cand asserted; unlink-then-copy; comm=prime-agent staging per the attribution lesson), the noop control in every window, preflights bracketing every phase (CLASS=D disclosed - the census's own wake-leg shape; the wake metric is context-switch counting, I/O-regime-insensitive, no timing legs in this lane). The byte oracle's determinism control (base-vs-base byte-identical) proves the one disclosed divergence island is the candidate's change. The force-quit regression was caught by the full-suite gate, root-caused by paired strace, fixed, and re-proven at the base's exact timing - the served-path evidence for the exit-wake fix.",
+ "outcome": "The TUI-attached idle wake class: SOLVED at the source. The three census classes (the reader's 10ms poll ~99.4/s, the run loop's fixed 50ms tick 20.06/s, the tokio timer churn it drove 28-36/s) are each eliminated in their parked form: the reader parks edge-driven (the vendored crossterm waker; the kitty-probe window keeps the 10ms interleave; the stop wakes the park - handoff 10ms -> ~0, with stop-before-drain at every teardown choke point), the quiet tick arms only on pending work (autocomplete park / an armed auto-scroll), the 2s bash poll rides its own capability-keyed absolute arm, and the two latent timer repaints the tick masked (the toasts' TTL, the Ctrl+C hint expiry) arm their own render deadlines. MEASURED: the TUI process 180.7-182.0 -> 4.28/s (97.6% of its own artifact wakes gone; the residual IS the TS-parity 2s bash poll), the tree 192.17/184.62 -> 10.43/10.43 (18.1x, order-stable), CPU 0.36-0.38% -> 0.056-0.061% of a core, keypress p50 sub-ms on both arms. The single-digit TREE pole missed by 0.4/s with the gap owned by name (the bash poll + the census's own non-TUI floor 6.15/s); the TUI-attached class itself single-digit MET. TS parity measured directly: TS's attached 535-620/s is bun/node runtime churn - the cut defers nothing TS does eagerly and extends an existing ~3x lead. The frozen surface: content frames byte-identical on the differential oracle with ONE characterized 44-byte divergence island (a tick-artifact cursor-only followup paint the cut removes - the TS shape), the base-vs-base determinism control proving it is the candidate's change, disclosed. THE LANE'S BONUS FINDS: the exit-wake contract ('the select parks the exit for the tick') made explicit and preserved with a strictly-sooner immediate arm; the toasts/hint timer dependencies the tick masked; the vendored crossterm's additive wake exports documented in PRIME_AGENT_PATCH.md for upstreaming.",
+ "decision": "SHIP: the lane's cut is the TS-anchored shape with the artifact classes eliminated, the regression caught and fixed with the served-path proofs, and the pole gap owned by named parity behavior. PR + reviewers next; the honest negatives (the 0.4/s tree-pole miss, the one 44-byte disclosed divergence island) ride the record.",
+ "session": {
+  "worker": "tui-wake-thread"
+ },
+ "wedge_disclosure": {
+  "the_finding": "THE CUT'S OWN LATENT DEPENDENCY, caught by the gate and root-caused with a full oracle chain: the headless settle gate (which ends every headless run) and its 60s bound both run at the loop top, so a settle waiting out a member needs the loop to wake to re-check - and after the idle-wake cut a fully quiet select parks forever (the quiet tick now arms only on pending work; the ui_rx arm deliberately parks once the plan is done; the frame deadline is spent; the bash poll parks without the capability). The plan's HeadlessDone landing with a pending frame leaves the gate holding 'an unpainted frame' it would clear one iteration later - and that iteration never comes; the bound meant to convert the wait into a named error fires only on an iteration too. THE OLD UNCONDITIONAL TICK WAS THE SETTLE GATE'S CLOCK - the predecessor's identical gate code ran the battery green on the pre-fold tip; the tip batch's event/paint timing made the race reachable in combination with the cut (the four-hypothesis elimination: not the stale venv, not co-scheduling - the quiet-VM solo reproduces, not the lane delta alone, not the tip alone)",
+  "the_evidence_chain": "the wchan/ss/fd maps (ESTAB 0/0 queues: the full mock protocol flowed - hello, create, attach, BOTH execute_bash round-trips answered, all frames received; the wedge at the run's end; zero pa-daemon processes is NORMAL for the mock battery), the PA_TUI_DUMP_FRAMES zero-frames receipt (the hang before any paint dependence), the settle instrument naming 'an unpainted frame' at the last iteration, the 49,572-line strace",
+  "the_fix": "98bd8000c (+15/-1, run.rs only): the settle re-check IS pending work - it joins the quiet tick arm's work-conditional predicate (settle_recheck_wanted = headless_done && headless_settle_pending): the arm wakes every 50ms only while a settle is pending -> the gate re-checks each wake -> the frame paints -> settled -> break; a truly-stuck member now reaches the 60s bound's attributable bail instead of the infinite hang; terminal runs never arm it (headless_done is headless-only); a settled surface still parks - the idle wake budget is unchanged; the terminal TUI's byte surface is untouched",
+  "the_verification": "the wedged solo green in 2.17s; the full bang battery 8/8 in 5.09s; the chat_detail cascade 2/2 in 0.06s - then THE FOLDED-HEAD TRIO: the bang battery 8/8 in 5.08s, chat_detail 2/2, sequence_guard 30/30, the kitty exit-route matrix 2/2 in 19.62s (the timing surface changed by the fold's #3103 hunks - the fix holds there, the strongest form of the proof)",
+  "the_fleet_lesson": "THE WORK-CONDITIONAL-ARM TRAP: every quiet-tick arm must carry EVERY pending-work predicate (the settle re-check included) or a future wake cut re-opens this exact hang; any lane cutting the tick family must re-run the headless settle suite (the bang battery is the canary) - the settle gate's 60s bound is iteration-dependent, so it is NOT a safety net for a dead-parked loop"
+ }
+}
