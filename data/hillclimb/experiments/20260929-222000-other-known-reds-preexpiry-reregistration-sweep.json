@@ -1,0 +1,387 @@
+{
+ "id": "20260929-222000-other-known-reds-preexpiry-reregistration-sweep",
+ "axis": "other",
+ "lane": "knownreds-sweep (the standing INFRA BACKLOG item, time-sensitive: the known-reds pre-expiry re-registration sweep; fleet-tools registry + bench record only - NO product change, NO PR (the measurement/infra precedent))",
+ "hypothesis": "The registry's expiry cluster (8 members ALREADY expired 09-26..09-28; 30 more expiring 2026-09-29..10-06, 2 on the sweep day) would lapse member fires into UNKNOWN-triage for every lane as the dates pass (the fd_lifecycle precedent: one lapsed entry forced a full triage cycle on the tui-wake lane). QUESTIONS: which members are still-live (fresh solo x3 receipts at the current tip), which are honestly retired (test gone, family fixed upstream, pattern dead), and does the renewal carry the census + restated reopen triggers per the tui-wake precedent?",
+ "approach": "(1) ENUMERATE both registry copies (repo + live, byte-identical sha 454028235e4f, 88,102 bytes, indent=1/no-trailing-newline style verified round-trip-identical); group by family + expiry. (2) CENSUS: ALL 1,048 fleet-pipeline run dirs scanned (921 verdict-carrying incl. the review focused-battery mechanical failures; the 127 no-verdict wedge/killed runs cannot carry classified fires - a raw-log grep found no additional fires), per-member fires/heads/VMs/days + auto-classified vs unknown/expired splits. (3) TREE AUDIT at the pinned tip 3e98be816175a9d3b48faf0bdbd44797aa6f738d (the CURRENT origin/rust, moved past the brief's e2ee82f2d - 57 hillclimb merges now): every pattern grepped (one test REMOVED: autobg, reverted by #3129; one family pattern DEAD: 'queue_delivers' matches only the fixed multi_item test its own specific entry shadows); the fix-lane statuses verified by commit archaeology (#2725 06fba7607, #2727 4627c9a6e, #2910 711e8b573, #3075 06d901df, #3129 0b8ee6ec2 - all ancestors of the tip). (4) FRESH RECEIPTS: quiet fresh triage VMs (NEVER pool VMs; no vm= bypass - 8c/32G/100G rust:1-bookworm), the exact gate-env recipe (bootstrap + hosts guard + kernel guard BUILT + checkout pinned + workspace test build), --test-threads=1, sequential solos, 37 battery rows (33 renewals + 4 retirement closing receipts) x3. (5) THE HONEST FOLLOW-UPS the receipts forced: a second x24 calm-control battery for the two members whose solo reds fired their own reopen triggers, on a regime-labeled VM (fsync probe /tmp p50=210.14ms p90=215.26ms max=563.58ms). (6) THE COMMIT with the sync-in-the-same-commit lesson (repo + live in one operation, sha asserted) + the classifier verify on every fired failname.",
+ "verdict": "SWEEP LANDED: the registry went from 8-expired + 30-expiring to ZERO expired - 33 members RENEWED to 2026-10-06 (each entry carries its fresh solo receipts + the 921-run census + a restated reopen trigger), 6 members HONESTLY RETIRED (never renewed blindly: the autobg test removed by the #3129 revert; the queue_delivery family pattern dead at tip; the multi_item deterministic red fixed by #2725; the ranked_hits race closed by construction #2910 (the task's historical-list ruling); tui_side_question stabilized by #2727 with zero post-fix fires across ~900 runs; the rlm_spawn connect-budget wedge closed by #3075 with all 10 census fires predating it + 28 post-fix full gates clean). Retired entries are REMOVED (a post-fix registration left in place would auto-cite stale classifications - exactly the historical-list anti-pattern; their full text is preserved in the fleet-tools git history + this record's table). THE SWEEP'S OWN FINDING: abort_boundary_follow_ups' 'never solo' phrasing is FALSIFIED - 2/24 quiet-VM solo reds at the identical 60s follow-up-wait overrun (22/24 green, same binary, slow-fsync regime VM) - the envelope is corrected IN the entry (co-scheduled fires + a reproducible ~8% solo arm), the renewal stands, the reopen trigger now honestly distinguishes in-envelope solo reds from code-red reproducibility; tui_refused_draft's 1/24 solo red is IN-CLASS with the 5731b28 standing environmental fsync-stall arm (this VM's p50=210ms fsync is NOT the calm regime; that lane's calm control was 24/24).",
+ "sweep_table": [
+  {
+   "member": "queue_delivery_multi_item_deterministic",
+   "family": "deterministic red (FIXED #2725)",
+   "old_expiry": "2026-09-27",
+   "census": "0 fires (0 auto-classified + 0 unknown/expired-classified) across 0 heads / 0 VMs / 0 days (none), last -",
+   "fresh_receipts": "SOLO x3 GREEN (11.75s/10.05s/10.02s)",
+   "disposition": "RETIRED: the DETERMINISTIC red was FIXED by #2725 (06fba7607, 'hold the queue-delivery e2e busy turn until the parked lane is observed'); zero fires in the whole 921-run census window; closing receipt SOLO x3 GREEN at the tip"
+  },
+  {
+   "member": "compaction_abort_pair_mid_threshold",
+   "family": "compaction_abort daemon-timing family",
+   "old_expiry": "2026-09-26",
+   "census": "18 fires (16 auto-classified + 2 unknown/expired-classified) across 13 heads / 2 VMs / 1 days (2026-09-25..2026-09-25), last 2026-09-25",
+   "fresh_receipts": "SOLO x3 GREEN (2.96s/2.34s/3.23s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "mcp_login_worker_begin_login_gating",
+   "family": "env-DNS (/etc/hosts NUL-padding; HOSTS_GUARD repairs at claim)",
+   "old_expiry": "2026-09-29",
+   "census": "92 fires (59 auto-classified + 33 unknown/expired-classified) across 54 heads / 2 VMs / 3 days (2026-09-25..2026-09-27), last 2026-09-27",
+   "fresh_receipts": "SOLO x3 GREEN (41.82s/0.10s/0.10s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "compaction_abort_pair_wedged_worker",
+   "family": "compaction_abort daemon-timing family",
+   "old_expiry": "2026-09-28",
+   "census": "19 fires (16 auto-classified + 3 unknown/expired-classified) across 13 heads / 2 VMs / 2 days (2026-09-25..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (13.88s/14.64s/14.09s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "agents_view_search_ranked_hits_sort",
+   "family": "agents_view render race (CLOSED #2910)",
+   "old_expiry": "2026-09-27",
+   "census": "3 fires (1 auto-classified + 2 unknown/expired-classified) across 3 heads / 2 VMs / 2 days (2026-09-25..2026-09-27), last 2026-09-27",
+   "fresh_receipts": "SOLO x3 GREEN (1.34s/0.46s/0.49s)",
+   "disposition": "RETIRED: the ranked-hits render/data-arrival race closed BY CONSTRUCTION by #2910 (711e8b573, AgentsStep::WaitRender; 2026-09-27T05:20Z); all 3 census fires predate it; the task's own historical-list ruling; closing receipt x3 GREEN"
+  },
+  {
+   "member": "rlm_spawn_replacement_concurrent_spawns",
+   "family": "connect-budget exhaustion (FIXED #3075)",
+   "old_expiry": "2026-10-05",
+   "census": "10 fires (9 auto-classified + 1 unknown/expired-classified) across 9 heads / 6 VMs / 4 days (2026-09-25..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (5.19s/4.38s/3.79s)",
+   "disposition": "RETIRED: the connect-budget wedge root-caused and CLOSED by the bootstorm fix #3075 (06d901df, 2026-09-29T11:07Z: the handshake channel stays private until the auth answer); all 10 census fires predate it; 28 post-fix full gates clean; closing receipt x3 GREEN at the tip"
+  },
+  {
+   "member": "queue_delivery_e2e_family",
+   "family": "daemon-timing queue family (pattern dead at tip)",
+   "old_expiry": "2026-09-26",
+   "census": "0 fires (0 auto-classified + 0 unknown/expired-classified) across 0 heads / 0 VMs / 0 days (none), last -",
+   "fresh_receipts": "no receipt possible (test removed / pattern dead)",
+   "disposition": "RETIRED: pattern 'queue_delivers' matches ONLY multi_item_queue_delivers_every_item_in_lane_order at the tip, which its own specific (now-retired, fixed) entry shadows - a dead pattern that can never fire"
+  },
+  {
+   "member": "interactive_daemon_render_timing",
+   "family": "interactive_daemon render-timing",
+   "old_expiry": "2026-09-26",
+   "census": "5 fires (4 auto-classified + 1 unknown/expired-classified) across 4 heads / 2 VMs / 2 days (2026-09-25..2026-09-27), last 2026-09-27",
+   "fresh_receipts": "SOLO x3 GREEN (3.46s/3.06s/3.62s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "tui_side_question_pane_flow",
+   "family": "daemon-timing family (STABILIZED #2727)",
+   "old_expiry": "2026-09-26",
+   "census": "8 fires (8 auto-classified + 0 unknown/expired-classified) across 7 heads / 2 VMs / 2 days (2026-09-24..2026-09-25), last 2026-09-25",
+   "fresh_receipts": "SOLO x3 GREEN (1.67s/1.02s/1.64s)",
+   "disposition": "RETIRED: stabilized by #2727 (its title names tui_side_question; landed 2026-09-25T02:25Z); all 8 census fires predate/contemporaneous; zero post-fix fires across ~900 runs; closing receipt x3 GREEN"
+  },
+  {
+   "member": "mcp_oauth_callback_family",
+   "family": "port-collision co-scheduling (53700-53709)",
+   "old_expiry": "2026-10-01",
+   "census": "1 fires (1 auto-classified + 0 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-25..2026-09-25), last 2026-09-25",
+   "fresh_receipts": "SOLO x3 GREEN (0.09s/0.09s/0.10s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "fd_lifecycle_supervisor_restart_loop",
+   "family": "fd_lifecycle co-scheduling",
+   "old_expiry": "2026-10-06",
+   "census": "13 fires (9 auto-classified + 4 unknown/expired-classified) across 9 heads / 3 VMs / 4 days (2026-09-25..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (16.88s/15.94s/15.98s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "fd_lifecycle_worker_fd_count_co_scheduling",
+   "family": "fd_lifecycle sampling race",
+   "old_expiry": "2026-10-06",
+   "census": "2 fires (0 auto-classified + 2 unknown/expired-classified) across 2 heads / 2 VMs / 2 days (2026-09-28..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (6.88s/7.56s/6.33s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "tui_dispatches_slash_commands_menu_and_suggestions",
+   "family": "pa-tui rotating flake (CI cross-run class)",
+   "old_expiry": "2026-09-27",
+   "census": "0 fires (0 auto-classified + 0 unknown/expired-classified) across 0 heads / 0 VMs / 0 days (none), last -",
+   "fresh_receipts": "SOLO x3 GREEN (1.66s/2.74s/1.95s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "tool_result_entries_persisted_and_streamed",
+   "family": "supervisor_e2e shard-concurrency family",
+   "old_expiry": "2026-09-30",
+   "census": "17 fires (17 auto-classified + 0 unknown/expired-classified) across 17 heads / 5 VMs / 4 days (2026-09-26..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (15.50s/1.90s/1.91s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "tui_prompt_stash_family",
+   "family": "interactive_daemon_e2e prompt-stash rotating",
+   "old_expiry": "2026-10-05",
+   "census": "14 fires (11 auto-classified + 3 unknown/expired-classified) across 11 heads / 10 VMs / 3 days (2026-09-25..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (15.61s/8.61s/9.99s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "kernel_restore_guards_co_scheduling_family",
+   "family": "kernel_restore machine-class (CI/co-scheduling line)",
+   "old_expiry": "2026-10-01",
+   "census": "35 fires (26 auto-classified + 9 unknown/expired-classified) across 31 heads / 2 VMs / 2 days (2026-09-27..2026-09-28), last 2026-09-28",
+   "fresh_receipts": "SOLO x3 GREEN (11.96s/0.14s/0.13s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "kernel_restore_live_globals_co_scheduling",
+   "family": "kernel_restore machine-class (CI/co-scheduling line)",
+   "old_expiry": "2026-10-01",
+   "census": "35 fires (26 auto-classified + 9 unknown/expired-classified) across 31 heads / 2 VMs / 2 days (2026-09-27..2026-09-28), last 2026-09-28",
+   "fresh_receipts": "SOLO x3 GREEN (0.18s/0.18s/0.18s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "update_download_stages_local_payload",
+   "family": "pool-VM co-scheduling (pa-core update::download)",
+   "old_expiry": "2026-09-29",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-27..2026-09-27), last 2026-09-27",
+   "fresh_receipts": "SOLO x3 GREEN (25.81s/3.61s/2.82s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "dead_sidecar_broken_pipe_assert_race",
+   "family": "dead_sidecar broken-pipe assert race",
+   "old_expiry": "2026-10-02",
+   "census": "9 fires (6 auto-classified + 3 unknown/expired-classified) across 9 heads / 4 VMs / 4 days (2026-09-25..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (1.05s/0.29s/0.30s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "chunked_snapshot_attach_streams_begin_chunk_end",
+   "family": "supervisor_e2e shard-concurrency family",
+   "old_expiry": "2026-09-30",
+   "census": "1 fires (1 auto-classified + 0 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (2.48s/2.02s/2.26s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_kill_cancels_mid_provider_wait",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-05",
+   "census": "10 fires (2 auto-classified + 8 unknown/expired-classified) across 10 heads / 3 VMs / 4 days (2026-09-26..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (2.00s/1.68s/1.69s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_abort_and_send_queued_acks",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-05",
+   "census": "4 fires (2 auto-classified + 2 unknown/expired-classified) across 4 heads / 4 VMs / 3 days (2026-09-27..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (1.62s/1.62s/1.63s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_tui_refused_draft",
+   "family": "bounded_wait starvation + 5731b28 fsync-stall class",
+   "old_expiry": "2026-10-05",
+   "census": "16 fires (14 auto-classified + 2 unknown/expired-classified) across 14 heads / 9 VMs / 2 days (2026-09-28..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3: 2 GREEN (2.28s/2.58s) + 1 RED (iter 2, 2.73s) | TRIAGE x24: 23 GREEN + 1 RED (in-class with the 5731b28 fsync-stall arm; this VM's fsync p50=210ms is NOT the calm regime)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_steer_mid_compaction",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-05",
+   "census": "5 fires (3 auto-classified + 2 unknown/expired-classified) across 5 heads / 3 VMs / 2 days (2026-09-28..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (1.60s/1.60s/1.60s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_team_picker",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-01",
+   "census": "3 fires (0 auto-classified + 3 unknown/expired-classified) across 3 heads / 2 VMs / 2 days (2026-09-27..2026-09-28), last 2026-09-28",
+   "fresh_receipts": "SOLO x3 GREEN (4.47s/2.50s/1.78s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_team_picker_escape",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-06",
+   "census": "6 fires (1 auto-classified + 5 unknown/expired-classified) across 6 heads / 4 VMs / 3 days (2026-09-27..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (3.00s/4.35s/2.52s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_tui_submit_outlived_by_switch",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-05",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (3.62s/2.58s/4.06s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "co_scheduled_staging_exec_etxtbsy_update_download",
+   "family": "staging-exec ETXTBSY contention",
+   "old_expiry": "2026-10-05",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (3.25s/2.36s/2.29s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_owned_stop_tombstone",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-05",
+   "census": "6 fires (1 auto-classified + 5 unknown/expired-classified) across 5 heads / 3 VMs / 3 days (2026-09-27..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (35.16s/34.57s/34.43s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_model_picker_sign_in",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-06",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (0.81s/0.34s/0.32s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_logout_no_creds",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-06",
+   "census": "2 fires (0 auto-classified + 2 unknown/expired-classified) across 2 heads / 2 VMs / 2 days (2026-09-26..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (1.47s/2.13s/2.68s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_acp_daemon_attached_option_pickers",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-06",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (1.86s/1.04s/1.16s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "autobg_blocking_bash_turn_bound_co_scheduling",
+   "family": "autobg turn-wall co-scheduling (REVERTED)",
+   "old_expiry": "2026-10-02",
+   "census": "32 fires (32 auto-classified + 0 unknown/expired-classified) across 26 heads / 2 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "no receipt possible (test removed / pattern dead)",
+   "disposition": "RETIRED: test REMOVED by the #3129 auto-backgrounding revert (0b8ee6ec2, ancestor of tip; zero tree matches at 3e98be816)"
+  },
+  {
+   "member": "bounded_wait_starvation_abort_boundary_follow_ups",
+   "family": "bounded_wait starvation (+ reproducible solo arm)",
+   "old_expiry": "2026-10-06",
+   "census": "5 fires (0 auto-classified + 5 unknown/expired-classified) across 5 heads / 3 VMs / 4 days (2026-09-26..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3: 2 GREEN (3.19s/3.19s) + 1 RED (iter 3, 61.18s) | TRIAGE x24: 22 GREEN + 2 RED at the identical 60s overrun (the 'never solo' envelope falsified; corrected in the entry)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "bounded_wait_starvation_compact_summary_header",
+   "family": "bounded_wait starvation",
+   "old_expiry": "2026-10-06",
+   "census": "1 fires (0 auto-classified + 1 unknown/expired-classified) across 1 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (3.06s/3.83s/3.07s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "supervisor_e2e_shard_flake_interactive_thinking_max_clamps",
+   "family": "supervisor_e2e shard-concurrency family",
+   "old_expiry": "2026-10-06",
+   "census": "0 fires (0 auto-classified + 0 unknown/expired-classified) across 0 heads / 0 VMs / 0 days (none), last -",
+   "fresh_receipts": "SOLO x3 GREEN (3.90s/3.28s/2.83s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "supervisor_e2e_shard_flake_read_goldens_session_stats",
+   "family": "supervisor_e2e shard-concurrency family",
+   "old_expiry": "2026-10-06",
+   "census": "0 fires (0 auto-classified + 0 unknown/expired-classified) across 0 heads / 0 VMs / 0 days (none), last -",
+   "fresh_receipts": "SOLO x3 GREEN (1.90s/2.20s/2.31s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "hung_worker_escalation_window_co_scheduling",
+   "family": "escalation-window load race",
+   "old_expiry": "2026-10-02",
+   "census": "2 fires (1 auto-classified + 1 unknown/expired-classified) across 2 heads / 2 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (65.59s/65.29s/64.73s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  },
+  {
+   "member": "cli_mode_telemetry_defaults_co_scheduling",
+   "family": "pa-cli unit co-run-only",
+   "old_expiry": "2026-10-02",
+   "census": "2 fires (1 auto-classified + 1 unknown/expired-classified) across 2 heads / 1 VMs / 1 days (2026-09-29..2026-09-29), last 2026-09-29",
+   "fresh_receipts": "SOLO x3 GREEN (32.39s/0.85s/0.10s)",
+   "disposition": "RENEWED (expiry -> 2026-10-06)"
+  }
+ ],
+ "registry_delta": {
+  "before": {
+   "entries": 39,
+   "sha256_12": "454028235e4f",
+   "bytes": 88102,
+   "expired": 8,
+   "expiring_0929_1006": 30
+  },
+  "after": {
+   "entries": 33,
+   "sha256_12": "c8e25b60d8d6",
+   "bytes": 102313,
+   "expired": 0,
+   "all_valid_through": "2026-10-06"
+  },
+  "renewed": 33,
+  "retired": 6,
+  "closing_receipts": 4,
+  "no_receipt_possible": 2
+ },
+ "receipts_protocol": {
+  "tip_pinned": "3e98be816175a9d3b48faf0bdbd44797aa6f738d",
+  "recipe": "gate-env (bootstrap + HOSTS_GUARD OK + KERNEL_GUARD BUILT + pinned checkout + workspace test build); --test-threads=1; sequential solos; quiet VMs (no pool claims)",
+  "battery_vm": "t2llr6av8eb4g1dxyt9wzp8a (x3 battery, 37 members, 21:34:26->21:48:23Z)",
+  "triage_vm": "h4zf5ktroa5f2dqj0lcmibi0 (x24 control, 2 members, fsync-probe labeled)",
+  "evidence_transfer": "gzip+base64 pulls, VM-side sha256 taken BEFORE destroy, every pull sha-verified byte-identical, VMs destroyed only after verification"
+ },
+ "invalid_first_battery": {
+  "vm": "lio7wlw4qxz1tasub34gfqgn",
+  "what": "the v1 driver's battery-arm exec timed out on all 5 vm_exec attempts (an SDK stream-semantics shape); each retry RE-ARMED a battery -> 5 batteries co-ran on the sweep VM; the last arm's rm wiped the early solo records; all visible records are co-scheduled -> INVALID as quiet-solo receipts, fully disclosed and never used as receipts",
+  "corroborating_value": "the accidental 5-way co-load REPRODUCED the bounded_wait family at the tip: kill_cancels panicked 'kill waited out the held provider response (60.019s)' at kill_broadcast_tests.rs:354, abort_and_send 61.3s, abort_boundary 61.59s (all at the 60s budgets), tui_refused 5/12 - mechanism corroboration for the renewals, documented as such",
+  "v2_fix": "sentinel-guarded idempotent arm ('pgrep ^python3 battery.py -> ALREADY_ARMED'), the proven detach shape, post-arm verification of EXACTLY one battery process (RED_SETUP otherwise), per-record UTC+pid"
+ },
+ "classifier_verify": "42/42 failnames PASS against the committed registry: every renewed member's fired failname auto-cites its entry with expires=2026-10-06 (no shadows; specific-before-family order intact); the 6 retired failnames now report UNKNOWN honestly (a_blocking_bash_await..., concurrent_spawns_prompt..., multi_item..., queue_delivery_e2e::multi_item..., ranked_hits..., tui_side_question_pane_flow)",
+ "gates": "none (fleet-infra: no PR, the measurement precedent; the deliverables are the registry commit + this record)",
+ "validity": "(1) the receipts are quiet-VM solos at the pinned tip, sha-bound; the two solo-red members carry the x24 controls and corrected envelopes rather than suppressed evidence (no green-fishing: nothing was re-run past its protocol to obtain a green). (2) the census covers the 921 verdict-carrying runs (09-24..29); CI-only members' evidence (the supervisor_e2e shard pair, tui_dispatches) rests on their entries' CI citations + the fresh receipts, as documented. (3) the uniform 2026-10-06 expiry was chosen deliberately: ONE renewal date the fleet plans around, with the sweep itself now the standing cadence (the next due ~2026-10-04, BEFORE the date); a staggered-expiry variant was considered and rejected (scattered dates are harder to reason about; the wave risk is owned by the cadence, not the spacing). (4) the fleet-tools repo has no remote - the local commit + the byte-identical live sync IS the delivery (the standing topology).",
+ "outcome": "DONE: registry renewed (33) + honestly retired (6), both copies byte-identical sha c8e25b60d8d6..., fleet-tools commit 8f1d2c4 (sole pathspec, the sync-in-the-same-commit lesson), classifier verify 42/42, all three VMs destroyed only after sha-verified evidence pulls, the sweep table + the honest findings (the abort_boundary solo-arm falsification; the tui_refused in-class red) recorded.",
+ "decision": "STANDING CADENCE INSTATED: the pre-expiry sweep is a recurring fleet chore, next due ~2026-10-04 (before the uniform 2026-10-06 expiry); the backlog item closes with this record. DISCLOSED FOR THE OPERATOR: (a) abort_boundary_follow_ups now carries a reproducible ~8% solo arm on slow-fsync VMs - if a product-side follow-up-delivery stall question is wanted, that is a NEW lane (this sweep is registration hygiene, not a product investigation); (b) the uniform expiry date concentrates the next lapse wave on 10-06 if the cadence slips - the cadence note is the mitigation.",
+ "pr_url": null,
+ "record_path": "/home/ubuntu/prime-agent-bench/data/hillclimb/experiments/20260929-222000-other-known-reds-preexpiry-reregistration-sweep.json",
+ "session": "perf-knownreds-sweep (the wave-6/7 INFRA lane)",
+ "timestamp": "2026-09-29T22:20:00Z",
+ "head_note": "receipts pinned at origin/rust 3e98be816175a9d3b48faf0bdbd44797aa6f738d (the current tip; the brief's e2ee82f2d is 57 hillclimb merges behind - the receipts are tip-bound, the honest choice for a registry the fleet's gates read at THEIR heads)",
+ "base": {
+  "revision": "3e98be816175a9d3b48faf0bdbd44797aa6f738d"
+ },
+ "branch": "hillclimb (bench repo, record commit); fleet-tools main 8f1d2c4 (local VC + live sync)",
+ "vm": [
+  "t2llr6av8eb4g1dxyt9wzp8a (x3 battery, destroyed after sha-verified pulls)",
+  "h4zf5ktroa5f2dqj0lcmibi0 (x24 triage, destroyed after sha-verified pulls)",
+  "lio7wlw4qxz1tasub34gfqgn (the invalid first battery; destroyed after sha-verified pulls)"
+ ],
+ "evidence_paths": [
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/ (driver scripts, manifests, census, verdicts)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/evidence2/battery_results.jsonl (the receipts, 115KB, sha-verified)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/evidence2/battery_full.log (raw solo outputs)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/evidence3/battery_results.jsonl (the x24 triage)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/evidence3/fsync_probe.log (the regime label)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929/evidence/ (the disclosed-invalid first battery)",
+  "/home/ubuntu/hillclimb/vms/knownreds-sweep-20260929{,-vm2,-vm3-triage}.json (the VM records)",
+  "/home/ubuntu/lane-worktrees/fleet-tools/known_reds.json (the registry; commit 8f1d2c4)"
+ ],
+ "commits": [
+  "8f1d2c4 (fleet-tools: the sweep commit; live copy synced byte-identically, sha c8e25b60d8d6...)"
+ ]
+}
