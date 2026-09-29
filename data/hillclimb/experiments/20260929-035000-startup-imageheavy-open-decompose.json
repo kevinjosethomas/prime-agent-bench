@@ -1,0 +1,102 @@
+{
+ "id": "20260929-035000-startup-imageheavy-open-decompose",
+ "axis": "startup",
+ "lane": "perf-image-heavy-open",
+ "worker": "perf-image-open-fast",
+ "operator_signal": "Kevin's wave-6 directive: IMAGE-HEAVY SESSION OPEN \u2014 the real fixture ~/prime-agent-bench/fixtures/session-imageheavy-vizbuilder.jsonl (22.9MB, 6,870 rows, 8.88MB of base64 image payloads in attach_image tool results, rows up to 526KB) is 'the class where the port gets slow for real users'; THE GOAL: this real session opens fast; NO MARKER until measured \u2014 the honest measurement decides the target. The design context (Kevin's note, cited): Codex stores images inline for resend too, but its log_output OMITS image data, and its COMPACTION truncates/drops image payloads from the retained window with ATOMIC image+label handling + a retained_image_count metric (compact_remote_v2_images.rs).",
+ "hypothesis": "The image payload class owns a material share of the session-open wall on this fixture, through one or more of: the JSONL parse of 8.4MB of base64, the retained-window wire, the entry fold processing megabyte strings, or the TUI render path processing giant base64 payloads (the first-pack + image-component work). Decompose the open on BOTH paths (the agents-view attach path AND the plain session open) with per-phase spans (parse, wire, entry fold, layout/first-pack, first frame) and let the hot path decide which of the three candidate cuts \u2014 (a) render-path base64 skipping, (b) compaction-time image stripping, (c) persistence-by-reference \u2014 buys the goal.",
+ "approach": "MEASURE FIRST at the tip (no product change). (1) STATIC DECOMPOSITION at f134e9e55: the fixture's 79 image rows (8.88MB, last at row 3644) ALL sit BEFORE the retained-window boundary (the newest on-path compaction keeps from row 4108) \u2014 the retained window (7.25MB: 624 message rows 0.51MB + 762 custom_message 2.31MB [goal_context 1.95MB + ipython_state 0.36MB] + 1221 custom thread_goal_state 1.66MB + 155 compaction summaries 2.76MB) carries ZERO images; the wire ships walk_message_values' summary + 1,387 message-bearing rows (~2.9MB), so on THIS fixture the images can only cost the whole-file scans: the worker's cold backward scan (SessionFile::open_windowed -> pa_core window.rs open: whole-file Envelope walk, every open cold because the creation-prefix append invalidates the sidecar generation cert) + the agents-view roster fold (read_session_info_from cold-scans the whole file). (2) CONTROLLED DIFFERENTIAL FIXTURES: fx-real-strip (the same file, 79 image blocks removed, 22.9->14.0MB, retained window IDENTICAL \u2014 the scan-share differential), fx-mid (the same session truncated at row 1750 \u2014 a REAL earlier state with 31 images / 3.86MB INSIDE the retained window, 651 retained rows, 438 wire messages) + fx-mid-strip (57 blocks removed) \u2014 the wire/fold/render image-share differential. (3) THE RIG: one lane-private VM (okxu4hbky33owc4o9utvo5m4, ubuntu:22.04 16c/32GB, rustup 1.98.1, release), the tip binary 612ba0f74bee + a probe binary 730094977345 carrying an env-gated phase instrument (PRIME_AGENT_IO_TRACE; pa-types io_trace module; ~34 unique-anchor patch sites: pa-core window open/scan/ctx, the daemon store open_windowed [scan/rows/window-build], worker create persist, worker handle_attach [summary/messages/build], the supervisor saved-session roster scan per-file [name/ms/bytes], the TUI open/create/attach/wire-msgs/fold/roster/hb/bash/stats/rebuild/frame/compose/layout marks) \u2014 sha-differ asserted; a raw-pty 120x40 driver (sync-frame accounting, needle walls, worker-socket grid, /proc RSS sampling, fresh fixture copy per trial with pre/post sha) driving the FULL production path (supervisor + live worker + TUI) offline; legs: the plain --resume open AND bare --resume -> agents view (the roster catalog scan) -> ENTER attach; 34 trials across the arms/legs + a 10-trial cold-page-cache block (sync + drop_caches per trial); fsync+fresh probes at every block boundary (advisory v1.0).",
+ "parity_notes": "MEASUREMENT-ONLY LANE: no product change, no PR, the probe tree never ships; the instrument is env-gated and the tip-vs-probe needle bands overlap (the A/A control). THE TS ANCHORS (for any future image-path cut): TS tool-execution.ts (TS @ cd1f215) builds one Image component per image result block with fallbackOnly:true and the '\\u{2570}\\u{2500} ' prefix and HOLDS the base64 in the component; the Image constructor (tui/src/components/image.ts) eagerly parses getImageDimensions from the full base64; the fullscreen compose forces the textual fallback (withFullscreenImageFallback) \u2014 the port mirrors all of it byte-for-byte (image_component.rs + tool_card image_rows), so a render-path base64 SKIP would be a TS DIVERGENCE (TS holds and parses the payload) for the measured ~4ms of visible-tail parses; conversation-components.ts :194 passes includeImageDimensions:false on replay-path tool options. THE FROZEN-SURFACE MAP for the three options: (a) render-skip touches TUI output bytes only in graphics-capable inline placements (the metadata fallback row renders from dimensions, not the payload) \u2014 a divergence per the TS anchor above; (b) compaction-strip touches compaction content (frozen surface: compaction content parity + the TS anchor: TS compaction does NOT strip image payloads today) \u2014 a protocol-shape change needing its own TS-parity case; (c) persistence-by-reference touches the session-JSONL content itself (THE load-bearing frozen surface: session-JSONL replay + compaction content) plus the resend contract (the inline base64 exists for resend) \u2014 the biggest change, re-proving both contracts with oracles.",
+ "base": {
+  "revision": "f134e9e55c12bff2848f87ae5e958f1afc2d498b (origin/rust at lane start; 48 commits past the wave-6 brief's e2ee82f2d \u2014 the current tip per the standing directive)"
+ },
+ "branch": "hillclimb (bench record only; no product branch \u2014 nothing to merge)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "okxu4hbky33owc4o9utvo5m4 (16c/32GB ubuntu:22.04, rustup 1.98.1, --release)",
+  "tip_binary_sha256": "612ba0f74bee4f2ed27f3cea8c41526b3c9ae0d6d9133cd31edfec81d3350349",
+  "probe_binary_sha256": "730094977345bb82bf2e891638f19dd29c7397425757e8b7153713d421451986 (tip + the env-gated instrument; sha-differ asserted)",
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "n/a (no product change)",
+  "clippy": "n/a",
+  "test": "n/a",
+  "binding_gate": "n/a \u2014 measurement-only; no merge bar"
+ },
+ "measurements": {
+  "method": "same-VM sequential (one lane-private VM, trials interleaved tip/probe), raw-pty 120x40, needle = the retained window's last visible row; per-phase wall-clock ledger from the env-gated trace (per-process monotonic + wall-ms, cross-process aligned); 3 trials/arm/cell + a cold-cache block",
+  "io_advisory_v1_0": "fsync p50 0.15-0.16ms (one 64.7ms stall outlier labeled), fresh p50 0.23-0.28ms max 0.55 at the block boundaries pre/mid/post \u2014 the fast phase held through the measured blocks; the per-trial session persist (append+fdatasync) is the disclosed regime-bound class (6-97ms across trials)",
+  "the_open_wall_plain_resume_leg_ms": {
+   "fx_real_22_9mb": {
+    "needle_p50_tip": 502.0,
+    "needle_p50_probe": 537.0,
+    "needle_band": "358-628 across both arms (the band is the create-wall/persist regime variance, NOT images)",
+    "phase_ledger_p50": "TTFF 3.9-4.7 | create wall 466.7 (worker boot->socket ~100 + store open#1 54.9 [cold backward scan 40.8-42.4 of the whole 22.9MB, 351 read ranges, retained 2,762 rows] + open#2 33 [the model restore's own sidecar-warm open_windowed] + persist 83.9 [append+fdatasync, regime-bound] + the unmarked create tail ~140-240 [the known create-wall class, hc2 territory]) | wire 34.1 (full-ship snapshot: compaction summary + 1,387 message-bearing rows ~2.9MB, NO images) | fold 1.1 (!) | roster+hb+bash+stats ~8 | rebuild 0.1 | first frame 7.2 (compose 40 rows; the 1,231-entry count pass does NOT run at open \u2014 the sparse window packs only the visible rows)"
+   },
+   "fx_real_strip_14_0mb": {
+    "needle_p50_probe": 409.0,
+    "phase_ledger_p50": "scan 36.9 (dSCA -3.9), store open#1 50.8 (-4.1), wire 29.6 (=), fold 1.3 (=), frame 9.8 (=) \u2014 THE IMAGE SCAN SHARE IS THE ONLY DELTA: ~4ms of a ~500ms open"
+   },
+   "fx_mid_9_4mb_images_in_window": {
+    "needle_p50_probe": 280.9,
+    "phase_ledger_p50": "store open#1 20.4-21.0 [scan 14.9 + retained re-parse; the strip's is 13.0-13.4], open#2 11.1-11.9 [sidecar suffix re-read of the 4.94MB image-carrying window; strip 7.7-8.0], persist 13.2, wire 19.6 (438 msgs), fold 1.4, frame 17.2 (p90 21.5; agents-leg p90 40.2 \u2014 the visible tail's image toolResults -> ImageComponent dimension parses)"
+   },
+   "fx_mid_strip": {
+    "needle_p50_probe": 109.7,
+    "phase_ledger_p50": "scan 9.2 (-5.8 = the pre-boundary image bytes in the 9.4MB file), retained re-parse 12.1 vs 18.9 (-6.8 = the IN-WINDOW image bytes' FileEntry parse), open#2 7.9 (-3.7), wire 9.8 (-9.8 = the in-window image bytes' full-ship share), fold 0.6 (-0.8), frame 16.7 (-0.5 median, -23 at the p90 tail)"
+   }
+  },
+  "the_agents_view_attach_path_ms": {
+   "roster_catalog": "the 22.9MB fixture's cold roster fold = 10.2-10.5ms warm / 10.4 cold (the strip's 8.5-8.6: the image share ~1.8ms); the row paints at 15.8-17.4ms spawn->needle (single-file sessions dir)",
+   "enter_to_chat": {
+    "fx_real_tip": 370.4,
+    "fx_real_probe": 441.9,
+    "fx_mid_probe": 356.2,
+    "cold_fx_real": 410.8,
+    "note": "the same create wall + wire + fold + frame as the plain open leg (the ENTER spawns the worker through the same create-with-path flow)"
+   }
+  },
+  "cold_page_cache_block": "drop_caches per trial: the scan stays 38.7-42.5 (fx-real) / 37.3 (strip) \u2014 on this VM's storage class the cold 22.9MB read adds nothing measurable; the needle band unchanged (553.2 vs 544.6 p50). The honest slower-disk bound: the image share of a cold read is bounded by 8.35MB at the storage's read bandwidth (+4ms at 2GB/s, +42ms at 200MB/s)",
+  "rss_mb": "the /proc peaks are ~104-113MB for the TUI/worker/supervisor across EVERY cell incl. mid vs mid-strip \u2014 the image payloads do not move resident memory measurably (the scan never materializes pre-boundary rows; the window's 3.86MB sits inside the allocator noise)",
+  "differential_summary_image_share_of_the_open": {
+   "kevins_fixture_pre_boundary_images": "~4ms of the worker scan + ~1.8ms of the roster fold = ~6ms of a ~500ms open; the wire/fold/render share ZERO (the retained window carries no images)",
+   "the_in_window_class_real_earlier_state": "scan +5.8 + retained re-parse +6.8 + sidecar re-read +3.7 + wire +9.8 + fold +0.8 + frame +0.5 (p90 +23) = ~27ms (+the p90 frame tail) of a ~110-370ms open"
+  }
+ },
+ "validity": {
+  "aa_control": "the tip vs probe needle bands overlap on every shared cell (open/fx-real: tip 380/502/628 vs probe 358/537/574; agents/fx-real: tip 351/370/417 vs probe 395/442/460) \u2014 the env-gated instrument does not distort the wall",
+  "phase_stability": "the scan is the tightest mark (39.2-42.5 across ALL fx-real trials incl. cold; 9.1-9.2 across ALL fx-mid-strip trials) \u2014 the differential cells are read off the stable marks, not the needle",
+  "disclosed_variance": "the needle and the create wall carry a 24-97ms persist (fdatasync) class + a ~140-240ms unmarked create tail \u2014 the known create-wall regime; the fx-mid needle differential (-171ms) is dominated by this variance (the strip arm shows the same outlier class: 161.5ms create wall in strip-00); the phase-summed image share (+27ms) is the honest differential",
+  "fixture_integrity": "fresh fixture copy per trial (the open appends creation rows to the session file); pre/post sha recorded per trial; the strip variants remove whole image blocks only (79/57 blocks, byte-identical otherwise); fx-mid is the REAL session truncated at row 1750 (a real earlier state: its newest on-path compaction keeps from row 1099, 31 images in-window)",
+  "probes": "fsync/fresh at every block boundary; the fast phase held; the one 64.7ms fsync outlier labeled (the advisory's regime-evidence class)"
+ },
+ "key_findings": {
+  "1_where_the_22_9mb_goes": "The open of Kevin's image-heavy session is ~0.4-0.6s at the tip and the image payload owns ~6ms of it: the cold backward scan parses the WHOLE file as metadata (the 8.35MB of base64 is scanned, never materialized) at 41ms, the second sidecar-warm open (the model restore's own open_windowed) adds ~33ms, the creation-prefix append+fdatasync is 6-97ms (regime), the worker boot ~100ms and the create tail ~140-240ms are the known create-wall class, the full-ship wire (1,387 messages, 2.9MB, image-free) is ~30ms, the fold is 1.1ms, the first frame 7ms (the sparse window packs only the visible rows \u2014 the 1,231-entry count pass does not run at open).",
+  "2_the_image_share_is_bounded_everywhere": "Pre-boundary (Kevin's fixture): ~4ms scan + ~1.8ms roster fold. In-window (the real earlier state): ~27ms phase-summed (wire +9.8, retained re-parse +6.8, scan +5.8, sidecar re-read +3.7, fold +0.8, frame +0.5 with a +23ms p90 tail on the visible-image dimension parses). Cold page cache: no measurable change on this VM class; the slower-disk bound is the 8.35MB read at bandwidth.",
+  "3_none_of_the_three_options_buys_the_goal_at_the_open_metric": "(a) render-path skipping: a TS divergence (TS holds + eagerly parses the base64 in the Image component \u2014 verified at cd1f215) buying ~4ms of visible-tail parses at open (the count pass does not run at open); (b) compaction-time stripping: the natural window cut ALREADY strips images from the retained window on this very fixture (all 79 rows pre-boundary) \u2014 the mechanism the Codex shape would formalize is already in effect, and its measurable upside is the in-window class's ~27ms; (c) persistence-by-reference: the biggest change (the session-JSONL replay + resend contracts re-proven, the frozen surface is the JSONL itself) buying ~6ms on Kevin's fixture's open (~27ms on the in-window class) plus the file-size/cold-read bound.",
+  "4_the_residual_wall_is_the_create_wall": "The open's wall is image-independent and belongs to the create-wall class (the hc2 territory, the attach-paint ruling's residual): worker boot ~100ms + the DOUBLE/TRIPLE windowed open (the create's open_windowed + the model restore's own open_windowed + a third partial sidecar open) + the fdatasync persist regime (6-97ms) + the ~140-240ms unmarked create tail. The 21s retained-transcript class from the 2026-09-26 audit is GONE at this tip (1,387 messages fold in 1.1ms; the sparse render packs the visible window only)."
+ },
+ "honest_negative": "The image payload is NOT the open wall at the tip, on either path, warm or cold: Kevin's real session opens in ~0.4-0.6s and the images cost ~6ms of it. All three candidate cuts target the wrong metric on this fixture; the lane records the bounded image shares (the differentials above), the TS anchors for any future image-path work, and routes the residual wall to its owner (the create-wall class). No product change, no PR.",
+ "reported_only_findings_and_followups": [
+  "THE CREATE-WALL RESIDUAL (the hc2 territory): worker boot ~100ms + the double/triple windowed open at resume (the model restore's own open_windowed re-reads the retained suffix a second time \u2014 a merge/reuse candidate) + the 6-97ms fdatasync persist regime + the ~140-240ms unmarked create tail (engine/settings/catalog post-persist) \u2014 that is where Kevin's open wall lives",
+  "THE IN-WINDOW RENDER SHARE ON SCROLL/REBUILD (not open): the layout count pass processes every image entry (an ImageComponent + a dimensions parse per block, ~0.7ms each at the measured class; ~55ms per pass at a 79-image worst case) \u2014 a lane only on a new trigger",
+  "THE ROSTER SCAN OVER A REAL MANY-FILE SESSIONS DIR: the many-sessions class owns it; the image-heavy file contributes ~10.4ms warm per cold scan (the generation-keyed resumable fold re-folds only the grown suffix on re-scans)"
+ ],
+ "outcome": "MEASURED + DECOMPOSED; honest negative for the three image-targeting options at the open metric; no merge (measurement-only, no PR); the record + the evidence archive are the deliverable.",
+ "decision": "Discarded-at-the-open-metric by measurement (all three options); the create-wall class carries the residual as the follow-up question. The fixtures (fx-real deployed in the bench repo; the strip/mid variants in the evidence archive) + the driver + the instrument are reusable for any future image-path lane.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20260929-035000-startup-imageheavy-open-decompose.json",
+ "session": {
+  "worker": "perf-image-open-fast",
+  "session_dir": "the lane's own session"
+ },
+ "timestamp": "2026-09-29T03:50:00Z",
+ "evidence": {
+  "archive": "hillclimb/archives/image-open/io-evidence.tar.gz",
+  "sha256": "1dea302e7f4ae90affee17a95a171eeecf0d7efbff588fb59d2573da596278c4",
+  "bytes": 126342,
+  "contents": "the pty driver + the instrument patcher + the io_trace module + the analyzer + the runners + the matrix; the full phase ledgers (34 trials) + the cold block (10 trials); per-trial trace.json/trace.jsonl/frames.jsonl + daemon tails; 6 representative raw pty captures (.gz); the probe logs (fsync/fresh at every boundary); the binary shas"
+ },
+ "vm": "okxu4hbky33owc4o9utvo5m4 (hillclimb-image-open, ubuntu:22.04 16c/32GB/120GB) \u2014 retained until the record lands + the archive is sha-verified in the bench repo, then released"
+}
