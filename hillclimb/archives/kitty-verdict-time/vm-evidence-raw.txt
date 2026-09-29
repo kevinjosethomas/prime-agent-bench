@@ -1,0 +1,122 @@
+=== SWEEP LOG (28 rows) ===
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":20,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":25,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":30,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":40,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":50,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":60,"upgraded":false}
+SWEEP_ROW {"cell":"da1_conclusion_scan","reply_offset_ms":80,"upgraded":false}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":100,"upgraded":true,"push_ms_after_query":110}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":160,"upgraded":true,"push_ms_after_query":164}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":200,"upgraded":true,"push_ms_after_query":206}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":230,"upgraded":true,"push_ms_after_query":250}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":240,"upgraded":true,"push_ms_after_query":244}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":250,"upgraded":false,"push_ms_after_query":null}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":260,"upgraded":false,"push_ms_after_query":null}
+SWEEP_ROW {"cell":"silent_upgrade_cliff","reply_offset_ms":280,"upgraded":false,"push_ms_after_query":null}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"da1","suspend_offset_ms":30,"restore_ms_after_query":32}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"da1","suspend_offset_ms":60,"restore_ms_after_query":62}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"da1","suspend_offset_ms":120,"restore_ms_after_query":122}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"da1","suspend_offset_ms":200,"restore_ms_after_query":202}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"silent","suspend_offset_ms":30,"restore_ms_after_query":251}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"silent","suspend_offset_ms":60,"restore_ms_after_query":250}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"silent","suspend_offset_ms":120,"restore_ms_after_query":250}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"silent","suspend_offset_ms":200,"restore_ms_after_query":249}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"kitty","suspend_offset_ms":30,"restore_ms_after_query":32}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"kitty","suspend_offset_ms":60,"restore_ms_after_query":62}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"kitty","suspend_offset_ms":120,"restore_ms_after_query":122}
+SWEEP_ROW {"cell":"raced_suspend_curve","class":"kitty","suspend_offset_ms":200,"restore_ms_after_query":202}
+SWEEP_ROW {"cell":"kitty_push_time","push_ms_after_query":21}
+=== REAL TMUX DA1 ===
+da1	0.267	b'\x1b[?1;2c'
+da1	0.024	b'\x1b[?1;2c'
+da1	0.017	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+=== REAL TMUX KITTY-FLAGS (silence) ===
+kitty_flags	1001.294	b''
+kitty_flags	1001.103	b''
+kitty_flags	1001.124	b''
+kitty_flags	1001.103	b''
+kitty_flags	1001.125	b''
+kitty_flags	1001.108	b''
+kitty_flags	1001.119	b''
+kitty_flags	1001.128	b''
+kitty_flags	1001.105	b''
+kitty_flags	1001.188	b''
+=== REAL SCREEN DA1 ===
+da1	0.12	b'\x1b[?1;2c'
+da1	0.033	b'\x1b[?1;2c'
+da1	0.019	b'\x1b[?1;2c'
+da1	0.017	b'\x1b[?1;2c'
+da1	0.016	b'\x1b[?1;2c'
+da1	0.017	b'\x1b[?1;2c'
+da1	0.017	b'\x1b[?1;2c'
+da1	0.016	b'\x1b[?1;2c'
+da1	0.015	b'\x1b[?1;2c'
+da1	0.016	b'\x1b[?1;2c'
+=== FAMILY E2E TAIL ===
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.20s
+
+     Running tests/kitty_exit_routes_e2e.rs (target/release/deps/kitty_exit_routes_e2e-b0fb609c32b0d4b9)
+
+running 2 tests
+test kitty_exit_child_mode ... ok
+test every_exit_route_restores_the_kitty_mode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.56s
+
+     Running tests/kitty_release_handoff_e2e.rs (target/release/deps/kitty_release_handoff_e2e-1b9d215c31391f87)
+
+running 2 tests
+test kitty_child_mode ... ok
+test releases_around_the_handoff_never_become_visible ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.76s
+
+     Running tests/kitty_verdict_time_e2e.rs (target/release/deps/kitty_verdict_time_e2e-0168f654d4f594b3)
+
+running 8 tests
+test verdict_child_mode ... ok
+test verdict_time_characterization_sweep ... ok
+test the_kitty_control_upgrades_at_the_answer ... ok
+test a_da1_terminal_concludes_before_the_ms100_late_kitty_reply ... ok
+test a_raced_suspend_on_a_da1_terminal_does_not_wait_for_the_deadline ... ok
+test a_da1_terminal_concludes_before_the_ms60_late_kitty_reply ... ok
+test the_same_ms100_reply_on_a_silent_pty_still_upgrades ... ok
+test a_raced_suspend_on_a_silent_pty_keeps_the_deadline ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.49s
+
+     Running tests/suspend_signal_e2e.rs (target/release/deps/suspend_signal_e2e-f0006801be439acf)
+
+running 2 tests
+test ctrl_z_releases_tracking_stops_and_sigcont_re_applies ... ok
+test suspend_child_mode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+=== CLIPPY RC ===
+=== VM PINGS ===
+
+=== BOX (orchestrator) RTT SAMPLES (ping -c 10) ===
+github.com:   rtt min/avg/max/mdev = 28.958/29.231/30.294/0.369 ms
+1.1.1.1:     rtt min/avg/max/mdev = 1.478/1.713/2.225/0.229 ms
+8.8.8.8:     rtt min/avg/max/mdev = 1.340/1.533/2.372/0.303 ms
+=== VM (us region) RTT SAMPLES ===
+github.com:   rtt min/avg/max/mdev = 24.001/24.226/24.375/0.112 ms
+1.1.1.1:     rtt min/avg/max/mdev = 2.352/2.421/2.553/0.061 ms
+8.8.8.8:     rtt min/avg/max/mdev = 1.227/1.316/1.408/0.047 ms
+=== PRE-GATE PRE-CHECK (both halves, re-run after every edit) ===
+cargo fmt --all --check: CLEAN (FMT_CLEAN)
+cargo clippy --workspace --all-targets -- -D warnings: RC=0 (CLIPPY_RC=0)
+=== THE MEASUREMENT INSTRUMENTS ===
+the sweep: crates/pa-cli/tests/kitty_verdict_time_e2e.rs, the PA_KITTY_VERDICT_SWEEP env-gated test (the exact shipped source)
+the real-emulator probe: /root/da1_probe.py on the VM (raw-mode termios, monotonic clocks, 10 trials):
+import os, sys, termios, tty, time, select
+def probe(query, wait_s, label, out_path): ... (the full script is in the lane session transcript; it writes the reply and the monotonic delta per trial)
