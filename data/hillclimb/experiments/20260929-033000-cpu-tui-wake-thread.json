@@ -179,6 +179,7 @@
   "squash_sha": "57e57684975205f279feb15671b4434abdf8383d",
   "merged_head": "73dae6dd89d81c6ff4f94012677e759f677cfb9f",
   "merged_at": "2026-09-29T16:33Z",
-  "note": "THE 55TH HILLCLIMB MERGE: the bar closed at 73dae6dd after the full convergence cycle - the settle-wedge root-cause + fix, four bot passes handled fix-or-rebut (the ordering promotion, the alias drop, THE FRAME-WAKE INVENTORY closing the enumeration class, the expired-registration re-registration, the stale comment), the binding gates' registered-only forms, the fully-green CI with both bots passing, both adversaries' sha-bound final closes, and the orchestrator's accepted numeric review"
+  "note": "THE 55TH HILLCLIMB MERGE: the bar closed at 73dae6dd after the full convergence cycle - the settle-wedge root-cause + fix, four bot passes handled fix-or-rebut (the ordering promotion, the alias drop, THE FRAME-WAKE INVENTORY closing the enumeration class, the expired-registration re-registration, the stale comment), the binding gates' registered-only forms, the fully-green CI with both bots passing, both adversaries' sha-bound final closes, and the orchestrator's accepted numeric review",
+  "post_merge_gate_confirmation": "gate_1790698659 at the exact merged head 73dae6dd (finished post-merge, the bonus evidence): RED_KNOWN_REDS - fmt RC=0, clippy RC=0, 1,927 passed, EXACTLY ONE registered fire (the autobg member, unexpired), ZERO unknowns, base_state FOLDED - the identical registered-only form as the pre-merge gate; the merge's evidence chain confirmed at the merged head post-hoc"
  }
 }
