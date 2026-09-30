@@ -105,17 +105,24 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
     _write_manifest()
 
     # 3. wave chains in parallel; failures re-provision and re-run
-    wave_state = _run_waves(backend, handles, spec_cfg, bundle, harness)
+    wave_state = _run_waves(backend, handles, spec_cfg, bundle, harness,
+                           out_dir=out_dir)
 
     # 4. collect results from every sandbox + persist the manifest
     for name, handle in handles.items():
         state = wave_state.get(name) or {}
         entry = _sandbox_entry(handle, state)
-        if state.get("exit") == 0:
+        # streaming collection already grabbed the tree at wave completion
+        # (or per retry); only a straggler with nothing collected falls back
+        if state.get("results"):
+            entry["results"] = state["results"]
+        elif state.get("exit") == 0:
             try:
                 entry["results"] = collect_results(backend, handle, out_dir)
             except Exception as e:
                 entry["collect_error"] = str(e)[:300]
+        elif state.get("collect_error"):
+            entry["collect_error"] = state["collect_error"]
         manifest["sandboxes"].append(entry)
         _write_manifest()
 
@@ -196,12 +203,30 @@ def _handle_outliers(backend, handles: dict, times: dict, comparison: dict,
     return comparison
 
 
+_OUT_DIR = [Path("/tmp/bench-orchestrator-results")]
+
+
 def _run_waves(backend, handles: dict, spec_cfg: dict, bundle,
-               harness: dict | None = None) -> dict:
+               harness: dict | None = None, out_dir: Path | None = None) -> dict:
     """All wave chains in parallel, then bounded re-provision retries."""
+    if out_dir is not None:
+        _OUT_DIR[0] = Path(out_dir)
+    _OUT_DIR[0].mkdir(parents=True, exist_ok=True)
     wave_state = {}
+
+    def _wave_and_collect(handle):
+        state = wave_once(backend, handle, spec_cfg)
+        # streaming collect: sandboxes can be reclaimed before any end-only
+        # collect phase (the r1/r2 trap); grab the tree the moment the wave
+        # chain finishes - failed waves keep their partial rows as evidence
+        try:
+            state['results'] = collect_results(backend, handle, _OUT_DIR[0])
+        except Exception as e:
+            state['collect_error'] = str(e)[:300]
+        return state
+
     with futures.ThreadPoolExecutor(max_workers=_MAX_PARALLEL) as pool:
-        done = {n: pool.submit(wave_once, backend, h, spec_cfg)
+        done = {n: pool.submit(_wave_and_collect, h)
                 for n, h in handles.items()}
         for name, fut in done.items():
             wave_state[name] = fut.result()
@@ -226,6 +251,10 @@ def _run_waves(backend, handles: dict, spec_cfg: dict, bundle,
                 continue
             handle = fresh
             wave_state[name] = wave_once(backend, fresh, spec_cfg)
+            try:
+                wave_state[name]['results'] = collect_results(backend, fresh, _OUT_DIR[0])
+            except Exception as e:
+                wave_state[name]['collect_error'] = str(e)[:300]
             if wave_state[name].get("exit") == 0:
                 break
     return wave_state
