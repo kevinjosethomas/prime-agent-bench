@@ -1,12 +1,12 @@
-binary: /root/bench/repos/prime-agent-rust/target/release/prime-agent
-revision: 7152746b99f6767843bb40b4674a23a5a501fdc0
+binary: ~/bench-r2/rust/bin/prime-agent-rust
+revision: e75f59efc6f74fcb23e45048f0f23b34490571d0
 needs_kernel_venv: true
 install:
   installed_paths:
-  - ~/.local/share/prime-agent-rust
-  - ~/.local/bin/prime-agent-rust
-  download_bytes: 53291156
-  note: continuous rust-branch build (run 36192096870) via install-rust.sh; artifact tarball bytes as download
+  - ~/bench-r2/rust/share/prime-agent-rust
+  note: r2 pin - org main tip e75f59efc6f7 release-pipeline build (rustc 1.98.1, split-debug
+    shipped binary, GLIBC 2.34 <= 2.35 baseline gate, fixture catalog, assemble_artifacts
+    --sha) staged in the install-rust.sh launcher+payload shape at bench-r2/rust
 auth_sources:
 - src: ~/.prime/config.json
   note: PRIME_API_KEY for the trial env
@@ -21,10 +21,10 @@ first_run_dialogs:
   - enter
   intent: Not now
 vendor:
-- src: ~/.local/bin/prime-agent-rust
-  dst: root/.local/bin/prime-agent-rust
-- src: ~/.local/share/prime-agent-rust
-  dst: root/.local/share/prime-agent-rust
+- src: ~/bench-r2/rust/bin/prime-agent-rust
+  dst: root/bench-r2/rust/bin/prime-agent-rust
+- src: ~/bench-r2/rust/share/prime-agent-rust
+  dst: root/bench-r2/rust/share/prime-agent-rust
 - src: ~/.prime/config.json
   dst: root/.prime/config.json
 - src: ~/.prime/agent/auth.json
@@ -32,12 +32,9 @@ vendor:
 - src: ~/.prime/agent/settings.json
   dst: root/.prime/agent/settings.json
 
-# Deployed default = the per-VM lane pin (deploy_bench.sh + the wave briefs
-# populate /root/bench/repos/prime-agent-rust/target/release/prime-agent with the
-# VM-built candidate; a sandbox.yaml products: rust: section overrides
-# binary/revision per deployment — product_config() reads it). The cmp5
-# campaign pin (~/bench-cmp5/pa-rust-prefix, run 36193301325) is campaign
-# provenance, recorded in records/campaigns/cmp5-20260926/; repinning this
-# file to it broke every fresh bundle deploy 2026-09-26..27 (settle
-# FileNotFoundError for the campaign-private prefix; scroll-retain2 close-out
-# flag). Campaign-private paths never belong in the shared deployed default.
+# r2 pin (2026-09-30): the org-main-tip release-pipeline build staged at
+# ~/bench-r2/rust (launcher bin/prime-agent-rust + exe-adjacent packaged
+# payload share/prime-agent-rust: binary + package.json + prime-agent-runtime/
+# + skills/ + bundled catalogs). The payload binary's sha256 is pinned; a
+# swapped or stale binary fails loudly at version_info.
+binary_sha256: 0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5

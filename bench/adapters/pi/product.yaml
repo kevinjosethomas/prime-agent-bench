@@ -1,20 +1,20 @@
-binary: ~/bench-cmp5/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
-revision: d6af72e1857cfb10b41d8ff8e69f0d72b4cf6d31
+binary: ~/bench-r2/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
+revision: d86654abb8862e201933517d6f1fce9f88dd117f
 install:
   installed_paths:
-  - ~/bench-cmp5/repos/pi-mono/node_modules
-  - ~/bench-cmp5/repos/pi-mono/packages
+  - ~/bench-r2/repos/pi-mono/node_modules
+  - ~/bench-r2/repos/pi-mono/packages
   npm_pkg: '@earendil-works/pi-coding-agent'
-  npm_version: 0.87.1
-  note: built from source; pack may 404 if unpublished
+  npm_version: 0.99.1
+  note: built from source at tag v0.99.1 (npm @earendil-works/pi-coding-agent 0.99.1)
 auth_sources:
 - src: ~/.pi/agent/auth.json
   note: pi's own credentials (openai API key + openai-codex OAuth) in pi's auth.json
     format
 first_run_dialogs: []
 vendor:
-- src: ~/bench-cmp5/repos/pi-mono
-  dst: root/bench-cmp5/repos/pi-mono
+- src: ~/bench-r2/repos/pi-mono
+  dst: root/bench-r2/repos/pi-mono
 - src: ~/.pi/agent/auth.json
   dst: root/.pi/agent/auth.json
 - src: ~/.prime/config.json

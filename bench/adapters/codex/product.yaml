@@ -5,7 +5,7 @@ install:
   installed_paths:
   - /usr/lib/node_modules/@openai
   npm_pkg: '@openai/codex'
-  npm_version: 0.157.0
+  npm_version: 0.159.2
 auth_sources:
 - src: ~/.codex
   excl:

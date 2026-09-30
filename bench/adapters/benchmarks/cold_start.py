@@ -44,7 +44,8 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
         # the erase budget must cover every probe char sent (the input line
         # may hold dropped/buffered tokens from every attempt)
         erase_ok, erase_ms = app.erase_all(
-            PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8)
+            PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8,
+            refresh_keys=product.erase_refresh_keys)
         time.sleep(1.0)  # settled idle
         rss = rss_tree(app.pid)
         bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())

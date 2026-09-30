@@ -1,13 +1,14 @@
 binary: ~/.local/share/prime-agent/bin/prime-agent
-revision: official-0.9.6
+revision: official-0.9.8
 needs_kernel_venv: true
 install:
   installed_paths:
-  - ~/.local/share/prime-agent/releases/0.9.6-linux-x64-69e5bb9173d0ed6df270aa59bb9919a05a2dc7076af6f830254820735bc996fb
+  - ~/.local/share/prime-agent/releases/0.9.8-linux-x64-83fb09129bf78e3e60268212cd70932166591b15188caa70c1b0efbcc76235e2
   - ~/.local/share/prime-agent/bin
   download_is_installed: true
-  note: official 0.9.6 stable (GitHub release v0.9.6) installed in the install.sh
-    layout; stale node-local release dirs excluded from the vendor payload
+  note: official 0.9.8 stable (GitHub release v0.9.8 tarball, sha256 83fb09129bf7...)
+    installed in the install.sh layout; stale node-local release dirs excluded from
+    the vendor payload
 auth_sources:
 - src: ~/.prime/config.json
   note: PRIME_API_KEY for the trial env
@@ -28,6 +29,9 @@ vendor:
   - releases/0.1.0-*
   - releases/0.10.0-*
   - releases/0.9.5-*
+  - releases/0.9.6-*
+  - releases/0.10.0-*
+  - previous
 - src: ~/.prime/config.json
   dst: root/.prime/config.json
 - src: ~/.prime/agent/auth.json

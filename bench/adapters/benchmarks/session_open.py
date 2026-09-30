@@ -48,7 +48,7 @@ class SessionColdOpen(Benchmark):
             # fixture transcript actually loaded. Missing -> the row is
             # invalid (never a fast success on an empty session).
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
-            erase_ok, _ = app.erase_all(PROBE_TOKEN,
+            erase_ok, _ = app.erase_all(PROBE_TOKEN, refresh_keys=product.erase_refresh_keys,
                                         max_backspaces=probe["chars_sent"] + 8)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             time.sleep(1.0)

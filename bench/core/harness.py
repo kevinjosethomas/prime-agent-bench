@@ -122,7 +122,8 @@ class Session(ABC):
                 time.sleep(inter_key_pause)
         return lat, True
 
-    def erase_all(self, needle: str, max_backspaces: int = 40, timeout: float = 6.0):
+    def erase_all(self, needle: str, max_backspaces: int = 40, timeout: float = 6.0,
+                  refresh_keys: tuple = ()):
         """Backspace until ``needle`` is no longer rendered anywhere.
         Returns (ok, ms)."""
         t0 = now()
@@ -130,6 +131,13 @@ class Session(ABC):
             self.send("\x7f")
             try:
                 self.wait_for(lambda: needle not in self.screen_text(), timeout=0.35, poll=0.005)
+                return True, round((now() - t0) * 1000.0, 2)
+            except TimeoutError:
+                continue
+        for key in refresh_keys:
+            self.send(key)
+            try:
+                self.wait_for(lambda: needle not in self.screen_text(), timeout=3.0, poll=0.01)
                 return True, round((now() - t0) * 1000.0, 2)
             except TimeoutError:
                 continue

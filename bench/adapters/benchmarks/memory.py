@@ -46,7 +46,8 @@ class MemoryIdleLoad(Benchmark):
             # Missing sentinel invalidates the row (fresh-session RSS must
             # never be ranked as a loaded-session number).
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
-            app.erase_all(PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8)
+            app.erase_all(PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8,
+                          refresh_keys=product.erase_refresh_keys)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             time.sleep(IDLE_SETTLE_S)
             rss = rss_tree(app.pid)

@@ -88,7 +88,8 @@ def launch_ready(product, ctx, driver, timeout: float = 120):
     first_paint(app, timeout=timeout)
     probe = app.probe_input_ready("Zq7k", retry_every=0.5, timeout=timeout,
                                   start_ts=app.t_first_paint)
-    app.erase_all("Zq7k", max_backspaces=probe["chars_sent"] + 8)
+    app.erase_all("Zq7k", max_backspaces=probe["chars_sent"] + 8,
+                  refresh_keys=product.erase_refresh_keys)
     return app
 
 
@@ -173,7 +174,8 @@ class KernelMultiKernel(Benchmark):
                 first_paint(app, timeout=120)
                 probe = app.probe_input_ready(f"Zq7m{i}", retry_every=0.5, timeout=120,
                                               start_ts=app.t_first_paint)
-                app.erase_all("Zq7m", max_backspaces=probe["chars_sent"] + 8)
+                app.erase_all("Zq7m", max_backspaces=probe["chars_sent"] + 8,
+                              refresh_keys=product.erase_refresh_keys)
                 apps.append(app)
                 t_ready = time.perf_counter()
                 _, t_sent, _ = submit_and_wait(app, "run the kernel marker cell", "KREADY-bench marker", timeout=240)

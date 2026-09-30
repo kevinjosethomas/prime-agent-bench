@@ -1,0 +1,45 @@
+# Hermes Agent (Nous Research) - r2 pin.
+# Release tag v2026.9.24 (v0.21.5), commit f97608f178d1ffeca59860195ab7da295f7c8e5f,
+# installed via the repo's own scripts/install.sh (the release-consistent
+# installer; the live website installer is pm-era main and cannot install the
+# release tag) in the root FHS layout inside a HOME=/root prep sandbox, then
+# shipped verbatim: every absolute path (/usr/local/lib/hermes-agent,
+# /usr/local/bin/hermes, /usr/local/share/uv) resolves identically in each
+# benchmark sandbox. The payload tree on the node mirrors the sandbox layout
+# under ~/bench-r2/hermes-payload (the node never executes the product; the
+# version string below is the one captured at install time).
+binary: /usr/local/bin/hermes
+revision: f97608f178d1ffeca59860195ab7da295f7c8e5f
+version: Hermes Agent v0.21.5 (v2026.9.24)
+msg_routing: mock
+install:
+  installed_paths:
+  - ~/bench-r2/hermes-payload/usr/local/lib/hermes-agent
+  - ~/bench-r2/hermes-payload/usr/local/share/uv
+  payload_code: ~/bench-r2/hermes-payload/usr/local/lib/hermes-agent
+  launcher_src: ~/bench-r2/hermes-payload/usr/local/bin/hermes
+  note: git-clone install of the release tag (not npm/pip; no published
+    package) - the vendored payload relocates because the FHS absolute paths
+    are identical in every sandbox (HOME=/root); download = the git clone +
+    uv-managed CPython 3.14 (the pyproject [all] venv ships inside the
+    install tree)
+auth_sources: []
+first_run_dialogs: []
+vendor:
+- src: ~/bench-r2/hermes-payload/usr/local/lib/hermes-agent
+  dst: usr/local/lib/hermes-agent
+  exclude:
+  - .git
+- src: ~/bench-r2/hermes-payload/usr/local/bin/hermes
+  dst: usr/local/bin/hermes
+- src: ~/bench-r2/hermes-payload/usr/local/share/uv
+  dst: usr/local/share/uv
+# The composer treats an Enter within 50ms of the last keystroke as an intra-message
+# newline (paste/IME heuristic #10994); the submit pauses past that window.
+submit_pre_delay_ms: 100
+# The banner box can draw around an ultra-early probe echo (the harness
+# probes from first paint, before the full layout mounts), leaving stale
+# cells that fail the whole-screen erase check; ctrl+l is the product's
+# own redraw binding and clears them (the input line itself is bare).
+erase_refresh_keys:
+- ctrl+l

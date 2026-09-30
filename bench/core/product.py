@@ -139,6 +139,8 @@ class ProductAdapter(ABC):
         self.mock_port: int = int(cfg.get("mock", {}).get("port", 8788))
         self.layout: BenchLayout = cfg["layout"]
         self.dialog_steps = resolve_dialogs(self.product_cfg.get("first_run_dialogs"))
+        #: product-declared repaint keys for erase_all (stale pre-mount echo cells)
+        self.erase_refresh_keys = tuple(keystroke(k) for k in (self.product_cfg.get("erase_refresh_keys") or []))
         self.msg_routing = str(self.product_cfg.get("msg_routing", type(self).msg_routing))
         if self.msg_routing not in MSG_ROUTING_REGIMES:
             raise ValueError(

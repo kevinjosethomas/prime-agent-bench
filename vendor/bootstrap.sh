@@ -1,19 +1,25 @@
 #!/bin/bash
 # Vendor bootstrap for Prime VM sandboxes: apt deps + node 22 + products + auth.
+# r2 (2026-09-30): 6 products; rust+pi payloads at the bench-r2 layout the
+# product pins expand to in-sandbox; hermes rides the payload at /usr/local
+# (FHS: code /usr/local/lib/hermes-agent, command /usr/local/bin/hermes,
+# uv-managed python /usr/local/share/uv); ripgrep+ffmpeg = hermes' own
+# prerequisites (its installer expects them present).
 # Ships in the harness bundle (vendor/). argv 1 = the product list to verify
-# (csv, default rust,ts,claude,codex,pi).
-# Layout targets (HOME=/root): /root/bench/repos (rust binary, pi-mono),
+# (csv, default rust,ts,claude,codex,pi,hermes).
+# Layout targets (HOME=/root): /root/bench-r2 (rust binary+payload, pi-mono),
 # /root/.local/share/prime-agent (TS), /root/.local/{bin/uv,share/uv}
 # (the kernel toolchain), /usr/lib/node_modules (claude, codex),
-# /usr/bin/{claude,codex} symlinks, /root/.{codex,claude,claude.json,prime}.
+# /usr/bin/{claude,codex} symlinks, /root/.{codex,claude,claude.json,prime},
+# /usr/local/{lib/hermes-agent,bin/hermes,share/uv} (hermes).
 set -e
 VDIR="$(cd "$(dirname "$0")" && pwd)"
-PRODUCTS="${1:-rust,ts,claude,codex,pi}"
+PRODUCTS="${1:-rust,ts,claude,codex,pi,hermes}"
 export DEBIAN_FRONTEND=noninteractive
 
 echo "[bootstrap] apt deps"
 apt-get update -qq
-apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils bubblewrap
+apt-get install -qq -y git curl ca-certificates jq rsync tmux file xz-utils bubblewrap ripgrep ffmpeg
 
 echo "[bootstrap] node 22 (nodesource)"
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null
@@ -30,15 +36,17 @@ else
 fi
 
 echo "[bootstrap] version checks ($PRODUCTS)"
-RUST=/root/.local/bin/prime-agent-rust
+RUST=/root/bench-r2/rust/bin/prime-agent-rust
 TS=/root/.local/share/prime-agent/bin/prime-agent
-PI=/root/bench/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
+PI=/root/bench-r2/repos/pi-mono/packages/coding-agent/dist/bundle/cli.js
+HERMES=/usr/local/bin/hermes
 case ",$PRODUCTS," in
     *,rust,*) "$RUST" --version ;;
     *,ts,*) "$TS" --version ;;
     *,claude,*) claude --version ;;
     *,codex,*) codex --version ;;
     *,pi,*) node "$PI" --version ;;
+    *,hermes,*) "$HERMES" --version ;;
 esac
 
 echo "[bootstrap] DONE"

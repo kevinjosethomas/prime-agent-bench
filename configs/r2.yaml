@@ -1,0 +1,50 @@
+# Prime Agent bench: the r2 campaign config (2026-09-30, the blog rerun).
+# Same shape as configs/default.yaml; bench_root ~/bench (the campaign tree with
+# per-product home templates), six products (hermes joined mid-prep by the
+# operator's addition).
+bench_root: ~/bench
+results_dir: ~/bench/results-r2
+
+product_order: [rust, ts, claude, codex, pi, hermes]
+display:
+  rust: Prime Agent Rust
+  ts: Prime Agent TS
+  claude: Claude Code
+  codex: Codex CLI
+  pi: Pi Mono
+  hermes: Hermes Agent
+
+install:
+  node_runtime_paths: [/usr/lib/node_modules/npm, /usr/bin/node]
+
+driver: pty
+mock:
+  port: 8788
+
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv, exclude: [tools]}
+
+settle:
+  timeout_s: 300.0
+  first_paint_timeout_s: 240.0
+  key_pause_s: 0.7
+  loop_s: 0.8
+  echo_wait_s: 1.2
+
+aa:
+  spread_threshold_pct: 10.0
+  drift_threshold_pct: 10.0
+
+noop_control:
+  rounds: 30
+
+load_gate:
+  compile_markers: [rustc, cargo, /tsc, esbuild, npm exec, node-gyp, cc1, clang]
+  load_threshold: 0.6
+  max_wait_s: 300.0
+  poll_s: 2.0
+
+benchmarks: {}

@@ -22,7 +22,10 @@ from bench.drivers.orchestrator.plan import (load_parallel_config, make_backend,
                                              plan_sandboxes)
 from bench.drivers.orchestrator.reference import compare_references, run_reference
 
-_MAX_PARALLEL = 8
+# r2 (2026-09-30): 6 concurrent sandboxes - the fleet holds 16 RUNNING lanes
+# and the account quota is unproven above ~18; waves of 6 keep the campaign
+# clear of hard provision rejections (12 types flow through 2 waves).
+_MAX_PARALLEL = 6
 
 
 def _iso_now() -> str:

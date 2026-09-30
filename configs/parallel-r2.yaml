@@ -1,0 +1,43 @@
+# The r2 parallel campaign (2026-09-30): same shape as configs/parallel.yaml
+# (the canonical 12-sandbox layout: one Prime VM sandbox per benchmark type,
+# all 6 products sequentially inside each sandbox, ABBA ordering), with the
+# r2 adjustments: 6 products, cold_open at the 420-min lifetime the canonical
+# re-run proved it needs, kernel state-snapshot types at 300-min.
+backend: prime
+aa_trials: 10
+keep_sandboxes: false
+wave_timeout_s: 14400.0
+port_base: 8890
+
+reference:
+  outlier_pct: 5.0
+  outlier_policy: replace
+  max_replacements: 2
+
+retry:
+  max_retries: 2
+
+sandboxes: {}
+sandbox_defaults:
+  image: ubuntu:22.04
+  cpu_cores: 4
+  memory_gb: 8
+  disk_gb: 60
+  timeout_minutes: 180
+  bootstrap: bash /root/bench-harness/vendor/bootstrap.sh
+
+benchmarks:
+  compare.cold_start: {}
+  compare.warm_start: {}
+  compare.msg_send: {}
+  compare.scroll_typing: {}
+  compare.memory_idle_load: {}
+  compare.install_disk: {}
+  session.cold_open_10mib: {memory_gb: 12, timeout_minutes: 420}
+  daemon.boot: {}
+  kernel.cold_start: {memory_gb: 12, timeout_minutes: 300}
+  kernel.cell_exec: {memory_gb: 12, timeout_minutes: 300}
+  kernel.state_snapshot_10MB: {memory_gb: 12, timeout_minutes: 300}
+  kernel.state_snapshot_50MB: {memory_gb: 16, timeout_minutes: 300}
+
+groupings: {}

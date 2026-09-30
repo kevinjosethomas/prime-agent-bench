@@ -194,7 +194,8 @@ class SessionAgentViewRoundtrip(Benchmark):
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             # agents-back requires an empty editor; the ready probe left
             # its token behind, so erase before navigating
-            erase_ok, _ = app.erase_all(probe["probe_token"])
+            erase_ok, _ = app.erase_all(probe["probe_token"],
+                                        refresh_keys=product.erase_refresh_keys)
             # a first-run dialog that surfaced after the probe swallows
             # the navigation keys while it is up: answer it from the
             # product's dialog config before touching the nav keys

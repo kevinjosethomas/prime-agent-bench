@@ -46,7 +46,8 @@ class ScrollTyping(Benchmark):
             # fixture evidence: the loaded 10MiB transcript's tail rendered;
             # without it the row is invalid (never a fresh-session typing rank)
             t_sentinel = wait_sentinel(app, SENTINEL, timeout=self.sentinel_timeout_s)
-            app.erase_all(PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8)
+            app.erase_all(PROBE_TOKEN, max_backspaces=probe["chars_sent"] + 8,
+                          refresh_keys=product.erase_refresh_keys)
             record.setdefault("fixture", {})["loaded"] = t_sentinel is not None
             # typing latency
             typing_ms, typing_ok = app.type_token(TYPING_TEXT, per_key_timeout=2.0, inter_key_pause=0.03)

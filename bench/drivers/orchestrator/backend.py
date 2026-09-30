@@ -147,12 +147,43 @@ class PrimeSandboxBackend(SandboxBackend):
         raise TimeoutError(f"sandbox {handle.sandbox_id} not RUNNING in {timeout:.0f}s")
 
 
+    #: the CLI upload reads the whole file into RAM twice (read + multipart),
+    #: so large bundles must ride in slices: 200MB keeps the node's peak safe
+    UPLOAD_SLICE_BYTES = 200 * 1024 * 1024
+
     def deploy(self, handle: SandboxHandle, harness_tar: Path) -> None:
+        import subprocess as _sp
+        import os as _os
         hd = self.harness_dir(handle)
-        remote_tar = f"/tmp/{harness_tar.name}"
-        out = self._prime("upload", handle.sandbox_id, str(harness_tar), remote_tar)
-        if "success" not in (out.stdout + out.stderr).lower():
-            raise RuntimeError(f"upload failed: {out.stdout[-200:]}")
+        size = harness_tar.stat().st_size
+        if size <= self.UPLOAD_SLICE_BYTES:
+            remote_tar = f"/tmp/{harness_tar.name}"
+            out = self._prime("upload", handle.sandbox_id, str(harness_tar), remote_tar)
+            if "success" not in (out.stdout + out.stderr).lower():
+                raise RuntimeError(f"upload failed: {out.stdout[-200:]}")
+        else:
+            # slice upload: split locally, upload each slice, rejoin remotely
+            tmp = Path("/tmp") / f"bench-upload-{harness_tar.stem}"
+            tmp.mkdir(parents=True, exist_ok=True)
+            _sp.run(["split", "-b", str(self.UPLOAD_SLICE_BYTES), "-d",
+                     str(harness_tar), str(tmp / "part-")], check=True)
+            parts = sorted(tmp.glob("part-*"))
+            try:
+                for i, part in enumerate(parts):
+                    remote_part = f"/tmp/{harness_tar.name}.part-{i:02d}"
+                    out = self._prime("upload", handle.sandbox_id, str(part), remote_part)
+                    if "success" not in (out.stdout + out.stderr).lower():
+                        raise RuntimeError(
+                            f"slice {i} upload failed: {out.stdout[-200:]}")
+                    part.unlink()
+                remote_tar = f"/tmp/{harness_tar.name}"
+                rejoin = (f"cat {remote_tar}.part-* > {remote_tar}"
+                          f" && rm {remote_tar}.part-*")
+                code, log = self.exec_cmd(handle, rejoin, timeout=600)
+                if code != 0:
+                    raise RuntimeError(f"slice rejoin failed: {log[-300:]}")
+            finally:
+                _sp.run(["rm", "-rf", str(tmp)], check=False)
         code, log = self.exec_cmd(handle, f"mkdir -p {hd} && tar -xzf {remote_tar} -C {hd}"
                                          f" && rm {remote_tar}", timeout=600)
         if code != 0:

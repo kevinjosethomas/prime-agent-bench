@@ -61,7 +61,7 @@ class MsgSend(Benchmark):
             # at the Enter keystroke, after the editor is verified bare
             app.probe_input_ready(PROBE_TOKEN, start_ts=app.t_first_paint,
                                   dialog_steps=product.dialog_steps)
-            app.erase_all(PROBE_TOKEN)
+            app.erase_all(PROBE_TOKEN, refresh_keys=product.erase_refresh_keys)
             # bounded dialog dismissal after the probe: a product can
             # surface a first-run dialog AFTER readiness (codex's model
             # migration NUX lands with the model-metadata fetch) — it
@@ -90,6 +90,15 @@ class MsgSend(Benchmark):
                 raise TimeoutError(
                     f"prompt typing dropped at key {len(typed[0])}/{len(prompt)} "
                     "(a dialog raced the typing or the editor went dead)")
+            # Per-product pre-submit pacing (product.yaml ``submit_pre_delay_ms``,
+            # default 0 = no pause): a composer that classifies an Enter within
+            # its rapid-input window as an intra-message newline (paste/IME
+            # heuristic) would swallow the machine-speed Enter; the pause lands
+            # BEFORE the Enter keystroke, so every published metric (which
+            # starts at the Enter) stays untouched.
+            submit_pre_delay = float(product.product_cfg.get("submit_pre_delay_ms", 0) or 0)
+            if submit_pre_delay > 0:
+                time.sleep(submit_pre_delay / 1000.0)
             t_enter = app.send("\r")
             # ack = first output after Enter (driver primitive: exact chunk
             # timestamp on the PTY driver, first frame change otherwise)
