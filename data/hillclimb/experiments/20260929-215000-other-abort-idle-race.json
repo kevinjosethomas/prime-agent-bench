@@ -17,7 +17,10 @@
   "ff3cfd3c2",
   "baeedec0f",
   "c5cbd84b8",
-  "6a6a19aba"
+  "6a6a19aba",
+  "4af4dc39b",
+  "f0f27eff3",
+  "e2bef4988"
  ],
  "build": {
   "sandbox_id": "tty7e73wgvntmmwvivqdhf52",
@@ -26,8 +29,8 @@
  "gates": {
   "fmt": "pass (final head 6a6a19aba)",
   "clippy": "pass (workspace -D warnings)",
-  "test": "pass: kill_broadcast 4/4 + abort family 6/6 + turn_stream 24/24 + compaction_admission 2/2 + the rate harness 25 reps lost=0 (the lane gates/reviews fired 3 rotations of the registered co-scheduled bounded-wait starvation family - tui_submit_outlived, kill_cancels, steer_mid_compaction - each triaged SOLO GREEN at this lane's heads; the family renewed 2026-09-29, expiry 2026-10-06)",
-  "ci": "MANDATORY GREEN at 6a6a19aba: 8/8 test shards, clippy, fmt, both bots SUCCESS, zero unresolved threads (Macroscope's 3 findings fixed with the oracle class in 6a6a19aba - the fallback gate keyed on the abort gate's own observation + the two harness accounting fixes); benchmark FAILURE = the standing non-applicable PR-vs-default-branch class",
+  "test": "pass: kill_broadcast 4/4 + abort family 6/6 + turn_stream 24/24 + compaction_admission 2/2 + the rate harness 25 reps lost=0 (the lane gates/reviews fired 3 rotations of the registered co-scheduled bounded-wait starvation family - tui_submit_outlived, kill_cancels, steer_mid_compaction - each triaged SOLO GREEN at this lane's heads; the family renewed 2026-09-29, expiry 2026-10-06). The bugbot-round battery at f0f27eff3 (VM i7r2zzwh0tjjt4es5fq79l1g): fmt/clippy clean + the 3 abort-gate oracles green + all families green (kill_broadcast 4/4, the admission oracle, abort family, queue family, streaming family, compaction_admission, turn_stream) + the family test solo x8 8/8 + the rate chunks lost=0; the corrected suppress-oracle re-verified at e2bef4988",
+  "ci": "MANDATORY GREEN at 6a6a19aba: 8/8 test shards, clippy, fmt, both bots SUCCESS, the 3 lane-relevant threads resolved (Macroscope's 3 findings fixed with the oracle class in 6a6a19aba - the fallback gate keyed on the abort gate's own observation + the two harness accounting fixes) + the retarget scan's 5 install-rust.sh findings (3 Critical, 2 High) routed to the install-surface owners (the port's own install surface, outside the lane delta); benchmark FAILURE = the standing non-applicable PR-vs-default-branch class. The main-fold 4af4dc39b (org/main e75f59efc folded by construction - main's tree + the lane's 7 files, the overlay diff sha-equal to the approved delta; the PR retargeted to main shows the 7-file diff, mergeable) re-verified: 8/8 shards + clippy + fmt + loc + test summary all SUCCESS (CodeQL/Analyze green; the benchmark check does not fire at a folded head - the standing class is moot). The bugbot round at the folded head fixed with the oracle class: f0f27eff3 (the abort gate arms only on a load-bearing sighting - the fallback closer pairs a completed run's trailing Done; 3 deterministic oracles) + e2bef4988 (the suppress-row oracle discriminates on the suppress arm); CI at e2bef4988: 8/8 shards, clippy, fmt, loc, test summary, Macroscope SUCCESS, Cursor Bugbot SUCCESS; both bugbot threads resolved by the bot's re-review",
   "ci_shard_flake": "tool_results::tool_result_entries_persisted_and_streamed fired in shard 5 at c5cbd84b8: UPSTREAM ambient flake (1/8 solo at the lane head AND 1/8 at the base tree with no lane diff; the 1+1 failed-jobs rerun green; not this lane's blast radius)"
  },
  "measurements": {
@@ -36,8 +39,8 @@
    "abort_and_send_idle_race_rate": {
     "pre_fix": {
      "trials": 137,
-     "lost_aborts": 7,
-     "rate_pct": 5.1,
+     "lost_aborts": 8,
+     "rate_pct": 5.8,
      "signature": "busy=true abort_requested=true steering_len=2 run_signal=live"
     },
     "post_fix": {
@@ -65,7 +68,7 @@
  },
  "validity": {
   "excluded": [],
-  "notes": "The harness's in-process worker/runtime accumulation past ~130 reps (the 'never admitted' artifact) was chunked at 25 reps/process and separated from the product race. The 10 post-fix leak-class reps are the faux fixture's pop-at-call contract (no provider call = no consumption), not product behavior - with a real provider the batch turn serves promptly."
+  "notes": "The harness's in-process worker/runtime accumulation past ~130 reps (the 'never admitted' artifact) was chunked at 25 reps/process and separated from the product race. The 10 post-fix leak-class reps are the faux fixture's pop-at-call contract (no provider call = no consumption), not product behavior - with a real provider the batch turn serves promptly. The CI shard-5 flake triage receipts (archived at abort-idle-race-lane/oracle/shard_flake_solo_receipts.txt): solo x8 of tool_result_entries_persisted_and_streamed at the lane head c5cbd84b8 = 7 green + 1 FAILED, and solo x8 at the base tree (the origin/rust checkout resolving to 2bba3ef4d, no lane diff) = 7 green + 1 FAILED - the same 1/8 ambient rate on both sides, the base-tree solo receipt included: upstream ambient flake, not the lane's blast radius."
  },
  "outcome": "pr-open-bar",
  "decision": "Real product race confirmed and closed at the engine admission seam; the test's negative-only sync was the second half (TS parity: ENG-5991's waitForToolStart discipline).",
