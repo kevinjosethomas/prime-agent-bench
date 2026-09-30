@@ -301,11 +301,12 @@ def test_benchmark_routing_for_config_override(tmp_path):
 
 
 def test_msg_routing_is_harness_config_not_scenario_names(tmp_path):
-    """msg_routing comes from each harness folder's product.yaml (codex
-    declares real-api; every other harness defaults to mock), and an
-    unknown regime fails loudly at adapter construction."""
+    """msg_routing comes from each harness folder's product.yaml (every
+    harness declares mock — codex too since the mock provider serves the
+    responses protocol at /v1/responses; its wire_api never changed), and
+    an unknown regime fails loudly at adapter construction."""
     reg = discover(_cfg(tmp_path))
-    assert reg.product("codex").msg_routing == "real-api"
+    assert reg.product("codex").msg_routing == "mock"
     for name in ("rust", "ts", "claude", "pi"):
         assert reg.product(name).msg_routing == "mock"
     try:

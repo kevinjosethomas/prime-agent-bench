@@ -1,21 +1,27 @@
 """Codex CLI product adapter.
 
-npm-installed CLI with real ChatGPT auth (Kevin: codex msg_send may use
-the real API under the $10 budget; codex 0.156 rejects chat wire_api, so
-no mock provider override is installed). The FULL .codex state is copied
-(config/model caches), but auth must be walked: codex 0.156 shows the
-login menu for ANY copied home (trial homes on the node AND sandboxes;
-the ChatGPT tokens do not authenticate a copied .codex), so the prepass
-walks option 3 with a dummy key to the settled interactive state - the
-same state the sequential baseline settled.
+npm-installed CLI; the FULL .codex state is copied (config/model
+caches), and auth must be walked: codex shows the login menu for ANY
+copied home (trial homes on the node AND sandboxes; the ChatGPT tokens
+do not authenticate a copied .codex), so the prepass walks option 3
+with a dummy key to the settled interactive state - the same state the
+sequential baseline settled.
 
-Messages route to the real API (``msg_routing: real-api`` in
-product.yaml): the settled dummy-key state 401s there, so
-message-settle scenarios do not measure a settle for codex at all —
-the ack is measured, the row records the regime, and the
-result-validity gate excludes cross-regime values. A settle resumes
-only with real auth (Kevin's call) or a codex that accepts the mock
-wire_api (product.yaml flip to ``mock``)."""
+Messages route to the offline mock (``msg_routing: mock`` in
+product.yaml): codex 0.156+ hard-rejects ``wire_api = "chat"`` (its
+client only speaks the Responses API), so the mock provider serves the
+responses protocol (the ``/v1/responses`` mode, keyed on the endpoint
+path) and the trial home's ``~/.codex/config.toml`` pins
+``openai_base_url`` — the config key that overrides the built-in
+``openai`` provider's endpoint — at the per-sandbox mock port. The
+walked dummy-key auth state rides unchanged: the mock ignores
+credentials, exactly like the other mock-routed products. The wire_api
+stays ``responses`` (its hard requirement); the mock now speaks it.
+
+The real-api route remains available (the per-benchmark
+``benchmarks.<name>.msg_routing: real-api`` override): apply_routing
+then re-auths the trial home with the OpenAI API key and the model
+pin rides ``-m`` — the live-inference regime the r2 measured."""
 from __future__ import annotations
 
 import json
@@ -87,32 +93,66 @@ class CodexProduct(ProductAdapter):
         return argv
 
     def apply_routing(self, ctx: TrialContext) -> None:
-        """Real-api routing re-auths the trial home with the API key.
+        """Route the trial home's provider: mock writes the config.toml
+        endpoint pin; real-api re-auths with the API key.
 
-        The ChatGPT OAuth cannot survive isolated trial homes: its refresh
-        token is single-use, so the first trial's refresh rotates the token
-        family and every other copy (template included) answers "refresh
-        token was already used" with the login screen — proven live in the
-        sandbox. Codex's own api-key auth mode (its login menu option 3)
+        Mock: ``openai_base_url`` in the trial home's ~/.codex/config.toml
+        points the built-in ``openai`` provider (wire_api responses) at
+        the offline mock — the config key codex documents for exactly
+        this override (user [model_providers.openai] entries cannot
+        override the built-in provider). The prepass/settle walked
+        dummy-key auth state is untouched: the mock ignores credentials.
+
+        Real-api: the ChatGPT OAuth cannot survive isolated trial homes
+        (its refresh token is single-use — the first trial's refresh
+        rotates the token family and every copy answers "refresh token
+        was already used" with the login screen, proven live in the
+        sandbox). Codex's own api-key auth mode (its login menu option 3)
         has no rotation: the key lands in the trial auth.json and every
         trial authenticates."""
-        if ctx.get("routing") != "real-api":
+        if ctx.get("routing") == "real-api":
+            key = ""
+            try:
+                key = json.loads(self.KEY_SOURCE.read_text()).get("openai", {}).get("key", "")
+            except (OSError, ValueError):
+                pass
+            if not key:
+                raise RuntimeError("codex real-api routing needs the OpenAI API key at "
+                                   f"{self.KEY_SOURCE} (openai.key)")
+            auth = {"auth_mode": "apikey", "OPENAI_API_KEY": key}
+            codex_dir = ctx["home"] / ".codex"
+            codex_dir.mkdir(parents=True, exist_ok=True)
+            (codex_dir / "auth.json").write_text(json.dumps(auth, indent=1))
             return
-        key = ""
-        try:
-            key = json.loads(self.KEY_SOURCE.read_text()).get("openai", {}).get("key", "")
-        except (OSError, ValueError):
-            pass
-        if not key:
-            raise RuntimeError("codex real-api routing needs the OpenAI API key at "
-                               f"{self.KEY_SOURCE} (openai.key)")
-        auth = {"auth_mode": "apikey", "OPENAI_API_KEY": key}
-        codex_dir = ctx["home"] / ".codex"
-        codex_dir.mkdir(parents=True, exist_ok=True)
-        (codex_dir / "auth.json").write_text(json.dumps(auth, indent=1))
+        if ctx.get("routing") == "mock":
+            # openai_base_url: the documented override for the built-in
+            # openai provider (user [model_providers.openai] entries cannot
+            # override a built-in provider; this top-level key can). Merged
+            # into the walked config.toml text: replace an existing pin or
+            # insert before the first [section] (a top-level key must
+            # precede any section header in TOML).
+            codex_dir = ctx["home"] / ".codex"
+            codex_dir.mkdir(parents=True, exist_ok=True)
+            cfg_path = codex_dir / "config.toml"
+            line = f'openai_base_url = "http://127.0.0.1:{self.mock_port}/v1"'
+            if cfg_path.exists():
+                out, replaced = [], False
+                for ln in cfg_path.read_text().splitlines():
+                    if ln.strip().startswith("openai_base_url"):
+                        out.append(line)
+                        replaced = True
+                    else:
+                        out.append(ln)
+                if not replaced:
+                    out.insert(0, line)
+                cfg_path.write_text("\n".join(out) + "\n")
+            else:
+                cfg_path.write_text(line + "\n")
 
     def model_info(self, ctx: TrialContext) -> str:
-        """The model a real-api submit routes to (evidence per row)."""
+        """The model a submit routes to (evidence per row)."""
+        if ctx.get("routing") == "mock":
+            return f"mock-responses (http://127.0.0.1:{self.mock_port}/v1)"
         if ctx.get("routing") == "real-api":
             return f"openai/{self.KEY_MODEL} (api-key)"
         return self.DEFAULT_MODEL

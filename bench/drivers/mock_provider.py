@@ -1,8 +1,10 @@
 """Deterministic offline mock provider for the benchmark suite.
 
-Serves OpenAI chat-completions (SSE), OpenAI /v1/models, and Anthropic
-/v1/messages (SSE) from one JSON script, so all five products run with
-identical scripted model responses and zero network inference.
+Serves OpenAI chat-completions (SSE), OpenAI /v1/responses (SSE),
+OpenAI /v1/models, and Anthropic /v1/messages (SSE) from one JSON script,
+so all products run with identical scripted model responses and zero
+network inference. The mode keys on the endpoint path (chat vs responses),
+not the product: any responses-protocol client gets the same canned reply.
 
 Script format (mock_provider.py-compatible):
   {"responses": [{"text": "..."} | {"toolCall": {...}}, ...],
@@ -34,6 +36,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("access-control-allow-origin", "*")
 
     def do_GET(self):
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            # The Responses-API websocket-transport probe: the mock serves
+            # HTTP SSE only. 426 Upgrade Required is the protocol's own
+            # "no websockets here" answer, and responses-protocol clients
+            # map it to a clean immediate HTTP fallback (codex retries the
+            # 404 class with exponential backoff instead - ~6s per turn).
+            self.send_response(426)
+            self.send_header("content-length", "0")
+            self.send_header("connection", "close")
+            self.end_headers()
+            self.close_connection = True
+            return
         if self.path.split("?")[0].endswith("/models"):
             body = json.dumps({
                 "object": "list",
@@ -74,6 +88,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.endswith("/chat/completions"):
             self._chat_completions(body, resp)
+        elif path.endswith("/responses"):
+            self._responses_api(body, resp)
         elif path.endswith("/messages"):
             self._anthropic_messages(body, resp)
         else:
@@ -130,6 +146,121 @@ class Handler(BaseHTTPRequestHandler):
         if body.get("stream_options", {}).get("include_usage") or body.get("stream") is False:
             pass
         self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
+        self.close_connection = True
+
+    # -- OpenAI responses ---------------------------------------------------
+    def _responses_api(self, body, resp):
+        """The Responses-API mode: the same scripted reply the chat mock
+        serves, on the responses protocol's SSE event stream (the wire
+        shape mirrors the live /v1/responses: created -> in_progress ->
+        output_item.added -> content_part.added -> output_text.delta ->
+        output_text.done -> content_part.done -> output_item.done ->
+        completed; usage tokens ride response.completed)."""
+        model = body.get("model", "mock-1")
+        text = resp.get("text", "")
+        tc = resp.get("toolCall")
+        if body.get("stream") is False:
+            items = [{"id": "msg_bench", "type": "message", "status": "completed",
+                      "content": [{"type": "output_text", "annotations": [],
+                                   "logprobs": [], "text": text}],
+                      "phase": "final_answer", "role": "assistant"}]
+            if tc:
+                items.append({"id": "fc_bench_1", "type": "function_call",
+                              "status": "completed", "call_id": "call_bench_1",
+                              "name": tc["name"],
+                              "arguments": json.dumps(tc["arguments"])})
+            payload = json.dumps({"id": "resp_bench", "object": "response",
+                                  "created_at": 1789584000, "status": "completed",
+                                  "model": model, "output": items,
+                                  "usage": {"input_tokens": 10, "output_tokens": 10,
+                                            "total_tokens": 20}}).encode()
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(payload)))
+            self.send_header("connection", "close")
+            self._cors()
+            self.end_headers()
+            self.wfile.write(payload)
+            self.close_connection = True
+            return
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("connection", "close")
+        self._cors()
+        self.end_headers()
+
+        def ev(name, data):
+            self.wfile.write(f"event: {name}\ndata: {json.dumps(data)}\n\n".encode())
+            self.wfile.flush()
+
+        rid, mid = "resp_bench", "msg_bench"
+        seq = 0
+        in_progress = {"id": rid, "object": "response", "created_at": 1789584000,
+                       "status": "in_progress", "model": model, "output": []}
+        ev("response.created", {"type": "response.created", "response": in_progress,
+                                "sequence_number": seq}); seq += 1
+        ev("response.in_progress", {"type": "response.in_progress",
+                                    "response": in_progress, "sequence_number": seq}); seq += 1
+        part = {"type": "output_text", "annotations": [], "logprobs": [], "text": ""}
+        ev("response.output_item.added",
+           {"type": "response.output_item.added",
+            "item": {"id": mid, "type": "message", "status": "in_progress",
+                     "content": [], "phase": "final_answer", "role": "assistant"},
+            "output_index": 0, "sequence_number": seq}); seq += 1
+        ev("response.content_part.added",
+           {"type": "response.content_part.added", "content_index": 0, "item_id": mid,
+            "output_index": 0, "part": part, "sequence_number": seq}); seq += 1
+        for i in range(0, len(text), 96):
+            ev("response.output_text.delta",
+               {"type": "response.output_text.delta", "content_index": 0,
+                "delta": text[i:i + 96], "item_id": mid, "output_index": 0,
+                "sequence_number": seq}); seq += 1
+        ev("response.output_text.done",
+           {"type": "response.output_text.done", "content_index": 0, "item_id": mid,
+            "output_index": 0, "logprobs": [], "sequence_number": seq, "text": text}); seq += 1
+        done_part = {"type": "output_text", "annotations": [], "logprobs": [], "text": text}
+        ev("response.content_part.done",
+           {"type": "response.content_part.done", "content_index": 0, "item_id": mid,
+            "output_index": 0, "part": done_part, "sequence_number": seq}); seq += 1
+        done_item = {"id": mid, "type": "message", "status": "completed",
+                     "content": [done_part], "phase": "final_answer", "role": "assistant"}
+        ev("response.output_item.done",
+           {"type": "response.output_item.done", "item": done_item,
+            "output_index": 0, "sequence_number": seq}); seq += 1
+        if tc:
+            call = {"id": "fc_bench_1", "type": "function_call", "status": "completed",
+                    "call_id": "call_bench_1", "name": tc["name"],
+                    "arguments": json.dumps(tc["arguments"])}
+            ev("response.output_item.added",
+               {"type": "response.output_item.added",
+                "item": {"id": "fc_bench_1", "type": "function_call", "status": "in_progress",
+                         "call_id": "call_bench_1", "name": tc["name"], "arguments": ""},
+                "output_index": 1, "sequence_number": seq}); seq += 1
+            args = json.dumps(tc["arguments"])
+            ev("response.function_call_arguments.delta",
+               {"type": "response.function_call_arguments.delta", "item_id": "fc_bench_1",
+                "output_index": 1, "call_id": "call_bench_1", "delta": args,
+                "sequence_number": seq}); seq += 1
+            ev("response.function_call_arguments.done",
+               {"type": "response.function_call_arguments.done", "item_id": "fc_bench_1",
+                "output_index": 1, "call_id": "call_bench_1", "arguments": args,
+                "sequence_number": seq}); seq += 1
+            ev("response.output_item.done",
+               {"type": "response.output_item.done", "item": call,
+                "output_index": 1, "sequence_number": seq}); seq += 1
+        out_tokens = max(1, len(text) // 4)
+        ev("response.completed",
+           {"type": "response.completed",
+            "response": {"id": rid, "object": "response", "created_at": 1789584000,
+                         "status": "completed", "model": model, "output": [done_item],
+                         "usage": {"input_tokens": 10,
+                                   "input_tokens_details": {"cached_tokens": 0},
+                                   "output_tokens": out_tokens,
+                                   "output_tokens_details": {"reasoning_tokens": 0},
+                                   "total_tokens": 10 + out_tokens}},
+            "sequence_number": seq})
         self.wfile.flush()
         self.close_connection = True
 

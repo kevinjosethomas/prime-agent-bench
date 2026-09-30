@@ -24,12 +24,26 @@ def sse_chunk(obj) -> bytes:
 
 
 def user_message_text(body: dict) -> str:
-    """The concatenated user-message text of a request body."""
+    """The concatenated user-message text of a request body.
+
+    Chat-completions bodies carry ``messages``; Responses-API bodies
+    carry ``input`` items with input_text parts — both are read so the
+    queue ``match`` keys work for either wire protocol."""
     parts = []
     for message in body.get("messages", []):
         if message.get("role") != "user":
             continue
         content = message.get("content")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("text"):
+                    parts.append(part["text"])
+    for item in body.get("input") or []:
+        if not isinstance(item, dict) or item.get("role") != "user":
+            continue
+        content = item.get("content")
         if isinstance(content, str):
             parts.append(content)
         elif isinstance(content, list):
@@ -94,9 +108,10 @@ class MockState:
     def log(self, path: str, body: dict, queue: str) -> None:
         """Record a redacted request summary (no content)."""
         try:
+            items = body.get("messages") or body.get("input") or []
             roles = [
                 {"role": m.get("role"), "len": len(json.dumps(m.get("content", "")))}
-                for m in body.get("messages", [])
+                for m in items
             ]
             with open(self.log_path, "a") as f:
                 f.write(json.dumps({"ts": time.time(), "path": path, "model": body.get("model"),

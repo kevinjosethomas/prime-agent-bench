@@ -1,6 +1,6 @@
 binary: /usr/bin/codex
 revision: npm@latest
-msg_routing: real-api
+msg_routing: mock
 install:
   installed_paths:
   - /usr/lib/node_modules/@openai
@@ -11,7 +11,8 @@ auth_sources:
   excl:
   - tmp
   - .tmp
-  note: full device state; copied ChatGPT tokens do NOT authenticate a copied home
+  note: full device state; copied ChatGPT tokens do NOT authenticate a copied home; the prepass walk settles the dummy apikey state, and mock routing only pins
+    openai_base_url in config.toml (the wire_api stays responses - the mock serves it)
 - src: ~/.pi/agent/auth.json
   note: "the OpenAI API key (openai.key) for the real-api api-key route \u2014 the\
     \ ChatGPT OAuth cannot survive isolated trial homes (single-use refresh tokens\
