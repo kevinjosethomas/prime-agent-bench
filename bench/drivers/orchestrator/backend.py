@@ -163,7 +163,7 @@ class PrimeSandboxBackend(SandboxBackend):
                 raise RuntimeError(f"upload failed: {out.stdout[-200:]}")
         else:
             # slice upload: split locally, upload each slice, rejoin remotely
-            tmp = Path("/tmp") / f"bench-upload-{harness_tar.stem}"
+            tmp = Path("/tmp") / f"bench-upload-{handle.sandbox_id}-{harness_tar.stem}"
             tmp.mkdir(parents=True, exist_ok=True)
             _sp.run(["split", "-b", str(self.UPLOAD_SLICE_BYTES), "-d",
                      str(harness_tar), str(tmp / "part-")], check=True)
