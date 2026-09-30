@@ -1,0 +1,79 @@
+{
+ "id": "20260929-215000-other-abort-idle-race",
+ "axis": "other",
+ "hypothesis": "The abort-and-send intermittent (queue.rs:545 'the session never went idle after the abort', 1/3 quiet-VM solo, 600.98s wall) is a lost abort in the [runner-pickup, agent-run-registration) window, not a flake: the delivery's cancel flag is consulted nowhere before the run registers, so agent.abort() no-ops on the empty run slot and the turn serves its full provider hold.",
+ "approach": "Reproduced at rate with a state-dumping harness (worker/turn_stream_tests/abort_idle_race.rs: the same admission sequence, delayMs 3000, a 300ms idle window, dumps on every miss), then fixed at the engine admission seam: the delivery's cancel flag (the worker's abort probe, pickup-cleared, so true at the consult = 'an abort landed after this delivery's pickup') is consulted (1) in run_model_turn after the session build, before the retry/failover driver (-> TurnResult::Aborted -> run_turns' abort arm -> DoneAborted), and (2) at run_turn_once's admission future head (the last stop before the registration) -> Ok(TurnOnce::Aborted) so the retry driver never re-classifies the raced turn. The runner's fallback agent_end now gates on the abort flag too (an aborted settle keeps the compact-interrupt probe's suppressed-run silence). The family test gained TS ENG-5991's positive-signal sync (the run-slot registration, not core.busy+400ms).",
+ "parity_notes": "TS's registration gap is microscopic (session built at construction, admission synchronous on the event loop); the Rust port's lazy per-worker session build inside the delivery widened it to the whole admission prefix - the consult restores TS-equivalent semantics for a cancel racing the admission. Disclosed corner: the probe combines abort_requested || retry_abort_requested (the engine's existing delivery-cancel semantic at the retry-sleep and boundary consults); an abort_retry landing alone in an admission prefix aborts the delivery where TS's abortRetry-with-no-retry-in-flight no-ops (wire-only corner).",
+ "base": {
+  "revision": "1ee6e661a854588f397be12a40881f204f74c626"
+ },
+ "branch": "lane/abort-send-idle-race",
+ "commits": [
+  "1ff39fcaa",
+  "bf31338f2",
+  "430e8c3e1",
+  "84078c39a",
+  "4ea834a06",
+  "ff3cfd3c2",
+  "baeedec0f",
+  "c5cbd84b8",
+  "6a6a19aba"
+ ],
+ "build": {
+  "sandbox_id": "tty7e73wgvntmmwvivqdhf52",
+  "toolchain": "rustup 1.98.1"
+ },
+ "gates": {
+  "fmt": "pass (final head 6a6a19aba)",
+  "clippy": "pass (workspace -D warnings)",
+  "test": "pass: kill_broadcast 4/4 + abort family 6/6 + turn_stream 24/24 + compaction_admission 2/2 + the rate harness 25 reps lost=0 (the lane gates/reviews fired 3 rotations of the registered co-scheduled bounded-wait starvation family - tui_submit_outlived, kill_cancels, steer_mid_compaction - each triaged SOLO GREEN at this lane's heads; the family renewed 2026-09-29, expiry 2026-10-06)",
+  "ci": "MANDATORY GREEN at 6a6a19aba: 8/8 test shards, clippy, fmt, both bots SUCCESS, zero unresolved threads (Macroscope's 3 findings fixed with the oracle class in 6a6a19aba - the fallback gate keyed on the abort gate's own observation + the two harness accounting fixes); benchmark FAILURE = the standing non-applicable PR-vs-default-branch class",
+  "ci_shard_flake": "tool_results::tool_result_entries_persisted_and_streamed fired in shard 5 at c5cbd84b8: UPSTREAM ambient flake (1/8 solo at the lane head AND 1/8 at the base tree with no lane diff; the 1+1 failed-jobs rerun green; not this lane's blast radius)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential",
+  "suites": {
+   "abort_and_send_idle_race_rate": {
+    "pre_fix": {
+     "trials": 137,
+     "lost_aborts": 7,
+     "rate_pct": 5.1,
+     "signature": "busy=true abort_requested=true steering_len=2 run_signal=live"
+    },
+    "post_fix": {
+     "trials": 250,
+     "lost_aborts": 0,
+     "fixture_leaks_reported": 10,
+     "chunks": "10x25 in-process"
+    },
+    "discriminator": "the settled transcript's first assistant row: 'held reply' behind 1 user row = lost; behind the batch's 3 = the honored consult's leaked faux step (reported)"
+   },
+   "original_family_test_solo": {
+    "pre_fix": {
+     "trials": 3,
+     "green": 2,
+     "fail_wall_s": 600.98
+    },
+    "post_fix": {
+     "trials": 8,
+     "green": 8,
+     "walls_s": "1-2"
+    }
+   }
+  },
+  "extra": {}
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The harness's in-process worker/runtime accumulation past ~130 reps (the 'never admitted' artifact) was chunked at 25 reps/process and separated from the product race. The 10 post-fix leak-class reps are the faux fixture's pop-at-call contract (no provider call = no consumption), not product behavior - with a real provider the batch turn serves promptly."
+ },
+ "outcome": "pr-open-bar",
+ "decision": "Real product race confirmed and closed at the engine admission seam; the test's negative-only sync was the second half (TS parity: ENG-5991's waitForToolStart discipline).",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3159",
+ "record_path": "data/hillclimb/experiments/20260929-215000-other-abort-idle-race.json",
+ "session": {
+  "worker": "abort-idle-race lane",
+  "session_dir": "sub-bd88138a"
+ },
+ "timestamp": "2026-09-30T00:20:00+00:00"
+}
