@@ -1,0 +1,179 @@
+{
+ "id": "20261001-183000-io-create-fsync-fanout-0601fd859",
+ "axis": "io",
+ "lane": "perf-create-fsync-fanout2 (perf-create-fsync-fanout2-fast; the successor lane after the orchestrator machine death ~07:50-16:59Z \u2014 the cut was COMMITTED at 0601fd859 and PUSHED by the predecessor session; this lane ran the full evidence phase: prechecks, the same-VM ABBA, the io census, the served-path oracles, the gates, the PR)",
+ "operator_signal": "RESUME the create-path fan-out cut: the accepted posture ruling (the 5->3 fsync cut - persist #2 the boot self-registration now in-memory only; persist #1 aligned to the TS rename-only posture; the barrier fsync #3 + the jsonl + the journal KEPT; the crash-window matrix in the PR body). The DIRECT oracle is the io census (per-create fsync count 5->3 + per-fsync spans + the rename census), corroborating fresh-cold create-window p50 (n>=10/arm), served-path assertions (the create response sessionFile non-empty + the final descriptor's contract fields byte-asserted), I/O advisory v1.0 probes at every leg boundary; the hostregime census record is the regime-label authority IF landed.",
+ "hypothesis": "The fresh-create census (record 20261001-031500's io leg) attributes five fsyncs to one create window: three worker-descriptor persists to the same path (spawn Starting 39.2ms, boot-registration Ready 39.9ms, post-create identity 39.6ms), the session jsonl's create rewrite (74.6ms), and the worker recovery journal's append (38.0ms, TS-parity - TS fsyncs it too). TS pays exactly one fsync per fresh create: the journal. The descriptor family's fsyncs are the port's unconditional-fsync divergence from TS's writeFileAtomicSync (fsync opt-in, never requested at these call sites), and TS has no boot-registration write at all. Cutting the spawn record's pre-rename fsync (the TS persistWorker call shape) and the boot-registration write entirely (in-memory only) removes 2 of the 5 fsyncs and 1 of the 3 descriptor writes per fresh create while keeping the create-completion fsync as the metadata-survival barrier.",
+ "approach": "PRECHECKS on the bench VM at 0601fd859 (cargo +1.98.1 fmt --all --check rc=0; cargo +1.98.1 clippy --workspace --all-targets -- -D warnings rc=0). Both arms release-built on ONE fresh bench VM (hillclimb-perf-create-fsync-fanout2 kioy6fpa66pib8qtqoufon0d, ubuntu:22.04 16c/32GB/80GB, rustup 1.98.1): base 3358e0016 shipped 37e14b66.. 56,394,608B, candidate 0601fd859 shipped ee591b3f.. 56,400,288B (split_debug.py the shipped shape; plain binaries kept 8a4b0eee/d455c608). Staged in the r2 install layout (launcher bin/prime-agent-rust + exe-adjacent share payload + the tip's runtime + r2-pin catalogs), the bench harness settled + the kernel venv warmed by the daemon's own bootstrap. THE ABBA (fanout-abba.py): legs A1/B1/cA1/cB1/cB2/cA2/B2/A2 - clean legs n=10/arm x2 (fresh daemon + fresh trial home per trial, the create window measured DIRECTLY on the daemon wire: connect, daemon_hello, create request -> response wall), census legs 1/arm x2 under strace -f -tt -T -s 192 (openat,fsync,fdatasync,rename,execve) with fd->path attribution (the unfinished/resumed syscall pairing parser; INFLATED - traced walls never reported clean), served-path assertions on EVERY trial (create response sessionFile non-empty + the final on-disk descriptor byte-asserted: lifecycle ready, rootSessionId==sessionId, sessionFile==createCommand.sessionPath, pid>0, token present + the session jsonl on disk). Sha-asserted atomic payload swaps between legs (copy->chmod 0755->os.replace->sha256 assert->X_OK assert->the product.yaml binary_sha256 pin re-written + grep-asserted; the arm pair byte-different). I/O advisory v1.0 at EVERY leg boundary (>=40 isolated fresh+sync_all+rename @0.5s + >=50 repeat-fsync; PHASE MODEL re-classified at every boundary; NO-CEILING labels), pre/mid/post CPU calibration, quiet-gated trials (loadavg<1.0).",
+ "parity_notes": "TS anchors: daemon-supervisor.ts persistWorker (writeFileAtomicSync with { mode: 0o600 } only - the fsync is opt-in and never requested at the descriptor call sites) and the absence of any worker_register command (TS has no boot-registration write at all). Frozen surfaces untouched by construction: no session-JSONL rows, no RLM API/wire/tool schemas, no prompts, no TUI output bytes - the daemon's descriptor write policy is not observable on any client surface. The create-completion persist (launch_worker's post-create write) KEEPS the durable write_file_atomic as the metadata-survival barrier (Ready + rootSessionId + sessionFile + createCommand.sessionPath durable before the create response reaches the client - the barrier the create's own sessionFile check and the RLM spawn admission rely on). The supervisor-config and update_prepare sites keep the durable write (the rejected daemon-boot cut is not resurrected; update_prepare out of scope). Tests: write_file_atomic_unsynced_replaces_an_existing_destination + persist_worker_unsynced_stamps_and_round_trips (the TS shape: atomic rename + the fresh updated_at stamp + temp cleanup) + a_known_resident_registration_writes_nothing_to_disk (the registration refreshes the resident in memory - lifecycle Ready, live socket, instance id - while the on-disk spawn record stays BYTE-identical; the create-completion persist owns the next durable state).",
+ "base": {
+  "revision": "3358e0016bce7cf34a195af58bbd91a26e17d694 (org/main at lane start)"
+ },
+ "branch": "lane/perf-create-fsync-fanout @ 0601fd859a7513a6e0331196b3d3897efcf189e0",
+ "commits": [
+  "0601fd859a7513a6e0331196b3d3897efcf189e0 (the cut - committed by the predecessor session before the machine death; this lane's evidence phase measured it byte-for-byte unchanged)"
+ ],
+ "build": {
+  "sandbox_id": "kioy6fpa66pib8qtqoufon0d (hillclimb-perf-create-fsync-fanout2, ubuntu:22.04 16c/32GB/80GB)",
+  "binaries_sha256": {
+   "base_shipped": "37e14b66562125d6391b778b796a86d75749956c935d5cf7aa0abdd7bd8f05eb",
+   "base_plain": "8a4b0eee3216000b1a493e3000b6cafe11c9704c6dd3d2a38a49b7bdcd6a0f7f",
+   "cand_shipped": "ee591b3f71fc1633f09024b8bf23f123ebbbf29555a2308987c7e5d64d7dda7a",
+   "cand_plain": "d455c608517f56cee419daaf3763599551a9dd7884a4a029f305914c4b2cb094"
+  },
+  "binary_bytes": {
+   "base_shipped": 56394608,
+   "cand_shipped": 56400288
+  },
+  "toolchain": "rustup 1.98.1 (the CI ci.yml pin), --locked release, split_debug shipped shape",
+  "precheck": "cargo +1.98.1 fmt --all --check rc=0 + cargo +1.98.1 clippy --workspace --all-targets -- -D warnings rc=0 on the VM at the lane head before the ABBA"
+ },
+ "gates": {
+  "fmt": "pass (cargo +1.98.1 fmt --all --check rc=0 at 0601fd859, bench VM precheck + gate phase GREEN)",
+  "clippy": "pass (cargo +1.98.1 clippy --workspace --all-targets -- -D warnings rc=0 at 0601fd859, bench VM precheck + gate phase GREEN)",
+  "test": "gate chain at the EXACT head 0601fd859 (pooled warm rust:1-bookworm VMs, toolchain 1.98.1 pin): gate_1790876635 fmt+clippy GREEN, test rc=101 with ONE unknown failure (tui_two_back_to_back_submits_reach_the_daemon_in_order) -> head-bound triage at the exact head (gate-env recipe: PA_E2E_KERNEL_PYTHON + PI_PACKAGE_DIR on the lane bench VM kioy6fpa66pib8qtqoufon0d): SOLO x3 GREEN (0.69s/0.43s/0.40s) + FILE 39/39 GREEN (15.05s) = the co-scheduled load class -> registered as the known-red family tui_two_back_to_back_submits_co_scheduling (fleet-tools 51fa227, both copies byte-identical dab4d8eb, expiry 2026-10-08, refire-reopen carried). RE-GATE gate_1790879568 at the same head: RED_KNOWN_REDS, ZERO unknowns - five members of the standing rotating co-scheduled families fired (bounded_wait_starvation abort_boundary_follow_ups + tui_refused_draft, tui_prompt_stash_family, the team_picker pair), all auto-attached with citations, none on this change's surfaces; the merge bar's fully-green gate is the merge-time fold+re-gate step (the stale-head rule: org/main tip moves - fold + re-gate at the folded head before merging, orchestrator-driven, NO SELF-MERGE)",
+  "benchmark_ci": "n/a (rust-port lane; the standing non-applicable class)"
+ },
+ "measurements": {
+  "method": "same-VM sequential ABBA (one lane-private bench VM), sha-asserted atomic payload swaps, fresh daemon + fresh trial home per trial, the create window measured directly on the daemon wire (request->response), quiet-gated, served-path assertions on every trial",
+  "regime_disclosure": {
+   "advisory": "I/O advisory v1.0: >=40 ISOLATED fresh+sync_all+rename @0.5s + >=50 repeat-fsync at every leg boundary; PHASE MODEL re-classified at every boundary; NO-CEILING - every leg carries its regime label",
+   "boundary_probes": "16/16 boundaries (pre+post x 8 legs) PHASE-DEGRADED-BOTH: isolated fresh+sync_all+rename p50 56.9-60.1ms with ALL 40 ops >50ms at every boundary (the bench-host fresh-trap machine class); repeat-fsync p50 0.08-0.09ms with a >50ms stall tail (max 56.8-61.9ms) at every boundary",
+   "hostregime_census_status": "the hostregime census record (20261001-072600 io-hostregime-statemachine) is NOT landed on the bench repo (record_draft FILL; its analysis exists 2026-10-01T17:21Z) - per the operator ruling this campaign's OWN advisory v1.0 boundary probes are the regime-label authority; the fresh-create DEEP state the operator flagged (~230-270ms on pool hosts) is the machine class this VM's ~57ms fresh-trap quantizes: every wall leg carries the label",
+   "phase_verdicts": "PHASE-DEGRADED-BOTH for the whole campaign (no boundary crossed a phase)",
+   "cpu_calibration": "0.0008s x3 (pre/mid/post) - no CPU drift"
+  },
+  "create_window_wall_clean_legs": {
+   "base": {
+    "trials": 20,
+    "valid": 20,
+    "p50_ms": 352.1,
+    "p90_ms": 412.1,
+    "min_ms": 218.2,
+    "max_ms": 468.8,
+    "values_ms": [
+     218.2,
+     235.9,
+     236.7,
+     253.2,
+     293.9,
+     297.6,
+     313.7,
+     337.5,
+     346.1,
+     348.4,
+     355.8,
+     356.1,
+     376.2,
+     378.8,
+     391.4,
+     398.7,
+     408.8,
+     412.1,
+     425.9,
+     468.8
+    ]
+   },
+   "cand": {
+    "trials": 20,
+    "valid": 20,
+    "p50_ms": 212.1,
+    "p90_ms": 263.4,
+    "min_ms": 158.2,
+    "max_ms": 302.7,
+    "values_ms": [
+     158.2,
+     158.4,
+     173.5,
+     187.4,
+     189.9,
+     191.7,
+     195.6,
+     198.3,
+     200.7,
+     202.8,
+     221.4,
+     247.9,
+     248.5,
+     252.5,
+     254.1,
+     258.9,
+     261.6,
+     263.4,
+     266.0,
+     302.7
+    ]
+   },
+   "delta_p50_ms": -140.0,
+   "delta_pct": -39.8,
+   "leg_pairing": "A1 377.5 vs B1 251.0; B2 200.6 vs A2 315.7 (legs A,B,B,A; each n=10, asserts_ok 10/10 every leg, errs 0)",
+   "reading": "consistent with the two removed ~57ms fresh-fsync writes in the PHASE-DEGRADED-BOTH regime the campaign sat in; the wall delta is regime-bound and labeled as such - the count census is the regime-independent direct evidence"
+  },
+  "io_census_direct_oracle": {
+   "method": "strace -f -tt -T -s 192 -e trace=openat,fsync,fdatasync,rename,execve around the fresh-cold wire create, fd->path attribution via the unfinished/resumed syscall pairing; INFLATED (ptrace) - traced walls never reported clean; the window is [create request send, create response receive] on wall clock",
+   "base_runs": {
+    "cA1": {
+     "fsync_total_in_window": 7,
+     "descriptor": 4,
+     "session_jsonl": 1,
+     "recovery_journal": 1,
+     "catalog_caches": 1,
+     "create_wall_inflated_ms": 524.9
+    },
+    "cA2": {
+     "fsync_total_in_window": 8,
+     "descriptor": 4,
+     "session_jsonl": 1,
+     "recovery_journal": 1,
+     "catalog_caches": 2,
+     "create_wall_inflated_ms": 457.2
+    }
+   },
+   "cand_runs": {
+    "cB1": {
+     "fsync_total_in_window": 5,
+     "descriptor": 1,
+     "session_jsonl": 1,
+     "recovery_journal": 1,
+     "catalog_caches": 2,
+     "create_wall_inflated_ms": 207.0
+    },
+    "cB2": {
+     "fsync_total_in_window": 6,
+     "descriptor": 2,
+     "session_jsonl": 1,
+     "recovery_journal": 1,
+     "catalog_caches": 2,
+     "create_wall_inflated_ms": 301.5
+    }
+   },
+   "per_site_verdicts": {
+    "spawn_record_fsync": "GONE on cand (base measured 57.6-61.1ms pre-rename fsync on the descriptor temp; cand has NO descriptor fsync between the create request and the completion barrier; the spawn write's atomic RENAME is measured present - the TS persistWorker shape)",
+    "boot_registration_write": "GONE on cand (base: the second descriptor write ~60ms in, the premature Ready persist; cand: no descriptor write between the spawn rename and the completion persist - 2 descriptor renames total on cB1 vs base's 4)",
+    "create_completion_barrier_fsync": "PRESENT both arms (base 54.4-60.9ms, cand 2.4-62.1ms - the fresh-trap class as expected; the metadata-survival barrier kept)",
+    "session_jsonl_fsync": "1 both arms (unchanged - the session family's deliberate strengthening)",
+    "recovery_journal_fsync": "1 both arms in-window + 1 settle append later (TS parity kept)",
+    "descriptor_renames": "base 4 in-window -> cand 2-3 (the spawn rename kept unsynced, the registration rename GONE, the completion + the identity-follow kept)"
+   },
+   "both_arms_context_disclosed": "the census ALSO catches (a) the fresh trial's model-catalog cache writes (1-2 fsyncs: provider-model-catalog.v1 / prime-inference-models-cache / mcp-service-catalog.v2) and (b) the post-completion identity-follow descriptor persists (1-2 per create, sync_root_identity_from_roster's roster reconciliation on a second supervisor thread, ~60ms after the completion) - BOTH ARMS, out of the cut's scope, counted separately; the fan-out DELTA is exactly the cut's two removed writes (-2 fsyncs per create)",
+   "extended_window": "the [send, resp+500ms] census: base descriptor fsyncs 5,5 vs cand 2,3 (the identity-follow lands there in both arms); in-window totals base 7,8 vs cand 5,6 - the -2 delta is stable in both windows"
+  },
+  "served_path_oracle": {
+   "asserts": "40/40 clean trials + 4/4 census trials: create response success + sessionFile non-empty; the final on-disk descriptor BYTE-asserted: lifecycle==ready, rootSessionId==response sessionId, sessionFile==response sessionFile, createCommand.sessionPath==response sessionFile, pid>0, authenticationToken present; the session jsonl on disk (row0 present); supervisor_config.json on disk (the boot write intact)",
+   "reading": "the metadata-survival barrier demonstrably served on the candidate - the descriptor's durable contract is unchanged by the cut"
+  },
+  "noop_daemon_boot": "daemon socket accept p50 0.122s (fresh daemon per trial, both arms - includes the supervisor-config boot persist, identical in both arms)"
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "The campaign sat in PHASE-DEGRADED-BOTH at every boundary (the fresh-trap machine class, all 40 isolated ops >50ms per probe) - the wall p50s are regime-bound and labeled; the direct census counts are regime-independent. The census legs are INFLATED (ptrace) and their walls never reported clean. The census's both-arms families (catalog caches + the identity-follow persists) are disclosed and counted separately from the cut's delta. The create-window wall measures the wire create (daemon spawn -> worker spawn -> kernel boot -> jsonl/journal writes -> the completion barrier -> the response): the fresh-cold shape without the TUI's paint/echo - the corroborating wall, not the TUI needle."
+ },
+ "outcome": "in-progress (PR open; review pending)",
+ "decision": "THE FAN-OUT CUT IS MEASURED AND EVIDENCED at 0601fd859: the direct io census proves the two removed writes at the syscall level (the spawn record's pre-rename fsync GONE with its atomic rename kept - the TS persistWorker shape; the boot-registration write GONE entirely; the create-completion barrier fsync + the jsonl + the journal KEPT, measured present both arms), the corroborating create-window wall p50 -140.0ms (-39.8%) in the labeled PHASE-DEGRADED-BOTH fresh-trap regime, the served-path byte-assertions green on all 44 trials (the metadata-survival barrier demonstrably served), the prechecks clean, the gate chain at the exact head RED_KNOWN_REDS zero-unknowns (the one triaged unknown registered with its solo+file receipts). PR #3287 open at the lane head; the crash-window matrix carried in the PR body; the reviewer packet at hillclimb/packets/fanout-rebind-0601fd859.md. The merge (fold + re-gate + the reviewer bar) is the orchestrator's step.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3287",
+ "record_path": "data/hillclimb/experiments/20261001-183000-io-create-fsync-fanout-0601fd859.json",
+ "session": {
+  "worker": "perf-create-fsync-fanout2-fast"
+ },
+ "timestamp": "2026-10-01T19:15:00+00:00"
+}
