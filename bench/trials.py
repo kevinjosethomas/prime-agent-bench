@@ -13,6 +13,7 @@ never numeric, never ranked.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import time
 import uuid
@@ -23,6 +24,15 @@ from bench.core.registry import Registry
 from bench.core.harness import HarnessDriver
 from bench.core.identity import default_run_label, harness_identity
 from bench.gates import gate_idle, node_is_busy
+
+
+def bench_tag(benchmark_name: str) -> str:
+    """A short, unique trial-dir tag per benchmark: word initials, numeric
+    words kept whole (compare.cold_start -> cs, kernel.state_snapshot_50MB
+    -> kss50MB). Trial paths stay short enough for the products' unix
+    sockets under the trial home (see BenchLayout.trials_dir)."""
+    words = re.split(r"[._]", benchmark_name.removeprefix("compare."))
+    return "".join(w if w[:1].isdigit() else w[:1] for w in words if w)
 
 
 def cfg_run_label(reg: Registry) -> str:
@@ -127,7 +137,7 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 continue
             gate_waited = gate_idle(reg.cfg, tag=name)
             prod = reg.product(name)
-            trial_dir = layout.homes / name / "trials" / f"{benchmark_name.replace('.', '_')}-{phase_tag}-{trial_counter[name]:02d}"
+            trial_dir = layout.trials_dir(name) / f"{bench_tag(benchmark_name)}-{phase_tag}-{trial_counter[name]:02d}"
             if trial_dir.exists():
                 shutil.rmtree(trial_dir)
             t_start = time.time()
@@ -143,6 +153,7 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
                 "abba_position": seq.index(name),
                 "wall_ts": t_start,
                 "driver": driver.name,
+                "trial_dir": str(trial_dir),
                 "comparability": levels[name],
                 "env_gate": {"waited_for": gate_waited, "busy_now": node_is_busy(reg.cfg)},
             }

@@ -12,7 +12,7 @@ from bench.adapters.benchmarks.support import PROBE_TOKEN, first_paint, prepass
 from bench.core.benchmark import Benchmark
 from bench.core.harness import HarnessDriver, now
 from bench.core.product import ProductAdapter, TrialContext
-from bench.core.process import loadavg, rss_tree
+from bench.core.process import loadavg, pids_referencing, rss_pids, rss_tree
 
 ONBOARDING_AUTODISMISS = [
     ("Share agent traces with Prime Intellect?", ["\x1b[B", "\r"]),
@@ -21,7 +21,8 @@ ONBOARDING_AUTODISMISS = [
 
 
 def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
-                       driver: HarnessDriver) -> None:
+                       driver: HarnessDriver, prepassed: bool = False,
+                       expect_resident: bool = False) -> None:
     """The cold-start measurement (shared with compare.warm_start).
 
     First paint is the first non-blank frame (kept as its own metric; the
@@ -31,9 +32,15 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
     gap and disclosed per row (audit F13's ~2s probe floor was two 1.0s
     blocking waits for absent markers burned between paint and the first
     probe on every trial; the probe now starts immediately).
+
+    The trial's processes alive at launch are recorded and checked: a cold
+    launch starts with none (the prepass sweep killed any daemon it left),
+    a warm launch onto a resident daemon (``expect_resident``) with it.
     """
-    if product.needs_prepass:
+    if product.needs_prepass and not prepassed:
         prepass(product, ctx, driver)
+    trial_needle = [str(ctx["trial_dir"])]
+    resident = pids_referencing(trial_needle)
     t_load = loadavg()
     app = product.launch(ctx, driver)
     try:
@@ -48,6 +55,7 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
             refresh_keys=product.erase_refresh_keys)
         time.sleep(1.0)  # settled idle
         rss = rss_tree(app.pid)
+        trial_procs = pids_referencing(trial_needle)
         bursts = app.burst_stats(t_start=app.t_spawn, t_end=now())
         record["metrics"] = {
             "launch_to_first_paint_ms": round((t_paint - app.t_spawn) * 1000.0, 1),
@@ -69,8 +77,15 @@ def measure_cold_start(product: ProductAdapter, ctx: TrialContext, record: dict,
                            "dialog_ms": probe["dialog_ms"]}
         if probe["dialogs"]:
             record["dialog_autodismissed"] = probe["dialogs"][0][:40]
-        record["validation"] = {"echoed": True, "erased": erase_ok}
-        record["resource"] = {"rss_settled": rss, "loadavg_before": t_load, "loadavg_after": loadavg()}
+        record["resident_at_launch"] = [cmd for _pid, cmd in resident]
+        record["trial_procs_settled"] = [cmd for _pid, cmd in trial_procs]
+        record["validation"] = {"echoed": True, "erased": erase_ok,
+                                "resident_as_expected": bool(resident) == expect_resident}
+        # rss_settled: the TUI's process tree; rss_trial: every process of
+        # the trial (adds a detached daemon the tree does not contain)
+        record["resource"] = {"rss_settled": rss,
+                              "rss_trial": rss_pids([pid for pid, _ in trial_procs]),
+                              "loadavg_before": t_load, "loadavg_after": loadavg()}
     finally:
         app.kill_tree()
         product.reap(ctx)

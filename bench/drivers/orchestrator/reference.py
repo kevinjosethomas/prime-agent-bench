@@ -38,14 +38,17 @@ def shlex_quote(code: str) -> str:
     return shlex.quote(code.strip())
 
 
-def compare_references(times: dict, threshold_pct: float = 5.0) -> dict:
+def compare_references(times: dict, threshold_pct: float = 5.0,
+                       median_ms: float | None = None) -> dict:
     """Flag sandboxes whose reference deviates from the median by >threshold.
 
+    ``median_ms``: a recorded fleet median to calibrate against instead of
+    this run's own (a one-sandbox re-run lines up with an earlier campaign).
     Returns {"median_ms", "outliers": {name: {"ms", "dev_pct"}}}.
     """
     if not times:
-        return {"median_ms": None, "outliers": {}}
-    median = statistics.median(times.values())
+        return {"median_ms": median_ms, "outliers": {}}
+    median = median_ms or statistics.median(times.values())
     outliers = {}
     for name, ms in times.items():
         dev_pct = (ms - median) / median * 100.0 if median else 0.0

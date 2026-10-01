@@ -43,15 +43,17 @@ def _sandbox_config_yaml(handle, backend, cfg: dict | None = None) -> str:
     """The per-sandbox config: bench root, results dir, mock port, and the
     controller's per-benchmark overrides (``benchmarks:`` — trial counts
     and the msg-routing regime — so a campaign's routing decisions reach
-    the sandbox's own run_suite without touching the harness defaults)."""
+    the sandbox's own run_suite without touching the harness defaults) and
+    product pin overrides (``products:`` — a run's candidate binaries)."""
     import yaml as _yaml
     root = backend.bench_root(handle)
     text = (f"bench_root: {root}\n"
             f"results_dir: {Path(root) / 'results'}\n"
             f"mock:\n  port: {handle.spec['mock_port']}\n")
-    extra = ((cfg or {}).get("benchmarks") or {})
-    if extra:
-        text += _yaml.safe_dump({"benchmarks": extra}, sort_keys=False)
+    for section in ("benchmarks", "products"):
+        extra = ((cfg or {}).get(section) or {})
+        if extra:
+            text += _yaml.safe_dump({section: extra}, sort_keys=False)
     return text
 
 
@@ -97,7 +99,7 @@ def deploy_harness(backend, handle, bundle: Path, identity: dict | None = None,
 def materialize(backend, spec: dict, bundle: Path, identity: dict | None = None):
     """Provision + deploy + bootstrap one sandbox; returns its handle."""
     handle = backend.provision(spec["name"], spec)
-    deploy_harness(backend, handle, bundle, identity)
+    deploy_harness(backend, handle, bundle, identity, cfg=backend.cfg)
     handle.status = "ready"
     return handle
 

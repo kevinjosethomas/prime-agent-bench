@@ -70,10 +70,10 @@ class Registry:
         table[instance.name] = instance
 
 
-def adapter_cfg(cfg: dict, kind: str, name: str) -> dict:
+def adapter_cfg(cfg: dict, kind: str, name: str, config_name: str | None = None) -> dict:
     """The constructor config slice for one adapter."""
     layout = BenchLayout.from_config(cfg)
-    slice_ = {"layout": layout, "product": product_config(name, cfg),
+    slice_ = {"layout": layout, "product": product_config(name, cfg, config_name),
               "mock": cfg.get("mock", {})}
     if kind == "fixtures":
         slice_["fixture"] = cfg.get("fixtures", {}).get(name, {})
@@ -92,7 +92,8 @@ def _register_module(reg: Registry, cfg: dict, kind: str, base: type,
         if (isinstance(obj, type) and obj is not base
                 and obj.__module__ == module.__name__
                 and issubclass(obj, base)):
-            instance = obj(adapter_cfg(cfg, kind, obj.name))
+            instance = obj(adapter_cfg(cfg, kind, obj.name,
+                                       getattr(obj, "config_name", None)))
             reg._register(kind, instance)
 
 

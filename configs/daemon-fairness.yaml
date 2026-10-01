@@ -1,0 +1,67 @@
+# The daemon-fairness re-measure (2026-10-01): compare.cold_start +
+# compare.warm_start with every product in its DEFAULT launch mode (codex on
+# its shared app-server daemon; --no-daemon kept as codex_nodaemon for
+# continuity with r2), two rust builds (rust = org main bdc0ae559, rust_b =
+# v0.9.9-beta.11), the r2 vendor payload for ts/claude/codex/pi. Otherwise
+# configs/r2.yaml verbatim.
+bench_root: ~/dfair/root
+results_dir: ~/dfair/results
+
+product_order: [rust, rust_b, ts, claude, codex, codex_nodaemon, pi, hermes]
+display:
+  rust: Prime Agent Rust (main bdc0ae559)
+  rust_b: Prime Agent Rust (v0.9.9-beta.11)
+  ts: Prime Agent TS
+  claude: Claude Code
+  codex: Codex CLI
+  codex_nodaemon: Codex CLI (--no-daemon)
+  pi: Pi Mono
+  hermes: Hermes Agent
+
+# candidate rust builds (the wsr lane's build recipe: install-rust.sh
+# launcher + v0.9.9-beta.11 payload sidecars + the stripped binary), shipped
+# to sandboxes as vendor/products-dfair.tar.gz at /root/dfair/builds
+products:
+  rust:
+    binary: /root/dfair/builds/main-bdc0/bin/prime-agent-rust
+    revision: bdc0ae559420094d27d955e210a0b08fd096a990
+    binary_sha256: ad0fdcf7fca0be6d9d61359ec260e5b84547678da54e95966f8a39992bab860a
+  rust_b:
+    binary: /root/dfair/builds/b11/bin/prime-agent-rust
+    revision: v0.9.9-beta.11
+    binary_sha256: efd3db4479d35d992a2951630f5c0a1641d2b6db87d1f4f5f9476106b8f2146f
+
+install:
+  node_runtime_paths: [/usr/lib/node_modules/npm, /usr/bin/node]
+
+driver: pty
+mock:
+  port: 8799
+
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv, exclude: [tools]}
+
+settle:
+  timeout_s: 300.0
+  first_paint_timeout_s: 240.0
+  key_pause_s: 0.7
+  loop_s: 0.8
+  echo_wait_s: 1.2
+
+aa:
+  spread_threshold_pct: 10.0
+  drift_threshold_pct: 10.0
+
+noop_control:
+  rounds: 30
+
+load_gate:
+  compile_markers: [rustc, cargo, /tsc, esbuild, npm exec, node-gyp, cc1, clang]
+  load_threshold: 0.6
+  max_wait_s: 300.0
+  poll_s: 2.0
+
+benchmarks: {}

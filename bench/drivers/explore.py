@@ -24,7 +24,7 @@ def explore(reg: Registry, name: str, secs: float = 15.0, keys: list[str] | None
         tpl.mkdir(parents=True, exist_ok=True)
         prod.prepare_template(tpl)
         (tpl / ".bench-template-ok").write_text("ok")
-    trial = prod.layout.homes / name / "trials" / ".explore"
+    trial = prod.layout.trials_dir(name) / ".explore"
     if trial.exists():
         shutil.rmtree(trial)
     ctx = prod.new_trial(trial)

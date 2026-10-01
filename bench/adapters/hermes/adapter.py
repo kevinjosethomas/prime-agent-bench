@@ -124,11 +124,3 @@ class HermesAgentProduct(ProductAdapter):
     def model_info(self, ctx: TrialContext) -> str:
         """The model a submit routes to (evidence per row)."""
         return "custom/mock-1"
-
-    def reap(self, ctx: TrialContext) -> None:
-        """Teardown: per-trial process sweep (the TUI is one python process
-        with threads; sweep defensively like the other products)."""
-        from bench.core.process import sweep_trial
-        leftovers = sweep_trial(ctx)
-        if leftovers:
-            raise RuntimeError(f"trial sweep leftovers: {leftovers[:3]}")

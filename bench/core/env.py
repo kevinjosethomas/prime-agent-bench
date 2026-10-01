@@ -55,6 +55,15 @@ class BenchLayout:
         """Pinned product source checkouts (rust, pi-mono)."""
         return self.root / "repos"
 
+    def trials_dir(self, product: str) -> Path:
+        """Where one product's per-trial dirs live.
+
+        Kept short on purpose: products bind unix sockets under the trial
+        home (codex: ~/.codex/app-server-daemon/daemon-updater.sock), and a
+        socket path is capped at 107 bytes. The old homes/<p>/trials/<bench>
+        geometry pushed codex's daemon past the cap."""
+        return self.root / "t" / product
+
 
 def sha256_file(path: Path) -> str:
     """The sha256 of one file (binary attribution evidence; None-safe)."""

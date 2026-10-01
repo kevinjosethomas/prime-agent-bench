@@ -96,7 +96,8 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
     records = _reference_records(backend, handles)
     times = {r["sandbox"]: r["ms"] for r in records}
     ref_cfg = pcfg.get("reference", {})
-    comparison = compare_references(times, float(ref_cfg.get("outlier_pct", 5.0)))
+    comparison = compare_references(times, float(ref_cfg.get("outlier_pct", 5.0)),
+                                    ref_cfg.get("median_ms"))
     comparison = _handle_outliers(backend, handles, times, comparison, ref_cfg,
                                   bundle, harness, records)
     comparison["records"] = records
@@ -198,7 +199,8 @@ def _handle_outliers(backend, handles: dict, times: dict, comparison: dict,
                 if comparison["median_ms"] else 1.0
             handle.normalize_factor = factor
             handle.note(f"reference outlier {outlier['dev_pct']:+.1f}% -> normalize x{factor}")
-    comparison = compare_references(times, float(ref_cfg.get("outlier_pct", 5.0)))
+    comparison = compare_references(times, float(ref_cfg.get("outlier_pct", 5.0)),
+                                    ref_cfg.get("median_ms"))
     comparison["policy"] = policy
     return comparison
 

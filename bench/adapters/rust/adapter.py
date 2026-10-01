@@ -14,7 +14,6 @@ from pathlib import Path
 from bench.core.env import (NODE_HOME_AUTH_PRIME, copy_prime_auth,
                             global_caches, scrubbed_env, write_models_json)
 from bench.core.product import ProductAdapter, TrialContext, copy_tree
-from bench.core.process import sweep_trial
 
 
 class PrimeAgentRustProduct(ProductAdapter):
@@ -162,7 +161,12 @@ class PrimeAgentRustProduct(ProductAdapter):
         return [str(self.binary), "--mode", "daemon",
                 "--daemon-socket", str(ctx["daemon_socket"])]
 
-    def reap(self, ctx: TrialContext) -> None:
-        leftovers = sweep_trial(ctx)
-        if leftovers:
-            raise RuntimeError(f"trial sweep leftovers: {leftovers[:3]}")
+
+class PrimeAgentRustBProduct(PrimeAgentRustProduct):
+    """A second rust build in the same run (A/B of two pins): rust's
+    product.yaml, its own pin from the config's ``products: rust_b:``
+    section (binary + revision + binary_sha256)."""
+
+    name = "rust_b"
+    display_name = "Prime Agent Rust (B)"
+    config_name = "rust"

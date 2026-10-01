@@ -84,7 +84,7 @@ def diagnose(cfg: dict, reg, product_name: str,
     out_dir.mkdir(parents=True, exist_ok=True)
     driver = reg.driver()
     mock = start_mock(cfg)
-    trial = prod.layout.homes / product_name / "trials" / ".diagnose"
+    trial = prod.layout.trials_dir(product_name) / ".diagnose"
     if trial.exists():
         shutil.rmtree(trial)
     prepare_templates(reg, [product_name])

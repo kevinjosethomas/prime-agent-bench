@@ -31,6 +31,13 @@ if [ -f "$VDIR/products.tar.gz" ]; then
     if [ -f /.secret-free ]; then
         echo "[bootstrap] WARNING: secret-free vendor payload (built with 'bench vendor --no-secrets'): binaries shipped, credentials dropped — run the products' auth walk (or bench settle) before any benchmark"
     fi
+    # run-specific extra payloads (e.g. candidate builds pinned through
+    # the config's products: overrides) ride as vendor/products-*.tar.gz
+    for extra in "$VDIR"/products-*.tar.gz; do
+        [ -f "$extra" ] || continue
+        echo "[bootstrap] untar $(basename "$extra")"
+        tar -xzf "$extra" -C /
+    done
 else
     echo "[bootstrap] WARNING: no vendor/products.tar.gz (build it with 'bench vendor --products ...'); assuming the image already carries the products"
 fi

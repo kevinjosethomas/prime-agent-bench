@@ -1,0 +1,30 @@
+# The daemon-fairness re-measure (2026-10-01): ONE Prime VM sandbox with the
+# r2 sandbox spec (ubuntu:22.04, 4CPU/8GB), compare.cold_start +
+# compare.warm_start grouped into it, 10 trials/product + the 10-trial A/A
+# pass, reference calibration against the r2 fleet median (run
+# 20260930-110231: 1283.1ms) so the numbers line up with r2.
+backend: prime
+aa_trials: 10
+keep_sandboxes: false
+wave_timeout_s: 14400.0
+port_base: 8890
+
+reference:
+  outlier_pct: 5.0
+  outlier_policy: replace
+  max_replacements: 2
+  median_ms: 1283.1
+
+retry:
+  max_retries: 1
+
+sandbox_defaults:
+  image: ubuntu:22.04
+  cpu_cores: 4
+  memory_gb: 8
+  disk_gb: 60
+  timeout_minutes: 240
+  bootstrap: bash /root/bench-harness/vendor/bootstrap.sh
+
+groupings:
+  compare_startup: [compare.cold_start, compare.warm_start]

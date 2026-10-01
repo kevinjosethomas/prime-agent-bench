@@ -27,12 +27,15 @@ from bench.gates import gate_idle
 from bench.trials import effective_trials, run_trials
 
 
-def rsync_dir(src: Path, dst: Path) -> None:
+def rsync_dir(src: Path, dst: Path, excludes: tuple = ()) -> None:
     """Mirror src/ into dst/ (rsync -a, runtime specials excluded).
 
     A settle launch can leave sockets/fifos behind (codex's app-server
-    daemon-updater.sock); they are runtime junk, never template state."""
+    daemon-updater.sock); they are runtime junk, never template state.
+    ``excludes``: src-relative runtime paths that must not reach the
+    template either (a product's resident-daemon install and pid files)."""
     subprocess.run(["rsync", "-a", "--no-specials", "--no-devices",
+                    *[f"--exclude=/{e}" for e in excludes],
                     str(src) + "/", str(dst) + "/"], check=True)
 
 
@@ -102,7 +105,7 @@ def settle_product(reg: Registry, name: str, driver, out_dir: Path) -> None:
     steady-state process-cold starts. The settle record is kept as evidence."""
     cfg = reg.cfg
     prod = reg.product(name)
-    tmp = prod.layout.homes / name / "trials" / ".settle"
+    tmp = prod.layout.trials_dir(name) / ".settle"
     if tmp.exists():
         shutil.rmtree(tmp)
     gate_idle(cfg, tag=name)
@@ -126,7 +129,7 @@ def settle_product(reg: Registry, name: str, driver, out_dir: Path) -> None:
             app.kill_tree()
         prod.reap(ctx)
         tpl = prod.template_dir()
-        rsync_dir(ctx["home"], tpl / "home")
+        rsync_dir(ctx["home"], tpl / "home", excludes=prod.template_excludes)
         if ctx["agent_dir"] and (tpl / "agent").exists():
             rsync_dir(ctx["agent_dir"], tpl / "agent")
         shutil.rmtree(tmp, ignore_errors=True)
@@ -220,7 +223,7 @@ def run_suite(cfg: dict, reg: Registry, driver, benchmark_names: list, prod_name
 def final_sweep(reg: Registry) -> None:
     """Safety net: SIGTERM every process still referencing any trial home."""
     for name in reg.products:
-        leftovers = pids_referencing([str(reg.layout.homes / name / "trials")])
+        leftovers = pids_referencing([str(reg.layout.trials_dir(name))])
         for pid, _cmd in leftovers:
             try:
                 os.kill(pid, signal.SIGTERM)

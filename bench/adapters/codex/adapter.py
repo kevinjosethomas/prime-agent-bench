@@ -81,16 +81,46 @@ class CodexProduct(ProductAdapter):
     def env(self, ctx: TrialContext) -> dict:
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
 
+    # The default launch (0.159): the TUI connects to the shared local
+    # app-server daemon, auto-starting it when none runs: it installs a
+    # managed copy under ~/.codex/packages/app-server-daemon, then detaches
+    # (own session) `codex app-server --listen unix:// --managed-daemon`
+    # (control socket /tmp/codex-daemon-<uid>/<sha256>, symlinked from
+    # ~/.codex/app-server-control/app-server-control.sock) plus the
+    # `daemon pid-update-loop` updater (~/.codex/app-server-daemon/
+    # daemon-updater.sock). Both outlive the TUI.
+    template_excludes = (".codex/packages", ".codex/app-server-daemon",
+                         ".codex/app-server-control")
+
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
-        # --no-daemon: codex 0.157's background app-server binds a UNIX
-        # socket under $HOME/.codex/app-server-control/, and the isolated
-        # trial-home paths exceed the kernel's 107-char socket path limit
-        # (node AND sandbox geometry); codex's own error message
-        # recommends this fallback for exactly that case
-        argv = [str(self.binary), "--no-daemon"]
+        argv = [str(self.binary)]
         if ctx.get("routing") == "real-api":
             argv += ["-m", self.KEY_MODEL]
         return argv
+
+    def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
+        # codex's own explicit start: the same managed daemon + updater the
+        # TUI auto-starts (returns once the daemon is up)
+        return [str(self.binary), "app-server", "daemon", "start"]
+
+    def daemon_ready_socket(self, ctx: TrialContext) -> Path | None:
+        return ctx["home"] / ".codex" / "app-server-control" / "app-server-control.sock"
+
+    daemon_command_exits = True
+
+    def first_run_setup(self, ctx: TrialContext) -> None:
+        """The managed-daemon install a user's first launch performs (a
+        ~360MB copy of the codex binaries into ~/.codex/packages; the
+        template excludes it: its `current` link is absolute). Installed
+        by codex's own start, then stopped, then synced so its dirty pages
+        are not flushed during a measured launch."""
+        import os
+        env = self.env(ctx)
+        for cmd in ("start", "stop"):
+            subprocess.run([str(self.binary), "app-server", "daemon", cmd], env=env,
+                           cwd=str(ctx["work"]), stdin=subprocess.DEVNULL,
+                           capture_output=True, timeout=120, check=True)
+        os.sync()
 
     def apply_routing(self, ctx: TrialContext) -> None:
         """Route the trial home's provider: mock writes the config.toml
@@ -156,3 +186,27 @@ class CodexProduct(ProductAdapter):
         if ctx.get("routing") == "real-api":
             return f"openai/{self.KEY_MODEL} (api-key)"
         return self.DEFAULT_MODEL
+
+
+class CodexNoDaemonProduct(CodexProduct):
+    """Codex with ``--no-daemon``: the TUI runs its own in-process app
+    server and never touches the shared daemon (codex's documented
+    fallback; the mode the r1/r2 campaigns measured)."""
+
+    name = "codex_nodaemon"
+    display_name = "Codex CLI (--no-daemon)"
+    config_name = "codex"
+    template_excludes = ()
+
+    def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
+        argv = super().argv(ctx, resume_fixture)
+        return argv[:1] + ["--no-daemon"] + argv[1:]
+
+    def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
+        return None
+
+    def daemon_ready_socket(self, ctx: TrialContext) -> Path | None:
+        return None
+
+    def first_run_setup(self, ctx: TrialContext) -> None:
+        return None

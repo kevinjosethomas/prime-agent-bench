@@ -82,7 +82,8 @@ def load_config(path: str | Path | None = None) -> dict:
     return cfg
 
 
-def product_config(name: str, overrides_cfg: dict | None = None) -> dict:
+def product_config(name: str, overrides_cfg: dict | None = None,
+                   file_name: str | None = None) -> dict:
     """The product's COMPLETE config: bench/adapters/<name>/product.yaml.
 
     The one file pinning the binary source, the auth/config sources, the
@@ -97,8 +98,11 @@ def product_config(name: str, overrides_cfg: dict | None = None) -> dict:
     wins) — a per-VM bundle deploy points ``binary``/``revision`` at the
     VM-built candidate without editing repo files. A pin landing in a
     section no code reads (the audit-F10 trap) is structurally closed:
-    this is the ONLY product pin reader, and it reads both sources."""
-    path = ADAPTERS_DIR / name / "product.yaml"
+    this is the ONLY product pin reader, and it reads both sources.
+
+    ``file_name``: the harness folder whose product.yaml a measurement
+    variant shares (default: ``name``)."""
+    path = ADAPTERS_DIR / (file_name or name) / "product.yaml"
     if not path.exists():
         return {}
     cfg = yaml.safe_load(path.read_text()) or {}

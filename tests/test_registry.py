@@ -20,7 +20,8 @@ def _cfg(tmp_path, overrides=None):
 
 def test_discovery_finds_every_adapter(tmp_path):
     reg = discover(_cfg(tmp_path))
-    assert set(reg.products) == {"rust", "ts", "claude", "codex", "pi"}
+    assert set(reg.products) == {"rust", "rust_b", "ts", "claude", "codex",
+                                 "codex_nodaemon", "pi", "hermes"}
     assert set(reg.terminals) == {"pty", "tmux"}
     assert set(reg.fixtures) == {"session-10mib", "session-10mib-compacted",
                                  "subagent-tree"}
@@ -45,6 +46,31 @@ def test_adapter_wiring(tmp_path):
     assert reg.benchmark("daemon.boot").applicable("rust")
     assert not reg.benchmark("daemon.boot").applicable("claude")
     assert reg.benchmark("compare.scroll_typing").requires_fixture == "session-10mib"
+
+
+def test_variants_share_their_harness_pinning(tmp_path):
+    reg = discover(_cfg(tmp_path, {"products": {"rust_b": {"revision": "b-pin"}}}))
+    codex, nodaemon = reg.product("codex"), reg.product("codex_nodaemon")
+    assert nodaemon.dialog_steps == codex.dialog_steps
+    assert codex.daemon_argv({}) is not None and nodaemon.daemon_argv({}) is None
+    assert reg.product("rust_b").product_cfg["revision"] == "b-pin"
+    assert reg.product("rust").product_cfg["revision"] != "b-pin"
+    assert reg.product("rust_b").template_dir() == reg.layout.homes / "rust_b" / "template"
+
+
+def test_trial_paths_fit_codex_daemon_sockets(tmp_path):
+    # the sandbox bench root + the longest product and benchmark names: the
+    # codex updater socket under the trial home must fit the 107-byte cap
+    from bench.trials import bench_tag
+    cfg = _cfg(tmp_path)
+    cfg["bench_root"] = "/root/bench-root"
+    reg = discover(cfg)
+    tags = {bench_tag(b) for b in reg.benchmarks}
+    assert len(tags) == len(reg.benchmarks)
+    longest = max(tags, key=len)
+    trial = reg.layout.trials_dir(max(reg.products, key=len)) / f"{longest}-aa-19"
+    sock = trial / "home/.codex/app-server-daemon/daemon-updater.sock"
+    assert len(str(sock)) <= 107
 
 
 def test_deep_merge_override_wins():

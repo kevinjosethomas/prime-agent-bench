@@ -130,6 +130,14 @@ class ProductAdapter(ABC):
     # scenarios never branch on the harness's name.
     msg_routing: str = "mock"
     dialog_steps: list[DialogStep] = []  # fallback; config is the source of truth
+    # A measurement variant of another harness (same install, a different
+    # pin or launch mode) reads that harness's product.yaml; its own
+    # ``products: <name>:`` config section still overrides the pins.
+    config_name: str | None = None
+    # Home-relative runtime state a settle launch leaves behind that must
+    # never be baked into the template (a resident daemon's install and
+    # pid/lock files: absolute symlinks into the dead settle dir).
+    template_excludes: tuple[str, ...] = ()
 
     def __init__(self, cfg: dict):
         """cfg keys: layout (BenchLayout), product (per-product pinning
@@ -218,11 +226,31 @@ class ProductAdapter(ABC):
         """The TUI launch argv (optionally resuming a session fixture)."""
 
     def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
-        """The resident-daemon argv, or None if the product has none."""
+        """The product's own command that starts its resident daemon (the
+        warm-start pre-warm), or None if the product has none."""
         return None
 
+    def daemon_ready_socket(self, ctx: TrialContext) -> Path | None:
+        """The unix socket that accepts once the resident daemon is ready."""
+        return ctx.get("daemon_socket")
+
+    #: daemon_argv is a starter that exits once the daemon is up (codex),
+    #: not the daemon process itself (rust/ts)
+    daemon_command_exits: bool = False
+
+    def first_run_setup(self, ctx: TrialContext) -> None:
+        """One-time setup a real user's first launch leaves on disk that the
+        settled template cannot carry (run by the onboarding prepass, never
+        measured). Default: nothing."""
+
     def reap(self, ctx: TrialContext) -> None:
-        """Tear down every process belonging to this trial."""
+        """Tear down every process belonging to this trial: the TUI's
+        process group is already dead, this catches what the product
+        detached from it (daemons, updaters, kernels)."""
+        from bench.core.process import sweep_trial
+        leftovers = sweep_trial(ctx)
+        if leftovers:
+            raise RuntimeError(f"trial sweep leftovers: {leftovers[:3]}")
 
     def cleanup(self, ctx: TrialContext) -> None:
         """Post-trial teardown (alias for reap by default)."""

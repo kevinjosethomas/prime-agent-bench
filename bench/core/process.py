@@ -96,6 +96,20 @@ def sweep_trial(ctx: dict) -> list:
     return pids_referencing(needles)
 
 
+def rss_pids(pids: list) -> dict:
+    """Summed RSS of a flat pid set (each process counted once)."""
+    import psutil
+    rss = 0
+    n = 0
+    for pid in pids:
+        try:
+            rss += psutil.Process(pid).memory_info().rss
+            n += 1
+        except psutil.Error:
+            continue
+    return {"rss_mb": round(rss / (1 << 20), 1), "nproc": n}
+
+
 def rss_tree(pid: int) -> dict:
     """RSS/PSS of a process tree (psutil for the tree, smaps for PSS)."""
     import psutil

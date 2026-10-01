@@ -92,4 +92,7 @@ def prepass(product: ProductAdapter, ctx: TrialContext, driver: HarnessDriver) -
                        probe="Zq7prep01", pacing={})
     finally:
         app.kill_tree()
+    try:
+        product.first_run_setup(ctx)
+    finally:
         sweep_trial(ctx)
