@@ -2,14 +2,15 @@
   "id": "20261001-010543-startup-kernel-async-already-live",
   "axis": "startup",
   "hypothesis": "On current main, the already-async Python prewarm is correct for paint, but concurrent first-touch callers can consume and lose the in-flight startup handle, causing duplicate interpreter launches and lifecycle races.",
-  "approach": "TS-parity-first source audit; replayed the base double-start on a Prime VM before edits. Replaced the consumed startup JoinHandle with a shared watch receiver in pa-core/kernel/provisioner.rs, froze predecessor stop gate at startup creation across retries, and added four integration fixtures for join/error cause, waiter abort, stop, and dispose during boot. Frozen unrelated surfaces unchanged.",
-  "parity_notes": "TS interactive-mode.ts:1858 starts UI without waiting; agent-session.ts:10900-10908 prewarms asynchronously; tools/ipython.ts:462-482 shares managerPromise and :638 awaits it at first touch. Existing Rust create/background prewarm preserved; shared startup watch makes concurrent Rust callers join one in-flight boot, retains true failure message, keeps abort local to waiter, and lets stop/dispose await the same boot. No new async paint cut.",
+  "approach": "TS-parity-first source audit; replayed the base double-start on a Prime VM before edits. Replaced the consumed startup JoinHandle with a shared watch receiver in pa-core/kernel/provisioner.rs, froze predecessor stop gate at startup creation across retries, and added four integration fixtures for join/error cause, waiter abort, stop, and dispose during boot. Frozen unrelated surfaces unchanged. REVIEW-FIX AMENDMENT (successor worker perf-kernel-async-boot2, at 7ddb838a4): F1 panic wedge - the boot is isolated behind its own JoinHandle inside the publisher task, which ALWAYS clears the startup memo and sends the result; a panicked boot (incl. a panicking progress listener) becomes a 'kernel startup task failed' StartupFailure and the listener state is cleared, so the next ensure() re-arms fresh; the watch now carries Option<StartupResult> itself (settled_manager and the write-only last_startup_failure removed). F2 stop-gate gap - pending_stop installs atomically in the same state lock that takes the manager, closing the two-lock TOCTOU where a revival captured the previous gate. F3 - the dispose leg pins the absolute interpreter count at dispose-return (==1; the abort cancels the retry). Same-family honesty: a dispose-raced boot now rejects with 'Kernel provisioner disposed during startup' (TS startKernel abort cause) instead of handing callers a dead manager, and joined callers keep the boot's manager when a concurrent stop takes the live owner (TS managerPromise)",
+  "parity_notes": "TS interactive-mode.ts:1858 starts UI without waiting; agent-session.ts:10900-10908 prewarms asynchronously; tools/ipython.ts:462-482 shares managerPromise and :638 awaits it at first touch. Existing Rust create/background prewarm preserved; shared startup watch makes concurrent Rust callers join one in-flight boot, retains true failure message, keeps abort local to waiter, and lets stop/dispose await the same boot. No new async paint cut. Amendment (F4 accuracy): the race proof of record is the served-path slow-wrapper oracle - base 2/2 in-flight trials launched two interpreters before the first completed; candidate 9/9 launched one (sha-verified archive kaboot-pty-evidence.tar.gz a71e14c1...); fixture-replay start-count figures are VM-only synthetic oracles and are not cited as the archived proof. The shared-startup first-touch anchor is tools/ipython.ts:638 (managerPromise awaited at first touch); agent-session.ts:10900-10908 is the prewarm anchor only",
   "base": {
     "revision": "b1c6b7a0cce73c684481a028e47d7b980cd7cfc5"
   },
   "branch": "lane/perf-kernel-async-boot",
   "commits": [
-    "21da7aa392bccc1485150eb850e1753c7a3f8d05"
+    "21da7aa392bccc1485150eb850e1753c7a3f8d05",
+    "7ddb838a433ea00f87c091e10a511bbcab259a38"
   ],
   "build": {
     "sandbox_id": "fnf8xgcqsndwk7rtg7khqbt7",
@@ -19,9 +20,9 @@
     "toolchain": "rustc 1.98.1 (Prime VM); base binary SHA-256 30095c88f1bbf797a8295e64eb88837a462629988b50d5294bdcbe850b6551ab"
   },
   "gates": {
-    "fmt": "pass: cargo +1.98.1 fmt --all --check RC0, gate_1790822191_1730511",
-    "clippy": "pass: cargo +1.98.1 clippy --workspace --all-targets -- -D warnings RC0, gate_1790822191_1730511",
-    "test": "pass: cargo +1.98.1 test --workspace --no-fail-fast RC0, full-suite GREEN exact head 21da7aa39, gate_1790822191_1730511; permanent kernel_startup_join integration fixture 4/4 release. Prior gate_1790818851_1730511 RED_KNOWN_REDS solely unexpired registered supervisor_e2e::tool_results::tool_result_entries_persisted_and_streamed; zero unknown failures. GREEN rerun base_state=stale at tip 5784abc2; fold+re-gate required before merge."
+    "fmt": "pass: cargo +1.98.1 fmt --all --check RC0, gate_1790822191_1730511 (21da7aa39) and gate_1790839241_1786223 (7ddb838a4)",
+    "clippy": "pass: cargo +1.98.1 clippy --workspace --all-targets -- -D warnings RC0, gate_1790822191_1730511 (21da7aa39) and gate_1790839241_1786223 (7ddb838a4). Crates-mode iteration arc at the same lane, disclosed in place: gate_1790838417 RED (E0597 borrow-of-tail-expression), gate_1790838623 RED (3x redundant-closure + missing_panics_doc; test phase already RC0), gate_1790838918 RED (1x doc_markdown in a test doc comment), gate_1790839130 GREEN (fmt/clippy/test RC0, 20 suites)",
+    "test": "pass: cargo +1.98.1 test --workspace --no-fail-fast RC0, full-suite GREEN exact head 7ddb838a4, gate_1790839241_1786223 (80 suites, 0 failures, 0 unknowns, killverify clean). Permanent fixtures at the head: kernel_startup_join 5/5 incl. panicking_progress_callback_does_not_poison_next_startup (the F1 re-arm leg; panicking handler -> 'kernel startup task failed' -> next ensure re-boots, absolute spawn count pinned 2) and the dispose leg's F3 absolute pin (==1 at dispose-return); kernel_stop_revive 3/3 incl. revival_waits_for_in_flight_stop_before_booting (the F2 ordering barrier: a held rlm.find_models host request across stop_kernel; the revival boot's first progress stage provably cannot fire until release). Prior gate_1790822191 GREEN exact head 21da7aa39 stands. base_state=stale at tip 3358e0016; fold+re-gate of the combined tree before merge remains the merge-time action"
   },
   "measurements": {
     "method": "Same-Prime-VM sequential C/B and B/C, 6 pairs per leg; unwrapped natural performance, served real ipython toolResults and binary SHA asserted per trial; slow-wrapper deterministic race oracle separate and not used for latency. Cold natural touch was post-ready/not proven boot-in-flight; cold fsync boundary degraded, so cold values disclosed only, excluded from clean latency claim. Pre-warm fsync degraded while post-warm healthy; the entire warm phase is not proven I/O-healthy. Warm paired observations show parity, not an unconditional clean-regime estimate. All values milliseconds.",
@@ -266,12 +267,12 @@
     "notes": "Warm-phase observed values show parity, not a meaningful speedup. Natural cold is setup-vs-ready with touch ~166\u2013173ms after kernel spawn; readiness not proven in flight. Race proof is only slow-wrapper served-path oracle, kept separate from unwrapped performance. VM evidence archive SHA verified locally. Same-head full-suite GREEN rerun followed earlier registered-only RED_KNOWN_REDS. Gate GREEN head is stale relative to moved main tip; fold and re-gate before any merge."
   },
   "outcome": "in-progress",
-  "decision": "Narrow correctness fix: share the in-flight kernel startup across concurrent first-touch/lifecycle callers while keeping existing async paint. Full-suite rerun GREEN and synthetic served-path race oracle proven; warm parity, cold degraded disclosed. Open PR to main for human approval; do not self-merge. Fold/re-gate current combined tree before eventual merge.",
-  "pr_url": null,
+  "decision": "Narrow correctness fix: share the in-flight kernel startup across concurrent first-touch/lifecycle callers while keeping existing async paint; synthetic served-path race oracle proven (base 2/2 double-starts vs candidate 9/9 one-boot), warm paired parity, cold honestly excluded (fsync regime degraded at both boundaries; no clean cold claim). Both standing reviewers returned REQUEST_CHANGES at 21da7aa39 (R1 7/10, R2 6/10) on the same two blockers (F1 panic wedge, F2 stop-gate gap); both fixed at 7ddb838a4 with permanent fixtures, F3 pin landed, F4 record-accuracy corrections carried, all four bot threads dispositioned fix-with-oracle/rebut-with-evidence and resolved. Full-suite VM gate GREEN at the exact amended head. PR open for sha-bound re-review + human approval; NO self-merge; fold+re-gate the current tip at merge time (gate base stale, disclosed)",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3257",
   "record_path": "data/hillclimb/experiments/20261001-010543-startup-kernel-async-already-live.json",
   "session": {
-    "worker": "perf-kernel-async-boot-fast",
-    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0f4f3-c99d-74f0-9bb9-b1b4705a4218"
+    "worker": "perf-kernel-async-boot2-fast",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-f5ecb945/01a0f62e-79cf-731e-8ff1-584e785e4613.jsonl"
   },
   "timestamp": "2026-10-01T01:05:43.692214+00:00"
 }
