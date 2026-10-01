@@ -1,0 +1,460 @@
+{
+ "id": "20261001-233000-startup-postmerge-ledger-66e13ea53",
+ "axis": "startup",
+ "hypothesis": "The two durability cuts landed on origin/main (#3283 e0c83de95 the supervisor-config persist's TS-absent fsync, #3295 87da43ea1 the install-id create's TS-absent sync_all; merged 2026-10-01, both verified in-tree at the tip; the create-window fan-out #3287 is NOT merged): the daemon's PRE-BIND bind span loses its durable-write cost in every posture, while the create windows (the create's own writes) stay unchanged. The composed expectation from the records: bind span ~3.5ms on the degraded host class (the L1 B-arm 3.46ms) vs the ~966ms A-arm with both fsyncs under the 480ms-class regime, ~1-3ms healthy; the fresh ledger's #118 baseline (record 20261001-031500 at b1c6b7a0c: fresh-cold paint 56.6/ready 306.32, daemon_spawn_to_bind 37.95; fresh-warm paint 7.05/ready 340.31, prewarm boot 81.8) carries ONE boot fsync on the TUI path and TWO on the direct-spawn path. Kevin's cold/warm-start question needs the fresh-cold + fresh-warm create windows AT THE MERGED TIP with the composed improvement live in the product.",
+ "approach": "MEASUREMENT ONLY (no product bytes changed). Fresh 16c/32GB/100GB Prime VM (hillclimb-perf-postmerge-ledger kdws7x98zltzpdjqlc6wv9rk, ubuntu:22.04, rustup 1.98.1 the CI pin), origin/main verified by ls-remote and PINNED at 66e13ea53 (the exact sha built and disclosed; 28 commits past the pre-merge clean-ledger tip 3358e0016, 41 past the #118 baseline b1c6b7a0c), cargo build --release --locked --workspace rc=0 in 1m56s, staged in the r2 install layout (launcher bin/prime-agent-rust + exe-adjacent payload share/prime-agent-rust; the tip-built SHIPPED split-debug binary sha256 c995e9f4de7c72d7b7abbaa06606c08738341493aa8c318127bc5316d289e663, 56,456,232B; the tip's runtime/skills; the r2-pin bundled catalogs, provenance disclosed; package.json stamped with the tip sha; the harness version_info asserted the payload sha + revision through the launcher). THE FRESH LEDGER (the #118 method, the same startup-redecompose driver): fresh-cold + fresh-warm n=10 each, the boot-floor watcher contract (2ms process-sighting grid with python-role classification, 1ms daemon-sock stat grid + 2ms worker-sockdir grid, 5ms per-role CPU grid, first_paint + typed-echo ready + sentinel/erase validation + per-trial fixture hashes), mock-routed raw-PTY, quiet-gated, per-trial template homes, noop PTY floor per invocation. THE WIRE LEGS (the fanout lane's method): the create response span DIRECTLY on the daemon wire (spawn -> socket accept -> connect -> daemon_hello -> create request -> response wall) + the boot wall, cold-shape (fresh daemon per trial) + warm-shape (prewarmed daemon), n=10 each, served-path assertions on EVERY trial (create success, sessionFile non-empty, descriptor lifecycle ready/rootSessionId/sessionFile/createCommand.sessionPath/pid>0/token). THE SERVED-PATH FSYNCS-GONE PROOF (the -f process-partition censuses): strace -ff -tt -T -s 512 (openat,fsync,fdatasync,rename,link,linkat,execve,connect) x2 telemetry-ON (PRIME_AGENT_TELEMETRY=1, no PI_OFFLINE, no DO_NOT_TRACK) + x2 bench-default posture boots + the harness TUI-path io census leg (strace -ff, one fresh-cold trial) - boot window (spawn->socket accept) fsync census with fd->path attribution, the two writes' syscall sequences asserted served (the supervisor-config openat+rename into the expected hash dir; the install-id openat(O_CREAT|O_EXCL,0600)+linkat publish), telemetry.json/telemetry mirror landings checked. I/O advisory v1.0 at EVERY leg boundary (>=40 isolated fresh+sync_all+rename @0.5s + >=50 repeat-fsync), PHASE re-classification at every boundary, NO-CEILING in-leg labels, a 30s longitudinal watcher, spin calib pre/mid/post (0.0008s stable), noop PTY floor per invocation.",
+ "parity_notes": "No product bytes changed anywhere (measurement only; the strace legs used the config-swap contract, sandbox.yaml vs sandbox-strace.yaml grep-asserted each way; the clean config re-verified after every swap). Privacy: the fixtures are private byte snapshots (sha256/counts only in the record); anchor tokens hashed; strace -s 512/-s 192 truncation; raw strace files stayed on the VM (the archive tarball sha256 322d0465bcc37c06f0b7254af070be7e1522376f43d2c72cf5b894760e496e07 pulled + sha-verified BEFORE any VM deletion; the VM stays live until the record lands). The bundled catalogs came from the r2-pin payload (CI-generated catalog assets, provenance disclosed, cold-start-irrelevant per the openat census). The censuses carry INFLATED labels: traced walls are never reported clean (only ordering, identity, syscall durations); every clean number comes from the untraced legs.",
+ "base": {
+  "revision": "66e13ea53567919e91c1106833e25d46b43ea537"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "kdws7x98zltzpdjqlc6wv9rk",
+  "toolchain": "rustup 1.98.1 (the CI ci.yml pin)",
+  "binary_sha256": "c995e9f4de7c72d7b7abbaa06606c08738341493aa8c318127bc5316d289e663",
+  "binary_bytes": 56456232,
+  "plain_binary_bytes": 0,
+  "build_seconds": 116,
+  "build_note": "cargo build --release --locked --workspace rc=0 at 66e13ea53; the shipped split-debug shape via scripts/release/split_debug.py; the harness version_info asserted the payload sha + the tip revision through the launcher",
+  "tip_verification": "git ls-remote origin main == 66e13ea53 at build time; both cuts in-tree (#3283 e0c83de95 persist_supervisor_config -> write_file_atomic_unsynced; #3295 87da43ea1 install-id create_exclusive has no sync_all); #3287 absent from main"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (bench-repo measurement record; no PR)"
+ },
+ "measurements": {
+  "method": "same-VM sequential, quiet-gated (loadavg<1.0), mock-routed raw-PTY bench harness, per-trial template homes; the noop PTY floor p50 0.09ms (n=30) at the ledger invocation + 0.097ms at the io invocation (the prior campaigns' 0.075-0.091 class); spin calib 0.0008s pre and post (stable); sentinel+echo+erase validated 20/20 clean trials, zero errors, zero leftovers",
+  "fresh-cold": {
+   "trials": 10,
+   "valid": 10,
+   "regime_pre": "PHASE-HEALTHY (iso p50 1.46ms max 48.7, rf p50 0.08ms)",
+   "regime_post": "PHASE-HEALTHY (iso p50 1.50ms max 46.61, rf p50 0.07ms)",
+   "regime_band_note": "the boundary p50s sit between the hostregime census's fast (0.84-0.90) and slow (2.04-2.10) fresh-class bands - a healthy fresh window; the 46-49ms maxes are single in-leg stalls (NO-CEILING, disclosed); the create windows mid-leg crossed the ~43-45ms trap class (see ready spread)",
+   "launch_to_first_paint_ms": {
+    "p50": 16.35,
+    "min": 11.9,
+    "max": 23.4,
+    "values": [
+     16.5,
+     11.9,
+     16.3,
+     13.0,
+     14.6,
+     16.8,
+     18.0,
+     16.4,
+     23.4,
+     16.0
+    ]
+   },
+   "launch_to_ready_ms": {
+    "p50": 309.0,
+    "min": 90.53,
+    "max": 336.35,
+    "values": [
+     304.69,
+     313.31,
+     258.64,
+     90.53,
+     302.8,
+     292.7,
+     318.61,
+     328.15,
+     336.35,
+     334.63
+    ]
+   },
+   "t_daemon_sighting_ms": {
+    "p50": 8.45,
+    "values": [
+     8.2,
+     7.7,
+     7.5,
+     8.4,
+     8.5,
+     9.0,
+     9.6,
+     10.1,
+     10.2,
+     15.9
+    ]
+   },
+   "t_dsock_create_ms": {
+    "p50": 10.7,
+    "values": [
+     8.2,
+     8.1,
+     8.0,
+     9.9,
+     9.4,
+     12.7,
+     14.2,
+     11.5,
+     19.1,
+     11.8
+    ]
+   },
+   "daemon_spawn_to_bind_ms": {
+    "p50": 2.1,
+    "values": [
+     2.5,
+     1.7,
+     1.2,
+     3.4,
+     1.0,
+     4.2,
+     4.0,
+     -1.8,
+     3.9,
+     -4.1
+    ],
+    "note": "the two negative values are 1ms-stat-grid vs 2ms-process-grid ordering artifacts (quantization), disclosed"
+   },
+   "t_worker_sighting_ms": {
+    "p50": 25.4,
+    "values": [
+     26.0,
+     24.3,
+     25.5,
+     25.9,
+     24.9,
+     25.7,
+     27.1,
+     24.7,
+     37.0,
+     15.9
+    ]
+   },
+   "t_wsock_create_ms": {
+    "p50": 21.3,
+    "values": [
+     21.0,
+     21.0,
+     21.1,
+     21.9,
+     21.7,
+     21.9,
+     22.2,
+     21.1,
+     29.1,
+     16.9
+    ]
+   },
+   "t_py_kernel_sighting_ms": {
+    "p50": 159.5,
+    "values": [
+     159.0,
+     158.9,
+     158.5,
+     161.7,
+     164.2,
+     166.0,
+     168.0,
+     169.0,
+     192.7,
+     83.0
+    ]
+   },
+   "py_kernel_first_cpu_ms": {
+    "p50": 175.2
+   },
+   "paint_to_ready_ms": {
+    "p50": 294.4
+   },
+   "probe": {
+    "gap_p50": 294.39,
+    "input_buffered_n": 10,
+    "quantized_max": 0.0
+   },
+   "validation": {
+    "erased": 10,
+    "dialogs_clear": 10,
+    "errs": 0
+   }
+  },
+  "fresh-warm": {
+   "trials": 10,
+   "valid": 10,
+   "regime_pre": "PHASE-FRESHTRAP (iso p50 1.21ms max 58.02 - one stall; the strict label fires on gt50>0)",
+   "regime_post": "PHASE-FRESHTRAP (iso p50 1.27ms max 50.98)",
+   "regime_band_note": "the p50s are the healthy fresh class; the legs crossed the trap class mid-window (the ready spread 205-448)",
+   "launch_to_first_paint_ms": {
+    "p50": 7.0,
+    "min": 6.5,
+    "max": 9.9,
+    "values": [
+     6.6,
+     7.1,
+     6.9,
+     6.5,
+     7.1,
+     6.5,
+     9.9,
+     9.2,
+     7.8,
+     6.8
+    ]
+   },
+   "launch_to_ready_ms": {
+    "p50": 356.5,
+    "min": 205.53,
+    "max": 448.28,
+    "values": [
+     448.28,
+     205.53,
+     328.63,
+     355.93,
+     308.6,
+     376.32,
+     341.22,
+     357.08,
+     406.65,
+     385.7
+    ]
+   },
+   "t_py_kernel_sighting_ms": {
+    "p50": 182.7,
+    "values": [
+     233.8,
+     147.4,
+     180.2,
+     186.5,
+     216.4,
+     201.4,
+     176.7,
+     143.8,
+     150.8,
+     185.2
+    ]
+   },
+   "py_kernel_first_cpu_ms": {
+    "p50": 198.55
+   },
+   "paint_to_ready_ms": {
+    "p50": 348.65
+   },
+   "prewarm_boot_ms": {
+    "p50": 5.6,
+    "values": [
+     5.6,
+     10.7,
+     5.6,
+     5.6,
+     5.7,
+     5.5,
+     5.7,
+     5.7,
+     5.5,
+     5.5
+    ],
+    "note": "the direct-spawn daemon boot wall (spawn -> socket accepts a connect): the composed pre-bind path"
+   },
+   "probe": {
+    "gap_p50": 348.66,
+    "input_buffered_n": 10,
+    "quantized_max": 0.0
+   },
+   "validation": {
+    "erased": 10,
+    "dialogs_clear": 10,
+    "errs": 0
+   }
+  },
+  "wire_create_span": {
+   "method": "the create response span DIRECTLY on the daemon wire (connect -> daemon_hello -> create request -> response wall), the fanout lane's method, clean (untraced), served-path assertions on every trial",
+   "cold": {
+    "trials": 10,
+    "regime_pre": "PHASE-FRESHTRAP (iso p50 42.84)",
+    "regime_post": "PHASE-HEALTHY (iso p50 1.23)",
+    "boot_wall_ms": {
+     "p50": 4.93,
+     "min": 4.34,
+     "max": 5.44,
+     "values": [
+      4.35,
+      5.4,
+      4.37,
+      5.36,
+      5.37,
+      5.39,
+      4.34,
+      4.5,
+      4.42,
+      5.44
+     ]
+    },
+    "create_response_span_ms": {
+     "p50": 317.6,
+     "min": 255.02,
+     "max": 418.98,
+     "values": [
+      409.63,
+      325.83,
+      418.98,
+      255.02,
+      334.19,
+      309.37,
+      307.19,
+      309.28,
+      415.34,
+      308.58
+     ]
+    },
+    "served_path_asserts_ok": 10
+   },
+   "warm": {
+    "trials": 10,
+    "regime_pre": "PHASE-DEGRADED-BOTH (iso p50 45.11, rf max 51.54)",
+    "regime_post": "PHASE-DEGRADED-BOTH (iso p50 45.03, rf max 50.2)",
+    "boot_wall_ms": {
+     "p50": 5.07,
+     "min": 4.32,
+     "max": 8.59,
+     "values": [
+      4.38,
+      8.59,
+      5.39,
+      8.54,
+      6.28,
+      4.76,
+      4.39,
+      6.51,
+      4.36,
+      4.32
+     ]
+    },
+    "create_response_span_ms": {
+     "p50": 348.34,
+     "min": 288.55,
+     "max": 443.43,
+     "values": [
+      355.55,
+      340.64,
+      288.55,
+      432.31,
+      342.76,
+      443.43,
+      353.92,
+      358.65,
+      324.49,
+      337.39
+     ]
+    },
+    "served_path_asserts_ok": 10
+   },
+   "note": "the wire legs sat in the trap class (fresh-fsync 42.84-45.11ms): the create spans are the trap-class windows (9 fresh-fsyncs x ~40ms class inside); the boot wall is regime-INVARIANT at the tip (4.3-8.6ms in BOTH healthy and trap boundaries) - the pre-bind durable-write cost is GONE, the boot no longer reads the regime"
+  },
+  "fsyncs_gone_served_path_proof": {
+   "method": "strace -ff -tt -T -s 512 (openat,fsync,fdatasync,rename,link,linkat,execve,connect), process partition by pid file (the kd lesson: -f + partition REQUIRED); INFLATED - traced walls never reported clean; the proof is the syscall census, not magnitudes",
+   "telon_boots": {
+    "n": 2,
+    "boot_window_fsyncs_total": 0,
+    "supervisor_config_sequence": "openat(<hash-dir>/supervisor-config.tmp-<uuid>, O_WRONLY|O_CREAT) + rename into <agent>/daemon-workers/<socket-hash>/supervisor-config - NO fsync on the fd; the rename landed in the EXPECTED hash dir in every trial",
+    "install_id_sequence": "openat(<agent>/telemetry.json, O_RDONLY) = ENOENT -> openat(<agent>/telemetry.json.<uuid>.tmp, O_WRONLY|O_CREAT|O_EXCL, 0600) -> linkat(tmp -> telemetry.json) = 0 -> re-read - NO sync_all anywhere (the exact publish_exclusive shape)",
+    "served": "telemetry.json landed (version 1, uuid valid), supervisor-config landed (version 1, socketPath == the trial socket in the expected hash dir), descriptor checks green, first-create OK",
+    "telemetry_mirror": "the deferred arms fired: telemetry.jsonl append opens at +10s post-boot in the trace (the window_serves pattern: the telemetry block provably RAN, so the no-sync proof is not vacuous)"
+   },
+   "default_boots": {
+    "n": 2,
+    "boot_window_fsyncs_total": 0,
+    "note": "the bench-default DIRECT-SPAWN posture also runs the telemetry block (telemetry.json lands): BOTH pre-bind writes fire with ZERO fsyncs - the composed cut is live in the product's own default posture"
+   },
+   "tui_path_io_census": {
+    "n": 1,
+    "boot_window_fsyncs_total": 0,
+    "supervisor_config": "the daemon's supervisor-config rename at +11ms from daemon exec, NO fsync; NO install-id create on the TUI path (the TUI's daemon spawn carries the offline posture - the install-id never fires there; this resolves the #118 baseline's own asymmetry: its TUI-path bind 37.95 = ONE boot fsync vs its direct-spawn prewarm 81.8 = TWO)",
+    "create_window_fsyncs": "6: 4 descriptor-tmp persists (47.5-55.0ms) + 1 recovery journal (47.5ms) + 1 session-jsonl tmp (91.3ms) - ALL trap-class durations, the fan-out INTACT (#3287 not merged)",
+    "probe_grid": "the TUI's daemon-probe connect failures at ~1-2.2ms cadence, 5 ENOENTs then success (the #3260 1ms grid live)"
+   },
+   "create_window_fsync_counts_all_censuses": "telon 9,9 / default 8,7 / tui-path 6 - the fanout lane's base-arm class (7-8) plus the journal/session tail - the create's own writes UNCHANGED by the two cuts, exactly as expected"
+  },
+  "regime_disclosure": {
+   "advisory": "I/O advisory v1.0 at every leg boundary + the hostregime census 20261001-072600 as the band authority",
+   "bands": "fresh bench-class fast 0.84-0.90 / slow 2.04-2.10ms; this VM's healthy boundaries sat at iso p50 1.21-1.50 (between the bands); the trap class (the #118 VM's persistent 43.7ms class) fired at the wire/io boundaries (42.84-45.11) and mid-leg (the ready spreads)",
+   "longitudinal_watcher": "14 samples @30s over the census+fresh+wire window: iso p50 45.5ms min 40.07 max 653.47 (one deep stall), rf p50 0.07-0.10ms - the watcher cadence caught mostly the trap state while the TUI leg boundaries caught healthy windows: the VM flipped healthy<->trap across the session (the census's flip scale 3.2-5.6/h); NO-CEILING: every leg carries its labels",
+   "reading": "the #118 baseline VM sat in the trap class for its WHOLE session (iso p50 43.72ms persistent machine class); this VM alternated - so cross-VM span comparisons are regime-bound and labeled per leg; the BIND-SPAN numbers are NOT regime-bound at the tip (zero pre-bind fsyncs = the trap class no longer taxes the boot)"
+  },
+  "prior_ledger_comparison": {
+   "table_p50_ms": {
+    "fresh-cold": {
+     "paint": {
+      "b1c6b7a0c_118": 56.6,
+      "tip": 16.35,
+      "delta": -40.25
+     },
+     "ready": {
+      "b1c6b7a0c_118": 306.32,
+      "tip": 309.0,
+      "delta": 2.68
+     },
+     "dsock_create": {
+      "b1c6b7a0c_118": 48.25,
+      "tip": 10.7,
+      "delta": -37.55
+     },
+     "daemon_spawn_to_bind": {
+      "b1c6b7a0c_118": 37.95,
+      "tip": 2.1,
+      "delta": -35.85
+     }
+    },
+    "fresh-warm": {
+     "paint": {
+      "b1c6b7a0c_118": 7.05,
+      "tip": 7.0,
+      "delta": -0.05
+     },
+     "ready": {
+      "b1c6b7a0c_118": 340.31,
+      "tip": 356.5,
+      "delta": 16.19
+     },
+     "prewarm_boot": {
+      "b1c6b7a0c_118": 81.8,
+      "tip": 5.6,
+      "delta": -76.2
+     }
+    },
+    "pre_merge_clean_ledger_3358e0016": {
+     "fresh-cold paint": {
+      "prior": 53.5,
+      "tip": 16.35,
+      "delta": -37.15
+     },
+     "fresh-cold ready": {
+      "prior": 311.77,
+      "tip": 309.0,
+      "delta": -2.77
+     },
+     "fresh-warm paint": {
+      "prior": 6.9,
+      "tip": 7.0,
+      "delta": 0.1
+     },
+     "fresh-warm ready": {
+      "prior": 348.95,
+      "tip": 356.5,
+      "delta": 7.55
+     }
+    }
+   },
+   "attribution": "(1) THE SUPERVISOR-CONFIG CUT (#3283) IS THE BIND-SPAN SIGNATURE: daemon_spawn_to_bind 37.95 -> 2.1ms on the TUI path (the L1 B-arm 3.46ms class confirmed in the product); the census proof: the persist's openat+rename lands in the expected hash dir with ZERO fsync. (2) THE INSTALL-ID CUT (#3295) IS THE DIRECT-SPAWN/PREWARM SIGNATURE: prewarm boot 81.8 -> 5.6ms (the baseline's direct-spawn boot carried BOTH pre-bind fsyncs - the TUI path only one - so the prewarm path gains both cuts); the census proof: telemetry.json lands via openat(O_EXCL)+linkat with NO sync_all in both the telemetry-ON and the bench-default posture. (3) THE CREATE WINDOWS ARE UNCHANGED BY THE TWO CUTS: fresh-cold ready +2.68ms (flat within regime noise; the min trial 90.53 shows the healthy-window floor), fresh-warm ready +16.19 (regime-bound spread 205-448 vs the baseline's 301-403), the wire create response span 317.6/348.3 in the trap class = the fanout base arm's 352.1 class; the create's own fsync fan-out is INTACT (6-9 per census; #3287 NOT merged). (4) THE OTHER MOVERS IN THE 28-COMMIT RANGE: the probe-grid 1ms cut (#3260) - visible in the io leg's connect cadence (~1-2.2ms, was ~6.2ms steps at the #118 base) and folded into the paint delta (~-3 to -5ms of the -40.25); exec->daemon_spawn 10.3 -> 8.45; bind->worker_spawn 7.35 -> 12.4 (post-bind daemon work, minor). (5) THE HONEST BASELINE ASYMMETRY DISCLOSED: the #118 record's TUI-path bind (37.95, ONE boot fsync) vs its direct-spawn prewarm (81.8, TWO) was its own posture artifact - at the tip BOTH paths measure zero boot fsyncs and 2.1-5.6ms clean walls in every posture and regime.",
+   "healthy_window_floor": "fresh-cold ready min 90.53ms (one trial in a fast window): the create window's non-fsync floor at the tip"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 20 TUI trials + 20 wire trials valid (zero errors, zero leftovers, sentinel/erase/dialogs green, served-path asserts 20/20 on the wire legs). The two negative daemon_spawn_to_bind values are grid-ordering quantization artifacts, disclosed in place. ORACLE QUIRK RESOLVED (the name-audit class): the first census run's supervisor_config_socket_matches check read the ALPHABETICALLY-FIRST supervisor-config under agent/daemon-workers - the per-trial agent dir is copied from the settle template and CARRIES the settle trial's own supervisor-config in a foreign hash dir (4fd341b467f8); the expected-hash-dir configs were present and correct in every trial (the trace's rename-into-expected-dir sequences + the corrected reads prove it). The fd-attribution regex was patched mid-session (strace -T lines end with durations; the first analyzer read create-window fsyncs as unattributed - the counts were always valid, the classes landed after the patch); the linkat prefix (AT_FDCWD) needed its own shape. The telemetry mirror check ran pre-deferred-arm in the census rows (mirror_events None at check time) - the deferred appends are in the traces (+10s) and are cited from there. The longitudinal watcher covered the census+fresh+wire window (14 samples); the census2 re-run window was uncovered (the first finalize's pkill). The r2-catalogs came from the r2-pin payload (CI-generated, disclosed)."
+ },
+ "outcome": "measured - THE POST-MERGE LEDGER RE-MEASURE (the authority numbers for the cold/warm-start question)",
+ "decision": "THE COMPOSED BIND-SPAN IMPROVEMENT IS LIVE AND PROVEN IN THE PRODUCT AT 66e13ea53: the daemon boot's pre-bind durable-write cost is GONE in every posture (boot-window fsyncs ZERO in the telemetry-ON, the bench-default direct-spawn, AND the TUI-path censuses; the two writes land served: supervisor-config via openat+rename into the expected hash dir, telemetry.json via openat(O_EXCL)+linkat, neither with a sync), and the clean bind walls are regime-INVARIANT (2.1ms TUI-path daemon_spawn_to_bind p50, 4.93/5.07ms wire boot walls, 5.6ms prewarm boot - measured across BOTH the healthy fresh class and the ~43-45ms trap class, vs the #118 baseline's 37.95/81.8ms regime-bound walls; the L1 B-arm 3.46ms and the degraded-class ~3.5ms expectation CONFIRMED). THE CREATE WINDOWS ARE UNCHANGED: fresh-cold paint 56.6 -> 16.35 (the bind+probe-grid cut riding the launch, NOT a create-window change), ready 306.32 -> 309.0 (flat), fresh-warm paint 7.05 -> 7.0 (flat), warm ready 340.31 -> 356.5 (regime-bound spread), the wire create response span 317.6ms cold / 348.3ms warm in the trap class = the fanout base arm's class with the create's own 6-9-fsync fan-out INTACT (#3287 not merged). KEVIN'S COLD/WARM ANSWER AT THE MERGED TIP: the cold-start's daemon-boot wait is now ~2-5ms of the launch (was ~38-82ms regime-bound), the typed-echo ready is ~309ms p50 cold / ~357ms warm (unchanged by the cuts; regime-bound: 90.5ms in a healthy window - the remaining create-window fan-out + kernel chain is the next lever, the un-merged #3287 is exactly that cut). NO PR (the re-measure lane; measurement only).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-233000-startup-postmerge-ledger-66e13ea53.json",
+ "session": {
+  "worker": "perf-postmerge-ledger-fast"
+ },
+ "timestamp": "2026-10-01T23:30:00+00:00"
+}
