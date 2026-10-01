@@ -271,8 +271,8 @@
   "notes": "All 91 ABBA rows + 8 net legs + 2 idle legs valid (no leg errors; fixture copy-fidelity holds on every leg: pre-hash==source sha, source file untouched, the product's +158-byte resume append present - identical append shape in both arms, the post-shas differ only by the appended records' own timestamps/ids). I/O regime per recipe v1.2 at every leg boundary: 124/154 boundaries HOST_DEEP_STATE (fresh p50 115-136ms, repeat-fsync flat), 24 STATE_fast+traps-elevated, 4 transient FLEET_REGIME_EVENT flags (repeat-fsync 3.98-6.29ms single-window), 2 SUSPECT - the grid-span + net evidence is fsync-free (valid in any state, labeled per the NO-CEILING rule); the one fleet-adjacent clean pair disclosed (its delta -2.0, negative, consistent). The paired ABBA is internally valid in the SAME regime windows (deep-state subset carries the effect: -1.67ms mean, 18/23 negative)."
  },
  "outcome": "pr-open",
- "decision": "",
- "pr_url": "",
+ "decision": "PR #3260 OPEN at the folded head 54d941d15a29b258adfb4f0dae5d9b8be026b72b (base main): the two-constant timing-only cut with the paired ABBA evidence (grid-span suite -1.68ms paired, served-path cadence 6.2->2.2ms, no-busy-wait oracles clean, gates fully green at the head). The merge bar pending: both standing adversarial reviewers sha-bound + the orchestrator numeric review + the CI rollup + the operator disposition of the disclosed pre-fold known-red fire. No self-merge (the bar ends at the PR).",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3260",
  "record_path": "data/hillclimb/experiments/20261001-034500-startup-probe-grid-fastpoll.json",
  "session": {
   "worker": "perf-probe-grid-fast"
