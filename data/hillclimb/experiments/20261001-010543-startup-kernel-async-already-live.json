@@ -24,7 +24,7 @@
     "test": "pass: cargo +1.98.1 test --workspace --no-fail-fast RC0, full-suite GREEN exact head 21da7aa39, gate_1790822191_1730511; permanent kernel_startup_join integration fixture 4/4 release. Prior gate_1790818851_1730511 RED_KNOWN_REDS solely unexpired registered supervisor_e2e::tool_results::tool_result_entries_persisted_and_streamed; zero unknown failures. GREEN rerun base_state=stale at tip 5784abc2; fold+re-gate required before merge."
   },
   "measurements": {
-    "method": "Same-Prime-VM sequential C/B and B/C, 6 pairs per leg; unwrapped natural performance, served real ipython toolResults and binary SHA asserted per trial; slow-wrapper deterministic race oracle separate and not used for latency. Cold natural touch was post-ready/not proven boot-in-flight; cold fsync boundary degraded, so cold values disclosed only, excluded from clean latency claim. Warm post-boundary fsync healthy. All values milliseconds.",
+    "method": "Same-Prime-VM sequential C/B and B/C, 6 pairs per leg; unwrapped natural performance, served real ipython toolResults and binary SHA asserted per trial; slow-wrapper deterministic race oracle separate and not used for latency. Cold natural touch was post-ready/not proven boot-in-flight; cold fsync boundary degraded, so cold values disclosed only, excluded from clean latency claim. Pre-warm fsync degraded while post-warm healthy; the entire warm phase is not proven I/O-healthy. Warm paired observations show parity, not an unconditional clean-regime estimate. All values milliseconds.",
     "suites": {
       "cold_launch_to_first_paint": {
         "baseline": {
@@ -148,7 +148,7 @@
         },
         "delta_pct": -0.1,
         "regression": false,
-        "interpretation": "warm parity within noise; no claimed speedup"
+        "interpretation": "warm paired parity within noise; pre-warm fsync degraded, post-warm healthy; no claimed speedup"
       },
       "warm_launch_to_input_ready": {
         "baseline": {
@@ -179,7 +179,7 @@
         },
         "delta_pct": -0.32,
         "regression": false,
-        "interpretation": "warm parity within noise; no claimed speedup"
+        "interpretation": "warm paired parity within noise; pre-warm fsync degraded, post-warm healthy; no claimed speedup"
       },
       "warm_first_touch_to_tool_result": {
         "baseline": {
@@ -210,7 +210,7 @@
         },
         "delta_pct": -0.35,
         "regression": false,
-        "interpretation": "warm parity within noise; no claimed speedup"
+        "interpretation": "warm paired parity within noise; pre-warm fsync degraded, post-warm healthy; no claimed speedup"
       }
     },
     "extra": {
