@@ -1,0 +1,281 @@
+{
+ "id": "20261001-034500-startup-probe-grid-fastpoll",
+ "axis": "startup",
+ "hypothesis": "The two connect-probe grids on the cold-open path, cut 25ms->5ms by the boot-floor lane (PR #2891, record 20260926-202000), still quantize: the TUI->daemon startup poll (DAEMON_PROBE_INTERVAL_MS=5) fires on EVERY cold daemon launch with a measured EFFECTIVE grid of ~6.2ms (5ms sleep + ~1.2ms probe/scheduler overhead) and bind->connect overshoot uniform over that grid (mean ~2.3ms); the supervisor->worker poll (WORKER_CONNECT_BACKOFF_MS=5 unix) is CONDITIONALLY live: the probe loop starts only after persist_worker (a fresh+sync_all+rename on the worker descriptor), so the grid fires only when that fsync finishes before the worker binds (fast-fsync windows / loaded machines) and is inert when the persist dominates. Cutting both to 1ms (flat fast poll) tightens the effective grid to ~2.2ms and the mean overshoot to ~1.1ms, saving ~1-4ms of pure wait per cold launch on grid 1 and the same where grid 2 fires; no busy-wait cost (the probes are ~us connect attempts between 1ms sleeps).",
+ "approach": "Two constants only (lane/probe-grid-fast-poll, commit 9172579c6819a5fa17efc73725d59f61195c1404, base b1c6b7a0c, later folded to 54d941d15a29b258adfb4f0dae5d9b8be026b72b over base tip 5784abc2a append-only with the post-fold re-diff verified hunk-by-hunk): (1) crates/pa-cli/src/interactive_mode/daemon.rs DAEMON_PROBE_INTERVAL_MS 5->1; (2) crates/pa-daemon/src/supervisor/launch_budget.rs WORKER_CONNECT_BACKOFF_MS 5->1 (unix; win32 doubling untouched). Comments updated with the measured effective-grid + overshoot evidence. Timing-only: probes, 30s budgets, auth floor, error paths unchanged. MEASURE-FIRST at the tip (b1c6b7a0c base binary, VM wlbsbyrrmc1x04swzh4u54): clean watcher legs confirmed the grid-span anchor (dsock_create->worker_sighting p50 7.6ms small n=8 / 9.9ms real n=6, matching the boot-floor candidate anchor 7.5ms), and the filtered-strace legs decomposed both grids: TUI probes at ~6.2ms cadence with overshoot 5.19/0.82/0.87ms; the supervisor probe loop unreachable behind persist_worker (first probe always succeeded; the descriptor persist fsync 39.5ms > worker boot ~10ms in that window). ABBA: same-VM trial-interleaved pairs, sha-asserted atomic slot swaps (base 30095c88f1bbf797a8295e64eb88837a462629988b50d5294bdcbe850b6551ab vs cand 5cd05bf4fea3357cf3fdbf45c2cb90873dfb5f15aa1887370001e3e78130f077, shas asserted at every swap + binary pair non-identity asserted), quiet gates (loadavg<0.6), pre/mid/post calibration (0.0009/0.0009/0.0010/0.0010s stable), per-trial fixture copy-fidelity (pre-hash==source sha, source untouched, the product +158-byte resume append present identically in shape), dual-class I/O boundary probes at EVERY leg boundary.",
+ "parity_notes": "DELIBERATE TS DIVERGENCE, re-flagged for adversarial review in the same class the #2891 reviewers ruled PARITY-NEUTRAL: TS ensureDaemonRunning polls at 25ms (daemon-launch.ts delay(25) in the startup loop) and TS WORKER_PROBE_BACKOFF_MIN_MS=25 (daemon-supervisor.ts:186, unix min==max so a flat grid); the boot-floor lane already diverged to 5ms and this lane tightens to 1ms. Timing-only: no schema/wire/prompt/output-byte changes; the probe, the 30s budgets, the auth floor, and all error paths unchanged; user-visible behavior identical (every trial validated sentinel+erase+dialogs ok=True on both arms; the resumed-session append shape identical). Frozen surfaces untouched.",
+ "base": {
+  "revision": "b1c6b7a0cce73c684481a028e47d7b980cd7cfc5"
+ },
+ "branch": "lane/probe-grid-fast-poll",
+ "commits": [
+  "9172579c6819a5fa17efc73725d59f61195c1404",
+  "54d941d15a29b258adfb4f0dae5d9b8be026b72b"
+ ],
+ "build": {
+  "sandbox_id": "wlbsbyrrmc1x04swzhql4u54",
+  "toolchain": "rustup 1.98.1",
+  "base_binary_sha256": "30095c88f1bbf797a8295e64eb88837a462629988b50d5294bdcbe850b6551ab",
+  "cand_binary_sha256": "5cd05bf4fea3357cf3fdbf45c2cb90873dfb5f15aa1887370001e3e78130f077",
+  "pair_note": "same-VM sequential checkout builds; cargo clean -p pa-cli -p pa-daemon before the cand rebuild; sha pair non-identity asserted at driver start (the checkout-build identical-sha trap checked)"
+ },
+ "gates": {
+  "fmt": "pass (gate_1790822932_1730765 at the folded head 54d941d15a: FMT_RC=0; also FMT_RC=0 at the pre-fold head in gate_1790821559_1730765)",
+  "clippy": "pass (CLIPPY_RC=0, -D warnings, at both heads)",
+  "test": "FULLY GREEN at the folded head 54d941d15a (gate_1790822932_1730765: fmt 0, clippy 0, full workspace test rc=0, zero failures, zero unknowns, base_state=folded). The pre-fold-head gate (gate_1790821559_1730765 at 9172579c6) was RED_KNOWN_REDS with exactly one registered non-expired member (tool_results::tool_result_entries_persisted_and_streamed, the supervisor_e2e WORKER_NOT_CONNECTED rotating-flake family, auto-classified, disclosed) and zero unknowns."
+ },
+ "measurements": {
+  "method": "same-vm-sequential, trial-interleaved B/C pairs, sha-asserted atomic slot swaps, quiet gates (loadavg<0.6), pre/mid/post calibration, dual-class I/O boundary probes at EVERY leg boundary (advisory v1.0 + recipe v1.2), per-trial fixture copy-fidelity + source-unchanged + append-shape checks, sentinel+echo+erase validation every leg",
+  "grid_span_suite_dsock_to_worker_sighting": {
+   "definition": "watcher spans (fsync-free: daemon socket appearance -> worker process sighting; contains the TUI probe-grid overshoot + census + hello + create RTs + fork). The TUI grid fires inside it on every cold launch.",
+   "small_fixture_607KB_sha_834cb5ba": {
+    "baseline": {
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 7.6,
+     "mean_ms": 8.05,
+     "min_ms": 2.3,
+     "max_ms": 14.0,
+     "values_ms": [
+      2.3,
+      4.0,
+      4.9,
+      5.7,
+      6.2,
+      6.3,
+      6.6,
+      7.1,
+      7.1,
+      7.3,
+      7.5,
+      7.6,
+      7.6,
+      7.7,
+      8.0,
+      8.1,
+      8.7,
+      8.9,
+      10.1,
+      10.4,
+      11.6,
+      12.1,
+      13.5,
+      14.0
+     ]
+    },
+    "candidate": {
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 5.35,
+     "mean_ms": 6.37,
+     "min_ms": 4.0,
+     "max_ms": 11.0,
+     "values_ms": [
+      4.0,
+      4.3,
+      4.6,
+      4.7,
+      4.8,
+      4.8,
+      4.9,
+      4.9,
+      4.9,
+      4.9,
+      5.1,
+      5.2,
+      5.5,
+      6.1,
+      6.9,
+      7.0,
+      7.4,
+      7.6,
+      7.8,
+      8.0,
+      9.2,
+      9.6,
+      9.7,
+      11.0
+     ]
+    },
+    "paired_delta_mean_ms": -1.68,
+    "paired_deltas_ms": [
+     -5.5,
+     -2.6,
+     1.2,
+     -3.6,
+     -2.2,
+     -0.3,
+     -2.0,
+     -3.2,
+     4.6,
+     -0.2,
+     -3.6,
+     -1.8,
+     3.6,
+     3.9,
+     -2.4,
+     -0.2,
+     -3.3,
+     -2.8,
+     -5.2,
+     -2.1,
+     1.2,
+     -9.1,
+     -1.9,
+     -2.9
+    ],
+    "reading": "paired mean -1.68ms, 19/24 pairs negative; the candidate distribution shifts down ~2ms exactly at the measured effective-grid cut (6.2ms -> 2.2ms); resolves cleanly in every regime class (deep-state subset 23 pairs mean -1.67, 18/23 negative; the one fleet-adjacent pair also negative -2.0)"
+   },
+   "real_fixture_12.99MB_sha_835c4473": {
+    "baseline": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 8.4,
+     "mean_ms": 8.75,
+     "min_ms": 5.3,
+     "max_ms": 14.6,
+     "values_ms": [
+      5.3,
+      6.7,
+      7.5,
+      8.0,
+      8.8,
+      9.0,
+      10.1,
+      14.6
+     ]
+    },
+    "candidate": {
+     "trials": 8,
+     "valid": 8,
+     "p50_ms": 9.05,
+     "mean_ms": 11.0,
+     "min_ms": 3.0,
+     "max_ms": 25.9,
+     "values_ms": [
+      3.0,
+      4.7,
+      7.5,
+      8.3,
+      9.8,
+      13.7,
+      15.1,
+      25.9
+     ]
+    },
+    "paired_delta_mean_ms": 2.25,
+    "paired_deltas_ms": [
+     -4.8,
+     6.3,
+     -7.1,
+     7.0,
+     0.3,
+     20.6,
+     0.0,
+     -4.3
+    ],
+    "reading": "NOT RESOLVED at n=8: the real-fixture span noise floor (one +20.6ms trap pair dominates) exceeds the ~2ms effect; no claim made on this suite (honest negative at this sample size/regime)"
+   }
+  },
+  "net_leg_direct_overshoots_filtered_strace": {
+   "definition": "strace -ff -tt filtered to network syscalls, wrapper-binary trials (STRACE-FILTERED label: totals inflated, spans/overshoots direct); per leg the daemon/worker socket bind syscall -> the first successful connect, plus the TUI connect-gap series (the hard served-path assertion)",
+   "tui_grid_overshoot_bind_to_connect_ms": {
+    "baseline_legs": [
+     2.4,
+     2.17,
+     4.1,
+     1.28
+    ],
+    "candidate_legs": [
+     1.97,
+     0.32,
+     1.49,
+     1.03
+    ],
+    "reading": "B mean 2.49ms (uniform over the ~6.2ms effective grid) -> C mean 1.20ms (uniform over the ~2.2ms grid); the measure-first legs at the tip read 5.19/0.82/0.87ms on the same definition"
+   },
+   "served_path_cadence_tui_connect_gap_series_ms": {
+    "baseline": "probe gaps ~6.18-6.45ms steady (5ms sleep + ~1.2ms probe/scheduler overhead), 25-30 probes per cold launch",
+    "candidate": "probe gaps ~2.17-2.31ms steady (1ms sleep + the same overhead), 64-67 probes per cold launch",
+    "reading": "THE SERVED-PATH ASSERTION: the fast-poll path demonstrably served in the candidate (the cadence series is the loop itself); the extra ~40 probes are ~us connect attempts, invisible in the CPU accounting below"
+   },
+   "supervisor_grid_overshoot_bind_to_connect_ms": {
+    "baseline_legs": [
+     103.88,
+     117.12,
+     116.61,
+     120.58
+    ],
+    "candidate_legs": [
+     124.75,
+     117.77,
+     109.51,
+     105.99
+    ],
+    "reading": "ARM-INDEPENDENT (~104-125ms): in this window the descriptor-persist fsync (~100ms, HOST_DEEP_STATE fresh+sync_all+rename p50 ~119ms at those boundaries) dominated the first-probe timing, so the grid never fired on the B legs (zero failed probes; first probe succeeded) and the overshoot is persist time, not grid time; the honest ABBA outcome for grid 2 in THIS regime: no measurable delta (expected \u2014 the sleep is unreachable); two candidate legs (netn01c/netn02c) did run the probe loop (7 sup probes: worker bound after the first probe) and the 1ms grid caught it within its window"
+   }
+  },
+  "measure_first_anchors_at_the_tip": {
+   "grid_span_small": {
+    "p50_ms": 7.6,
+    "values_ms": [
+     10.8,
+     9.4,
+     6.6,
+     8.3,
+     6.4,
+     4.2,
+     8.7,
+     6.9
+    ],
+    "note": "n=8 clean legs at the tip base binary; matches the boot-floor record candidate anchor p50 7.5ms"
+   },
+   "grid_span_real": {
+    "p50_ms": 9.9,
+    "values_ms": [
+     13.5,
+     17.6,
+     5.4,
+     7.8,
+     7.2,
+     12.0
+    ]
+   },
+   "tui_net_oversoot_ms": [
+    5.19,
+    0.82,
+    0.87
+   ],
+   "worker_boot_to_bind_ms": "~10ms (worker exec -> bind+listen in the decomp trace; bind->listen ~40us)",
+   "descriptor_persist_fsync_ms": [
+    39.5,
+    39.3,
+    1.6,
+    0.3,
+    "~100ms in the ABBA net-leg window"
+   ],
+   "structural_finding": "the supervisor probe loop starts only AFTER persist_worker (write_file_atomic: fresh + sync_all + rename); the worker boots (~10ms to bind) CONCURRENTLY with that persist, so the first probe succeeds whenever the persist outlasts the boot (slow-fsync windows); the grid (any backoff value) fires only when the persist is faster than the worker boot. The boot-floor record's supervisor-grid ~12.5ms clean estimate is superseded by this direct decomposition."
+  },
+  "no_busy_wait_oracles": {
+   "idle_cpu_legs": "parked 10s window post-ready: idleB total tree CPU 0.01s (tui 0.01/daemon 0/worker 0), idleC 0.01s (worker 0.01/daemon 0/tui 0) - the poll loops do not exist post-boot, no spin",
+   "boot_window_cpu": "TUI cumulative CPU at first paint: B mean 0.015s vs C mean 0.014s (n=24); at ready B 0.019 vs C 0.016 - the ~40 extra fast-poll connects per cold launch are invisible at this resolution",
+   "calibration": "sha256 benchmark pre/mid1/mid2/post: 0.0009/0.0009/0.0010/0.0010s - stable host"
+  },
+  "end_to_end_paint_ready": {
+   "status": "NOT CLAIMED - regime-bound",
+   "note": "launch_to_first_paint/ready paired deltas swing -140..+209ms (small) and -410..+783ms (real) across the campaign windows: the campaign ran mostly inside a HOST_DEEP_STATE (fresh+sync_all+rename p50 ~115-136ms at 124/154 boundaries, 24 fast+traps-elevated, 4 transient fleet-event boundaries) and the end-to-end surface pays the daemon-config persist + session writes; the ~2ms probe-grid effect is not resolvable there (the same honest reading as the boot-floor record), while the direct fsync-free spans above carry the claim"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 91 ABBA rows + 8 net legs + 2 idle legs valid (no leg errors; fixture copy-fidelity holds on every leg: pre-hash==source sha, source file untouched, the product's +158-byte resume append present - identical append shape in both arms, the post-shas differ only by the appended records' own timestamps/ids). I/O regime per recipe v1.2 at every leg boundary: 124/154 boundaries HOST_DEEP_STATE (fresh p50 115-136ms, repeat-fsync flat), 24 STATE_fast+traps-elevated, 4 transient FLEET_REGIME_EVENT flags (repeat-fsync 3.98-6.29ms single-window), 2 SUSPECT - the grid-span + net evidence is fsync-free (valid in any state, labeled per the NO-CEILING rule); the one fleet-adjacent clean pair disclosed (its delta -2.0, negative, consistent). The paired ABBA is internally valid in the SAME regime windows (deep-state subset carries the effect: -1.67ms mean, 18/23 negative)."
+ },
+ "outcome": "pr-open",
+ "decision": "",
+ "pr_url": "",
+ "record_path": "data/hillclimb/experiments/20261001-034500-startup-probe-grid-fastpoll.json",
+ "session": {
+  "worker": "perf-probe-grid-fast"
+ },
+ "timestamp": "2026-10-01T03:45:00+00:00"
+}
