@@ -1,0 +1,470 @@
+{
+ "id": "20261001-193000-startup-warmopen-gap-decompose",
+ "axis": "startup",
+ "hypothesis": "Kevin's benchmark table reads warm 183ms (rust) vs Pi 167ms on compare.warm_start (the r2 pin e75f59efc6, 2026-09-30). THE QUESTION: at the tip (origin/main 3358e0016), what does the warm-open 183ms decompose into, and where is the residual ~16ms gap to pi's 167? Prior lanes' landed cuts read first: createwall #3127 (the restore read-once, in the port squash), the launch-open P2b persisted_rlm_max_depth single-read (in model.rs at the tip), the auth-lock #2932 + settings #2941 consolidation (in the squash), view-switch #3103, the fresh-create single-durable-write #2892 (in the squash), the 5ms probe grids (#2891 in the squash; the 1ms fastpoll PR #3260 still OPEN). The startup re-decompose (20261001-031500, at b1c6b7a0c) named the create-window candidates; this lane decomposes the WARM-OPEN shape specifically (the prewarmed-daemon + fresh-create launch) with the same-VM paired rust-vs-pi ABBA.",
+ "approach": "MEASUREMENT ONLY (no product change by this lane; the coordinated ABBA's candidate arm IS the fanout lane's committed cut 0601fd859 - this lane measures it on the warm-open surface). Two fresh 16c/32GB/80GB Prime VMs (hillclimb-perf-warmopen-gap d437wyzw95ul4r90hvuzacbb + hillclimb-perf-warmopen-gap-b af4sdzye7hnelsalgg3bnzn4, ubuntu:22.04, rustup 1.98.1 the CI pin), the tip built cargo build --release --locked --workspace rc=0 at 3358e0016bce7cf34a195af58bbd91a26e17d694, staged in the r2 install shape (launcher + exe-adjacent payload, split-debug shipped binary sha256 37e14b66562125d6391b778b796a86d75749956c935d5cf7aa0abdd7bd8f05eb, 56,394,608B) with the tip's runtime+skills+package.json stamped; pi = the r2 campaign binary byte-identical (v0.99.1 @ d86654ab, cli.js sha256 e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774). The warmopen-decompose rig (the proven boot-floor contract: first-paint + typed-echo ready + erase/dialog validation + 2ms process-role sighting grid + 1ms socket grids + 5ms per-role CPU grid + per-role CPU accumulation marks): the order-balanced same-VM sequential PAIRED ABBA pair-warm legs (rust-warm vs pi-warm interleaved, n=10+10 per VM), rust-warm anchors n=10 + a n=30 hunt (VM1), rust-cold anchors n=10, the small-fixture resume legs n=5+5, the TUI-only wire leg (strace -f, near-clean TUI side; the prewarm daemon through the CLEAN launcher so the daemon+worker tree runs untraced), the INFLATED -ff io census (openat,fsync,fdatasync,rename,connect,execve), the execve chain, the daemon-only dtrace, and pi's own io census (node wrapped in strace). THE COORDINATED ABBA: base 3358e0016 (37e14b66...) vs cand 0601fd859 (the fanout lane's committed cut, shipped-shape sha256 ee591b3f71fc1633f09024b8bf23f123ebbbf29555a2308987c7e5d64d7dda7a) on the WARM-OPEN surface, same-VM sequential strict interleave B C C B B C x5 (=10+10), sha-asserted atomic payload swaps per arm change (copy-to-temp + rename over the staged payload; the sha asserted per trial), plus a 2-trial INFLATED io census on the cand arm (the served-path assertion). I/O advisory v1.0 at EVERY leg boundary (>=40 isolated fresh+sync_all+rename @0.5s + >=50 repeat-fsync, PHASE MODEL re-classified at every boundary, NO-CEILING labels) + the 30s-cadence longitudinal watcher per VM + the noop PTY floor control.",
+ "parity_notes": "No product bytes changed by this lane (measurement only). The ABBA's candidate arm is the fanout lane's own committed cut (0601fd859) - its product-parity story (TS persistWorker call shape + the in-memory-only boot registration + the kept create-completion fsync barrier) rides ITS record/PR; this lane contributes the independent wire-side attribution + the warm-open-surface ABBA + the served-path verification (4->2 descriptor writes, the create-path fsyncs 6->3, live). Privacy: no fixtures on the warm-open primary legs; the small-fixture legs carry sha256/counts only (the private fixtures, shas matching the prior campaign's: fix-small 834cb5ba..., fix-real 835c4473...); the daemon log lines quoted are structure+timing only. The strace legs carry the standing INFLATED disclosure (traced spans never reported clean; the TUI-only leg is the near-clean TUI side); raw strace files stayed on the VMs (the archived census tables ride the record).",
+ "base": {
+  "revision": "3358e0016bce7cf34a195af58bbd91a26e17d694"
+ },
+ "branch": "hillclimb (bench repo); the ABBA cand arm = origin/lane/perf-create-fsync-fanout @ 0601fd859",
+ "commits": [],
+ "build": {
+  "sandbox_id": "d437wyzw95ul4r90hvuzacbb (VM1, trap-class) + af4sdzye7hnelsalgg3bnzn4 (VM2, healthy-class at provision)",
+  "toolchain": "rustup 1.98.1 (the CI pin)",
+  "binary_sha256": "37e14b66562125d6391b778b796a86d75749956c935d5cf7aa0abdd7bd8f05eb",
+  "binary_bytes": 56394608,
+  "cand_binary_sha256": "ee591b3f71fc1633f09024b8bf23f123ebbbf29555a2308987c7e5d64d7dda7a",
+  "cand_binary_bytes": 56400288,
+  "pi_binary_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+  "build_seconds": 114,
+  "build_note": "cargo build --release --locked --workspace rc=0 at the tip on both VMs; the shipped split-debug shape via scripts/release/split_debug.py; the harness version_info asserted the payload sha + the tip revision through the launcher; the ABBA cand arm built the same way on both VMs (byte-identical ee591b3f...)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed by this lane)",
+  "clippy": "n/a (no product code changed by this lane)",
+  "test": "n/a (no product code changed by this lane)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; operator disposition standing; never called pass"
+ },
+ "measurements": {
+  "method": "same-VM sequential, quiet-gated, mock-routed raw-PTY bench harness (the boot-floor contract: first-paint + typed-echo ready + erase/dialog validation; per-trial isolated homes; the noop PTY floor control per leg group p50 0.053-0.092ms)",
+  "noop_control_pty_floor": {
+   "runs": 9,
+   "p50_ms_range": [
+    0.053,
+    0.125
+   ]
+  },
+  "regime_disclosure": {
+   "advisory": "I/O advisory v1.0: >=40 ISOLATED fresh+sync_all+rename @0.5s + >=50 repeat-fsync at every leg boundary; PHASE MODEL re-classified at every boundary; NO-CEILING - every leg carries its regime label",
+   "vm1_class": "PHASE-FRESHTRAP for the whole session (the ~38-44ms fresh class persistent; the 30s watcher read iso 36.98-75.9ms across 37 samples; the 40-sample boundary probes read iso p50 36.8-50.0)",
+   "vm2_class": "healthy-class at provision (a single-sample probe read iso p50 0.92ms, max 8.42 - the hostregime census's 0.84-2.10ms machine); during the legs the burst probes read the ~38-50ms class while the 30s single-sample watcher read iso 1.0-2.0ms with brief 38-44ms trap episodes (the class is burst-induced: sustained fresh+sync_all+rename streams - the boundary probes and the products' own write fan-outs - push the host's write path into the ~38-44ms class while isolated single writes stay fast)",
+   "burst_induction_finding": "the 40-sample boundary probe itself reads p50 ~38-44 (its own burst) while the 30s watcher reads 1.0-2.0 between bursts; the warm open's OWN 9-fsync fan-out is a burst of exactly this class - the open self-induces the degradation it then pays",
+   "phase_verdicts": "VM1: PHASE-FRESHTRAP at every boundary (one DEGRADED-BOTH post); VM2: FRESHTRAP at the leg boundaries with the watcher's healthy 1.0-2.0ms rest class disclosed"
+  },
+  "paired_warm_tables": {
+   "vm1_pair_warm": {
+    "regime": "PHASE-FRESHTRAP -> PHASE-FRESHTRAP",
+    "rust": {
+     "n": 10,
+     "p50": 337.32,
+     "values": [
+      215.82,
+      252.14,
+      261.95,
+      309.75,
+      329.15,
+      345.49,
+      348.81,
+      350.65,
+      359.89,
+      366.93
+     ]
+    },
+    "pi": {
+     "n": 10,
+     "p50": 179.97,
+     "values": [
+      171.96,
+      173.54,
+      176.28,
+      178.08,
+      178.87,
+      181.06,
+      183.13,
+      185.89,
+      186.53,
+      220.74
+     ]
+    },
+    "gap_p50_ms": 157.35
+   },
+   "vm2_pair_warm": {
+    "regime": "PHASE-DEGRADED-BOTH -> PHASE-FRESHTRAP (the legs ran in trap windows on a healthy-class host)",
+    "rust": {
+     "n": 10,
+     "p50": 305.97,
+     "values": [
+      123.93,
+      186.91,
+      209.77,
+      251.27,
+      303.19,
+      308.75,
+      321.09,
+      331.27,
+      376.01,
+      377.37
+     ]
+    },
+    "pi": {
+     "n": 10,
+     "p50": 175.19,
+     "values": [
+      168.85,
+      169.18,
+      172.45,
+      173.41,
+      174.18,
+      176.2,
+      184.81,
+      185.14,
+      196.34,
+      224.94
+     ]
+    },
+    "gap_p50_ms": 130.78
+   },
+   "paint_split": "rust paints chrome at 6.4-12.7ms (input_buffered=True on every trial - the editor mounts later and flushes the buffered probe); pi paints its full UI at 154.5-210.0ms (input_buffered=False - its input is live at paint; the 6-8ms gap is the probe round trip)",
+   "pi_regime_stability": "pi's measured launch writes ZERO fsyncs (the pi io census: only the node compile-cache write+renames at the warm-up launch; no fsync/fdatasync anywhere) - pi is regime-immune; every rust-vs-pi gap is the rust fan-out's regime tax"
+  },
+  "rust_anchors": {
+   "vm1_rust_warm_n10": {
+    "p50": 329.15,
+    "values": [
+     106.5,
+     184.55,
+     279.16,
+     285.76,
+     307.53,
+     343.87,
+     346.77,
+     353.05,
+     357.5,
+     412.29
+    ]
+   },
+   "vm1_hunt_n30": {
+    "p50": 315.4,
+    "values": [
+     165.8,
+     218.7,
+     240.54,
+     242.53,
+     242.78,
+     257.46,
+     265.13,
+     266.94,
+     269.94,
+     270.11,
+     290.05,
+     304.57,
+     308.41,
+     310.96,
+     314.75,
+     316.06,
+     317.24,
+     318.31,
+     319.77,
+     324.66,
+     332.16,
+     336.62,
+     347.36,
+     354.96,
+     363.87,
+     365.61,
+     365.64,
+     379.19,
+     380.2,
+     394.42
+    ]
+   },
+   "vm2_rust_warm_n10": {
+    "p50": 307.53,
+    "values": [
+     158.94,
+     230.3,
+     276.95,
+     284.41,
+     319.95,
+     320.76,
+     338.34,
+     351.27,
+     352.42,
+     420.35
+    ]
+   },
+   "vm1_rust_cold_n10": {
+    "p50": 305.1,
+    "values": [
+     232.55,
+     291.09,
+     298.57,
+     301.59,
+     302.75,
+     307.45,
+     308.26,
+     315.43,
+     330.96,
+     357.61
+    ]
+   },
+   "vm2_rust_cold_n10": {
+    "p50": 279.82,
+    "values": [
+     172.03,
+     194.25,
+     227.98,
+     267.69,
+     267.79,
+     291.85,
+     304.59,
+     310.86,
+     329.96,
+     343.04
+    ]
+   },
+   "healthy_window_subset_all_legs": {
+    "n": 13,
+    "p50": 209.77,
+    "values": [
+     106.5,
+     123.93,
+     158.94,
+     165.8,
+     184.55,
+     186.91,
+     209.77,
+     215.82,
+     218.7,
+     230.3,
+     240.54,
+     242.53,
+     242.78
+    ],
+    "note": "every warm trial <250ms across both VMs (the trap-free windows); rust's healthy floor 106-165 OVERLAPS AND BEATS pi's 172-176"
+   }
+  },
+  "wire_ledger": {
+   "method": "the TUI-only strace leg with -f (all TUI threads; the prewarm daemon + its worker tree run UNTRACED through the clean launcher - the near-clean TUI side; spans TUI-side)",
+   "vm2_wire_trial": {
+    "connect_dsock": "+0ms",
+    "daemon_hello_recv": "+67ms after the first connect (the prewarmed daemon is still mid-boot-refresh: its catalog fetch+parse+cache writes land 50-150ms INTO the measured window - the mcp-service-catalog fsync 43.6ms + the provider-model-catalog fsync 44.1ms + the prime-inference-cache write all in flight; relayed to the lazyinit lane)",
+    "create_send_to_response": "+278ms (the traced trap-class trial; the create window)",
+    "response_to_worker_connect": "+0.6ms",
+    "attach_roundtrip": "+6ms (get_direct_worker_transport -> the worker socket connect -> peer_auth -> the attach: fast)",
+    "mount": "the editor mount + the buffered-input flush = ready"
+   }
+  },
+  "io_census_base_warm_create": {
+   "method": "strace -ff -e trace=openat,fsync,fdatasync,rename,connect,execve, 1 warm trial (VM1, STRACE-INFLATED ordering; the fsync DURATIONS are direct syscall measurements)",
+   "the_create_window_fsync_fanout": [
+    {
+     "write": "mcp-service-catalog.v2 cache (the daemon's boot refresh)",
+     "fsync_ms": 43.6,
+     "critical_path": "background (contends the fsync queue)"
+    },
+    {
+     "write": "worker descriptor - the SPAWN persist",
+     "fsync_ms": 41.8,
+     "critical_path": "awaited (gates the worker spawn path)"
+    },
+    {
+     "write": "provider-model-catalog.v1 cache (the boot refresh)",
+     "fsync_ms": 44.1,
+     "critical_path": "background (contends)"
+    },
+    {
+     "write": "worker descriptor - the REGISTRATION persist (epoch 1, adoption.rs:476; the daemon log binds it: 'registered (epoch 1)')",
+     "fsync_ms": 73.8,
+     "critical_path": "concurrent with the worker's create work (the worst single stall in the census)"
+    },
+    {
+     "write": "session jsonl (the fresh create's single durable rewrite: write+fsync+rename)",
+     "fsync_ms": 36.4,
+     "critical_path": "awaited (the worker's create)"
+    },
+    {
+     "write": "worker recovery journal (the create's record_recovery append)",
+     "fsync_ms": 37.4,
+     "critical_path": "awaited (TS-parity: TS fsyncs it too)"
+    },
+    {
+     "write": "prime-inference-models-cache (the boot refresh)",
+     "fsync_ms": 1.2,
+     "critical_path": "background"
+    },
+    {
+     "write": "worker descriptor - the READY persist (launch_worker, post-create)",
+     "fsync_ms": 1.6,
+     "critical_path": "awaited (the metadata-survival barrier)"
+    },
+    {
+     "write": "worker descriptor - the RE-REGISTRATION persist (epoch 2, adoption.rs:476; the log binds it: 're-registered (epoch 2)')",
+     "fsync_ms": 3.1,
+     "critical_path": "on the response path"
+    }
+   ],
+   "descriptor_writes_per_warm_create_base": 4,
+   "create_path_fsyncs_base": 6,
+   "pi_launch_fsyncs": 0
+  },
+  "coordinated_abba_warmopen_surface": {
+   "what": "base 3358e0016 vs cand 0601fd859 (the fanout lane's committed cut: the spawn record rides the TS persistWorker unsynced shape + the boot registration persists in memory only + the create-completion persist keeps its fsync barrier) measured on THIS lane's surface (launch->ready, the compare.warm_start shape)",
+   "design": "same-VM sequential strict interleave B C C B B C x5 (=10+10), sha-asserted atomic payload swaps per arm change (the staged payload swapped copy-to-temp+rename; the sha asserted per trial: base 37e14b66... / cand ee591b3f...), the advisory v1.0 at the leg boundaries",
+   "vm1": {
+    "regime": "PHASE-FRESHTRAP -> PHASE-DEGRADED-BOTH (iso p50 42.36 pre / 46.33 post)",
+    "base": {
+     "n": 10,
+     "p50": 413.2,
+     "values": [
+      352.77,
+      372.3,
+      380.47,
+      382.24,
+      411.62,
+      414.88,
+      432.55,
+      432.93,
+      457.64,
+      511.82
+     ]
+    },
+    "cand": {
+     "n": 10,
+     "p50": 321.3,
+     "values": [
+      221.39,
+      243.7,
+      291.87,
+      296.56,
+      318.17,
+      324.35,
+      333.85,
+      355.49,
+      358.58,
+      373.26
+     ]
+    },
+    "delta_p50_ms": -91.9,
+    "delta_pct": -22.2,
+    "position_paired_deltas_ms": [
+     18.92,
+     56.3,
+     77.44,
+     80.43,
+     83.91,
+     114.38,
+     133.29,
+     138.56,
+     160.85,
+     167.92
+    ]
+   },
+   "vm2": {
+    "regime": "PHASE-FRESHTRAP -> PHASE-DEGRADED-BOTH (iso p50 41.01 pre / 48.39 post)",
+    "base": {
+     "n": 10,
+     "p50": 407.21,
+     "values": [
+      352.35,
+      380.66,
+      380.83,
+      385.5,
+      403.26,
+      411.16,
+      420.97,
+      424.38,
+      445.88,
+      497.64
+     ]
+    },
+    "cand": {
+     "n": 10,
+     "p50": 297.29,
+     "values": [
+      233.46,
+      251.66,
+      260.44,
+      285.51,
+      295.25,
+      299.34,
+      328.76,
+      341.65,
+      344.52,
+      356.43
+     ]
+    },
+    "delta_p50_ms": -109.9,
+    "delta_pct": -27.0,
+    "position_paired_deltas_ms": [
+     51.9,
+     58.74,
+     69.51,
+     90.25,
+     118.89,
+     120.39,
+     125.04,
+     141.21,
+     160.37,
+     169.31
+    ]
+   },
+   "reading": "every position-paired delta positive on BOTH machines; the cand's max (373.26/356.43) sits at the base's min (352.77/352.35) - near-complete distribution separation. The delta is REGIME-BOUND (the trap class amplifies the fan-out's burst-induction): the healthy-window expectation is the fanout lane's own healthy-class read; this lane's healthy-window subset (13 trials <250ms) bounds the floor. The ABBA is the warm-open-surface cross-validation of the fanout lane's create-window ABBA - the two surfaces, one mechanism",
+   "served_path_assertion": {
+    "method": "the 2-trial INFLATED io census on the cand arm (the same -ff filter)",
+    "base_warm_create": "4 descriptor writes (spawn fsynced 41.8ms, registration fsynced 73.8ms, ready fsynced 1.6ms, re-registration fsynced 3.1ms) + the session jsonl (36.4ms) + the recovery journal (37.4ms) = 6 create-path fsyncs",
+    "cand_warm_create": "2 descriptor writes (spawn RENAME with NO fsync - the unsynced shape confirmed live; ready fsynced 45.5ms - the barrier kept) + the session jsonl (86.3ms) + the recovery journal (47.8ms) = 3 create-path fsyncs; the registration/re-registration writes GONE",
+    "verdict": "descriptor writes 4->2 and create-path fsyncs 6->3 on the warm-open surface, exactly the fanout lane's committed claim, verified live from the served path"
+   }
+  },
+  "extra": {
+   "small_fixture_legs": {
+    "vm1_small_warm_n5": {
+     "p50": 385.96,
+     "values": [
+      321.55,
+      361.98,
+      385.96,
+      407.74,
+      423.67
+     ]
+    },
+    "vm1_small_cold_n5": {
+     "p50": 357.88,
+     "values": [
+      295.8,
+      345.54,
+      357.88,
+      362.08,
+      396.1
+     ]
+    },
+    "vm2_small_warm_n5": {
+     "p50": 367.28,
+     "values": [
+      303.47,
+      322.52,
+      349.66,
+      367.28,
+      407.74
+     ]
+    },
+    "vm2_small_cold_n5": {
+     "p50": 332.03,
+     "values": [
+      306.07,
+      322.52,
+      332.03,
+      373.3,
+      390.05
+     ]
+    }
+   },
+   "hello_plus67ms": "the wire leg's connect->daemon_hello span: the prewarmed daemon is still running its boot catalog refresh when the measured TUI connects (the refresh's cache writes + fetches land inside the measured window); RELAYED to the lazyinit lane as its L2 surface",
+   "kernel_prewarm": "the kernel python execs mid-create (sighting p50 68-208ms across the trap/healthy windows) and the create response does NOT gate on it (the async prewarm confirmed in code + the trials: ready precedes kernel-ready) - not a warm-open cut target"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All trials valid (erase_ok + dialogs_clear on every row; the probe-grid honesty: input_buffered=True on rust warm legs - the echo timestamp IS the readiness render, quantized 0.0; pi's probe unbuffered with quantized 50.0 = the grid's worst-case bound). The A/A payload-shape control (the prior lane's) applies: the shipped split-debug shape retained for both arms. The trap-regime legs carry NO-CEILING labels; nothing dropped; the healthy-window subset is a disclosed conditional cut of the same rows (every trial <250ms), never a separate leg. The cand-arm io census ran twice: the first attempt traced only the TUI (the prewarm daemon through the clean launcher = the whole daemon+worker tree untraced - 0 fsyncs captured); the re-run without the prewarm override captured the full tree and is the census reported. The worktree/branch for a duplicate implementation was created and then REMOVED on the parent's convergence directive (the fanout lane owns the cut)."
+ },
+ "outcome": "measured - THE WARM-OPEN DECOMPOSE AT THE TIP + THE COORDINATED CROSS-VALIDATION of the fanout lane's cut on the warm-open surface",
+ "decision": "THE WARM-OPEN DECOMPOSE AT 3358e0016 (the r2 table's 183, re-measured): the warm open decomposes into (1) TUI chrome paint 6.4-12.7ms; (2) the TUI->daemon connect->hello span: +67ms measured on the wire (the prewarmed daemon is STILL MID-BOOT-REFRESH when the measured TUI connects - the catalog fetch+parse+cache writes land 50-150ms into the measured window; the prewarm's socket-accept gate does not cover the refresh); (3) the create window: the daemon's spawn-persist fsync -> the worker boot (10-20ms; the worker socket binds at 10-17ms) -> the worker's create chain (the identity walk ~10ms, the lease, the session jsonl write+fsync+rename, the recovery-journal fsync, the window-cache) -> the registration-persist fsync -> the ready-persist fsync -> the re-registration-persist fsync; (4) the response->attach->mount: FAST (the direct worker connect +0.6ms, the attach round trip ~6ms, then the buffered-input flush = ready). THE HEALTHY FLOOR: 106-165ms (the trap-free windows, both VMs) - OVERLAPPING AND BEATING pi's 172-176. THE RESIDUAL ~16ms vs pi's 167 IS NOT STRUCTURAL: it is the fresh-fsync fan-out's burst-induced disk tax, regime-bound - +16ms in the r2 window's p50 mixture, +157ms in this campaign's deep-trap pair (VM1), -60ms in rust's favor in the healthy window. pi pays ZERO fsyncs at launch (its census: no fsync/fdatasync at all) and never induces the class; rust's open fires 9 fsyncs in ~250ms (6 on the create path) and SELF-INDUCES the ~38-44ms burst class it then pays (the boundary burst probes read p50 ~38-44 while the 30s single-sample watcher reads 1.0-2.0). THE COORDINATED MEASUREMENT: the fanout lane's committed cut (0601fd859: the spawn record unsynced TS-persistWorker shape, the boot registration in-memory only, the create-completion fsync barrier kept) measured on THIS lane's surface: base-vs-cand 10+10 strict-interleave on BOTH machines, every position-paired delta positive, p50 -91.9ms/-22.2% (VM1) and -109.9ms/-27.0% (VM2) in the trap class, near-complete distribution separation; the served-path census on the cand arm verifies 4->2 descriptor writes and 6->3 create-path fsyncs live. THE INDEPENDENT CROSS-VALIDATION: this lane found the same mechanism from a different surface (the warm-open wire + the daemon's own registration/re-registration log epochs binding the 4 descriptor writes) as the fanout lane's cold-census attribution - the strongest confirmation of the fanout's mechanism. TOP REMAINING CANDIDATES (named, not cut here): (1) THE HELLO +67ms - the daemon's boot-refresh contention on the warm path (the lazyinit lane's L2 surface, relayed); (2) the TS-absent fsyncs on the session-jsonl rewrite + the catalog caches (the port's deliberate durability hardening - the supervisor-config precedent rejected dropping fsyncs; NOT resurrected); (3) the boot-refresh cache writes' fsync-vs-TS posture (same class). NO SELF-MERGE: the fanout cut's merge bar is its own lane's; this record carries the warm-open-surface evidence for it.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-193000-startup-warmopen-gap-decompose.json",
+ "session": {
+  "worker": "perf-warmopen-gap-fast"
+ },
+ "timestamp": "2026-10-01T19:29:04+00:00"
+}
