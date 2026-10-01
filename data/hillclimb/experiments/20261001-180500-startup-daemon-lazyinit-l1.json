@@ -1,0 +1,286 @@
+{
+ "id": "20261001-180500-startup-daemon-lazyinit-l1",
+ "axis": "startup",
+ "lane": "perf-daemon-lazyinit2-fast (successor after the prior session's machine death mid-prebuild; primary mandate: the first-create lazy-init class, milestone-1 divergence named, L1 prebuilt locally)",
+ "hypothesis": "write_file_atomic's unconditional sync_all diverges from TS writeFileAtomicSync's per-call-site fsync option, and persist_supervisor_config (the daemon's ONLY pre-bind durable write, a zero-reader mirror the boot rewrites anyway) carries a TS-absent fsync: TS persistSupervisorConfig passes NO fsync option, so the port's sync_all is added durability the product does not have. The pre-bind fsync rides the bind-span, and the settle leg2 (perf-settle-daemoninit3 decompose, relayed by the orchestrator) proved the bind-span is LEG-INLINE on every daemon-booting create path (spawn->bind p50 71.3ms on the settle host, ~92% durable-write not CPU; the persist's fresh write 34-37ms inline on that host class). L1 = drop the TS-absent fsync from the supervisor-config persist; expected win = the persist's fresh-write class cost off the bind-span of every daemon-booting create path, regime-relative (34-37ms on the settle host's healthy class; whatever the host's fresh-write class costs where it runs).",
+ "approach": "Branch lane/perf-daemon-lazyinit-l1-prebuild, base 3358e0016 (org/main = origin/main), 3 commits, ONE file crates/pa-daemon/src/descriptor.rs, +87/-4: (722c56625) TempSync{Synced,Unsynced} enum documenting TS writeFileAtomicSync's per-call-site fsync option + write_file_atomic keeps Synced for every existing caller + new pub(crate) write_file_atomic_unsynced + persist_supervisor_config switched to the unsynced shape with the TS call-site parity documented; (edb083daf) the round-trip test compares fields (the struct is not PartialEq); (92cc1c7a9) rustfmt tuple shape. Two new tests: the unsynced rename replaces the destination and leaves no temp; the persisted supervisor config round-trips through the unsynced write and belongs to its socket. Measurement: the prebuilt same-VM sequential ABAB pair (leg_abba.py, n=12/leg-instance, 2 leg instances per letter = 24/letter, shapes prewarmed+inline, sha-asserted atomic binary swaps, spin calib pre/mid/post, 1ms-grid floor probe, I/O advisory v1.0 regime probes at EVERY leg boundary, PI_OFFLINE=1 disclosed, idle gates, SIGTERM reap + leftover-poison check). Served-path contract (served_path.py) on both binaries: hello normalized byte-identity, first create, post-shutdown supervisor-config present+parseable+socket-bound (the L1 served path).",
+ "parity_notes": "A CONVERGENCE, not a divergence: TS writeFileAtomicSync's WriteFileAtomicOptions.fsync is a per-call-site opt-in, and TS persistSupervisorConfig passes only {mode:0o600} \u2014 no fsync \u2014 so unsynced is the TS posture at exactly this call site. Every other write_file_atomic caller (worker descriptors, identity-pending record: the durable surfaces) keeps the Synced shape \u2014 zero behavior change outside the supervisor-config mirror. Frozen surfaces proven: the hello line's normalized form byte-identical base-vs-patched (sha 194f312b250bdcffff3eb67b5879e333f42a8dcaace8c5c6bac94146ed73cacc both sides, volatile fields dropped incl. per-trial socket paths). Served-path contract PASS on both binaries: the unsynced atomic write still lands the supervisor-config mirror (present + version-1 parseable + socketPath-bound at runtime), first create OK both sides. Crash story: a lost unsynced write costs the mirror this boot rewrote anyway (the module doc states it); readers only ever see parseable states through the atomic rename.",
+ "base": {
+  "revision": "3358e0016bce7cf34a195af58bbd91a26e17d694 (org/main = origin/main; the prebuild base)"
+ },
+ "branch": "lane/perf-daemon-lazyinit-l1-prebuild (unpushed at record time; the PR flow re-homes off the current rust tip per fleet discipline)",
+ "commits": [
+  "722c56625",
+  "edb083daf",
+  "92cc1c7a9"
+ ],
+ "build": {
+  "sandbox_id": "u6yqyl9mcozvpt8tv2fxv6gs (hillclimb-perf-lazyinit, ubuntu:22.04, 16c/32GB/100GB, rustc 1.98.1)",
+  "binA_sha256": "9e94e85bc70797f390fce884b98aea4ef4540b216037d4ccc10702997c260757 (base 3358e0016 clean, release, build RC0)",
+  "binB_sha256": "d42344dad95fa11114599d09bc046bfc593083fc433b066b615a60f24e3c3788 (base + the 3-commit state; applied-tree content-bound to patch sha d5db7d2766d562a016240c5c835b716dc1bd761d318ab33c078c36acc2662f91 before the build; build RC0)",
+  "binary_bytes": 228154776,
+  "build_seconds": 123,
+  "toolchain": "rustup rustc 1.98.1 (48a229cea 2026-09-01)"
+ },
+ "gates": {
+  "fmt": "pass (verify3, v3 tree, FMT-RC=0)",
+  "clippy": "pass (verify3, -D warnings, CLIPPY-RC=0)",
+  "test": "pass with one DISCLOSED ENVIRONMENTAL red: pa-daemon lib 883 passed / 1 failed \u2014 worker::tests::goal_tests::goal_turn_end_loop_runs_to_completion fails the IDENTICAL kernel-env panic on the PRISTINE BASE 3358e0016 too (BASE-GOALTEST-RC=101, the machine-class control: uv/PI_PACKAGE_DIR missing on this source-checkout VM), so the red is environmental, not patch-caused; the descriptor battery passes clean (DESCRIPTOR-TESTS-RC=0)",
+  "served_path_contract": "PASS A and PASS B (hello byte-identity TRUE, first_create_ok both, supervisor-config present+parseable_v1+socket_matches both)",
+  "benchmark_ci": "the standing non-applicable class on rust-branch PRs (no package.json on the rust surface; never called pass)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABAB (leg_abba.py prebuilt; 4 leg instances, n=12/leg-instance, shapes prewarmed+inline; every row carries its boundary regime)",
+  "suites": {
+   "bind_span_spawn_to_socket": {
+    "baseline": {
+     "leg": "A (base, synced persist)",
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 472.73,
+     "p95_ms": 494.96,
+     "values_ms": [
+      4.46,
+      4.57,
+      449.67,
+      452.43,
+      454.4,
+      454.83,
+      458.27,
+      460.34,
+      460.4,
+      460.47,
+      462.09,
+      463.65,
+      463.83,
+      466.04,
+      466.26,
+      466.26,
+      467.46,
+      468.34,
+      469.99,
+      470.87,
+      471.32,
+      471.4,
+      472.28,
+      472.61,
+      472.85,
+      474.56,
+      474.65,
+      474.89,
+      475.79,
+      476.6,
+      476.92,
+      477.38,
+      479.33,
+      480.48,
+      481.01,
+      482.26,
+      483.89,
+      485.29,
+      485.68,
+      486.83,
+      487.8,
+      489.21,
+      489.76,
+      494.86,
+      494.96,
+      499.07,
+      502.74,
+      503.46
+     ]
+    },
+    "candidate": {
+     "leg": "B (patched, unsynced persist)",
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 3.46,
+     "p95_ms": 4.52,
+     "values_ms": [
+      3.27,
+      3.39,
+      3.39,
+      3.4,
+      3.4,
+      3.41,
+      3.41,
+      3.41,
+      3.41,
+      3.41,
+      3.42,
+      3.42,
+      3.43,
+      3.43,
+      3.43,
+      3.43,
+      3.44,
+      3.44,
+      3.44,
+      3.45,
+      3.45,
+      3.46,
+      3.46,
+      3.46,
+      3.46,
+      3.46,
+      3.47,
+      3.47,
+      3.47,
+      3.47,
+      3.47,
+      3.47,
+      3.48,
+      3.48,
+      3.49,
+      3.49,
+      3.49,
+      3.5,
+      3.52,
+      3.52,
+      3.56,
+      3.6,
+      4.51,
+      4.52,
+      4.52,
+      4.56,
+      5.2,
+      5.53
+     ]
+    },
+    "delta_pct": -99.27,
+    "regression": false
+   },
+   "bind_span_by_shape_p50s_ms": {
+    "prewarmed": {
+     "A": 473.71,
+     "B": 3.47,
+     "delta": -470.24
+    },
+    "inline": {
+     "A": 471.57,
+     "B": 3.44,
+     "delta": -468.13
+    }
+   },
+   "hello_span_by_shape_p50s_ms": {
+    "prewarmed": {
+     "A": 475.09,
+     "B": 5.12,
+     "delta": -469.97
+    },
+    "inline": {
+     "A": 473.0,
+     "B": 5.19,
+     "delta": -467.81
+    }
+   },
+   "t_create_spawn_to_create_response_p50s_ms": {
+    "prewarmed": {
+     "A": 3270.49,
+     "B": 2815.88,
+     "delta": -454.61
+    },
+    "inline": {
+     "A": 3282.26,
+     "B": 2370.44,
+     "delta": -911.82
+    },
+    "note": "the bind-span rides the create-measured path on the inline shape exactly as the settle leg2 stated (LEG-INLINE); the prewarmed delta equals the bind delta"
+   },
+   "create_window_send_to_response_p50s_ms": {
+    "prewarmed": {
+     "A": 2798.51,
+     "B": 2810.92
+    },
+    "inline": {
+     "A": 2819.49,
+     "B": 2365.23
+    },
+    "note": "EXPECTED NULL for L1's scope on the prewarmed shape (the create's own durable writes are the create-fsync-fanout lane's surface, untouched on both legs); the inline asymmetry is host-phase variance within the degraded regime (leg-instance split: leg1-B inline 2129.91 vs leg3-B inline 2810.22 \u2014 B-vs-B differs more than A-vs-B)"
+   },
+   "per_leg_instance_bind_p50s_ms": {
+    "leg0-A": {
+     "prewarmed": 471.36,
+     "inline": 466.48
+    },
+    "leg1-B": {
+     "prewarmed": 3.48,
+     "inline": 3.46
+    },
+    "leg2-A": {
+     "prewarmed": 479.9,
+     "inline": 474.83
+    },
+    "leg3-B": {
+     "prewarmed": 3.46,
+     "inline": 3.43
+    },
+    "note": "the A/B separation follows the binary letter in 4/4 leg instances across a mid-run host I/O phase change \u2014 the pairing is causal, not host-phase"
+   },
+   "io_advisory_regime_rows": {
+    "leg0-A": {
+     "fresh_p50_ms": 0.85,
+     "fresh_max_ms": 518.93,
+     "fresh_rate15_pct": 2.5,
+     "fsync_p50_ms": 0.53,
+     "overall": "DEGRADED"
+    },
+    "leg1-B": {
+     "fresh_p50_ms": 483.38,
+     "fresh_max_ms": 625.56,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.63,
+     "overall": "DEGRADED"
+    },
+    "leg2-A": {
+     "fresh_p50_ms": 470.35,
+     "fresh_max_ms": 627.66,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.65,
+     "overall": "DEGRADED"
+    },
+    "leg3-B": {
+     "fresh_p50_ms": 472.67,
+     "fresh_max_ms": 612.86,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.55,
+     "overall": "DEGRADED"
+    },
+    "note": "the fresh-write class (create+fsync+rename+stat) degraded to ~0.47-0.48s p50 for the trial phase (leg0's boundary probe caught the last healthy window, p50 0.85ms, with the stall signature already flickering: max 518.93, rate15 2.5%); the repeat-fsync class stayed fast (p50 0.53-0.65ms) \u2014 a metadata-path signature"
+   },
+   "controls": {
+    "spin_calib_s": {
+     "pre": 1.023,
+     "mid": 1.029,
+     "post": 1.023
+    },
+    "grid_floor_probe_p50_ms": 0.545,
+    "daemon_cpu_s_at_bind": 0.0,
+    "trials_valid": "96/96 (0 bind timeouts, 0 wire errors, 0 leftovers, 0 TRIAL-INVALID)"
+   }
+  },
+  "extra": {
+   "regime_relative_framing": "the -470ms bind delta is THIS host's CURRENT degraded fresh-write class (p50 ~470-483ms); on the settle host's healthy class the same write cost 34-37ms and that is the expected L1 magnitude there \u2014 quote the span regime-relative, never a fixed product cost",
+   "steady_state_honesty": "the win is the daemon-BOOTING create windows only (the bind-span on every daemon-booting create path); the once-per-daemon-lifetime objection stands for repeated creates on a live daemon",
+   "first_create_class_unreadable_here": "the create windows (~2.1-2.9s p50) are swamped by the degraded fresh-write regime on this host and cannot read the first-create lazy-init class (66.6-266.7ms daemon-role CPU on the settle host's fresh-warm grid) \u2014 the class authority remains the settle leg2's strace timeline; every row carries its regime label per the NO-CEILING doctrine"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "No trials excluded. The host's fresh-write I/O class entered a sustained DEGRADED phase essentially co-incident with the run start (leg0's boundary probe caught the last healthy window; legs 1-3 boundary probes all p50 ~470-483ms, rate15 100%): per the PHASE MODEL every row carries its boundary-regime label and the in-leg stalls are regime evidence, labeled. The ABAB pairing across the phase change (A high under the degraded regime in both its leg instances, B low in both) separates the binary effect from the host phase. The bind/hello spans are the clean L1 readout; the create windows are regime-dominated and disclosed as unreadable for the class question on this host. Spin calib stable (1.023/1.029/1.023) and daemon CPU at bind 0.0 on every row: the bind-span delta is pure durable-write wait, matching the settle leg2's ~92%-durable-write finding. The served-path contract and the hello byte-identity were proven BEFORE the ABBA (separate boots, both PASS)."
+ },
+ "outcome": "in-progress",
+ "decision": "The orchestrator signed off L1 pre-measurement on the settle leg2's evidence (the bind-span is LEG-INLINE on every daemon-booting create path; the persist is the warm-create path's only remaining inline fsync, 34-37ms on the settle host class) with the gate 'L1 lands ONLY if the settle leg2 demonstrates the bind-span ON the create-critical path' \u2014 demonstrated, hence FIRE. This ABBA confirms causally under a harder-than-planned regime: the A/B bind-span separation follows the binary in 4/4 leg instances (-470.24ms prewarmed / -468.13ms inline p50 delta on this host's degraded fresh-write class; expected 34-37ms on the settle host's healthy class), the prewarmed create-window null matches L1's scope, and the served-path contract + hello byte-identity hold. The once-per-daemon steady-state objection stands and is disclosed. NEXT (banked, not yet measured): the second inline fsync \u2014 the telemetry install-id create (31-34ms on the settle host, once per agent dir) \u2014 TS-posture VERIFIED in this lane (TS fsyncs NEITHER install-id site: fresh create is writeFileSync flag wx, replacement is writeFileAtomicSync without the fsync option; the Rust port's create_exclusive sync_all is added durability \u2014 packet lazyinit-installid-verify.md); then L2 (the post-bind arm move, design note lazyinit-l2-design.md, whose hello-span accounting needs the fresh-agent-dir create-cost correction the packet names). Merge bar pending: PR re-home off the current rust tip, numeric review, both adversarial reviewers SHA-bound, CI rollup, operator disposition of the disclosed environmental red.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-180500-startup-daemon-lazyinit-l1.json",
+ "session": {
+  "worker": "perf-daemon-lazyinit2-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-60ecd48b/01a0f86e-9102-76d1-8dcd-0a31e788f989.jsonl"
+ },
+ "archive": {
+  "path": "/home/ubuntu/hillclimb/lane-lazyinit-l1.tar.gz",
+  "sha256": "6671fdb8e11a9d53e2f3e1414cd54f80bba9089bfc3e3c1f8996dc88dcccac77",
+  "contents": "abba-rows.jsonl (96 trials + 4 regime + calib + grid-floor rows), abba-summary.json, leg-abba.log, A/B-served.json, verify-b/reverify-b/verify3/build-a/build-b-v3 logs, l1-prebuild-v3.patch, PREBUILD-STATE.md, leg_abba.py, served_path.py"
+ },
+ "timestamp": "2026-10-01T18:05:00Z"
+}
