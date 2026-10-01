@@ -1,0 +1,263 @@
+{
+ "id": "20261001-195500-startup-daemon-installid-unsync",
+ "axis": "startup",
+ "lane": "perf-daemon-lazyinit2-fast (the install-id cut, approved-as-next after L1; the second inline fsync the settle leg2 decompose banked)",
+ "hypothesis": "The telemetry install-id create (install_id.rs) carries a TS-absent fsync at BOTH publish sites: TS's fresh create is writeFileSync with flag 'wx' (Node never fsyncs) and its invalid-state replacement is writeFileAtomicSync WITHOUT the fsync option (the same per-call-site opt-in shape L1 ported for the supervisor-config persist) \u2014 the Rust port's create_exclusive ends with file.sync_all(), added durability the product does not have. The create sits in the daemon's PRE-BIND telemetry block (supervisor.rs run(), build_client), so its fsync rides the bind-span of every daemon-booting create path on a fresh agent dir (once per agent dir; the settle leg2 measured it 31-34ms inline on its host class). Dropping it to the TS posture should remove exactly ONE fresh-write+fsync class op from the bind-span.",
+ "approach": "Branch lane/perf-daemon-installid-unsync (base 2231687fc, then folded to the moved tip cca05169d, folded head 6aa71e81d), ONE file crates/pa-telemetry/src/install_id.rs +17/-7: create_exclusive drops the trailing file.sync_all(); the TS posture documented at the module doc, the fn doc, and the no-hard-link fallback; the hard-link publish mechanism (the documented port hardening: unique temp + hard_link, losers re-read and converge on the durable id) untouched. MEASUREMENT FIXTURE FIDELITY FINDING (binding): the L1 ABBA's PI_OFFLINE=1 posture DISABLES the telemetry block entirely (pa-telemetry env.rs: PI_OFFLINE truthy -> Some(false) -> build_client never runs -> install_id never called) \u2014 so the L1 ABBA never exercised the install-id create, and this measurement requires the telemetry-ON posture. leg_abba.py gained --telemetry (PRIME_AGENT_TELEMETRY=1, no PI_OFFLINE, no DO_NOT_TRACK; the env override wins over any settings file), disclosed in every row and the head row; the default posture (PI_OFFLINE=1) is unchanged. Measurement: the prebuilt same-VM sequential ABAB pair, n=12/leg-instance, shapes prewarmed+inline, fresh agent dir per trial (the install-id create fires on every boot), sha-asserted swaps, spin calib pre/mid/post, grid floor probe, I/O advisory v1.0 regime probes at every leg boundary, idle gates, SIGTERM reap + leftover-poison check.",
+ "parity_notes": "A CONVERGENCE, not a divergence: TS fsyncs NEITHER install-id site (telemetry.ts:276-283 fresh create writeFileSync flag wx; telemetry.ts:238-240 -> atomic-file.ts writeFileAtomicSync without the fsync option \u2014 verified in the TS source with citations carried in the Rust doc comments). The port's convergence hardening is kept exactly (the hard-link publish, converge-on-durable-id, 0600 privacy); the 64-round concurrent_create_stress_converges battery passes untouched. Crash class unchanged and documented: a lost create re-creates next boot (read_install_id fails); a torn or empty durable file is invalid state, replaced atomically. No protocol/wire/user-visible surface touched (a private fs helper in a telemetry state-file writer).",
+ "base": {
+  "revision": "2231687fc (cut base) folded to cca05169d2e63d26d738b665dca020c3df706c50 (the moved tip; the two intervening commits touch pa-cli/pa-daemon supervisor files, NOT pa-telemetry; post-fold delta re-verified hunk-identical pre- and post-fold)"
+ },
+ "branch": "lane/perf-daemon-installid-unsync @ 6aa71e81dd07c40cdffd8ac68f2c8fedcd65f799 (folded head, pushed to the org remote)",
+ "commits": [
+  "b3b6c41d3",
+  "6aa71e81d (the fold merge)"
+ ],
+ "build": {
+  "sandbox_id": "u6yqyl9mcozvpt8tv2fxv6gs (hillclimb-perf-lazyinit, ubuntu:22.04, 16c/32GB, rustc 1.98.1)",
+  "binA_sha256": "0c21891015444dbef783e30f67b3754cdf90e5939fdc7889850afc6c5f8f0ef4 (base 2231687fc clean release, build RC0)",
+  "binB_sha256": "dfbae0f92b850aeb9417fdc64dea6ab2b60faaaf8abd1dd9be4abb246fc59be4 (b3b6c41d3 release, build RC0)",
+  "binary_bytes": 228154776,
+  "toolchain": "rustup rustc 1.98.1 (48a229cea 2026-09-01)"
+ },
+ "gates": {
+  "fmt": "pass (pre-check at b3b6c41d3 and at the folded head 6aa71e81d, FMT-RC=0)",
+  "clippy": "pass (pre-check at both heads, CLIPPY-RC=0)",
+  "test_pa_telemetry": "pass (the full battery incl. the 64-round concurrent_create_stress_converges; TEST-RC=0 at b3b6c41d3)",
+  "full_suite_vm_gate": "[TO BE AMENDED: the first gate (gate_1790882292) at b3b6c41d3 was RED_KNOWN_REDS: base_state stale (tip moved to cca05169d mid-measurement) + ONE known-red (tui_prompt_stash_restores_a_pasted_image_with_the_draft, the registered tui_prompt_stash_family co-scheduling flake) \u2014 SOLO-GREEN x3 at the exact fired head b3b6c41d3 (9.31s/5.49s/7.11s, all rc=0); the stale-head-gate rule fired: folded to cca05169d (6aa71e81d), pre-checks green, re-gate armed (gate_1790883947_29720)]",
+  "benchmark_ci": "the standing non-applicable class on rust-surface PRs (no package.json; never called pass)"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABAB, telemetry-ON posture (PRIME_AGENT_TELEMETRY=1, no PI_OFFLINE \u2014 disclosed per row), fresh agent dir per trial",
+  "suites": {
+   "bind_span_spawn_to_socket": {
+    "baseline": {
+     "leg": "A (base 2231687fc: BOTH pre-bind fsyncs \u2014 the supervisor-config persist + the install-id create)",
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 967.12,
+     "p95_ms": 1010.98,
+     "values_ms": [
+      4.6,
+      4.62,
+      473.83,
+      474.43,
+      488.77,
+      498.57,
+      941.02,
+      946.66,
+      946.69,
+      947.05,
+      949.22,
+      949.61,
+      949.84,
+      950.5,
+      954.56,
+      956.23,
+      959.3,
+      960.69,
+      963.45,
+      964.73,
+      964.96,
+      965.96,
+      966.89,
+      967.0,
+      967.23,
+      967.3,
+      967.6,
+      967.93,
+      968.86,
+      968.9,
+      971.49,
+      975.05,
+      980.23,
+      981.53,
+      981.58,
+      985.28,
+      985.64,
+      987.81,
+      988.48,
+      989.79,
+      992.76,
+      994.24,
+      995.45,
+      1006.34,
+      1010.98,
+      1012.35,
+      1033.63,
+      1035.71
+     ]
+    },
+    "candidate": {
+     "leg": "B (b3b6c41d3: the install-id fsync cut; the persist's fsync remains \u2014 this branch is off 2231687fc, NOT the L1 branch)",
+     "trials": 24,
+     "valid": 24,
+     "p50_ms": 483.25,
+     "p95_ms": 499.11,
+     "values_ms": [
+      467.52,
+      468.17,
+      468.21,
+      468.6,
+      473.19,
+      473.49,
+      473.5,
+      474.47,
+      474.58,
+      475.12,
+      475.35,
+      476.38,
+      476.63,
+      477.34,
+      478.16,
+      479.25,
+      479.73,
+      480.58,
+      481.04,
+      481.29,
+      481.38,
+      481.9,
+      481.94,
+      483.22,
+      483.27,
+      483.72,
+      484.41,
+      484.46,
+      484.5,
+      485.64,
+      486.02,
+      486.06,
+      486.29,
+      486.48,
+      487.51,
+      493.76,
+      493.8,
+      493.83,
+      494.82,
+      495.98,
+      497.02,
+      497.18,
+      497.18,
+      498.81,
+      499.11,
+      505.27,
+      506.29,
+      509.55
+     ]
+    },
+    "delta_pct": -50.03,
+    "regression": false
+   },
+   "bind_span_by_shape_p50s_ms": {
+    "prewarmed": {
+     "A": 966.43,
+     "B": 480.81,
+     "delta": -485.62
+    },
+    "inline": {
+     "A": 977.07,
+     "B": 485.07,
+     "delta": -492.0
+    }
+   },
+   "hello_span_by_shape_p50s_ms": {
+    "prewarmed": {
+     "A": 967.79,
+     "B": 482.51,
+     "delta": -485.28
+    },
+    "inline": {
+     "A": 978.79,
+     "B": 487.24,
+     "delta": -491.55
+    },
+    "note": "the hello delta equals the bind delta (the install-id create sits pre-bind, ahead of the accept loop)"
+   },
+   "per_leg_instance_bind_p50s_ms": {
+    "leg0-A": {
+     "prewarmed": 957.76,
+     "inline": 985.46
+    },
+    "leg1-B": {
+     "prewarmed": 480.3,
+     "inline": 482.58
+    },
+    "leg2-A": {
+     "prewarmed": 968.1,
+     "inline": 959.68
+    },
+    "leg3-B": {
+     "prewarmed": 480.81,
+     "inline": 489.94
+    },
+    "note": "the A/B separation follows the binary letter in 4/4 leg instances \u2014 A ~2x the degraded fresh-write class (TWO pre-bind fsyncs), B ~1x (ONE: the persist remains on this branch). The pairing crossed a leg1-boundary phase flip (leg1-B's boundary probe caught a healthy window, fresh p50 0.90ms, yet its trials ran in the returned degraded phase and the separation still followed the binary)."
+   },
+   "mechanism_check": "A bind p50 967.12 ~= 2x the host's degraded fresh-write class (~471-485ms/op) = persist fsync + install-id fsync; B bind p50 483.25 ~= 1x = the persist fsync alone; delta -483.87ms = exactly ONE fresh-write+fsync class op = the install-id create's fsync under this regime. The composition with L1 (both cuts landed) would leave the pre-bind chain with ZERO fresh-write fsyncs: the expected bind-span on this host class ~2-5ms (the L1-measured B posture).",
+   "io_advisory_regime_rows": {
+    "leg0-A": {
+     "fresh_p50_ms": 471.02,
+     "fresh_max_ms": 636.0,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.62,
+     "overall": "DEGRADED"
+    },
+    "leg1-B": {
+     "fresh_p50_ms": 0.9,
+     "fresh_max_ms": 602.05,
+     "fresh_rate15_pct": 2.0,
+     "fsync_p50_ms": 0.65,
+     "overall": "DEGRADED"
+    },
+    "leg2-A": {
+     "fresh_p50_ms": 484.83,
+     "fresh_max_ms": 631.01,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.63,
+     "overall": "DEGRADED"
+    },
+    "leg3-B": {
+     "fresh_p50_ms": 478.59,
+     "fresh_max_ms": 647.02,
+     "fresh_rate15_pct": 100.0,
+     "fsync_p50_ms": 0.59,
+     "overall": "DEGRADED"
+    },
+    "note": "the host's fresh-write class stayed in the DEGRADED phase for the trial phase (the leg1-B boundary probe caught a transient healthy window); every row carries its boundary-regime label per the NO-CEILING doctrine"
+   },
+   "controls": {
+    "spin_calib_s": {
+     "pre": 1.07,
+     "mid": 1.098,
+     "post": 1.108
+    },
+    "daemon_cpu_s_at_bind": 0.0,
+    "trials_valid": "96/96 (0 bind timeouts, 0 wire errors, 0 leftovers, 0 TRIAL-INVALID)",
+    "telemetry_env": "on (every row + the head row)"
+   }
+  },
+  "extra": {
+   "regime_relative_framing": "the -483.87ms bind delta is THIS host's CURRENT degraded fresh-write class (one fsync'd fresh write); on the settle host's healthy class the same op cost 31-34ms (the settle leg2's strace evidence) \u2014 that is the expected magnitude there; regime-relative, never a fixed product cost",
+   "honest_scope": "the win is the FIRST daemon boot per agent dir (every fresh install/new user/bench trial dir): the install-id create's fsync leaves the bind-span. On a warm agent dir the file is READ (no create, no change). Once-per-agent-dir lifetime disclosed plainly; boot-path work, not steady-state work",
+   "create_window_context": "the create windows (A p50 2928.64 / B p50 2460.37) are regime-dominated context on this host (as in the L1 record) \u2014 the create path is identical between the legs (the cut touches only the boot-time install-id create; the worker READS the already-created state file); the difference is bursty host-phase variance, disclosed, not claimed",
+   "composition": "with L1 (#3283) this cut removes BOTH pre-bind fresh-write fsyncs; the two branches are independent (this branch is off the main tip, not the L1 branch) and compose cleanly \u2014 the L1-measured all-unsynced bind posture (~3.5ms degraded-host / the healthy-class remainder) is the composed end state"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "No trials excluded. The fixture-fidelity finding is binding: the default PI_OFFLINE=1 posture would make this oracle VACUOUS (telemetry block disabled, install_id never called) \u2014 the telemetry-ON posture is disclosed in every row and is part of the measurement contract. The host's fresh-write class was DEGRADED for the trial phase (regime rows); the ABAB pairing crossed the leg1-boundary phase flip with the A/B separation intact. The bind-span is the clean readout; the create windows are regime-dominated context. Spin calib stable (1.07/1.098/1.108) and daemon CPU at bind 0.0 on every row: pure durable-write wait. The known-red tui_prompt_stash fire at the first gate is closed with SOLO-GREEN x3 at the exact fired head; the stale-base finding fired the fold->re-gate per the rule."
+ },
+ "outcome": "in-progress",
+ "decision": "The orchestrator approved the install-id cut as next after L1's bar completed (both reviewers sha-bound APPROVE at 4b986a4f3; PR #3283 standing for the human team). The TS posture was verified in the TS source (neither site fsyncs) and the cut is surgical (one private helper's last line; exactly two callers, both install-id sites). This ABBA confirms causally: the A/B bind-span separation follows the binary in 4/4 leg instances (-483.87ms aggregate p50 delta = one fresh-write+fsync class op under the disclosed DEGRADED regime; 31-34ms the healthy-class magnitude per the settle leg2), A ~= 2x and B ~= 1x the fresh-write class exactly as the mechanism predicts, cpu@bind 0.0 (pure durable-write wait). Honest scope: first boot per agent dir only. The stale-head-gate rule fired mid-chain (tip moved 2231687fc -> cca05169d): folded, pre-checks green, re-gate running; the PR chain follows the L1 precedent on the re-gate's verdict.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-195500-startup-daemon-installid-unsync.json",
+ "session": {
+  "worker": "perf-daemon-lazyinit2-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-60ecd48b/01a0f86e-9102-76d1-8dcd-0a31e788f989.jsonl"
+ },
+ "archive": {
+  "path": "/home/ubuntu/hillclimb/lane-installid-unsync.tar.gz",
+  "sha256": "74fa43b15584fdee7f653ea7e52591c0442f0dd08e788558d78131973c43ac03",
+  "contents": "installid-abba-rows.jsonl (96 trials + 4 regime + calib rows, telemetry_env=on), summary, driver log, verify-installid.log (fmt/clippy/battery), pair-build log, solo-proof-promptstash.log (SOLO-GREEN x3 at the fired head), gate1 verdict (RED_KNOWN_REDS: the stale-base + the known-red fire), installid-verify-packet.md, leg_abba.py (--telemetry)"
+ },
+ "timestamp": "2026-10-01T19:55:00Z"
+}
