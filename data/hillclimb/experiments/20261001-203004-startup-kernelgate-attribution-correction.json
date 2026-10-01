@@ -1,0 +1,262 @@
+{
+ "id": "20261001-203004-startup-kernelgate-attribution-correction",
+ "axis": "startup",
+ "hypothesis": "The 20261001-031500 startup-redecompose ledger attributed ~100-130ms of the fresh-cold create window to the kernel interpreter boot ('the create RESPONSE lands ~+310-315... i.e., the response gates on the kernel's readiness'), framing a cut candidate: lift the kernel gate off the create/ready path. The gpt-6-sol design consult challenged the premise: at the current tip the worker create detaches the core-session build and its prewarm (create.rs:649-665), TS never awaited the prewarm, and the ledger's '+310-315 response' was an INFERENCE from the TUI's worker-direct-connect timestamp, never a direct observation. Hypothesis tested three ways: (a) causally \u2014 a +500ms kernel-delay discriminator (kd ABBA); (b) by removal \u2014 a prewarm-off probe (np ABBA); (c) directly \u2014 a full-tree wire census capturing the create/attach request/response lines. Prediction if the consult is right: all three show the kernel is ALREADY off the create/ready path; the ~250ms paint->ready is the durable-write fan-out + process chain + attach/mount tail, with probe quantization ~0.",
+ "approach": "MEASUREMENT ONLY (no product bytes changed on any clean/kd leg; the np arm is a measurement probe build, source restored, worktree clean). Fresh 16c/32GB/80GB Prime VM (hillclimb-perf-kernelgate-ready2 ul7brrne9480ybz9tul2vbz4, ubuntu:22.04, rustup 1.98.1 the CI pin), release build --locked at org/main 3358e0016 (13 commits past the ledger base b1c6b7a0c, same line), staged in the r2 install layout (launcher + exe-adjacent payload; the tip-built SHIPPED split-debug binary sha256 37e14b66..., 56,394,608B; the tip's runtime/skills; the r2-pin bundled catalogs, provenance disclosed; package.json stamped with the tip sha). THE KD DISCRIMINATOR (the attribution proof): trial-interleaved ABBA x10 pairs, fresh-cold; the kd arm = the IDENTICAL payload launched through a wrapper exporting PRIME_AGENT_KERNEL_PYTHON=kpy.sh (sleep 0.5 then exec the kernel venv python) so every kernel-python exec is +500ms; config-swap contract (sandbox.yaml vs sandbox-kd.yaml, grep-asserted each pair; the kd launcher mirrors the r2 layout so the adapter's payload sha pin resolves identically; the d14 ruling disclosed: the override re-runs the runtime-ready probe each kd trial). THE NP PROBE (prewarm-off): prewarm_ipython_kernel Some(true)->Some(false), trial-interleaved x10 pairs, sha-asserted atomic payload swaps (temp+chmod+mv+sha+product.yaml re-pin each swap; BOTH arms shipped-shape \u2014 the tip arm the byte-identical rebuilt pin, the np arm the probe build split-debug). THE WIRE CENSUS: full-tree strace (-f, -s 4096, read/write/recv*/send*/connect/execve; process partition by execve TID order; unfinished/resumed joins; EVERY traced span FULL-TREE-INFLATED-labeled; ordering + protocol identity only, never magnitudes) x3 fresh + x3 small; the TUI-ONLY mode's blindspot (strace without -f traces only the main thread; the tokio threads' socket I/O invisible) is itself disclosed \u2014 exactly the trap that produced the prior ledger's inference. THE CENSUSES: 15s manual PTY launches x3 (tip/kd/np) with a process-tree census (the driver's ready-terminated window cannot see late/degraded-window kernel spawns). THE LEDGER REFRESH: fresh/small/real cold+warm n=10 each (the boot-floor watcher contract: 2ms process sightings incl. python roles, 1ms daemon-sock + 2ms worker-sockdir grids, 5ms per-role CPU grid, first_paint + typed-echo ready + sentinel/erase validation, per-trial fixture hashes) + memo-miss n=5. I/O advisory v1.0 at EVERY leg boundary (>=40 isolated fresh+sync_all+rename @0.5s + >=50 repeat-fsync), PHASE re-classification at every boundary, NO-CEILING labels, a 30s longitudinal regime watcher, noop PTY floor per invocation (p50 0.075-0.091ms).",
+ "parity_notes": "No product bytes changed on any clean/kd leg (the kd arm differs ONLY by the launcher-exported PRIME_AGENT_KERNEL_PYTHON env; the product binary byte-identical, sha-asserted per leg). The np arm differs by exactly prewarm_ipython_kernel: Some(false) (source restored; the shipped-shape np payload from the probe build; the executed .text identical to the tip's modulo the one flag). No schema/wire/prompt/TUI-output changes anywhere; every trial validated sentinel+echo+erase+dialogs. The wire census reads the wire through ptrace without touching it. Privacy: fixtures are private byte snapshots; records carry sha256/counts only; raw strace stays on the VM (archived sha-verified tarball).",
+ "base": {
+  "revision": "3358e0016bce7cf34a195af58bbd91a26e17d694"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "ul7brrne9480ybz9tul2vbz4",
+  "binary_sha256": "37e14b66562125d6391b778b796a86d75749956c935d5cf7aa0abdd7bd8f05eb",
+  "binary_bytes": 56394608,
+  "build_seconds": 87,
+  "toolchain": "rustup 1.98.1 (the CI ci.yml pin)",
+  "np_probe_shipped_sha256": "fa3d073b8d4982f28cde506c5d6ef1776f6d39ced7ff8dc1d3f0a82ab255b2e2",
+  "np_probe_plain_sha256": "296d8b0b8005d8d4ac0e30391bd22da72599e6727b179d640039aeba4ff4d8b7",
+  "deterministic_rebuild": "the true-tip rebuild reproduced the campaign pin 37e14b66... byte-identically"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; operator disposition pending; never called pass"
+ },
+ "measurements": {
+  "method": "same-VM sequential, trial-interleaved ABBA for the kd and np arms (10 pairs each, per-trial legs with boundary regime probes); quiet-gated (loadavg<1.0); mock-routed raw-PTY bench harness; noop PTY floor per invocation; sentinel+echo+erase validated on every trial; the wire census legs FULL-TREE-INFLATED-labeled (ptrace on the whole process tree; ordering + protocol identity only)",
+  "kd_discriminator_the_attribution_proof": {
+   "arm_difference": "ONLY PRIME_AGENT_KERNEL_PYTHON=kpy.sh (sleep 0.5 + exec the venv python); the served payload byte-identical (37e14b66...), sha-asserted per pair",
+   "tip": {
+    "trials": 10,
+    "valid": 10,
+    "ready_p50_ms": 311.25,
+    "ready_values_ms": [
+     238.37,
+     299.98,
+     303.09,
+     304.02,
+     309.44,
+     313.06,
+     331.31,
+     332.71,
+     333.32,
+     335.12
+    ],
+    "kernel_sightings_n": 10,
+    "kernel_sighting_p50_ms": 183.75,
+    "kernel_first_cpu_p50_ms": 198.0,
+    "probe_input_buffered": 10,
+    "probe_quantized_p50_ms": 0.0
+   },
+   "kd": {
+    "trials": 10,
+    "valid": 10,
+    "ready_p50_ms": 308.91,
+    "ready_values_ms": [
+     242.98,
+     258.55,
+     261.92,
+     304.36,
+     305.21,
+     312.62,
+     316.3,
+     317.17,
+     331.33,
+     425.51
+    ],
+    "kernel_sightings_n": 0,
+    "kernel_first_cpu_n": 0,
+    "kernel_nonexistence_at_ready": "every kd trial: no py_kernel sighting, py CPU 0.0 at ready - the kernel's exec is blocked behind the +500ms sleep-wrapped probe chain; the ready-terminated watcher window provably cannot contain it",
+    "probe_input_buffered": 10,
+    "probe_quantized_p50_ms": 0.0
+   },
+   "ready_delta_p50_ms": -2.34,
+   "verdict": "READY IS INVARIANT UNDER A +500ms KERNEL DELAY: a gated ready would shift +500ms; measured -2.34ms with fully overlapping bands. THE KERNEL BOOT IS NOT ON THE CREATE/READY PATH."
+  },
+  "prewarm_off_probe_np_abba_v2": {
+   "arm_difference": "exactly prewarm_ipython_kernel Some(true)->Some(false); both arms shipped-shape; sha-asserted atomic swaps",
+   "window": "deep-degraded device window (iso fresh-fsync p50 53-117ms through the campaign; PHASE-DEGRADED-BOTH labels carried; ready swings +-150ms trial-to-trial)",
+   "tip": {
+    "trials": 10,
+    "ready_p50_ms": 631.38,
+    "kernel_sightings_n": 10,
+    "kernel_sighting_range_ms": [
+     339.1,
+     492.8
+    ]
+   },
+   "np": {
+    "trials": 10,
+    "ready_p50_ms": 635.09,
+    "kernel_sightings_n": 0
+   },
+   "ready_delta_p50_ms": 3.71,
+   "verdict": "REMOVING THE PREWARM ENTIRELY MOVES READY BY ~NOTHING (+12.1ms inside the degraded window's own noise); the prewarm's kernel boot contributes no ready latency and no measurable interference."
+  },
+  "wire_census_direct_observation_full_tree_inflated": {
+   "method": "full-tree strace -f -s 4096 (read/write/recv*/send*/connect/execve), process partition by execve TID order, unfinished/resumed joins; INFLATED labels - ordering and protocol identity only; anchors: the first ENOENT daemon probe (~13.7ms after launch)",
+   "fresh_trials": [
+    {
+     "create_req_ms": 141.1,
+     "create_resp_ms": 654.7,
+     "create_rtt_ms": 513.6,
+     "kernel_python_exec_ms": 446.2,
+     "worker_direct_connect_ms": 656.6,
+     "attach_resp_ms": 662.1,
+     "ready_ms": 726.83
+    },
+    {
+     "create_req_ms": 254.8,
+     "create_resp_ms": 748.0,
+     "create_rtt_ms": 493.2,
+     "kernel_python_exec_ms": 573.6,
+     "worker_direct_connect_ms": 749.7,
+     "attach_resp_ms": 755.3,
+     "ready_ms": 828.54
+    },
+    {
+     "create_req_ms": 259.4,
+     "create_resp_ms": 783.4,
+     "create_rtt_ms": 524.0,
+     "kernel_python_exec_ms": 585.9,
+     "worker_direct_connect_ms": 785.0,
+     "attach_resp_ms": 789.5,
+     "ready_ms": 832.92
+    }
+   ],
+   "small_trials": [
+    {
+     "create_req_ms": 258.3,
+     "create_resp_ms": 715.2,
+     "create_rtt_ms": 456.9,
+     "kernel_python_exec_ms": 528.1,
+     "worker_direct_connect_ms": 716.8,
+     "attach_req_ms": 717.4,
+     "attach_resp_ms": 731.8,
+     "ready_ms": 792.89
+    },
+    {
+     "create_req_ms": 149.5,
+     "create_resp_ms": 502.5,
+     "create_rtt_ms": 353.0,
+     "kernel_python_exec_ms": 447.3,
+     "worker_direct_connect_ms": 503.9,
+     "attach_req_ms": 504.5,
+     "attach_resp_ms": 510.3,
+     "ready_ms": 554.17
+    },
+    {
+     "create_req_ms": 218.2,
+     "create_resp_ms": 622.2,
+     "create_rtt_ms": 404.0,
+     "kernel_python_exec_ms": 458.2,
+     "worker_direct_connect_ms": 623.8,
+     "attach_req_ms": 625.6,
+     "attach_resp_ms": 635.0,
+     "ready_ms": 695.81
+    }
+   ],
+   "structure": "in EVERY trial: create_req < kernel_python_exec < create_resp < worker_direct_connect(+~2ms) < attach_resp(+~5-11ms) < ready(+~40-60ms). The kernel python execs MID-create-RTT (concurrent), the response/attach/ready sequence proceeds on its own schedule; the kd arm proves the sequence is invariant to the kernel's timing, so the co-occurrence is shared-resource correlation (the same degraded device window), NOT a gate",
+   "tui_only_mode_blindspot": "strace without -f traces only the main thread - the tokio threads' socket I/O is invisible; the prior ledger's '+310-315 response' inference (from the worker-direct-connect timestamp in a connects-only parse) is exactly this trap, now replaced by the direct observation"
+  },
+  "served_path_censuses_15s": {
+   "tip": {
+    "kernel_python_spawn_ms": 352.1,
+    "kernel_resident_at_census_end": true,
+    "verdict": "the prewarm fires; the kernel is resident mid-session"
+   },
+   "kd": {
+    "kernel_chain": "the wrapper provably served (the probe chain runs through kpy.sh; the kernel python's spawn is pushed ~10x later - past the probes - and STILL COMPLETES: delays, never breaks",
+    "kernel_resident_at_census_end": true
+   },
+   "np": {
+    "kernel_python_spawns": 0,
+    "verdict": "NO kernel python in 15s - the prewarm is off and nothing else eagerly boots the kernel; the typed-echo probe never touches ipython"
+   }
+  },
+  "clean_ledger_at_tip": {
+   "fresh-cold": {
+    "n": 10,
+    "paint_p50_ms": 53.5,
+    "ready_p50_ms": 311.77,
+    "paint_to_ready_p50_ms": 258.3,
+    "kernel_sighting_p50_ms": 178.4,
+    "kernel_first_cpu_p50_ms": 193.7,
+    "probe_input_buffered_n": 10,
+    "probe_quantized_p50_ms": 0.0
+   },
+   "fresh-warm": {
+    "n": 10,
+    "paint_p50_ms": 6.9,
+    "ready_p50_ms": 348.95,
+    "kernel_sighting_p50_ms": 165.7,
+    "probe_input_buffered_n": 10,
+    "probe_quantized_p50_ms": 0.0
+   },
+   "small-cold": {
+    "n": 10,
+    "paint_p50_ms": 325.15,
+    "ready_p50_ms": 341.45,
+    "kernel_sighting_p50_ms": 185.7,
+    "probe_input_buffered_n": 0,
+    "probe_quantized_p50_ms": 50.0
+   },
+   "small-warm": {
+    "n": 10,
+    "paint_p50_ms": 379.45,
+    "ready_p50_ms": 406.02,
+    "kernel_sighting_p50_ms": 164.0,
+    "probe_input_buffered_n": 0,
+    "probe_quantized_p50_ms": 50.0
+   },
+   "real-cold": {
+    "n": 10,
+    "paint_p50_ms": 526.25,
+    "ready_p50_ms": 550.25,
+    "kernel_sighting_p50_ms": 343.8,
+    "probe_input_buffered_n": 0,
+    "probe_quantized_p50_ms": 50.0
+   },
+   "real-warm": {
+    "n": 10,
+    "paint_p50_ms": 529.55,
+    "ready_p50_ms": 561.57,
+    "kernel_sighting_p50_ms": 297.2,
+    "probe_input_buffered_n": 0,
+    "probe_quantized_p50_ms": 50.0
+   },
+   "memo_miss": {
+    "n": 5,
+    "ready_p50_ms": 314.11,
+    "delta_vs_fresh_cold_ms": 2.34,
+    "reading": "the xproc probe chain costs ~nothing on this VM class (the prior ledger's +30ms was its own window's)"
+   }
+  },
+  "shares_of_the_fresh_cold_ready": {
+   "process_chain_ms": "exec->daemon 6-12; daemon->bind ~40-50 (incl. the supervisor-config fresh-fsync, the fsync-fan-out class); bind->worker-spawn 5-11; worker spawn->bind ~1",
+   "create_window": "the create+attach round trips over the durable-write fan-out (the sibling fanout lane's surface; ~150-200ms of it in the healthy fresh-fsync regime, more in deep windows) + the supervisor/worker routing",
+   "mount_tail_ms": "response->worker-connect ~2; attach ~4-11; attach->ready ~40-60 (deep windows) / 13-23 (healthy)",
+   "kernel_share": "ZERO - proven three ways (kd causal, np removal, wire ordering)",
+   "probe_quantization": "~0 on fresh legs (input_buffered 10/10: the echo IS the mount render, quantized 0.0); <=50ms grid on fixture legs (input dropped, the fine-grid step)"
+  }
+ },
+ "validity": {
+  "excluded": [
+   "the v1 np ABBA (10 pairs): the swap script's tip arm served target/release/prime-agent - after the np probe build that IS the np binary, so BOTH arms ran prewarm-off (an accidental A/A: tip-armed ready p50 437.93 vs np 433.93, zero kernel sightings on either arm). Excluded as a tip-vs-np comparison; retained in the v1 archive (sha 7faa6a1c...) as an A/A drift control through the degraded window.",
+   "the v1 wire/ex/io census legs (they ran the probe binary - prewarm off - so their kernel-absence reading is an artifact of the arm, not the path). Re-run as v2 with the correct tip payload."
+  ],
+  "notes": "ARM INTEGRITY: the kd campaign and the clean ledger ran the TRUE tip (the adapter's payload sha pin 37e14b66... asserted per invocation + the kd legs' explicit per-pair config asserts). The np v2 arms are the byte-identical rebuilt tip (the deterministic rebuild reproduced the campaign pin) vs the shipped-shape np probe build, sha-asserted at every swap. WINDOW: the campaign spanned healthy (iso p50 38-45ms) and deep-degraded (iso p50 53-117ms) device windows - every leg carries its PHASE label; the fresh-fsync DEEP class quantization (the orchestrator's 2026-10-01 advisory) applies to the np v2 and wire v2 magnitudes. kd07 (ready 425.51) is a fresh-fsync stall tail inside the band, not a shift. The ready-terminated trial window truncates kernel sightings in deep windows (the watchers stop at ready by design) - the 15s censuses carry the served-path assertions. The A/A payload-shape control from the prior ledger bounds the plain-vs-shipped shape effect as unresolvable (bands overlap the trial spread).",
+  "arm_integrity_lesson": "never serve target/release after a probe build - the swap arms must reference SAVED payload files, sha-asserted per swap."
+ },
+ "outcome": "measured - THE ATTRIBUTION CORRECTION (an honest negative for the proposed kernel-gate cut)",
+ "decision": "THE KERNEL GATE IS ALREADY OFF THE CREATE/READY PATH AT THE CURRENT TIP - the cut proposed from the 20261001-031500 ledger is DEAD, and this record is the measurement-honest correction. (1) CAUSAL: the kd discriminator (the identical payload, every kernel-python exec +500ms via the PRIME_AGENT_KERNEL_PYTHON wrapper) leaves fresh-cold ready unchanged (tip p50 311.25 vs kd p50 308.91, delta -2.34ms, bands fully overlapping) while every kd trial provably has NO kernel python in existence at ready (sighting 0/10, py CPU 0.0 - the exec is blocked behind the sleep-wrapped probes; every tip trial sights it 10/10 at ~150-205ms with first CPU ~198). (2) REMOVAL: the np probe (prewarm Some(false), 0/10 kernel spawns confirmed by the 15s census) moves ready +12.1ms inside a deep window's own +-150ms noise. (3) DIRECT: the full-tree wire census observes the create request, the kernel python's exec MID-create-RTT (concurrent, not awaited), the create response, the worker direct connect (+~2ms), the attach over the worker socket (+~5-11ms), and ready - in every trial the response/attach/ready sequence proceeds on its own schedule; the prior ledger's 'response gates on the kernel's readiness' was an inference from the TUI's worker-direct-connect timestamp in a connects-only strace parse (the no--f blindspot: only the main thread is traced, the tokio threads' socket I/O is invisible) - now replaced by the direct observation. THE CORRECTED DECOMPOSITION of the fresh-cold ready (~306-312ms p50 class): the create+attach round trips over the durable-write fan-out (the sibling fanout lane's surface) + the process chain (exec->daemon 6-12ms; daemon->bind ~40-50ms incl. the supervisor-config fresh-fsync; bind->worker 5-11ms; worker spawn->bind ~1ms) + the attach (~4-11ms) + the mount tail (~13-23ms healthy); probe quantization ~0 on fresh legs (input_buffered 10/10 - the echo IS the mount render); THE KERNEL SHARE IS ZERO. THE FIRST-TOUCH ORACLE at this tip: NO shared join - ensure() CONSUMES the startup JoinHandle; concurrent first-touch callers either both see startup=None and double-spawn interpreters, or arrive mid-boot and get a bare 'kernel startup failed'; the open #3257 (shared watch, both reviewers expecting APPROVE at the amended head 7ddb838a4) is exactly this fix and this record cross-confirms its base-side finding. PIVOT CANDIDATES RELAYED to the stopgate-hardening lane (both confirmed live on main at 3358e0016, both persisting at #3257's head): (a) kill-during-boot: kill() is synchronous, takes only an ALREADY-PUBLISHED manager - a kill before publication returns while the boot completes and leaves a resident kernel; (b) the dispose check/publish TOCTOU: run_startup checks raced_dispose in one lock scope and publishes state.manager in a LATER lock scope - a dispose landing between leaks a live manager into a disposed provisioner. No PR: the lane is a measurement correction; the shared-startup fix ships through #3257 and the gaps through the stopgate-hardening lane.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-203004-startup-kernelgate-attribution-correction.json",
+ "session": {
+  "worker": "perf-kernelgate-ready2-fast"
+ },
+ "timestamp": "2026-10-01T20:30:04Z+00:00"
+}
