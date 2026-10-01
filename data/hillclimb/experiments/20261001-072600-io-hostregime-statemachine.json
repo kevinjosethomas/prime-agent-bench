@@ -1,0 +1,912 @@
+{
+ "id": "20261001-072600-io-hostregime-statemachine",
+ "axis": "io",
+ "lane": "hostregime-sm (perf-hostregime-statemachine2-fast, successor; probe-only; series launched by perf-hostregime-statemachine-fast which died in the machine death ~07:51-08:18Z)",
+ "hypothesis": "The write-regime state machine (20260929-223000) separated three classes - the per-host fast/slow machine (flips ~7-8min), the fleet incident phase (shared sandbox-storage backend, all-VM onset +/-8s, repeat-fsync LIFTED 12-16x), and the working-VM deep band (~19% wall time, repeat-fsync flat) - but through 2026-10-01 early hours every working bench VM sat in a fresh-create deep class the census had never sampled on idle hosts (redecompose 43.7ms iso p50 for a whole session, probe-grid 115-136ms at boundaries, createwall 245ms crossings, kernel-async 72-74ms fresh p50): the state set, its switching scales, and its CURRENT occupancy are uncharacterized on the hosts lanes actually use - the gate-pool VMs (aged, 67-136 gate runs) and the fresh bench class - leaving lanes unable to distinguish a host state from a fleet phase from a product effect at their next boundary. Census questions: what is the state set per host class NOW (fast ~1 / slow ~2.5 / the new fresh-create deep class); the dwell/switching rates; the class structure of each state (which probe classes lift); the cross-host (de)synchronization and the fleet-incident signature lanes should recognize; the CURRENT regime census every lane can cite.",
+ "approach": "8 hosts, the standing instrument (probe_regime.py, the write-regime/hoststat census instrument +statvfs), flock-guarded single instance, duration 9000s, pre-registered analysis in DESIGN.md (written before analysis): (1) 3 fresh bench-class VMs hr-a/b/c (16c/32GB/40GB ubuntu:22.04, the hoststat census class - python3 apt-installed, launch window labeled NON-AMBIENT, the hoststat precedent); (2) ALL 4 gate-pool VMs (fleet-gate-pool-0/1/2/3, rust:1-bookworm 8c/32GB/100GB, aged 1-136 gate runs; pool-0 joined 20min late after its gate slot freed; slots watched for gate claims - gate-load windows labeled, never dropped); (3) the orchestrator-box control orch (60s cadence, no dense stream - the write-regime lane's LOCAL-BOX control: the shared-backend phases leave it untouched). Every dense host: DENSE 0.5s ISOLATED fresh4k+sync_all+rename (advisory v1.0 class 1, continuous) + 30s rich dual-class samples (fresh4k/64k/256k+sync_all+rename, fresh4k+fdatasync+rename, fresh4k nofsync-rename control, append+fsync, repeat-fsync 4KB class 2, cached-read, O_DIRECT controls) + per-sample host counters (PSI io/cpu/mem, meminfo Dirty/Writeback, vmstat, diskstats, cgroup io.stat, loadavg, statvfs). NO burst tests (self-induction settled by the source record; ambient census only). Analyzer: 30s windows; window baseline = median non-stall (<=15ms) ops, all-ops-stall windows take med_all + deep flag (NO-CEILING, never blended); bands = 1-D k-means in log space, centroids >=1.6x apart, >=4% occupancy; validated BEFORE analysis on the write-regime 6h raw series (reproduces its bands, ~7-8min flip rates, and the 1799.7/2254.7ms phase-max pair exactly) and on the hoststat raw series (reproduces 0.89/2.4-2.5 bands, 4.4-6.8/h transitions, 8.4/h traps).",
+ "parity_notes": "Infra lane, record only: NO product code changed, no product build measured; frozen parity surfaces untouched by construction. All claims are about host/storage infrastructure.",
+ "base": {
+  "revision": "origin/rust e2ee82f2d at series time (anchor only; no product binary involved)"
+ },
+ "branch": "hillclimb (bench repo, record only)",
+ "commits": [],
+ "build": {
+  "sandbox_ids": {
+   "hr-a": "rbi0zdbj2rx02jpmeqqxs52o",
+   "hr-b": "ybm73syux2bvq136ahk37hq3",
+   "hr-c": "t3f48sqvj2p7dt9iisc5h1qz",
+   "pool-0": "sabwmtsfwuv26cbqdjksvb2v (SERIES LOST - VM terminated in the machine-death window; see validity.excluded)",
+   "pool-1": "bvwr5lk9t7jbsj3e5tc6x7im",
+   "pool-2": "ojeg3l8bs5s7mq30vm0fzpbx",
+   "pool-3": "hy8t65l14qux31nlqu8225o5",
+   "orch": "orchestrator box (local control)"
+  },
+  "note": "no product binary involved (infra census)"
+ },
+ "gates": {
+  "fmt": "n/a (no product code)",
+  "clippy": "n/a",
+  "test": "n/a",
+  "benchmark_ci": "RED 0/0 non-applicable TS harness; standing disposition; never called pass"
+ },
+ "measurements": {
+  "method": "flock-guarded detached probe_regime.py (the write-regime/hoststat census instrument, regimesm version +statvfs); DENSE 0.5s ISOLATED fresh4k+sync_all+rename (advisory v1.0 class 1, continuous) + 30s rich dual-class samples with host counters (PSI io/cpu/mem, meminfo Dirty/Writeback, vmstat, diskstats, cgroup io.stat, loadavg, statvfs); duration 9000s; pre-registered analysis (DESIGN.md, written before analysis): 30s windows, non-stall (<=15ms) medians, log-space 1-D k-means bands (centroids >=1.6x apart, >=4% occupancy), all-ops-stall windows take med_all + deep flag (NO-CEILING, never blended); analyzer validated on the write-regime 6h + hoststat 2.5h raw series before this series ran (band/flip-rate reproduction)",
+  "env": "hr-a/b/c: fresh 16c/32GB/40GB ubuntu:22.04 cloud-hypervisor microVMs, ext4 root, AMD EPYC 9255, disk 0.49% full; pool-1/2/3: fleet gate-pool rust:1-bookworm 8c/32GB/100GB (aged 136/1/2 gate runs), pool-1 disk 90.3% full, pool-2/3 45.6-46.1% full; orch: the orchestrator box (60s cadence, no dense)",
+  "state_machine": {
+   "hr-a": {
+    "series": {
+     "t0": "2026-10-01T07:38:34Z",
+     "t1": "2026-10-01T10:08:52Z",
+     "duration_h": 2.505,
+     "dense_n": 15956,
+     "samples": 266,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 3.149
+    },
+    "band_centroids_ms": [
+     0.842,
+     2.04
+    ],
+    "occupancy": {
+     "slow": 0.285,
+     "fast": 0.712,
+     "DEEP": 0.003
+    },
+    "transitions": {
+     "slow->fast": 9,
+     "fast->slow": 8,
+     "fast->DEEP": 1,
+     "DEEP->fast": 1
+    },
+    "transition_rates_per_h": {
+     "slow->fast": 3.59,
+     "fast->slow": 3.19,
+     "fast->DEEP": 0.4,
+     "DEEP->fast": 0.4
+    },
+    "dwell_s": {
+     "slow": {
+      "n": 9,
+      "min_s": 30,
+      "med_s": 180,
+      "max_s": 1200
+     },
+     "fast": {
+      "n": 10,
+      "min_s": 60,
+      "med_s": 405,
+      "max_s": 2040
+     },
+     "DEEP": {
+      "n": 1,
+      "min_s": 30,
+      "med_s": 30,
+      "max_s": 30
+     }
+    },
+    "state_at_start": "slow",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "fast": 0.848,
+     "slow": 0.148,
+     "DEEP": 0.004
+    },
+    "first_32min_occupancy": {
+     "slow": 0.845,
+     "fast": 0.155
+    }
+   },
+   "hr-b": {
+    "series": {
+     "t0": "2026-10-01T07:38:34Z",
+     "t1": "2026-10-01T10:08:55Z",
+     "duration_h": 2.506,
+     "dense_n": 15957,
+     "samples": 266,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 3.257
+    },
+    "band_centroids_ms": [
+     0.863,
+     2.092
+    ],
+    "occupancy": {
+     "slow": 0.332,
+     "fast": 0.661,
+     "DEEP": 0.007
+    },
+    "transitions": {
+     "slow->fast": 12,
+     "fast->slow": 10,
+     "fast->DEEP": 1,
+     "DEEP->slow": 1
+    },
+    "transition_rates_per_h": {
+     "slow->fast": 4.79,
+     "fast->slow": 3.99,
+     "fast->DEEP": 0.4,
+     "DEEP->slow": 0.4
+    },
+    "dwell_s": {
+     "slow": {
+      "n": 12,
+      "min_s": 30,
+      "med_s": 150,
+      "max_s": 1080
+     },
+     "fast": {
+      "n": 12,
+      "min_s": 90,
+      "med_s": 240,
+      "max_s": 1410
+     },
+     "DEEP": {
+      "n": 1,
+      "min_s": 60,
+      "med_s": 60,
+      "max_s": 60
+     }
+    },
+    "state_at_start": "slow",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "fast": 0.802,
+     "slow": 0.19,
+     "DEEP": 0.008
+    },
+    "first_32min_occupancy": {
+     "slow": 0.914,
+     "fast": 0.086
+    }
+   },
+   "hr-c": {
+    "series": {
+     "t0": "2026-10-01T07:38:34Z",
+     "t1": "2026-10-01T10:08:55Z",
+     "duration_h": 2.506,
+     "dense_n": 15960,
+     "samples": 266,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 2.846
+    },
+    "band_centroids_ms": [
+     0.895,
+     2.099
+    ],
+    "occupancy": {
+     "slow": 0.359,
+     "fast": 0.641
+    },
+    "transitions": {
+     "slow->fast": 13,
+     "fast->slow": 12
+    },
+    "transition_rates_per_h": {
+     "slow->fast": 5.19,
+     "fast->slow": 4.79
+    },
+    "dwell_s": {
+     "slow": {
+      "n": 13,
+      "min_s": 30,
+      "med_s": 150,
+      "max_s": 990
+     },
+     "fast": {
+      "n": 13,
+      "min_s": 60,
+      "med_s": 150,
+      "max_s": 1350
+     }
+    },
+    "state_at_start": "slow",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "fast": 0.781,
+     "slow": 0.219
+    },
+    "first_32min_occupancy": {
+     "slow": 0.931,
+     "fast": 0.069
+    }
+   },
+   "pool-1": {
+    "series": {
+     "t0": "2026-10-01T07:26:47Z",
+     "t1": "2026-10-01T09:57:15Z",
+     "duration_h": 2.508,
+     "dense_n": 16015,
+     "samples": 267,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 5.281
+    },
+    "band_centroids_ms": [
+     0.703
+    ],
+    "occupancy": {
+     "fast": 1.0
+    },
+    "transitions": {},
+    "transition_rates_per_h": {},
+    "dwell_s": {
+     "fast": {
+      "n": 1,
+      "min_s": 8850,
+      "med_s": 8850,
+      "max_s": 8850
+     }
+    },
+    "state_at_start": "fast",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "fast": 1.0
+    },
+    "first_32min_occupancy": {
+     "fast": 1.0
+    }
+   },
+   "pool-2": {
+    "series": {
+     "t0": "2026-10-01T07:26:54Z",
+     "t1": "2026-10-01T09:57:06Z",
+     "duration_h": 2.503,
+     "dense_n": 12225,
+     "samples": 250,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 11.355
+    },
+    "band_centroids_ms": [
+     0.855
+    ],
+    "occupancy": {
+     "DEEP": 0.583,
+     "fast": 0.417
+    },
+    "transitions": {
+     "DEEP->fast": 7,
+     "fast->DEEP": 6
+    },
+    "transition_rates_per_h": {
+     "DEEP->fast": 2.8,
+     "fast->DEEP": 2.4
+    },
+    "dwell_s": {
+     "DEEP": {
+      "n": 7,
+      "min_s": 90,
+      "med_s": 180,
+      "max_s": 2310
+     },
+     "fast": {
+      "n": 7,
+      "min_s": 60,
+      "med_s": 300,
+      "max_s": 2040
+     }
+    },
+    "state_at_start": "DEEP",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "DEEP": 0.502,
+     "fast": 0.498
+    },
+    "first_32min_occupancy": {
+     "DEEP": 0.914,
+     "fast": 0.086
+    }
+   },
+   "pool-3": {
+    "series": {
+     "t0": "2026-10-01T07:26:52Z",
+     "t1": "2026-10-01T09:57:04Z",
+     "duration_h": 2.503,
+     "dense_n": 12538,
+     "samples": 251,
+     "windows": 301,
+     "clock_offset_vs_launcher_s": 9.428
+    },
+    "band_centroids_ms": [
+     0.748
+    ],
+    "occupancy": {
+     "DEEP": 0.481,
+     "fast": 0.519
+    },
+    "transitions": {
+     "DEEP->fast": 11,
+     "fast->DEEP": 10
+    },
+    "transition_rates_per_h": {
+     "DEEP->fast": 4.39,
+     "fast->DEEP": 3.99
+    },
+    "dwell_s": {
+     "DEEP": {
+      "n": 11,
+      "min_s": 30,
+      "med_s": 360,
+      "max_s": 1110
+     },
+     "fast": {
+      "n": 11,
+      "min_s": 60,
+      "med_s": 270,
+      "max_s": 1020
+     }
+    },
+    "state_at_start": "DEEP",
+    "state_at_close": "fast",
+    "steady_32min_plus_occupancy": {
+     "DEEP": 0.418,
+     "fast": 0.582
+    },
+    "first_32min_occupancy": {
+     "DEEP": 0.741,
+     "fast": 0.259
+    }
+   }
+  },
+  "class_structure_p50_ms": {
+   "hr-a": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.753,
+     "fresh4k_fdatasync_rename": 0.688,
+     "fresh64k_sync_all_rename": 0.831,
+     "fresh256k_sync_all_rename": 0.979,
+     "append_fsync": 0.605,
+     "repeat_fsync_4kb": 0.544,
+     "fresh4k_nofsync_rename": 0.09,
+     "read_cached_4kb": 0.032,
+     "odirect_4kb": 0.195
+    },
+    "slow_state": {
+     "fresh4k_sync_all_rename": 1.792,
+     "fresh4k_fdatasync_rename": 1.764,
+     "fresh64k_sync_all_rename": 1.76,
+     "fresh256k_sync_all_rename": 0.917,
+     "append_fsync": 0.595,
+     "repeat_fsync_4kb": 0.534,
+     "fresh4k_nofsync_rename": 0.087,
+     "read_cached_4kb": 0.025,
+     "odirect_4kb": 0.2
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 0.874,
+     "fresh4k_fdatasync_rename": 0.726,
+     "fresh64k_sync_all_rename": 1.845,
+     "fresh256k_sync_all_rename": 3.949,
+     "append_fsync": 0.661,
+     "repeat_fsync_4kb": 0.607,
+     "fresh4k_nofsync_rename": 0.089,
+     "read_cached_4kb": 0.029,
+     "odirect_4kb": 0.218
+    }
+   },
+   "hr-b": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.762,
+     "fresh4k_fdatasync_rename": 0.663,
+     "fresh64k_sync_all_rename": 0.79,
+     "fresh256k_sync_all_rename": 0.982,
+     "append_fsync": 0.597,
+     "repeat_fsync_4kb": 0.513,
+     "fresh4k_nofsync_rename": 0.085,
+     "read_cached_4kb": 0.026,
+     "odirect_4kb": 0.19
+    },
+    "slow_state": {
+     "fresh4k_sync_all_rename": 1.907,
+     "fresh4k_fdatasync_rename": 1.756,
+     "fresh64k_sync_all_rename": 1.815,
+     "fresh256k_sync_all_rename": 0.954,
+     "append_fsync": 0.595,
+     "repeat_fsync_4kb": 0.544,
+     "fresh4k_nofsync_rename": 0.073,
+     "read_cached_4kb": 0.027,
+     "odirect_4kb": 0.211
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 1.888,
+     "fresh4k_fdatasync_rename": 1.774,
+     "fresh64k_sync_all_rename": 1.962,
+     "fresh256k_sync_all_rename": 2.175,
+     "append_fsync": 0.709,
+     "repeat_fsync_4kb": 0.643,
+     "fresh4k_nofsync_rename": 0.057,
+     "read_cached_4kb": 0.025,
+     "odirect_4kb": 0.289
+    }
+   },
+   "hr-c": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.794,
+     "fresh4k_fdatasync_rename": 0.734,
+     "fresh64k_sync_all_rename": 0.835,
+     "fresh256k_sync_all_rename": 1.042,
+     "append_fsync": 0.646,
+     "repeat_fsync_4kb": 0.567,
+     "fresh4k_nofsync_rename": 0.09,
+     "read_cached_4kb": 0.028,
+     "odirect_4kb": 0.206
+    },
+    "slow_state": {
+     "fresh4k_sync_all_rename": 1.819,
+     "fresh4k_fdatasync_rename": 1.736,
+     "fresh64k_sync_all_rename": 1.805,
+     "fresh256k_sync_all_rename": 0.925,
+     "append_fsync": 0.587,
+     "repeat_fsync_4kb": 0.51,
+     "fresh4k_nofsync_rename": 0.068,
+     "read_cached_4kb": 0.022,
+     "odirect_4kb": 0.184
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 0.738,
+     "fresh4k_fdatasync_rename": 1.716,
+     "fresh64k_sync_all_rename": 1.016,
+     "fresh256k_sync_all_rename": 1.701,
+     "append_fsync": 0.467,
+     "repeat_fsync_4kb": 0.511,
+     "fresh4k_nofsync_rename": 0.083,
+     "read_cached_4kb": 0.019,
+     "odirect_4kb": 0.141
+    }
+   },
+   "pool-1": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.565,
+     "fresh4k_fdatasync_rename": 0.497,
+     "fresh64k_sync_all_rename": 0.619,
+     "fresh256k_sync_all_rename": 0.808,
+     "append_fsync": 0.442,
+     "repeat_fsync_4kb": 0.392,
+     "fresh4k_nofsync_rename": 0.049,
+     "read_cached_4kb": 0.017,
+     "odirect_4kb": 0.133
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 0.507,
+     "fresh4k_fdatasync_rename": 0.429,
+     "fresh64k_sync_all_rename": 0.48,
+     "fresh256k_sync_all_rename": 0.704,
+     "append_fsync": 0.385,
+     "repeat_fsync_4kb": 0.369,
+     "fresh4k_nofsync_rename": 0.048,
+     "read_cached_4kb": 0.01,
+     "odirect_4kb": 0.102
+    }
+   },
+   "pool-2": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.696,
+     "fresh4k_fdatasync_rename": 0.618,
+     "fresh64k_sync_all_rename": 0.724,
+     "fresh256k_sync_all_rename": 0.863,
+     "append_fsync": 0.536,
+     "repeat_fsync_4kb": 0.485,
+     "fresh4k_nofsync_rename": 0.059,
+     "read_cached_4kb": 0.022,
+     "odirect_4kb": 0.17
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 232.629,
+     "fresh4k_fdatasync_rename": 231.514,
+     "fresh64k_sync_all_rename": 232.348,
+     "fresh256k_sync_all_rename": 1.075,
+     "append_fsync": 0.479,
+     "repeat_fsync_4kb": 0.405,
+     "fresh4k_nofsync_rename": 0.048,
+     "read_cached_4kb": 0.016,
+     "odirect_4kb": 0.128
+    }
+   },
+   "pool-3": {
+    "fast_state": {
+     "fresh4k_sync_all_rename": 0.633,
+     "fresh4k_fdatasync_rename": 0.544,
+     "fresh64k_sync_all_rename": 0.708,
+     "fresh256k_sync_all_rename": 0.829,
+     "append_fsync": 0.494,
+     "repeat_fsync_4kb": 0.447,
+     "fresh4k_nofsync_rename": 0.055,
+     "read_cached_4kb": 0.022,
+     "odirect_4kb": 0.162
+    },
+    "DEEP_state_windows": {
+     "fresh4k_sync_all_rename": 267.105,
+     "fresh4k_fdatasync_rename": 267.241,
+     "fresh64k_sync_all_rename": 267.66,
+     "fresh256k_sync_all_rename": 1.383,
+     "append_fsync": 0.469,
+     "repeat_fsync_4kb": 0.394,
+     "fresh4k_nofsync_rename": 0.053,
+     "read_cached_4kb": 0.017,
+     "odirect_4kb": 0.137
+    }
+   },
+   "orch": {
+    "fresh4k_sync_all_rename": 2.023,
+    "fresh4k_fdatasync_rename": 2.002,
+    "fresh64k_sync_all_rename": 2.119,
+    "fresh256k_sync_all_rename": 3.185,
+    "append_fsync": 1.833,
+    "repeat_fsync_4kb": 1.777,
+    "fresh4k_nofsync_rename": 0.124,
+    "read_cached_4kb": 0.04,
+    "odirect_4kb": 0.852
+   }
+  },
+  "deep_state_census": {
+   "pool-2": {
+    "episodes": [
+     {
+      "start": "07:29:54",
+      "end": "07:56:24",
+      "dur_s": 1590,
+      "deep_windows": 53,
+      "med_p50_ms": 230.7,
+      "max_ms": 303.9
+     },
+     {
+      "start": "07:58:54",
+      "end": "08:01:54",
+      "dur_s": 180,
+      "deep_windows": 6,
+      "med_p50_ms": 231.6,
+      "max_ms": 250.6
+     },
+     {
+      "start": "08:02:54",
+      "end": "08:41:24",
+      "dur_s": 2310,
+      "deep_windows": 77,
+      "med_p50_ms": 232.4,
+      "max_ms": 328.6
+     },
+     {
+      "start": "08:43:24",
+      "end": "08:55:24",
+      "dur_s": 720,
+      "deep_windows": 24,
+      "med_p50_ms": 239.8,
+      "max_ms": 557.5
+     },
+     {
+      "start": "09:29:24",
+      "end": "09:30:54",
+      "dur_s": 90,
+      "deep_windows": 3,
+      "med_p50_ms": 230.5,
+      "max_ms": 254.7
+     },
+     {
+      "start": "09:37:24",
+      "end": "09:39:54",
+      "dur_s": 150,
+      "deep_windows": 5,
+      "med_p50_ms": 235.4,
+      "max_ms": 301.7
+     },
+     {
+      "start": "09:50:24",
+      "end": "09:52:24",
+      "dur_s": 120,
+      "deep_windows": 4,
+      "med_p50_ms": 240.3,
+      "max_ms": 288.1
+     }
+    ],
+    "deep_op_quantization": {
+     "p50_ms": 233.0,
+     "mode_cluster_ms": "230-240",
+     "min_ms": 217.6,
+     "max_ms": 557.5,
+     "n_ops_gt200ms": 5865
+    },
+    "psi_io_some_avg60": {
+     "deep_med_pct": 33.8,
+     "deep_max_pct": 35.8,
+     "fast_med_pct": 1.4
+    },
+    "forensics": {
+     "meminfo_Dirty_med_MB": 0.07,
+     "meminfo_Writeback": 0,
+     "disk_in_flight_max": 0,
+     "probe_own_cg_write_rate_MBps": "~0.0-0.1 in BOTH states (pressure is external to the VM)"
+    },
+    "half_hour_drift": {
+     "07:30-08:50": "DEEP-dominant",
+     "08:50-09:00": "regime change",
+     "09:00-09:57": "fast-dominant with brief DEEP dips (09:29/09:37/09:50 pool-2; 09:38 pool-3)"
+    }
+   },
+   "pool-3": {
+    "episodes": [
+     {
+      "start": "07:29:52",
+      "end": "07:30:22",
+      "dur_s": 30,
+      "deep_windows": 1,
+      "med_p50_ms": 262.2,
+      "max_ms": 306.7
+     },
+     {
+      "start": "07:35:22",
+      "end": "07:46:52",
+      "dur_s": 690,
+      "deep_windows": 23,
+      "med_p50_ms": 264.6,
+      "max_ms": 462.4
+     },
+     {
+      "start": "07:49:22",
+      "end": "08:07:52",
+      "dur_s": 1110,
+      "deep_windows": 37,
+      "med_p50_ms": 266.6,
+      "max_ms": 431.5
+     },
+     {
+      "start": "08:18:22",
+      "end": "08:20:52",
+      "dur_s": 150,
+      "deep_windows": 5,
+      "med_p50_ms": 270.6,
+      "max_ms": 312.1
+     },
+     {
+      "start": "08:22:52",
+      "end": "08:29:22",
+      "dur_s": 390,
+      "deep_windows": 13,
+      "med_p50_ms": 273.2,
+      "max_ms": 324.3
+     },
+     {
+      "start": "08:30:22",
+      "end": "08:42:52",
+      "dur_s": 750,
+      "deep_windows": 25,
+      "med_p50_ms": 271.4,
+      "max_ms": 347.1
+     },
+     {
+      "start": "08:51:52",
+      "end": "08:53:22",
+      "dur_s": 90,
+      "deep_windows": 3,
+      "med_p50_ms": 261.3,
+      "max_ms": 291.0
+     },
+     {
+      "start": "08:57:52",
+      "end": "09:04:22",
+      "dur_s": 390,
+      "deep_windows": 13,
+      "med_p50_ms": 270.1,
+      "max_ms": 397.3
+     },
+     {
+      "start": "09:08:22",
+      "end": "09:10:52",
+      "dur_s": 150,
+      "deep_windows": 5,
+      "med_p50_ms": 266.5,
+      "max_ms": 322.4
+     },
+     {
+      "start": "09:15:22",
+      "end": "09:21:22",
+      "dur_s": 360,
+      "deep_windows": 12,
+      "med_p50_ms": 268.0,
+      "max_ms": 324.3
+     },
+     {
+      "start": "09:38:22",
+      "end": "09:40:52",
+      "dur_s": 150,
+      "deep_windows": 5,
+      "med_p50_ms": 275.0,
+      "max_ms": 317.1
+     }
+    ],
+    "deep_op_quantization": {
+     "p50_ms": 268.7,
+     "mode_cluster_ms": "260-280",
+     "min_ms": 241.5,
+     "max_ms": 776.8,
+     "n_ops_gt200ms": 4652
+    },
+    "psi_io_some_avg60": {
+     "deep_med_pct": 36.5,
+     "deep_max_pct": 38.3,
+     "fast_med_pct": 1.9
+    },
+    "forensics": {
+     "meminfo_Dirty_med_MB": 0.07,
+     "meminfo_Writeback": 0,
+     "disk_in_flight_max": 0,
+     "probe_own_cg_write_rate_MBps": "~0.0-0.1 in BOTH states (pressure is external to the VM)"
+    },
+    "half_hour_drift": {
+     "07:30-08:50": "DEEP-dominant",
+     "08:50-09:00": "regime change",
+     "09:00-09:57": "fast-dominant with brief DEEP dips (09:29/09:37/09:50 pool-2; 09:38 pool-3)"
+    }
+   }
+  },
+  "cross_host": {
+   "aligned_windows_6_hosts": 277,
+   "top_joint_cells_30s": {
+    "(0, 0, 0, 0, 0, 0)": 55,
+    "(1, 1, 1, 0, 'D', 'D')": 36,
+    "(0, 0, 0, 0, 0, 'D')": 24,
+    "(0, 0, 0, 0, 'D', 0)": 20,
+    "(0, 0, 0, 0, 'D', 'D')": 20,
+    "(0, 0, 1, 0, 0, 0)": 15,
+    "(0, 1, 0, 0, 'D', 0)": 12,
+    "(1, 0, 0, 0, 'D', 'D')": 12
+   },
+   "host_order": [
+    "hr-a",
+    "hr-b",
+    "hr-c",
+    "pool-1",
+    "pool-2",
+    "pool-3"
+   ],
+   "fresh_class_synchrony": {
+    "all_three_fast": 129,
+    "all_three_slow": 44,
+    "mixed": 120,
+    "common_windows": 295,
+    "all_three_slow_if_independent": 10,
+    "enrichment": "4.4x (0.149 observed vs 0.034 expected)",
+    "flip_onset_alignment": "hr-a~hr-b 7/19 within 1 window; hr-a~hr-c 3/19; hr-b~hr-c 9/24 - correlated co-occupancy, NOT lock-step onsets (no fleet-phase signature)",
+    "boundary_note": "fresh hosts launched together (t0 within 2s); window grids offset <=17s between host classes (t0-relative buckets)"
+   },
+   "pool_deep_coupling": {
+    "both_deep_windows": 100,
+    "independence_expectation": 83,
+    "pool2_deep_onsets_matched_to_pool3_within_1_window": "0/6",
+    "reading": "long episodes overlap on a shared pressure baseline; switching is per-host independent (NOT a fleet phase)"
+   },
+   "matched_traps_gt50ms_8s": {
+    "hr-a~hr-b": 4,
+    "hr-a~hr-c": 0,
+    "hr-a~pool-1": 0,
+    "hr-a~pool-2": 0,
+    "hr-a~pool-3": 0,
+    "hr-b~hr-c": 0,
+    "hr-b~pool-1": 0,
+    "hr-b~pool-2": 0,
+    "hr-b~pool-3": 0,
+    "hr-c~pool-1": 0,
+    "hr-c~pool-2": 0,
+    "hr-c~pool-3": 0,
+    "pool-1~pool-2": 163,
+    "pool-1~pool-3": 144,
+    "pool-2~pool-3": 109315
+   },
+   "fresh_launch_micro_event": {
+    "hosts": "hr-a~hr-b",
+    "instants": [
+     "07:46:04 (50.6/57.2ms)",
+     "07:46:34 (91/133ms)",
+     "07:51:34 (696.5/52.5ms, 696.5/868.0ms)"
+    ],
+    "reading": "inside the fresh-VM launch transient; not a phase"
+   },
+   "fleet_incident_phase": "ABSENT this window: repeat-fsync never lifted on any host; no all-host aligned degradation; hr~pool matched traps 0 (except the hr-a~hr-b launch micro-event)"
+  },
+  "trap_census": {
+   "hr-a": {
+    "st15_pct": 0.55,
+    "st50_pct": 0.04,
+    "st100_pct": 0.01,
+    "p50_ms": 0.915,
+    "p95_ms": 5.891,
+    "max_ms": 696.48,
+    "traps_gt100_per_h": 0.8
+   },
+   "hr-b": {
+    "st15_pct": 0.48,
+    "st50_pct": 0.05,
+    "st100_pct": 0.01,
+    "p50_ms": 0.969,
+    "p95_ms": 6.298,
+    "max_ms": 868.037,
+    "traps_gt100_per_h": 0.8
+   },
+   "hr-c": {
+    "st15_pct": 0.35,
+    "st50_pct": 0.04,
+    "st100_pct": 0.0,
+    "p50_ms": 1.005,
+    "p95_ms": 6.281,
+    "max_ms": 65.007,
+    "traps_gt100_per_h": 0.0
+   },
+   "pool-1": {
+    "st15_pct": 0.55,
+    "st50_pct": 0.04,
+    "st100_pct": 0.02,
+    "p50_ms": 0.728,
+    "p95_ms": 1.126,
+    "max_ms": 1040.242,
+    "traps_gt100_per_h": 1.2
+   },
+   "pool-2": {
+    "st15_pct": 48.11,
+    "st50_pct": 47.98,
+    "st100_pct": 47.98,
+    "p50_ms": 5.882,
+    "p95_ms": 243.61,
+    "max_ms": 557.457,
+    "traps_gt100_per_h": 2343.19
+   },
+   "pool-3": {
+    "st15_pct": 37.38,
+    "st50_pct": 37.13,
+    "st100_pct": 37.1,
+    "p50_ms": 0.881,
+    "p95_ms": 278.706,
+    "max_ms": 776.812,
+    "traps_gt100_per_h": 1858.57
+   }
+  },
+  "orch_control": {
+   "samples": 49,
+   "window": "07:27:01-08:18:24Z (TRUNCATED by machine-death SIGTERM at 51/150min)",
+   "fresh4k_p50": 2.023,
+   "fdatasync_p50": 2.002,
+   "repeat_fsync_p50": 1.777,
+   "append_p50": 1.833,
+   "fresh256k_p50": 3.185,
+   "nofsync_p50": 0.124,
+   "cached_p50": 0.04,
+   "odirect_p50": 0.852,
+   "reading": "busy shared box: the WHOLE flush path sits ~1.8-3.2ms INCLUDING repeat-fsync (uniform lift signature, not a state); no dense stream so no state machine; this window carries no fleet phase to separate (write-regime LOCAL-BOX separation not re-tested end-to-end)"
+  },
+  "gate_load_labels": {
+   "pool-1": "no gate claim 07:26-09:57Z (last run 02:53:33Z) - all windows AMBIENT",
+   "pool-2": "no gate claim since 2026-09-29 18:55Z - AMBIENT",
+   "pool-3": "no gate claim since 2026-09-29 18:43Z - AMBIENT",
+   "pool-0": "gate_1790841052 claimed 07:50:52-07:57:53Z OVERLAPPING its probe (07:46-~07:53); VM went unreachable mid-gate; series LOST (see validity.excluded)",
+   "hr-a/b/c": "fresh VMs, no fleet use",
+   "ledger": "fleet-tools/pool/state.json + fleet-pipeline-runs/gate_1790841052_1786556/driver.log"
+  },
+  "regime_advisory_v12": "HOSTREGIME ADVISORY v1.2 (census 20261001-072600, 7 hosts x 2.5h, zero gate claims in window): FRESH bench-class hosts run the fast ~0.84-0.90ms / slow ~2.04-2.10ms machine (flips 3.2-5.6/h, slow dwell med 150-180s, psi_io ~0.02-0.07% in BOTH states, NO sustained deep state - fresh-create p50 must land 0.8-2.1ms or the host is NOT in a census state); GATE-POOL hosts are PER-HOST: pool-1 sat fast 0.703ms for the entire 2.5h while pool-2/pool-3 alternate fast ~0.75-0.86ms with a DEEP fresh-create state quantized at a PER-HOST level (233ms on pool-2, 269ms on pool-3; occupancy 58%/48%; dwell 1.5-38.5min; flips 2.4-4.5/h; psi_io some avg60 31-38% sustained EXTERNAL - Dirty ~0.07MB, in_flight 0, probe's own cg write ~0.0-0.1MB/s) - a create-path lane reading 200-300ms fresh+fsync p50 on a pool host is IN ITS HOST'S DEEP STATE: re-classify at every leg boundary, never baseline-blend, expect repeat-fsync/append/fresh256k/nofsync/cached/O_DIRECT to stay flat (if repeat-fsync LIFTS 12-16x with all-VM onset +/-8s that is the FLEET INCIDENT PHASE, absent this window); cite this record as the regime-label authority for create-path fresh-class legs."
+ },
+ "validity": {
+  "excluded": [
+   "pool-0 series LOST: joined 07:46:03Z (20min late, gate slot freed 07:37Z); gate_1790841052 claimed the VM 07:50:52Z and the sandbox went unreachable ~07:53Z in the machine-death window (gate died with 5x APIError; orchestrator-box control probe SIGTERM'd 08:18:24Z in the same event); ~7min of probe data died with the terminated VM; NO local copy existed (predecessor session died before its next checkin). pool-0's ambient contribution is UNMEASURED and not imputed; its 07:50:52-07:57:53 window is gate-load by ledger.",
+   "orch control truncated: 49 samples in 51min of the intended 150min (SIGTERM in the machine death); no dense stream, so no state machine from it.",
+   "first 3min after launch excluded per DESIGN.md (pre-registered); NOTE: the fresh hosts' launch transient extended ~32min beyond launch (slow-dominant 84.5-87.9% of the first 32min's windows, all 3 hosts; field measurements.state_machine.*.first_32min_occupancy) - the full-series slow occupancy (0.285-0.359) carries this transient; the steady (32min+) occupancy is fast 0.79-0.85 / slow 0.15-0.21 (field steady_32min_plus_occupancy). The pool hosts' first_32min_occupancy (pool-2 DEEP 0.914 / pool-3 DEEP ~0.68) is GENUINE state occupancy, not launch noise (aged VMs, up for days).",
+   "aligned 30s window grids are t0-relative per host: host-class bucket boundaries offset <=17s (fresh hosts share t0 within 2s); disclosed as a bound on the joint-census alignment.",
+   "hr-a~hr-b launch micro-event (4 matched trap pairs 07:46:04-07:51:34, 50-868ms) sits inside the launch transient; counted in the trap census, not treated as a phase."
+  ],
+  "notes": "no product code involved (infra characterization only); all 6 collected series are complete and clean (end records at 09:57:04-10:08:56Z); probes flock-guarded single instance; VM clock offsets bounded by the launcher_wall handshake (3.1-11.4s); raw JSONL parsed, no transcription; no gate claims on pool-1/2/3 during the window (pool ledger) - their windows are ambient; deep-state forensic counters read from the full series (not just the T+20min early finding)."
+ },
+ "outcome": "complete - the closed state-machine series collected and censused (6 of 8 planned series complete-clean; pool-0 lost with its VM in the machine-death window - disclosed, not imputed; orch control truncated to 51/150min by the same event): per-host state machines, dwell/switching scales, class structure per state, cross-host coupling, trap census and the one-line current-regime advisory v1.2 delivered (measurements.regime_advisory_v12); the T+20min finding is confirmed on the full series and sharpened: the fresh-create DEEP state is PER-HOST with per-host quanta (233ms pool-2 / 269ms pool-3), lifts only fresh-small-file+fsync classes (fresh256k flat!), sits on sustained EXTERNAL psi_io 31-38% with the VM's own writeback idle, and never appears on the fresh bench class in 2.5h; the fleet incident phase did not occur this window.",
+ "decision": "Record-only lane (infra census; no product change, no PR, no merge; frozen parity surfaces untouched by construction). ADOPTED as the regime-label authority for create-path lanes: measurements.regime_advisory_v12 supersedes the early-hours working-VM 40-136ms readings as the CURRENT census (those were the fresh-class trap-incidence class); the write-regime record (20260929-223000) remains the authority for the fleet-incident-phase signature (repeat-fsync lifted 12-16x, all-VM onset +/-8s), and the hoststat record (20260927-140000) remains the authority for the fresh-class fast/slow known-good table (this census refreshes it: slow level 2.04-2.10 this window vs 2.407-2.467 then; fast unchanged). Next create-path boundary probes should label: fresh-class hosts by fast/slow state; pool hosts by fast vs that host's DEEP quantum.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-072600-io-hostregime-statemachine.json",
+ "session": {
+  "worker": "perf-hostregime-statemachine2-fast (subagent; series launched by predecessor perf-hostregime-statemachine-fast)",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-e9a22023/"
+ },
+ "timestamp": "2026-10-01T17:45:00Z",
+ "key_findings": "THE HOST-REGIME STATE MACHINE IS PER-HOST-CLASS AND NOW FULLY CENSUSED (7 hosts x 2.5h, dense 0.5s ISOLATED fresh4k+sync_all+rename + 30s rich dual-class samples, zero gate claims in window):\n(1) FRESH BENCH CLASS (hr-a/b/c): {fast ~0.84-0.90ms, slow ~2.04-2.10ms} two-state machine, flips 3.2-5.3/h per direction (steady-window 3.6-5.6/h), slow dwell med 150-180s (max 16.5-20min), fast dwell med 2.5-6.75min; slow level moved DOWN from the Sep-27 census's 2.407-2.467 to 2.04-2.10 (fast level unchanged 0.84-0.90 vs 0.878-0.889). Partial synchrony is REAL: all-three-slow 44/295 windows (14.9%) vs 3.4% under independence (4.4x enrichment) while onsets are NOT lock-step (3-9/19-25 flips within 1 window) - co-occupancy-coupled, onset-independent (distinct from the fleet incident phase's +/-8s onset). The 32-min launch transient was slow-dominant (84.5-87.9% of windows) - fresh-VM launch settling extends ~30min beyond the 3-min pre-registered exclusion (disclosed; steady occupancy fast 0.79-0.85).\n(2) GATE-POOL CLASS IS PER-HOST DIVERGENT: pool-1 (136 gate runs, 90.3% disk full) sat FAST 0.703ms for the entire 2.5h - single band, ZERO transitions, psi_io ~0.0%; pool-2/pool-3 live in a FAST<->DEEP machine.\n(3) THE DEEP STATE IS A PER-HOST QUANTIZED FRESH-CREATE STATE (the T+20min finding, confirmed on the full series): pool-2 DEEP = 233ms (mode cluster 230-240ms), pool-3 = 269ms (cluster 260-280ms) - DIFFERENT quanta on adjacent pool hosts; occupancy 58.3%/48.1%, episode dwell med 180s/360s, max 38.5/18.5min, flips 2.4-4.5/h; both hosts started DEEP, closed FAST; a slow-scale drift: DEEP-dominant 07:30-08:50, regime change ~08:50-09:00, fast-dominant after.\n(4) CLASS STRUCTURE (rule-B): the DEEP state lifts ONLY fresh-small-file+fsync classes - fresh4k 0.696->232.6 / fresh64k 0.724->232.3 / fdatasync 0.618->231.5 (pool-2; pool-3 identical shape at 267-268) - while fresh256k 1.08/1.38 STAYS FAST (the sharp size discriminator), append 0.479/0.469, repeat-fsync 0.405/0.394, nofsync 0.048/0.053, cached 0.016/0.017, O_DIRECT 0.128/0.137 ALL FLAT => HOST STATE, not a fleet phase (repeat-fsync never lifted anywhere; hr slow state shows the SAME signature at 2.4x scale: fresh4k 0.75-0.79->1.79-1.91, 64k 0.79-0.84->1.76-1.82 lifted; repeat 0.51-0.57->0.51-0.54, append, fresh256k, nofsync FLAT).\n(5) THE DEEP STATE IS EXTERNAL HOST-LOCAL PRESSURE: psi_io some avg60 med 33.8%/36.5% in DEEP vs 1.4%/1.9% fast (pool-1 0.0% all window), while the probe's OWN cg write rate is ~0.0-0.1MB/s in BOTH states, Dirty med 0.06-0.09MB, Writeback 0, in_flight 0 in BOTH => the VM's own writeback is idle; the pressure is on the shared device from OUTSIDE the VM. The hr slow state shows psi ~0.02-0.07% in BOTH states => NOT pressure-correlated (internal host state).\n(6) FLEET COUPLING: NO fleet incident phase this window. pool-2~pool-3 both-DEEP 100/295 vs 83 if independent (1.2x - long episodes overlap on a shared pressure baseline) but DEEP onsets do NOT match (0/6 within 1 window) => per-host independent switching. Cross-class matched traps ~0 (hr~pool all 0). The ORCH-DIRECTIVE question is answered: the idle-pool DEEP state (233-269ms) EXCEEDS the working-VM 40-136ms fresh-trap bands the early-hours records saw, and the two are DIFFERENT CLASSES: the fresh bench class in this census shows NO sustained DEEP state at all (0.3-0.7% of windows as isolated 30-60s flashes; isolated traps 0-0.8/h to 656-868ms) - working-VM 40-136ms bands were that class's TRAP-INCIDENCE class, not the pool DEEP state; the DEEP state is a gate-pool-host property with per-host quanta.\n(7) TRAP CENSUS: fresh class st15 0.35-0.55%, st50 0.04-0.05%, st100 0.00-0.01%; pool-1 st15 0.55% with isolated 1040ms max (1.2/h); pool-2 st15 48.11% / st100 47.98% and pool-3 37.38%/37.10% - the DEEP state's own ops (NO-CEILING: they ARE the state, labeled, never blended).\n(8) ORCH CONTROL (51min, truncated): whole flush path ~1.8-3.2ms INCLUDING repeat-fsync 1.777 - the busy-shared-box signature (uniform lift, not a state); no fleet phase occurred to re-test the LOCAL-BOX separation end-to-end.",
+ "archive": "/home/ubuntu/hillclimb/archives/perf-hostregime/hostregime-evidence-20261001T101600Z.tar.gz sha256 f836c50a2bfcb1de5edbc4ccb95eb77c941e2e7fa7d7465f7646cb95e689de95",
+ "vm": {
+  "hr-a": "rbi0zdbj2rx02jpmeqqxs52o",
+  "hr-b": "ybm73syux2bvq136ahk37hq3",
+  "hr-c": "t3f48sqvj2p7dt9iisc5h1qz",
+  "pool-1": "bvwr5lk9t7jbsj3e5tc6x7im",
+  "pool-2": "ojeg3l8bs5s7mq30vm0fzpbx",
+  "pool-3": "hy8t65l14qux31nlqu8225o5",
+  "pool-0": "sabwmtsfwuv26cbqdjksvb2v (series lost, VM terminated)"
+ }
+}
