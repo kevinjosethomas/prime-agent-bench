@@ -1,0 +1,482 @@
+{
+ "id": "20261001-175500-interaction-settle-hold-daemoninit",
+ "axis": "interaction",
+ "hypothesis": "Kevin's benchmark table reads settle 669 (Pi 688, rust AHEAD ~3%) from the r2 campaign, but the settle-hold lane's paired ABBA at the current base (b1c6b7a0c) reverses it: rust p50 755.0 vs pi 683.8, 0/14 blocks rust-faster, p=0.00012, and the healthy-window rust floor (732.8) exceeds pi's max (691.3). Two questions: (1) does the reversal survive a dedicated confirmation leg, and is it honest against the r2 anchor (rust 668.9 vs pi 688.3 at e75f59efc6) \u2014 the same-sha framing must be corrected: the anchor sits 25 commits and one VM away; (2) what class is the daemon-init bind-span (~39ms in the earlier ledger, per the lazyinit lane's LEG-INLINE vs LEG-PREWARMED framing): Supervisor::new config persist + telemetry install + settings/catalog chain before bind_transport, and which share is product work vs host write-regime.",
+ "approach": "MEASUREMENT ONLY (no product change). Four legs on one quiet 16c/32GB Prime VM (hillclimb-perf-settlehold, sandbox u5nxl6eddrafmr7cbe1viyui, ubuntu:22.04, rustup 1.98.1, bench harness at /root/bench-harness, lane arms staged release-pipeline shape): LEG1+CONFIRM the settle-hold paired ABBA (compare.msg_send mock-routed, PTY driver, per-trial fresh launch, 14 blocks of A,B,B,A = 28 trials/arm; arm A = rust b1c6b7a0c payload sha a07f3c41 via the lane launcher, arm B = pi 0.99.1@d86654ab cli.js sha e79626f2; blocks b1-b11 07:00-07:17Z, blocks b12-b14 confirmation 07:25-07:30Z); LEG2 the daemon-init decompose (bench-identical daemon launch on fresh trial dirs: 24 clean + 5 drop_caches=3 cold legs with a 1ms socket-stat bind grid, 2ms /proc sighting grid, /proc start-tick + sock mtime_ns cross-checks, daemon CPU ticks at bind, connect + hello wire view, 30-round grid-floor control, spin calibration; plus 6 strace legs with the ptrace-inflation honesty \u2014 traced spans never reported clean); LEG3 the settle-tail decompose attempt (protocol-identical + per-chunk PTY ledger replay, rust n=6, pi n=4) \u2014 HONEST NEGATIVE: the needle detector never matched, no tail numbers; LEG4 the sha-isolate ABBA (the discriminator the discrepancy demanded): the r2 pin's EXACT BYTES (payload sha 0ba7c9b6e6..., '0.9.8-continuous.e75f59efc6', staged verbatim from the r2 staging tree) registered as a second bench product rust-e75 (settle walk OK, kernel venv warmed from its own payload), ABBA'd against the lane pin in 4 blocks of (e75, b1c6, b1c6, e75) = 8 trials/arm, per-round versions.json sha pins verified for all 16 rounds. I/O advisory v1.0 regime probes at EVERY leg boundary (>=40 ISOLATED fresh+sync_all+rename @0.5s + >=20 repeat-fsync, host-relative, PHASE MODEL re-classification, NO-CEILING in-leg labels); PID-list zombie sweep before timing legs; noop PTY floor controls per round (56 rounds leg1, 16 rounds leg4); spin calibration pre/mid/post.",
+ "parity_notes": "No product bytes changed anywhere. LEG4's rust-e75 arm is the r2 campaign pin's own payload staged verbatim (sha 0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5) as a second bench product \u2014 a measurement arm, not a product change; its kernel venv was warmed from its own payload (global/rust-e75/kernel-venv, bench.drivers.warm_kernels), the settle walk passed, and per-round versions.json pins every arm's binary sha. The pi arm is byte-identical to the r2 campaign's pi arm (0.99.1@d86654ab, cli.js e79626f2), which makes it the cross-campaign control. The strace legs used a syscall filter that omits link/linkat: the telemetry install's atomic create is inferred as O_EXCL+write+fsync+LINK+unlink (the unlink-after-fsync on a file that then reads back proves the link); disclosed as inference. The msg_send metric is kernel-venv-insensitive (the turn completes without kernel interaction; the venv warms the launch path), so the e75 arm's venv provenance does not touch the settle clock.",
+ "base": {
+  "revision": "b1c6b7a0cce73c684481a028e47d7b980cd7cfc5"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "u5nxl6eddrafmr7cbe1viyui (hillclimb-perf-settlehold, created 2026-10-01T01:48Z, timeout 1440m, still live until 2026-10-02T01:48Z for the drift-bisect follow-up)",
+  "toolchain": "rustup 1.98.1 (the CI pin)",
+  "arms": {
+   "rust_b1c6b7a0c": {
+    "revision": "b1c6b7a0cce73c684481a028e47d7b980cd7cfc5",
+    "version": "0.9.8-continuous.b1c6b7a0cce73c684481a028e47d7b980cd7cfc5",
+    "binary_sha256": "a07f3c41352f29d1569c25e8dacb74856b23bbecc0290451bf37d5e67c338120",
+    "binary_bytes": 56303336,
+    "staging": "release-pipeline split-debug shipped payload at /root/bench-lane/rust/share/prime-agent-rust (launcher bin/prime-agent-rust + share payload), built on the VM at b1c6b7a0c"
+   },
+   "rust_e75_r2pin": {
+    "revision": "e75f59efc6f74fcb23e45048f0f23b34490571d0",
+    "version": "0.9.8-continuous.e75f59efc6f74fcb23e45048f0f23b34490571d0",
+    "binary_sha256": "0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5",
+    "binary_bytes": 58990888,
+    "staging": "the r2 campaign pin's payload tree staged VERBATIM (bin + share) from the r2 staging tree at /root/bench-lane/rust-e75; these exact bytes measured the r2 anchor"
+   },
+   "pi": {
+    "version": "0.99.1",
+    "revision": "d86654abb8862e201933517d6f1fce9f88dd117f",
+    "binary_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "note": "byte-identical to the r2 campaign's pi arm \u2014 the cross-campaign control"
+   }
+  }
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (measurement-only record)"
+ },
+ "measurements": {
+  "method": "same-VM sequential ABBA, quiet-gated (loadavg recorded per round), mock-routed compare.msg_send (the r2 campaign's exact benchmark), PTY 120x40, per-trial fresh launch, noop PTY floor control per round, spin calibration pre/mid/post, I/O advisory v1.0 regime probes at every leg boundary with PHASE MODEL re-classification",
+  "suites": {
+   "settlehold.leg1_confirm_paired_abba": {
+    "description": "the settle-hold paired ABBA at b1c6b7a0c (rust) vs pi 0.99.1@d86654ab, 14 blocks of A,B,B,A = 28 trials/arm, all 56 validated (blocks b1-b11 leg1 07:00-07:17Z; b12-b14 the dedicated confirmation 07:25-07:30Z)",
+    "rust_submit_to_settle_ms": {
+     "n": 28,
+     "p50": 755.0,
+     "mean": 758.4,
+     "min": 732.8,
+     "max": 822.6,
+     "values": [
+      732.8,
+      732.8,
+      732.9,
+      732.9,
+      733.2,
+      733.5,
+      733.9,
+      734.8,
+      751.3,
+      754.0,
+      754.1,
+      754.5,
+      754.5,
+      754.8,
+      755.3,
+      755.7,
+      756.0,
+      756.2,
+      757.2,
+      758.8,
+      775.9,
+      776.8,
+      776.9,
+      777.3,
+      777.3,
+      780.0,
+      820.3,
+      822.6
+     ]
+    },
+    "pi_submit_to_settle_ms": {
+     "n": 28,
+     "p50": 683.8,
+     "mean": 684.5,
+     "min": 682.4,
+     "max": 691.3,
+     "values": [
+      682.4,
+      682.6,
+      682.7,
+      683.1,
+      683.1,
+      683.2,
+      683.3,
+      683.3,
+      683.3,
+      683.4,
+      683.6,
+      683.7,
+      683.7,
+      683.7,
+      683.8,
+      684.0,
+      684.2,
+      684.4,
+      684.4,
+      684.7,
+      684.7,
+      685.0,
+      685.3,
+      685.6,
+      685.9,
+      687.4,
+      689.3,
+      691.3
+     ]
+    },
+    "rust_submit_to_ack_ms": {
+     "n": 28,
+     "p50": 0.3,
+     "min": 0.2,
+     "max": 0.7
+    },
+    "pi_submit_to_ack_ms": {
+     "n": 28,
+     "p50": 0.7,
+     "min": 0.6,
+     "max": 2.1
+    },
+    "per_block_means_ms": {
+     "b1": {
+      "rust": 743.5,
+      "pi": 683.2
+     },
+     "b2": {
+      "rust": 755.9,
+      "pi": 687.2
+     },
+     "b3": {
+      "rust": 745.2,
+      "pi": 683.5
+     },
+     "b4": {
+      "rust": 778.4,
+      "pi": 685.7
+     },
+     "b5": {
+      "rust": 744.6,
+      "pi": 684.0
+     },
+     "b6": {
+      "rust": 754.6,
+      "pi": 683.7
+     },
+     "b7": {
+      "rust": 745.8,
+      "pi": 686.8
+     },
+     "b8": {
+      "rust": 733.0,
+      "pi": 683.8
+     },
+     "b9": {
+      "rust": 787.0,
+      "pi": 684.5
+     },
+     "b10": {
+      "rust": 765.5,
+      "pi": 683.0
+     },
+     "b11": {
+      "rust": 744.4,
+      "pi": 685.2
+     },
+     "b12": {
+      "rust": 798.8,
+      "pi": 684.8
+     },
+     "b13": {
+      "rust": 776.6,
+      "pi": 683.1
+     },
+     "b14": {
+      "rust": 744.9,
+      "pi": 684.1
+     }
+    },
+    "sign_test": {
+     "n_blocks": 14,
+     "rust_faster_blocks": 0,
+     "p_two_sided": 0.00012
+    },
+    "edge": {
+     "rust_p50": 755.0,
+     "pi_p50": 683.8,
+     "delta_ms": 71.2,
+     "delta_pct": 10.41,
+     "direction": "rust SLOWER"
+    },
+    "floors": {
+     "noop_pty_floor_p50_ms": {
+      "n_rounds": 56,
+      "range": [
+       0.045,
+       0.107
+      ],
+      "p95_max": 0.22
+     },
+     "spin_calib_s": {
+      "pre": 1.049,
+      "mid": [
+       1.071,
+       1.054
+      ],
+      "post": 1.066
+     }
+    }
+   },
+   "daemoninit.leg2_bind_span": {
+    "description": "the daemon-init decompose at b1c6b7a0c: spawn->bind on fresh trial dirs (24 clean legs, warm page cache) and 5 drop_caches=3 cold legs; instruments: 1ms socket-stat bind grid, 2ms /proc sighting grid, /proc start-tick + sock mtime_ns cross-checks (both monotonic), daemon CPU ticks at bind, connect + hello wire view, 30-round grid-floor control",
+    "clean_spawn_to_bind_ms": {
+     "n": 24,
+     "p50": 71.29,
+     "mean": 71.71,
+     "min": 68.42,
+     "max": 79.66
+    },
+    "coldcache_spawn_to_bind_ms": {
+     "n": 5,
+     "p50": 73.98,
+     "mean": 81.61,
+     "min": 72.61,
+     "max": 108.45
+    },
+    "popen_ret_ms": {
+     "clean_p50": 0.2,
+     "cold_p50": 0.84,
+     "cold_max": 4.27
+    },
+    "proc_sighting_ms": {
+     "clean_p50": 0.22
+    },
+    "bind_to_connect_ms_p50": 1.0,
+    "connect_to_hello_ms_p50": 0.7,
+    "hello_ok": "24/24 (hello_len 1269)",
+    "daemon_cpu_s_at_bind": 0.0,
+    "grid_floor_control_ms": {
+     "n": 30,
+     "p50": 0.584,
+     "max": 0.831
+    },
+    "strace_legs_x6_INFLATED_structure_only": {
+     "payload_exec_to_bind_wall_ms": {
+      "min": 74.38,
+      "max": 81.28
+     },
+     "launcher_exec_to_payload_exec_ms": {
+      "min": 1.49,
+      "max": 1.63
+     },
+     "fsync1_supervisor_config_persist_ms": {
+      "mean": 35.8,
+      "min": 34.36,
+      "max": 38.15
+     },
+     "fsync2_telemetry_install_ms": {
+      "mean": 32.46,
+      "min": 31.17,
+      "max": 33.84
+     },
+     "non_fsync_remainder_ms": "~9 (ptrace-inflated; clean-legs arithmetic puts the true share at ~5-7ms)"
+    },
+    "pre_bind_syscall_sequence": "execve(launcher) -> execve(payload) -> ld.so/libc/libm/libgcc loads -> /proc/self/maps -> settings.json read -> /proc/self/cgroup + /sys/fs/cgroup/cpu.max -> supervisor-config.tmp-<pid> O_EXCL write+fsync+RENAME -> telemetry.json read (ENOENT) -> telemetry.json.<uuid>.tmp O_EXCL create+write+fsync+LINK+unlink (link untraced by the filter; the post-unlink read-back proves it) -> auth.json O_WRONLY|O_CREAT|O_EXCL EEXIST probe -> auth.json read -> socket(AF_UNIX) -> bind",
+    "reading": "the bind-span is ~92% durable-write on this host class: TWO inline fresh-fsyncs (supervisor-config persist + telemetry install-id) dominate; everything else is ~5-7ms; the binary-load share is small (drop_caches legs only +3-10ms typical). The earlier ~39ms ledger number is the WARM-agent-dir class (ONE inline fsync): the startup-redecompose lane's VM (same ~40ms fresh-fsync class) measured daemon-spawn->bind 38.0ms with the supervisor-config fresh-fsync at 40.7ms \u2014 the fresh-agent-dir class here carries the second (telemetry install, once per fresh agent dir). The span is host-fsync-regime-bound: quote it regime-relative, never as a fixed product cost."
+   },
+   "settlehold.leg3_settletail_HONEST_NEGATIVE": {
+    "description": "the settle-tail decompose attempt (protocol-identical + per-chunk PTY ledger replay; rust n=6, pi n=4)",
+    "result": "the needle-based settle detector never matched (t_settle/t_reply_visible all None, 10/10 trials) \u2014 the driver completed but produced NO usable tail decomposition; the detector must use the bench's own validated needle, not the first-20-words heuristic",
+    "pty_volume_evidence_stands": {
+     "rust_pty_bytes_per_turn": [
+      13089,
+      13224,
+      13324,
+      13505,
+      13771,
+      13835
+     ],
+     "rust_screen_hash_changes_per_turn": [
+      23,
+      24,
+      25,
+      26,
+      26,
+      27
+     ],
+     "pi_pty_bytes_per_turn": [
+      84778,
+      86003,
+      86003,
+      86059,
+      86059,
+      0
+     ],
+     "pi_screen_hash_changes_per_turn": [
+      185,
+      186,
+      186,
+      187,
+      188,
+      0
+     ],
+     "note": "pi row n=4 with the pi fifth trial lost to the driver end; rust renders ~6.4x LESS PTY volume \u2014 the rust settle delta is NOT render-volume-bound"
+    }
+   },
+   "settlehold.leg4_sha_isolate_exact_bytes": {
+    "description": "THE DISCRIMINATOR: the r2 pin's exact payload bytes (e75f59efc6, sha 0ba7c9b6e6...) vs the lane pin (b1c6b7a0c, sha a07f3c41) on THIS VM, same protocol, same leg, same regime window: 4 ABBA blocks of (e75, b1c6, b1c6, e75) = 8 trials/arm, 16/16 validated, per-round versions.json sha pins verified",
+    "rust_e75_submit_to_settle_ms": {
+     "n": 8,
+     "p50": 711.0,
+     "min": 666.6,
+     "max": 715.4,
+     "values": [
+      666.6,
+      675.6,
+      704.3,
+      710.5,
+      711.6,
+      712.3,
+      713.7,
+      715.4
+     ]
+    },
+    "rust_b1c6_submit_to_settle_ms": {
+     "n": 8,
+     "p50": 779.6,
+     "min": 763.4,
+     "max": 869.0,
+     "values": [
+      763.4,
+      765.7,
+      769.3,
+      779.0,
+      780.2,
+      797.1,
+      825.8,
+      869.0
+     ]
+    },
+    "per_block_drift_ms": {
+     "b1": 85.3,
+     "b2": 83.5,
+     "b3": 109.5,
+     "b4": 91.5,
+     "mean": 92.4
+    },
+    "separation": "COMPLETE: max(e75)=715.4 < min(b1c6)=763.4",
+    "sign_test": {
+     "n_blocks": 4,
+     "e75_faster_blocks": 4,
+     "exact_permutation_p_two_sided": 0.000155
+    },
+    "noop_pty_floor_p50_ms": {
+     "n_rounds": 16,
+     "range": [
+      0.05,
+      0.09
+     ]
+    },
+    "spin_calib_s": {
+     "pre": 1.085,
+     "post": 1.084
+    }
+   },
+   "settlehold.r2_anchor_provenance": {
+    "description": "the anchor this lane was asked to confirm, re-derived from the r2 campaign's raw trials (/home/ubuntu/bench/results-r2/merged-20260930-110231/compare.msg_send/) \u2014 the briefing's same-sha framing corrected",
+    "rust_w1_p50_ms": {
+     "n": 10,
+     "p50": 668.9,
+     "values": [
+      666.9,
+      667.8,
+      668.1,
+      668.5,
+      668.7,
+      669.1,
+      669.7,
+      670.8,
+      672.0,
+      712.4
+     ]
+    },
+    "rust_aa_p50_ms": {
+     "n": 10,
+     "p50": 669.5,
+     "values": [
+      662.4,
+      665.6,
+      668.0,
+      668.4,
+      668.6,
+      670.5,
+      670.7,
+      672.4,
+      712.7,
+      718.8
+     ]
+    },
+    "pi_w1_p50_ms": {
+     "n": 10,
+     "p50": 688.3,
+     "values": [
+      686.1,
+      686.6,
+      686.6,
+      688.2,
+      688.3,
+      688.3,
+      689.1,
+      689.6,
+      690.8,
+      693.4
+     ]
+    },
+    "pi_aa_p50_ms": {
+     "n": 10,
+     "p50": 686.5
+    },
+    "pin": "e75f59efc6f74fcb23e45048f0f23b34490571d0 ('0.9.8-continuous.e75f59efc6f74fcb23e45048f0f23b34490571d0'), same-VM 6-product round-robin, all validated",
+    "correction": "the anchor was NOT at b1c6b7a0c: anchor->lane spans the 25 commits e75f59efc6..b1c6b7a0c AND a VM change; Kevin's table's settle row ('settle 669 vs Pi 688, ahead 3%') is this anchor and does NOT reproduce at the current base",
+    "pi_control_across_campaigns": {
+     "r2_anchor": 688.3,
+     "this_lane_leg1": 683.8,
+     "delta_pct": -0.65,
+     "binary": "byte-identical 0.99.1@d86654ab cli.js e79626f2",
+     "reading": "the protocol/mock/settle-window reproduce across VMs; the environment is NOT the pi-arm explanation"
+    }
+   }
+  },
+  "extra": {
+   "regime_disclosure": {
+    "advisory": "I/O advisory v1.0: >=40 ISOLATED fresh+sync_all+rename @0.5s + >=20 repeat-fsync at every leg boundary; PHASE MODEL re-classified at every boundary; NO-CEILING in-leg labels",
+    "leg1_pre": "MARGINAL overall (fresh p50 0.83ms rate15 2.5% max 34.73; repeat-fsync HEALTHY p50 0.58) \u2014 the first leg1 blocks ran in a near-healthy window",
+    "leg1_post": "DEGRADED (fresh p50 33.71ms, 100% stall rate; the fresh class flipped mid-run, consistent with the known per-host state machine)",
+    "confirm_pre_post": "DEGRADED both (fresh p50 34.61/35.71, 100% stall)",
+    "leg2_pre_mid_post": "DEGRADED all three (fresh p50 34.18/32.89/34.11, 100% stall; repeat-fsync p50 0.53-0.66 with a 5-10% stall tail)",
+    "leg3_pre_post": "DEGRADED both (fresh p50 33.70/34.43, 100% stall)",
+    "leg4_pre_post": "DEGRADED both (fresh p50 37.67/36.74, 100% stall; repeat-fsync p50 1.69/0.66 with stalls)",
+    "reading": "the VM's fresh+fsync+rename class sat at ~34-38ms with 100% stall rate for the whole post-flip campaign (repeat-fsync stayed sub-ms p50) \u2014 a persistent machine class for this VM, matching the boot-floor/redecompose VM class; the reversal is present in BOTH regime windows (pre-flip blocks b1-b8: rust 733-778 vs pi 684-687; post-flip: rust 745-799 vs pi 682-689), so it is not a regime artifact"
+   },
+   "anchor_discrepancy_decomposition": {
+    "naive_gap": "r2 anchor rust 668.9 (e75f59efc6, r2 VM, 2026-09-30) vs this lane rust 755.0 p50 (b1c6b7a0c, this VM) = +86.1ms",
+    "product_drift_share": "PAIRED same-VM same-leg (leg4): e75f59efc6 711.0 vs b1c6b7a0c 779.6 p50 = +68.6ms, COMPLETE separation (max 715.4 < min 763.4), 4/4 blocks, exact permutation p=0.000155 \u2014 the 25-commit range e75f59efc6..b1c6b7a0c carries a REAL settle regression; the b1c6 arm never reaches e75's floor",
+    "environment_share": "same bytes across VMs: e75 reads 668.9 p50 at the r2 campaign VM vs 711.0 here (+42.1ms); e75's healthy-window floor class matches the anchor exactly (666.6 here vs 666.9-670.4 there); the difference is the mixture weight of the ~712ms per-trial stall class (6/8 trials here vs ~3/20 at the anchor) \u2014 this VM's DEGRADED fresh-fsync regime taxes the rust arm's turn-path fresh durable writes (the queue-checkpoint journal first-sync class; the warmturn record's trap class), while the pi arm proved regime-insensitive",
+    "residual_note": "the two shares do not sum linearly onto the naive gap (the environment itself moved between legs: leg1's b1c6 read 755.0 in the 07:00Z window, leg4's b1c6 read 779.6 in the 17:45Z window, a +24.6ms same-sha same-VM inter-leg regime shift within the DEGRADED class); the paired same-leg numbers are the authoritative split"
+   },
+   "leg3_lost_trials_note": "the leg3 pi fifth trial's tail data is absent (the driver's loop ended at n=4 for pi); the rust n=6 complete"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 56 leg1+confirm trials and all 16 leg4 trials validated (ack+settle); no exclusions. Noop PTY floor 0.045-0.107ms p50 across 72 control rounds (three orders below the measured deltas). Spin calibration stable within 1.049-1.085s across all legs. The leg1 fresh-class regime flip mid-run is disclosed and the reversal is shown in both windows. The leg3 settle-tail metrics are HONEST NEGATIVE (detector mismatch) and are not reported as measurements. The strace legs are structure evidence only (ptrace-inflated; never reported clean). The leg4 e75 arm used the r2 pin's own kernel-venv warmed from its own payload; the settle metric is kernel-venv-insensitive (disclosed)."
+ },
+ "outcome": "measured - THE SETTLE REVERSAL CONFIRMED + THE BIND-SPAN CLASS DECOMPOSED + THE ANCHOR DISCREPANCY SPLIT (product drift vs environment, exact-bytes)",
+ "decision": "THE ANSWERS. (1) THE REVERSAL IS CONFIRMED: rust is 10.4% slower than pi at b1c6b7a0c on this VM (755.0 vs 683.8 p50, 0/14 blocks, p=0.00012, floor 732.8 > pi max 691.3) \u2014 Kevin's table's settle row ('settle 669 vs Pi 688, AHEAD 3%') does NOT reproduce at the current base; the row needs the re-measure note. (2) THE REVERSAL IS MOSTLY PRODUCT DRIFT: leg4's exact-bytes discriminator splits the r2-anchor-to-lane gap \u2014 the 25 commits e75f59efc6..b1c6b7a0c carry a +68.6ms p50 settle regression (complete separation, paired same-VM, p=0.000155) \u2014 a DRIFT-BISECT LANE is the follow-up (the range's settle-plausible commits: #3186 link-underline render 2d6c7b5, #3159 abort/send idle race 87c0391, #3179 relaunch give-up cap 332fe80, #3209/#3206 passivation 72b7122/1ff9d86, #3210 acp followUp/queueIfBusy e65886b, #3225 settle-grace verdict 84b40b5, #3214 settle funnel seam 9c922d3, #3171 childscript/rlm quiescence 45e8f49, #3188 forked sessions 603376a, #3189 remove user extensions f54551d, #3157 workspace snapshot foundation 172bd84); the environment share (+42ms for the same bytes on this VM's DEGRADED fresh-fsync regime) is real but secondary, regime-labeled, and pi-insensitive. (3) THE BIND-SPAN CLASS ANSWER (gates the lazyinit lane's L1): the span is LEG-INLINE and IO-CLASS on every daemon-booting create path \u2014 TWO inline fresh-fsyncs on the fresh-agent-dir path (supervisor-config persist ~34-38ms + telemetry install-id ~31-34ms on this host class), ONE on the warm-agent-dir path (supervisor-config persist; the ~39ms ledger = this class), everything else ~5-7ms, binary-load only +3-10ms cold \u2014 so the lazyinit L1 (unsynced supervisor-config persist, TS parity at the writeFileAtomicSync call site) is the RIGHT CLASS and the right first cut, and the telemetry install-id fsync survives it as the fresh-path residual candidate (TS-parity check first); LEG-PREWARMED (binary prewarm) would only buy the ~2-5ms load share. The daemon is ready AT bind (bind->connect ~1ms, connect->hello ~0.7ms, hello 24/24). No PR from this lane (measurement-only); the drift-bisect follow-up is the actionable cut-path. The lane VM (u5nxl6eddrafmr7cbe1viyui, both rust arms + pi + the warm harness staged) stays live until 2026-10-02T01:48Z for the drift-bisect lane to claim.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261001-175500-interaction-settle-hold-daemoninit.json",
+ "session": {
+  "worker": "perf-settle-daemoninit3-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-da7b1594/01a0f86d-0794-7576-ac4b-0a4bc2c7b098.jsonl"
+ },
+ "timestamp": "2026-10-01T17:55:00+00:00",
+ "evidence": {
+  "archive": "hillclimb/vms/settle-hold-lane/collect/settle-daemoninit3-evidence.tar.gz sha256=be0f82861dc1dadd5a1bf2c82f010162f1c56fb25cf8551f2c0752b608d7bf4e (492 entries: the leg1/confirm/leg4 per-round trials+versions+noop, the leg2 daemon legs + 6 strace legs, the leg3 jsonl, all driver logs, all leg scripts, the rust-e75 adapter)",
+  "local_collect": "hillclimb/vms/settle-hold-lane/collect/ (settle-hold per-round dirs, daemoninit legs + strace, leg4 summary + regimes + driver log)",
+  "vm": "u5nxl6eddrafmr7cbe1viyui (live until 2026-10-02T01:48Z; /root/settle-sha, /root/settle-hold, /root/daemoninit, /root/leg4-sha.log)"
+ }
+}
