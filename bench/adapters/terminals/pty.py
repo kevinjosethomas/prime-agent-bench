@@ -151,6 +151,12 @@ class PTYSession(PtyStreamMixin, Session):
                 raise TimeoutError(f"echo not rendered in {timeout:.1f}s")
             time.sleep(0.0005)
 
+    def input_mode_raw(self) -> bool:
+        """The slave tty's line discipline mode, read through the master
+        (Linux shares one termios between both ends)."""
+        lflag = termios.tcgetattr(self.master)[3]
+        return not (lflag & (termios.ECHO | termios.ICANON))
+
     def wait_output_after(self, t_start: float, timeout: float = 10.0) -> float:
         """The first chunk timestamp after t_start (exact, from the ledger)."""
         deadline = now() + timeout

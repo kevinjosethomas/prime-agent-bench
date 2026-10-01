@@ -22,7 +22,7 @@ def stats(vals) -> dict:
     mean = sum(vals) / len(vals)
     var = sum((v - mean) ** 2 for v in vals) / max(1, len(vals) - 1)
     return {"n": len(vals), "min": round(min(vals), 1), "p50": round(pct(vals, 50), 1),
-            "p95": round(pct(vals, 95), 1), "p99": round(pct(vals, 99), 1),
+            "p90": round(pct(vals, 90), 1), "p95": round(pct(vals, 95), 1), "p99": round(pct(vals, 99), 1),
             "max": round(max(vals), 1), "mean": round(mean, 1),
             "stdev": round(math.sqrt(var), 2)}
 

@@ -55,6 +55,12 @@ class BenchLayout:
         """Pinned product source checkouts (rust, pi-mono)."""
         return self.root / "repos"
 
+    @property
+    def trials_root(self) -> Path:
+        """The parent of every product's trial dirs (the tmpfs mount point
+        when ``storage.trials: tmpfs``)."""
+        return self.root / "t"
+
     def trials_dir(self, product: str) -> Path:
         """Where one product's per-trial dirs live.
 
@@ -62,7 +68,7 @@ class BenchLayout:
         home (codex: ~/.codex/app-server-daemon/daemon-updater.sock), and a
         socket path is capped at 107 bytes. The old homes/<p>/trials/<bench>
         geometry pushed codex's daemon past the cap."""
-        return self.root / "t" / product
+        return self.trials_root / product
 
 
 def sha256_file(path: Path) -> str:

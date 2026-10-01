@@ -237,6 +237,29 @@ def cmd_orchestrator(args) -> None:
     print(json.dumps(manifest, indent=1))
 
 
+def cmd_headline(args) -> None:
+    """One validated startup table per results tree, plus their agreement."""
+    from bench.analysis.headline import agreement, build_table, markdown
+    cfg = load_config(args.config)
+    aa_cfg = cfg.get("aa", {})
+    tables = [build_table(t, aa_cfg, phase=args.phase) for t in args.trees]
+    doc = {"aa": aa_cfg, "runs": [{"tree": t, "table": tb} for t, tb in zip(args.trees, tables)]}
+    md = [markdown(tb, f"run {i + 1}: {t}") for i, (t, tb) in enumerate(zip(args.trees, tables))]
+    if len(tables) == 2:
+        doc["agreement"] = agreement(tables[0], tables[1], aa_cfg)
+        md.append("### run-to-run agreement (ready p50 ms)\n\n| benchmark/product | run 1 | run 2 "
+                  "| delta | tolerance | agree |\n|---|---|---|---|---|---|")
+        for key, rec in doc["agreement"].items():
+            md[-1] += (f"\n| {key} | {rec['run1_p50']} ({rec['run1_status']}) | {rec['run2_p50']} "
+                       f"({rec['run2_status']}) | {rec.get('delta_ms')} ms ({rec.get('delta_pct')}%) "
+                       f"| {rec.get('tolerance_ms')} | {'yes' if rec['agree'] else 'NO'} |")
+    text = "\n\n".join(md)
+    if args.out:
+        Path(args.out + ".json").write_text(json.dumps(doc, indent=1, default=list))
+        Path(args.out + ".md").write_text(text + "\n")
+    print(text)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The argument tree; shared flags per command group."""
     ap = argparse.ArgumentParser(prog="bench", description=__doc__.splitlines()[0])
@@ -341,6 +364,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--keep-sandboxes", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=cmd_orchestrator)
+
+    p = sub.add_parser("headline", help="the validated cold/warm startup table "
+                                         "(two trees: + run-to-run agreement)")
+    p.add_argument("trees", nargs="+", help="results tree(s) (one sandbox each)")
+    p.add_argument("--phase", default="w1")
+    p.add_argument("--out", default=None, help="write <out>.json + <out>.md")
+    p.set_defaults(func=cmd_headline)
     return ap
 
 

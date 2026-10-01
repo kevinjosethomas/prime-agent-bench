@@ -38,6 +38,13 @@ if [ -f "$VDIR/products.tar.gz" ]; then
         echo "[bootstrap] untar $(basename "$extra")"
         tar -xzf "$extra" -C /
     done
+    # the operator's personal product state never reaches a sandbox: the
+    # claude/codex templates are built clean (only codex's model catalog
+    # cache is kept); older payloads still carry these trees
+    rm -rf /root/.claude /root/.claude.json
+    if [ -d /root/.codex ]; then
+        find /root/.codex -mindepth 1 -maxdepth 1 ! -name models_cache.json -exec rm -rf {} +
+    fi
 else
     echo "[bootstrap] WARNING: no vendor/products.tar.gz (build it with 'bench vendor --products ...'); assuming the image already carries the products"
 fi

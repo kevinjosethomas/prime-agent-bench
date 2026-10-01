@@ -43,14 +43,17 @@ def _sandbox_config_yaml(handle, backend, cfg: dict | None = None) -> str:
     """The per-sandbox config: bench root, results dir, mock port, and the
     controller's per-benchmark overrides (``benchmarks:`` — trial counts
     and the msg-routing regime — so a campaign's routing decisions reach
-    the sandbox's own run_suite without touching the harness defaults) and
-    product pin overrides (``products:`` — a run's candidate binaries)."""
+    the sandbox's own run_suite without touching the harness defaults),
+    product pin overrides (``products:`` — a run's candidate binaries) and
+    the measurement policy (``aa:`` gate, ``storage:`` trial filesystem,
+    ``schedule:`` interleaving + warm-ups), so the sandbox measures under
+    exactly the policy the controller's manifest records."""
     import yaml as _yaml
     root = backend.bench_root(handle)
     text = (f"bench_root: {root}\n"
             f"results_dir: {Path(root) / 'results'}\n"
             f"mock:\n  port: {handle.spec['mock_port']}\n")
-    for section in ("benchmarks", "products"):
+    for section in ("benchmarks", "products", "aa", "storage", "schedule"):
         extra = ((cfg or {}).get(section) or {})
         if extra:
             text += _yaml.safe_dump({section: extra}, sort_keys=False)

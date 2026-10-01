@@ -51,6 +51,14 @@ def run_parallel(cfg: dict, parallel_config_path, benchmarks: list, products: li
                 "benchmarks": benchmarks, "products": products,
                 "wave": {k: spec_cfg[k] for k in
                          ("trials", "phase", "aa", "aa_trials", "run_label")},
+                # everything a re-run needs to reproduce the measurement:
+                # the policy sections the sandboxes receive, the product
+                # pins, and the sandbox spec (versions.json in each results
+                # tree adds the collected binary sha256s)
+                "policy": {k: cfg.get(k) for k in ("aa", "storage", "schedule", "benchmarks",
+                                                   "products", "driver", "mock")},
+                "sandbox_spec": pcfg.get("sandbox_defaults"),
+                "reference_policy": pcfg.get("reference"),
                 "sandboxes": [], "reference": {}, "kept_sandboxes": keep_sandboxes,
                 "created_at": _iso_now(), "updated_at": _iso_now()}
     # the manifest is written incrementally: every stage that completes is

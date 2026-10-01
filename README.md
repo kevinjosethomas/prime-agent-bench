@@ -10,7 +10,7 @@ discovered from the package structure.
 | Benchmark | What |
 |---|---|
 | `compare.cold_start` | Launch -> typed echo accepted (interactive-ready); first paint recorded separately |
-| `compare.warm_start` | Same with pre-warmed daemon |
+| `compare.warm_start` | Same in the product's steady state (daemon running, see the definitions below) |
 | `compare.msg_send` | Keystroke -> server submit-ack |
 | `compare.scroll_typing` | Scroll + typing latency on a 10MiB session |
 | `compare.memory_idle_load` | Process-tree RSS after cold start + loaded session |
@@ -59,6 +59,51 @@ discovered from the package structure.
   failing A/A noise floor (primary + declared aa_metrics, e.g. msg_send's
   settle, whenever published) or an A/A-to-wave drift (aa.drift_threshold_pct)
   is marked unstable and never ranked
+
+## Startup metric definitions (compare.cold_start / compare.warm_start)
+
+One definition per metric, for every product. The harness enforces each
+one; a row that breaks a rule fails its validation and never enters stats.
+
+| metric | definition | enforced by |
+|---|---|---|
+| **cold** | none of the product's processes run when the measured launch starts. A product with a daemon starts it itself (its TUI spawns it). | `resident_at_launch` must be empty: no process whose argv, cwd **or environment** references the trial dir (`validation.resident_as_expected`). No process of any other trial may be alive either (`validation.no_foreign_processes`). |
+| **warm** | the product's normal steady state. A daemon product: its daemon already runs, started by the product's own daemon command **with the configuration its TUI gives the daemon it spawns** (`daemon_env`, e.g. rust/ts `PI_OFFLINE=1` under `--offline`), timed to socket accept (`daemon.prewarmed_boot_ms`), then left to settle `daemon_dwell_s` (2 s). A product without a daemon: one unmeasured launch first (repeat-launch warm start). | the daemon must be in `resident_at_launch`; the daemon's launch identity (argv + env keys beyond the launch env, `daemon_identity`) is recorded on cold and warm rows and must match (`bench headline`: `daemon_config_mismatch`). |
+| **first paint** | launch (exec) -> the first PTY chunk after which the screen is not blank. | `launch_to_first_paint_ms` |
+| **ready** | launch -> a typed probe token renders **in the product's prompt input**. Probes are typed only after the product took the tty out of cooked mode (a cooked tty echoes by itself); the token must sit on the input row (the row text before it matches the product's `input_prompt` glyph) and must still be there 0.5 s later. | `validation.typed_into_raw_tty`, `token_in_input_row`, `token_persisted`, `ready_after_paint` (ready >= first paint) |
+| **memory** | RSS summed over every process of the trial (TUI tree + detached daemons, workers, kernels, spares), 1 s after ready. | `resource.rss_trial` |
+| **daemon boot** | harness start of the product's daemon command -> its socket accepts (warm rows only). | `daemon.prewarmed_boot_ms` |
+
+Measurement policy (one policy, applied to every product):
+- Fresh trial home per trial, copied from a clean template. Templates carry
+  no operator settings: claude/codex homes are built empty (codex keeps only
+  its model catalog cache); `template_audit` fails a template that names a
+  macOS home path or carries `hooks`/`enabledPlugins`/`mcpServers`.
+- `storage.trials: tmpfs` puts the trial root on tmpfs (sandbox runs). The
+  Prime VM disk's per-fsync latency flips between ~0.2 ms and ~40 ms for
+  seconds to minutes at a time; products that fsync while starting would
+  otherwise measure the host. Every row records `env.trial_fs`; a tree with
+  mixed filesystems is invalid.
+- `os.sync()` right before every measured launch.
+- `schedule.interleave: true`: cold and warm run in ONE ABBA schedule (every
+  round visits every product x benchmark, order reversed each round);
+  `schedule.warmup: true`: one unmeasured warm-up trial per product x
+  benchmark per pass (page cache, first-run work).
+- A/A gate per product x benchmark (`analysis.aa_validation.pair_verdict`):
+  the A/A halves' p50s (even/odd trials, interleaved in time) and the
+  A/A-to-wave drift must stay within 10% **or** 5 ms (`aa.abs_floor_ms`),
+  with >= 80% of the trials valid. A failing product is re-measured alone
+  (A/A + wave) up to `aa.max_reruns` times; the analysis keeps the latest
+  attempt; still failing = INVALID in the headline table (`aa-gate.json`
+  keeps the history).
+- Every row records the product identity (version, revision, binary
+  sha256), the variant, the resident processes at launch, the trial
+  filesystem and its validation flags; the parallel-run manifest pins the
+  policy sections, product pins and sandbox spec.
+
+`bench headline <tree> [<tree2>]` builds the published table (p50/p90,
+A/A spread and drift, memory, daemon boot) from a results tree, and with
+two trees the run-to-run agreement (same tolerance as the A/A gate).
 
 ## Architecture
 

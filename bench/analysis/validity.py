@@ -45,6 +45,8 @@ Captured failure classes it excludes (reason codes):
   sequence).
 - ``missing_metrics``: the trial produced no measurable metrics.
 - ``debug_phase``: debug evidence rows never enter published stats.
+- ``warmup_phase``: the unmeasured warm-up trial every product x
+  benchmark gets per pass (``schedule.warmup``).
 
 Phase rule: ``aa`` rows feed the A/A calibration section only; published
 stats aggregate the remaining non-debug phases, with per-product
@@ -169,6 +171,8 @@ def row_exclusion(row: dict, settle_auth: dict, gate: dict) -> str | None:
     phase = str(row.get("phase") or "")
     if phase.startswith("debug"):
         return "debug_phase"
+    if phase == "warmup":
+        return "warmup_phase"
     meta = gate.get(row.get("benchmark")) or {}
     applicable = meta.get("applicable_products")
     if applicable and row.get("product") not in applicable:

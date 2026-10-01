@@ -20,8 +20,8 @@ def _cfg(tmp_path, overrides=None):
 
 def test_discovery_finds_every_adapter(tmp_path):
     reg = discover(_cfg(tmp_path))
-    assert set(reg.products) == {"rust", "rust_b", "ts", "claude", "codex",
-                                 "codex_nodaemon", "pi", "hermes"}
+    assert set(reg.products) == {"rust", "rust_b", "ts", "claude", "claude_daemon",
+                                 "codex", "codex_nodaemon", "pi", "hermes"}
     assert set(reg.terminals) == {"pty", "tmux"}
     assert set(reg.fixtures) == {"session-10mib", "session-10mib-compacted",
                                  "subagent-tree"}
@@ -81,11 +81,10 @@ def test_deep_merge_override_wins():
 
 def test_product_config_loads_pinning():
     cfg = product_config("rust")
-    # the deployed lane pin: the per-VM candidate path every bundle deploy
-    # populates (deploy_bench.sh + the wave briefs); the cmp5 campaign pin
-    # (59a9c658, run 36193301325) lives in records/campaigns/cmp5-20260926/
-    assert cfg["binary"] == "/root/bench/repos/prime-agent-rust/target/release/prime-agent"
-    assert cfg["revision"] == "7152746b99f6767843bb40b4674a23a5a501fdc0"
+    # the r2 pin (2026-09-30): the release build at ~/bench-r2/rust; earlier
+    # campaign pins live in records/campaigns/
+    assert cfg["binary"] == str(Path("~/bench-r2/rust/bin/prime-agent-rust").expanduser())
+    assert cfg["revision"] == "e75f59efc6f74fcb23e45048f0f23b34490571d0"
     assert "install" in cfg
 
 
@@ -101,9 +100,10 @@ def test_product_config_honors_config_section_override():
     assert cfg["binary"] == "/root/bench/repos/prime-agent-rust/target/release/prime-agent"
     assert cfg["revision"] == "13d5c0d781d28228ab95d60760e5e018d283083a"
     assert cfg["needs_kernel_venv"] is True          # file default preserved
-    assert cfg["install"]["download_bytes"] == 53291156
+    assert cfg["install"]["installed_paths"]          # file default preserved
     assert cfg["vendor"]                              # vendor list preserved
-    assert product_config("rust", {"products": {}})["revision"] ==         "7152746b99f6767843bb40b4674a23a5a501fdc0"   # empty section = file pin
+    assert product_config("rust", {"products": {}})["revision"] == \
+        "e75f59efc6f74fcb23e45048f0f23b34490571d0"   # empty section = file pin
 
 
 def test_discovery_passes_config_product_overrides(tmp_path):

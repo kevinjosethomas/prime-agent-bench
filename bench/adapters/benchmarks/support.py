@@ -48,11 +48,13 @@ def screen_hash(session: Session) -> str:
 def drive_to_ready(session: Session, steps: list[DialogStep], timeout: float,
                    probe: str, pacing: dict) -> str:
     """Answer known onboarding dialogs (dialogs first, probes second) until
-    the editor echoes the probe token (ready). Returns "ready"."""
+    the editor echoes the probe token and it is still rendered
+    ``confirm_s`` later (ready). Returns "ready"."""
     answers = {}
     key_pause = float(pacing.get("key_pause_s", 0.7))
     loop_s = float(pacing.get("loop_s", 0.8))
     echo_wait = float(pacing.get("echo_wait_s", 1.2))
+    confirm_s = float(pacing.get("confirm_s", 3.0))
     deadline = now() + timeout
     while now() < deadline:
         txt = session.screen_text()
@@ -73,7 +75,12 @@ def drive_to_ready(session: Session, steps: list[DialogStep], timeout: float,
             session.send(probe)
             try:
                 session.wait_echo(echo_wait)
-                return "ready"
+                # some products mount the composer first and raise their
+                # first-run dialog (login, trace sharing) a moment later:
+                # ready only once the echo survives the confirm window
+                time.sleep(confirm_s)
+                if probe in session.screen_text():
+                    return "ready"
             except TimeoutError:
                 pass
         time.sleep(loop_s)
@@ -90,6 +97,12 @@ def prepass(product: ProductAdapter, ctx: TrialContext, driver: HarnessDriver) -
         first_paint(app, timeout=60)
         drive_to_ready(app, product.dialog_steps, timeout=150,
                        probe="Zq7prep01", pacing={})
+        # leave no draft behind: some prompts persist unsent input across
+        # launches (claude agents restores its dispatch draft)
+        for _ in range(4 * len("Zq7prep01")):
+            app.send("\x7f")
+            time.sleep(0.01)
+        time.sleep(0.5)
     finally:
         app.kill_tree()
     try:

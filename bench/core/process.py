@@ -36,10 +36,15 @@ def loadavg() -> float:
 
 
 def pids_referencing(needles) -> list:
-    """(pid, cmdline-head) for processes whose argv or cwd references any
-    needle path. The trial dir is unique per trial, so this is exact."""
+    """(pid, cmdline-head) for processes whose argv, cwd or environment
+    references any needle path. The trial dir is unique per trial, so this
+    is exact. The environment matters: every trial process inherits
+    HOME/TMPDIR under the trial dir, so a helper whose argv and cwd name
+    nothing of the trial (claude's bg-spare under /tmp/cc-daemon-<uid>)
+    is still found."""
     seen = []
     live = [str(n) for n in needles if n]
+    blive = [n.encode() for n in live]
     for proc in iter_proc_dirs():
         pid = int(proc.name)
         if pid in (1, os.getpid()):
@@ -53,9 +58,50 @@ def pids_referencing(needles) -> list:
         except OSError:
             cwd = ""
         hit = any((n in argv) or (cwd and (cwd == n or cwd.startswith(n + "/"))) for n in live)
+        if not hit:
+            try:
+                environ = (proc / "environ").read_bytes()
+            except OSError:
+                environ = b""
+            hit = any(n in environ for n in blive)
         if hit:
             seen.append((pid, argv[:110]))
     return seen
+
+
+def proc_identity(pid: int, base_env: dict, trial_dir) -> dict | None:
+    """One process's launch identity, trial paths normalized: argv and the
+    environment entries it carries beyond ``base_env`` (the harness's
+    launch env). Comparing a daemon the TUI spawned with one the harness
+    started shows whether both run the same configuration."""
+    root = str(trial_dir)
+    try:
+        argv = [a.decode(errors="replace") for a in
+                Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0") if a]
+        raw = Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
+    except OSError:
+        return None
+    env = dict(e.decode(errors="replace").split("=", 1) for e in raw if b"=" in e)
+    added = {k: v.replace(root, "<trial>") for k, v in env.items()
+             if k not in base_env and not k.startswith("PRIME_AGENT_INTERNAL_")}
+    return {"argv": [a.replace(root, "<trial>") for a in argv[1:]],
+            "env_added": dict(sorted(added.items()))}
+
+
+def fs_type(path) -> str:
+    """The filesystem type holding ``path`` (longest /proc/mounts prefix)."""
+    target = os.path.realpath(str(path))
+    best, kind = "", "unknown"
+    try:
+        with open("/proc/mounts") as f:
+            for line in f:
+                parts = line.split()
+                mnt = parts[1].replace("\\040", " ")
+                if (target == mnt or target.startswith(mnt.rstrip("/") + "/")) and len(mnt) > len(best):
+                    best, kind = mnt, parts[2]
+    except OSError:
+        pass
+    return kind
 
 
 def wire_shutdown(socket_path: str) -> None:

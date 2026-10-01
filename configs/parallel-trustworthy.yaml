@@ -1,0 +1,32 @@
+# The trustworthy startup campaign: ONE Prime VM sandbox per run with the
+# r2 sandbox spec (ubuntu:22.04, 4 CPU / 8 GB), compare.cold_start +
+# compare.warm_start interleaved in it, the 10-trial A/A pass + 10 trials
+# per product, reference calibration against the r2 fleet median (run
+# 20260930-110231: 1283.1 ms; >5% replaces the sandbox). Two runs = two
+# invocations on two fresh sandboxes; `bench headline <tree1> <tree2>`
+# compares them.
+backend: prime
+aa_trials: 10
+keep_sandboxes: false
+wave_timeout_s: 14400.0
+port_base: 8890
+
+reference:
+  outlier_pct: 5.0
+  outlier_policy: replace
+  max_replacements: 2
+  median_ms: 1283.1
+
+retry:
+  max_retries: 1
+
+sandbox_defaults:
+  image: ubuntu:22.04
+  cpu_cores: 4
+  memory_gb: 8
+  disk_gb: 60
+  timeout_minutes: 300
+  bootstrap: bash /root/bench-harness/vendor/bootstrap.sh
+
+groupings:
+  compare_startup: [compare.cold_start, compare.warm_start]

@@ -5,16 +5,9 @@ install:
   - /usr/lib/node_modules/@anthropic-ai
   npm_pkg: '@anthropic-ai/claude-code'
   npm_version: 2.1.285
+# the trial home is built clean (no operator ~/.claude: settings, hooks,
+# plugins, history); mock routing authenticates from the env
 auth_sources:
-- src: ~/.claude
-  excl:
-  - projects
-  - todos
-  - statsig
-  - shell-snapshots
-  note: authenticated state minus project data
-- src: ~/.claude.json
-  note: product config with projects stripped
 - src: ~/.prime/config.json
   note: Prime API key + team id for the real-api Anthropic-protocol route (Prime Inference)
 first_run_dialogs:
@@ -41,14 +34,9 @@ vendor:
   dst: usr/lib/node_modules/@anthropic-ai
 - src: /usr/bin/claude
   dst: usr/bin/claude
-- src: ~/.claude
-  dst: root/.claude
-  exclude:
-  - projects
-  - todos
-  - statsig
-  - shell-snapshots
-- src: ~/.claude.json
-  dst: root/.claude.json
 - src: ~/.prime/config.json
   dst: root/.prime/config.json
+
+# the prompt input row: the text before the typed probe token must fully
+# match this regex (the product's prompt glyph) for the echo to count
+input_prompt: '\s*[│|]?\s*[❯>]\s*'

@@ -11,7 +11,6 @@ full trial sweep still runs after the measured launch.
 """
 from __future__ import annotations
 
-import socket
 import subprocess
 import time
 
@@ -22,38 +21,31 @@ from bench.core.product import ProductAdapter, TrialContext
 from bench.core.process import sweep_trial
 
 
-def _wait_daemon_socket(socket_path, timeout: float = 60.0) -> bool:
-    """Block until the daemon's Unix socket accepts connections."""
-    deadline = time.perf_counter() + timeout
-    while time.perf_counter() < deadline:
-        if socket_path.exists():
-            try:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                    s.settimeout(2)
-                    s.connect(str(socket_path))
-                return True
-            except OSError:
-                pass
-        time.sleep(0.005)
-    return False
-
-
 def measure_warm_start(product: ProductAdapter, ctx: TrialContext, record: dict,
-                       driver) -> None:
-    """The warm-start measurement (prewarm + cold-start semantics)."""
+                       driver, daemon_dwell_s: float = 2.0) -> None:
+    """The warm-start measurement (prewarm + cold-start semantics).
+
+    Warm = the product's normal steady state. A daemon product's daemon is
+    started by its own command with the configuration its TUI would give
+    it (``daemon_env``), timed to socket accept, then left to settle for
+    ``daemon_dwell_s`` so the measured launch never races the daemon's own
+    boot work. The same dwell applies to every daemon product."""
     if product.needs_prepass:
         prepass(product, ctx, driver)
     daemon_argv = product.daemon_argv(ctx)
     if daemon_argv is not None:
         t0 = time.perf_counter()
-        starter = subprocess.Popen(daemon_argv, env=product.env(ctx), cwd=str(ctx["work"]),
+        starter = subprocess.Popen(daemon_argv, env=product.daemon_env(ctx), cwd=str(ctx["work"]),
                                    stdin=subprocess.DEVNULL,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if not _wait_daemon_socket(product.daemon_ready_socket(ctx), timeout=60):
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   start_new_session=True)
+        if not product.wait_daemon_ready(ctx, timeout=60):
             raise TimeoutError("pre-warmed daemon never accepted on its socket")
+        boot_ms = round((time.perf_counter() - t0) * 1000.0, 1)
         if product.daemon_command_exits and starter.wait(timeout=60) != 0:
             raise RuntimeError(f"daemon start exited {starter.returncode}")
-        record["daemon"] = {"prewarmed_boot_ms": round((time.perf_counter() - t0) * 1000.0, 1)}
+        time.sleep(daemon_dwell_s)
+        record["daemon"] = {"prewarmed_boot_ms": boot_ms, "dwell_s": daemon_dwell_s}
     elif not product.needs_prepass:
         # an unmeasured launch warms the home/caches; the measured launch
         # that follows is the product's native repeat-launch warm start
@@ -81,4 +73,6 @@ class WarmStart(Benchmark):
     name = "compare.warm_start"
 
     def measure(self, product, ctx, record, driver, fixture=None) -> None:
-        measure_warm_start(product, ctx, record, driver)
+        dwell = float((self.cfg.get("benchmarks", {}).get(self.name) or {})
+                      .get("daemon_dwell_s", 2.0))
+        measure_warm_start(product, ctx, record, driver, daemon_dwell_s=dwell)

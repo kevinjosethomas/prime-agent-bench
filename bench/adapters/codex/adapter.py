@@ -33,6 +33,21 @@ from bench.core.env import scrubbed_env
 from bench.core.product import ProductAdapter, TrialContext
 
 
+def set_toplevel_toml(path: Path, key: str, value: str) -> None:
+    """Set one top-level ``key = value`` in a TOML file: replace an existing
+    line or insert it first (a top-level key must precede any [section])."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = f"{key} = {value}"
+    lines = path.read_text().splitlines() if path.exists() else []
+    for i, ln in enumerate(lines):
+        if ln.strip().split("=", 1)[0].strip() == key:
+            lines[i] = line
+            break
+    else:
+        lines.insert(0, line)
+    path.write_text("\n".join(lines) + "\n")
+
+
 class CodexProduct(ProductAdapter):
     name = "codex"
     display_name = "Codex CLI"
@@ -71,12 +86,21 @@ class CodexProduct(ProductAdapter):
                 "binary_sha256": sha256_file(Path(self.binary).resolve()),
                 "auth_limited": True}
 
+    #: the one file taken from the node's ~/.codex: the model catalog cache
+    #: (product cache, nothing personal). Copied ChatGPT tokens never
+    #: authenticate a copied home and the prepass walks the dummy-key login,
+    #: so the operator's auth, sessions, memories, history, skills and
+    #: plugins stay out of every trial.
+    TEMPLATE_FILES = ("models_cache.json",)
+
     def prepare_template(self, tpl: Path) -> None:
-        """The whole authenticated .codex state (tokens + device identity)."""
-        src = Path.home() / ".codex"
-        if src.exists():
-            shutil.copytree(src, tpl / "home" / ".codex", dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("tmp", ".tmp"))
+        """A clean .codex home plus the model catalog cache."""
+        dst = tpl / "home" / ".codex"
+        dst.mkdir(parents=True, exist_ok=True)
+        for name in self.TEMPLATE_FILES:
+            src = Path.home() / ".codex" / name
+            if src.exists():
+                shutil.copy(src, dst / name)
 
     def env(self, ctx: TrialContext) -> dict:
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"])})
@@ -107,20 +131,25 @@ class CodexProduct(ProductAdapter):
         return ctx["home"] / ".codex" / "app-server-control" / "app-server-control.sock"
 
     daemon_command_exits = True
+    daemon_process_args = ("app-server", "--listen")
 
     def first_run_setup(self, ctx: TrialContext) -> None:
         """The managed-daemon install a user's first launch performs (a
         ~360MB copy of the codex binaries into ~/.codex/packages; the
         template excludes it: its `current` link is absolute). Installed
-        by codex's own start, then stopped, then synced so its dirty pages
-        are not flushed during a measured launch."""
-        import os
+        by codex's own start, then stopped."""
         env = self.env(ctx)
         for cmd in ("start", "stop"):
             subprocess.run([str(self.binary), "app-server", "daemon", cmd], env=env,
                            cwd=str(ctx["work"]), stdin=subprocess.DEVNULL,
                            capture_output=True, timeout=120, check=True)
-        os.sync()
+
+    def customize_trial(self, ctx: TrialContext) -> None:
+        """No self-update during a measurement: codex's startup update check
+        offers ``npm install -g @openai/codex`` and a generic "press enter"
+        answer installs it (observed live: 0.159.2 -> 0.160.0 mid-run)."""
+        set_toplevel_toml(ctx["home"] / ".codex" / "config.toml",
+                          "check_for_update_on_startup", "false")
 
     def apply_routing(self, ctx: TrialContext) -> None:
         """Route the trial home's provider: mock writes the config.toml
@@ -161,23 +190,8 @@ class CodexProduct(ProductAdapter):
             # into the walked config.toml text: replace an existing pin or
             # insert before the first [section] (a top-level key must
             # precede any section header in TOML).
-            codex_dir = ctx["home"] / ".codex"
-            codex_dir.mkdir(parents=True, exist_ok=True)
-            cfg_path = codex_dir / "config.toml"
-            line = f'openai_base_url = "http://127.0.0.1:{self.mock_port}/v1"'
-            if cfg_path.exists():
-                out, replaced = [], False
-                for ln in cfg_path.read_text().splitlines():
-                    if ln.strip().startswith("openai_base_url"):
-                        out.append(line)
-                        replaced = True
-                    else:
-                        out.append(ln)
-                if not replaced:
-                    out.insert(0, line)
-                cfg_path.write_text("\n".join(out) + "\n")
-            else:
-                cfg_path.write_text(line + "\n")
+            set_toplevel_toml(ctx["home"] / ".codex" / "config.toml", "openai_base_url",
+                              f'"http://127.0.0.1:{self.mock_port}/v1"')
 
     def model_info(self, ctx: TrialContext) -> str:
         """The model a submit routes to (evidence per row)."""
@@ -197,6 +211,7 @@ class CodexNoDaemonProduct(CodexProduct):
     display_name = "Codex CLI (--no-daemon)"
     config_name = "codex"
     template_excludes = ()
+    daemon_process_args = ()
 
     def argv(self, ctx: TrialContext, resume_fixture: str | None = None) -> list[str]:
         argv = super().argv(ctx, resume_fixture)

@@ -56,6 +56,21 @@ class Session(ABC):
     def wait_echo(self, timeout: float = 2.0) -> float:
         """Block until the watched token echoes; returns its timestamp."""
 
+    def input_mode_raw(self) -> bool | None:
+        """Whether the product has taken the terminal out of cooked mode
+        (ECHO and ICANON off). While the tty still echoes, the kernel line
+        discipline itself renders typed bytes at the cursor, so an "echo"
+        then proves nothing about the product's input box. None: the
+        driver cannot read the tty mode."""
+        return None
+
+    def screen_row_with(self, needle: str) -> str | None:
+        """The rendered screen row that contains ``needle`` (None if absent)."""
+        for row in self.screen_text().splitlines():
+            if needle in row:
+                return row
+        return None
+
     def wait_output_after(self, t_start: float, timeout: float = 10.0) -> float:
         """Block until the product writes output after t_start; returns its
         timestamp. Default: the first rendered-frame change (poll-clocked);
@@ -170,6 +185,14 @@ class Session(ABC):
         each dismissal — dialog time is excluded from gap_ms and reported
         separately (dialogs, dialog_ms)."""
         start = start_ts if start_ts is not None else (self.t_first_paint or self.t_spawn)
+        # never type into a cooked tty: its echo is the kernel's, not the
+        # product's (the time spent waiting for raw mode stays in the gap)
+        raw = self.input_mode_raw()
+        deadline_raw = now() + timeout
+        while raw is False and now() < deadline_raw:
+            time.sleep(0.0005)
+            raw = self.input_mode_raw()
+        t_raw = now() if raw else None
         sends = []
         dialogs = []
         dialog_time = 0.0
@@ -221,6 +244,10 @@ class Session(ABC):
                     "quantized_ms": 0.0 if buffered else round(grid * 1000.0, 1),
                     "dialogs": dialogs,
                     "dialog_ms": round(dialog_time * 1000.0, 1),
+                    "tty_raw_at_first_send": raw,
+                    "tty_raw_ms": (round((t_raw - self.t_spawn) * 1000.0, 2)
+                                   if t_raw is not None else None),
+                    "echo_row": self.screen_row_with(probe),
                 }
             except TimeoutError:
                 continue

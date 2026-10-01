@@ -161,6 +161,17 @@ class PrimeAgentRustProduct(ProductAdapter):
         return [str(self.binary), "--mode", "daemon",
                 "--daemon-socket", str(ctx["daemon_socket"])]
 
+    daemon_process_args = ("--mode", "daemon")
+
+    def daemon_env(self, ctx: TrialContext) -> dict:
+        """The TUI's ``--offline`` reaches the daemon it spawns as
+        PI_OFFLINE=1; a daemon started without it goes online at boot
+        (catalog fetches over HTTPS) and the measured launch races that."""
+        env = self.env(ctx)
+        if ctx.get("routing") != "real-api":
+            env["PI_OFFLINE"] = "1"
+        return env
+
 
 class PrimeAgentRustBProduct(PrimeAgentRustProduct):
     """A second rust build in the same run (A/B of two pins): rust's

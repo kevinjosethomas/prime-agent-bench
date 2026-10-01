@@ -9,6 +9,8 @@ first paint, then one of three readiness behaviors:
   discarded; only post-ready probes echo)
 - dialog: print an onboarding marker, sleep, remove it, then echo (the
   probe must answer the dialog inline and exclude its time from the gap)
+- cooked: paint the banner while the tty is still cooked (the kernel
+  would echo typed bytes itself), sleep R, then go raw and echo
 """
 import os
 import sys
@@ -21,9 +23,15 @@ delay = float(sys.argv[2]) if len(sys.argv) > 2 else 0.3
 MARKER = "Share agent traces with Prime Intellect?"
 
 fd = sys.stdin.fileno()
-tty.setraw(fd)  # raw from the start: no kernel echo of typed probes
 banner = "\r\n  FAKE-TUI READY\r\n"
-if mode == "dialog":
+if mode != "cooked":
+    tty.setraw(fd)  # raw from the start: no kernel echo of typed probes
+if mode == "cooked":
+    sys.stdout.write(banner); sys.stdout.flush()
+    time.sleep(delay)
+    termios.tcflush(fd, termios.TCIFLUSH)
+    tty.setraw(fd)
+elif mode == "dialog":
     sys.stdout.write("\r\n  " + MARKER + "\r\n"); sys.stdout.flush()
     time.sleep(delay)
     # remove the marker's own line (the cursor sits one row below it)

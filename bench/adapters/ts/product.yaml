@@ -38,3 +38,7 @@ vendor:
   dst: root/.prime/agent/auth.json
 - src: ~/.prime/agent/settings.json
   dst: root/.prime/agent/settings.json
+
+# the prompt input row: the text before the typed probe token must fully
+# match this regex (the product's prompt glyph) for the echo to count
+input_prompt: '\s*>\s*'

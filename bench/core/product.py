@@ -149,6 +149,9 @@ class ProductAdapter(ABC):
         self.dialog_steps = resolve_dialogs(self.product_cfg.get("first_run_dialogs"))
         #: product-declared repaint keys for erase_all (stale pre-mount echo cells)
         self.erase_refresh_keys = tuple(keystroke(k) for k in (self.product_cfg.get("erase_refresh_keys") or []))
+        #: regex the input row's text before the typed token must fully
+        #: match (the prompt glyph); without one no echo validates
+        self.input_prompt: str = str(self.product_cfg.get("input_prompt") or r"(?!)")
         self.msg_routing = str(self.product_cfg.get("msg_routing", type(self).msg_routing))
         if self.msg_routing not in MSG_ROUTING_REGIMES:
             raise ValueError(
@@ -237,6 +240,37 @@ class ProductAdapter(ABC):
     #: daemon_argv is a starter that exits once the daemon is up (codex),
     #: not the daemon process itself (rust/ts)
     daemon_command_exits: bool = False
+    #: contiguous argv tokens that identify the resident daemon process
+    #: (its launch identity is recorded on every cold/warm row)
+    daemon_process_args: tuple[str, ...] = ()
+    #: env keys the product's own CLI sets on every child process it spawns
+    #: (observed on the TUI-spawned daemon); they mark the spawner, carry no
+    #: daemon setting, and are left out of the cold/warm daemon comparison
+    daemon_spawn_env_keys: tuple[str, ...] = ()
+
+    def daemon_env(self, ctx: TrialContext) -> dict:
+        """The env the pre-warmed daemon starts with: the configuration the
+        product's TUI would hand the daemon it spawns itself (default: the
+        trial launch env)."""
+        return self.env(ctx)
+
+    def wait_daemon_ready(self, ctx: TrialContext, timeout: float = 60.0) -> bool:
+        """Block until the resident daemon accepts on its unix socket."""
+        import socket
+        import time
+        deadline = time.perf_counter() + timeout
+        while time.perf_counter() < deadline:
+            path = self.daemon_ready_socket(ctx)
+            if path is not None and path.exists():
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                        s.settimeout(2)
+                        s.connect(str(path))
+                    return True
+                except OSError:
+                    pass
+            time.sleep(0.005)
+        return False
 
     def first_run_setup(self, ctx: TrialContext) -> None:
         """One-time setup a real user's first launch leaves on disk that the

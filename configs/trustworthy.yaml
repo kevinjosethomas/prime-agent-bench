@@ -1,0 +1,88 @@
+# The trustworthy startup campaign (2026-10-01): compare.cold_start +
+# compare.warm_start, every product in its default mode plus its daemon /
+# no-daemon variant, under ONE measurement policy enforced by the harness:
+# - trial roots on tmpfs (storage.trials): the Prime VM disk's per-fsync
+#   latency flips between ~0.2 ms and ~40 ms for seconds to minutes; the
+#   products that fsync while starting (rust, ts) would measure the host
+# - cold + warm interleaved in one ABBA schedule, one unmeasured warm-up
+#   trial per product x benchmark per pass (schedule)
+# - os.sync() before every measured launch (in the scenario, for everyone)
+# - warm daemons started with the TUI's own daemon configuration and left
+#   to settle daemon_dwell_s before the measured launch
+# - the A/A gate re-runs a failing product up to aa.max_reruns times, then
+#   the headline table marks it INVALID
+# Pins: rust = org main 66e13ea53 (built with the wsr/dfair recipe:
+# install-rust.sh launcher + v0.9.9-beta.11 payload sidecars + the stripped
+# binary; vendor/products-tb.tar.gz), rust_b = v0.9.9-beta.11
+# (vendor/products-dfair.tar.gz); ts/claude/codex/pi = the r2 vendor payload.
+bench_root: ~/tbroot
+results_dir: ~/tbroot/results
+
+product_order: [rust, rust_b, ts, claude, claude_daemon, codex, codex_nodaemon, pi]
+display:
+  rust: Prime Agent Rust (main 66e13ea53)
+  rust_b: Prime Agent Rust (v0.9.9-beta.11)
+  ts: Prime Agent TS
+  claude: Claude Code
+  claude_daemon: Claude Code (daemon, claude agents)
+  codex: Codex CLI (daemon, default)
+  codex_nodaemon: Codex CLI (--no-daemon)
+  pi: Pi Mono
+
+products:
+  rust:
+    binary: /root/tbuild/builds/main-66e1/bin/prime-agent-rust
+    revision: 66e13ea53567919e91c1106833e25d46b43ea537
+    binary_sha256: 74612425f028f038fe8451d61af98074c557f5c600d3c23ee243beb726fed47b
+  rust_b:
+    binary: /root/dfair/builds/b11/bin/prime-agent-rust
+    revision: v0.9.9-beta.11
+    binary_sha256: efd3db4479d35d992a2951630f5c0a1641d2b6db87d1f4f5f9476106b8f2146f
+
+install:
+  node_runtime_paths: [/usr/lib/node_modules/npm, /usr/bin/node]
+
+driver: pty
+mock:
+  port: 8799
+
+storage:
+  trials: tmpfs
+  tmpfs_size: 5g
+
+schedule:
+  interleave: true
+  warmup: true
+
+aa:
+  spread_threshold_pct: 10.0
+  drift_threshold_pct: 10.0
+  abs_floor_ms: 5.0
+  min_valid_frac: 0.8
+  max_reruns: 2
+
+benchmarks:
+  compare.warm_start:
+    daemon_dwell_s: 2.0
+
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv, exclude: [tools]}
+
+settle:
+  timeout_s: 300.0
+  first_paint_timeout_s: 240.0
+  key_pause_s: 0.7
+  loop_s: 0.8
+  echo_wait_s: 1.2
+
+noop_control:
+  rounds: 30
+
+load_gate:
+  compile_markers: [rustc, cargo, /tsc, esbuild, npm exec, node-gyp, cc1, clang]
+  load_threshold: 0.6
+  max_wait_s: 300.0
+  poll_s: 2.0

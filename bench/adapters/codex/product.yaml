@@ -7,12 +7,9 @@ install:
   npm_pkg: '@openai/codex'
   npm_version: 0.159.2
 auth_sources:
-- src: ~/.codex
-  excl:
-  - tmp
-  - .tmp
-  note: full device state; copied ChatGPT tokens do NOT authenticate a copied home; the prepass walk settles the dummy apikey state, and mock routing only pins
-    openai_base_url in config.toml (the wire_api stays responses - the mock serves it)
+- src: ~/.codex/models_cache.json
+  note: the model catalog cache only; the trial home is otherwise built clean (copied ChatGPT tokens never authenticate a copied home; the prepass walk settles the
+    dummy apikey state, and mock routing only pins openai_base_url in config.toml - the wire_api stays responses, the mock serves it)
 - src: ~/.pi/agent/auth.json
   note: "the OpenAI API key (openai.key) for the real-api api-key route \u2014 the\
     \ ChatGPT OAuth cannot survive isolated trial homes (single-use refresh tokens\
@@ -33,6 +30,10 @@ first_run_dialogs:
   - sk-bench-dummy-not-real
   - enter
   intent: key box -> settled dummy-key baseline state
+- marker: Skip until next version
+  keys:
+  - '3'
+  intent: the startup update prompt (check_for_update_on_startup is off in every trial home; if it still shows, never install - option 3 skips; must precede the generic continue, whose enter selects "Update now")
 - marker: Press enter to continue
   keys:
   - enter
@@ -46,10 +47,11 @@ vendor:
   dst: usr/lib/node_modules/@openai
 - src: /usr/bin/codex
   dst: usr/bin/codex
-- src: ~/.codex
-  dst: root/.codex
-  exclude:
-  - tmp
-  - .tmp
+- src: ~/.codex/models_cache.json
+  dst: root/.codex/models_cache.json
 - src: ~/.pi/agent/auth.json
   dst: root/.pi/agent/auth.json
+
+# the prompt input row: the text before the typed probe token must fully
+# match this regex (the product's prompt glyph) for the echo to count
+input_prompt: '\s*›\s*'

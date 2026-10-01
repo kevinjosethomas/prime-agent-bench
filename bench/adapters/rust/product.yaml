@@ -38,3 +38,7 @@ vendor:
 # + skills/ + bundled catalogs). The payload binary's sha256 is pinned; a
 # swapped or stale binary fails loudly at version_info.
 binary_sha256: 0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5
+
+# the prompt input row: the text before the typed probe token must fully
+# match this regex (the product's prompt glyph) for the echo to count
+input_prompt: '\s*>\s*'

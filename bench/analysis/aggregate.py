@@ -15,7 +15,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from bench.analysis.aa_validation import aa_failing, aa_validity
+from bench.analysis.aa_validation import aa_failing, aa_validity, latest_attempt
 from bench.analysis.rankings import delta_vs_baseline, rank_products
 from bench.analysis.stats import boot_ci_median, stats
 from bench.analysis.validity import (ERROR_REASONS, aa_primary_p50s, gate_rows,
@@ -267,7 +267,7 @@ def summarize_rows(rows: list, cfg: dict, settle_rows: list | None = None,
     gate = cfg.get("gate_benchmarks") or {}
     settle_auth = settle_auth_products(settle_rows or [])
     status = status_report(rows)
-    trial_rows = [r for r in rows if not is_status_row(r)]
+    trial_rows = latest_attempt([r for r in rows if not is_status_row(r)])
     valid, excluded = gate_rows(trial_rows, settle_auth=settle_auth, gate=gate)
     published = [r for r in valid if not is_aa_phase(r)]
     if phases is not None:
