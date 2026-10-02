@@ -81,6 +81,29 @@ class HermesAgentProduct(ProductAdapter):
         src = (self.product_cfg.get("install") or {}).get("payload_code")
         return Path(src).expanduser() if src else FHS_CODE
 
+    def __init__(self, cfg: dict):
+        """Resolve the install footprint to the live install when present.
+
+        The vendored payload stages the FHS layout under a node-side
+        prefix (~/bench-r2/hermes-payload/usr/local/...); a machine that
+        carries the install itself (every sandbox, the benchmark node)
+        has it at the FHS paths. compare.install_disk's accounting must
+        read the REAL install wherever it lives, or the r2-era trap
+        returns: installed_bytes 0 on the machine that actually runs the
+        trials (the staging tree is not the footprint)."""
+        super().__init__(cfg)
+        marker = "hermes-payload/"
+        resolved = []
+        for p in (self.product_cfg.get("install") or {}).get("installed_paths") or []:
+            p = str(p)
+            if marker in p:
+                fhs = "/" + p.split(marker, 1)[1]
+                resolved.append(fhs if Path(fhs).exists() else p)
+            else:
+                resolved.append(p)
+        if resolved:
+            self.product_cfg.setdefault("install", {})["installed_paths"] = resolved
+
     def version_info(self) -> dict:
         """Machine-collected version evidence, collected where trials run.
 

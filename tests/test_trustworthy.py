@@ -243,3 +243,30 @@ def test_hermes_version_evidence_is_collected_from_the_payload(tmp_path):
         raise AssertionError("a swapped payload must fail loudly")
     except RuntimeError as e:
         assert "digest" in str(e)
+
+
+def test_hermes_install_footprint_reads_the_live_install(tmp_path):
+    """The r2-era install_disk trap: a machine that carries the install
+    itself (sandbox/node) must account the FHS footprint, not the node's
+    staging tree. The adapter resolves staging paths through the
+    hermes-payload marker to the live FHS paths when they exist."""
+    import yaml as _yaml
+    cfg = load_config(None)
+    cfg["bench_root"] = str(tmp_path / "bench")
+    cfg["results_dir"] = str(tmp_path / "bench" / "results")
+    cfg["products"] = {"hermes": {"install": {"installed_paths": [
+        "/tmp/staging/hermes-payload/usr/local/lib/hermes-agent",
+        "/tmp/staging/hermes-payload/usr/local/share/uv"]}}}
+    reg = discover(cfg)
+    hermes = reg.product("hermes")
+    if Path("/usr/local/lib/hermes-agent").is_dir():
+        assert hermes.product_cfg["install"]["installed_paths"] == [
+            "/usr/local/lib/hermes-agent", "/usr/local/share/uv"]
+        from bench.adapters.benchmarks.install_disk import account_product
+        out = account_product(hermes, tmp_path / "npm-pack")
+        assert out["installed_bytes"] > 0        # the real footprint, not 0
+    else:
+        # no live install: the staging paths stand (the node-side dry run)
+        assert hermes.product_cfg["install"]["installed_paths"] == [
+            "/tmp/staging/hermes-payload/usr/local/lib/hermes-agent",
+            "/tmp/staging/hermes-payload/usr/local/share/uv"]
