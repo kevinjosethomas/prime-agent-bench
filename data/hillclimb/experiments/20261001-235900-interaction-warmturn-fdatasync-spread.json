@@ -1,0 +1,162 @@
+{
+ "id": "20261001-235900-interaction-warmturn-fdatasync-spread",
+ "axis": "interaction",
+ "hypothesis": "The model-resolve-cache record's reported-only finding #2 (20260927-013300): 'the warm-turn ack->user_row spread includes the durable-append fdatasync - flush-regime sensitive per the fleet advisory'. The warmturn-fdatasync lane's honest negative (20260929-161500) characterized the spread through trap-episode windows on a host that per the hostregime census v1.2 was NOT in a census state (its preflight A-class sat 26-28ms in episodes), so the spread's REGIME axis was never measured: nobody has measured the in-product warm-turn rows across LABELED census states. The unlock: the hostregime census (712223f) is the regime-label authority (fresh bench-class hosts run fast 0.84-0.90 / slow 2.04-2.10ms; repeat-fsync flat in ALL regimes) and the corrected dual-class preflight identifies the state at every leg boundary. Paired question: does the warm-turn append path pay the fresh-write class (state-sensitive) or the repeat-fsync class (state-invariant)? Pre-registered predictions: P1 the in-product session-row fdatasync stays in its sub-ms band in BOTH census states (slow/fast ratio <1.5x; no correlation with the A-class p50) = repeat-fsync-class pricing, closing the finding as an honest negative with the mechanism named; P2 the sidecar isolated product-shape probe replicates the census's flat append_fsync class; P3 the A-class flips between the census bands in-battery; P4 the volume term lifts with regime only at the multi-MB end; P5 the journal checkpoint (the phase's first sync) carries the trap exposure while the per-row syncs do not.",
+ "approach": "Characterization-only (no code change, no branch, no PR): one fresh bench-class VM (hillclimb-perf-warmturn-fdatasync-spread, ubuntu:22.04 16c/32GB/40GB), one release build at the pinned tip cca05169d (origin/main; the named tip; verified: append_cached per-row sync_data + batched journal append_records both present), 20 sequential strace-censused trials in 3 interleaved arms ([f,r,g] x4 then r x8), the corrected probe12 dual-class preflight at EVERY leg boundary (40 ISOLATED fresh+sync_all+rename @0.5s + 20 repeat-fsync with the prior lane's pre-sync+12s-settle B-artifact fix, + the v1.2 census-state labeler: CENSUS-FAST/CENSUS-SLOW bands from the hostregime census, FLEET-PHASE by rule-B repeat>2x, DEEP-SUSPECT fresh>4x floor with B flat), a continuous sidecar isolated product-shape probe (open O_APPEND+4KB write+fdatasync @2s), a state-gated isolated volume probe (4K/64K/512K/4M/16M x 20 ops @0.5s), and post-battery triage (a fresh-file incremental-growth test at the sidecar cadence + a size ladder). ARMS: f1-f4 fresh mock sessions (the wave-5 msgsettle protocol verbatim: 120x40 PTY, probe-input-ready, typed prompt, Enter->first-chunk ack, needle+600ms-stability settle; 4 turns, 3 warm); r1-r12 the bench-repo real-session fixture session-imageheavy-vizbuilder.jsonl (22.9MB/6870 rows, sha f6ab958a) RESUMED with the settled copy (production shape) x3 warm turns; g1-g4 fresh mock sessions on a big-reply script carrying IN-PRODUCT 65,552B and 524,306B assistant rows (tail-marker needles: the reply head scrolls out of the viewport mid-stream). Every trial: PI_REQUEST_TIMING on, strace -f -tt -T -y lean filter on the daemon, per-row write-size join (each sync paired with the preceding write() bytes on the same fd), binary+fixture sha asserted, mock request-count parity (one completion POST per turn).",
+ "parity_notes": "No product code changed (characterization-only): frozen surfaces untouched by construction. The tip's warm-turn durable-append path verified by code read at cca05169d: session rows append via window_cache.rs append_cached (open O_APPEND + write_all + flush + sync_data per row - the deliberate #2545/#3023 strengthening, unchanged); the journal checkpoint is the batched append_records (one sync_all per checkpoint, #2936's shape, unchanged). The TS-parity analysis is carried verbatim from the prior warmturn-fdatasync record (20260929-161500): TS session rows are plain appendFileSync with zero durability syncs; the port's per-row fdatasync is the disclosed strengthening; the parity-restoring cut remains the operator's contract call, twice recorded - this census does not touch it. The measured mock path replicates the campaign's compare.msg_send provider path (bench vendored mock_provider SSE, queue-matched).",
+ "base": {
+  "revision": "cca05169d2e63d26d738b665dca020c3df706c50 (origin/main, the pinned tip at campaign launch)"
+ },
+ "branch": "none (characterization-only; no lane branch, no commits)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "v9d7rc40yx5izm3p3yxf72fn (hillclimb-perf-warmturn-fdatasync-spread, 16c/32GB/40GB ubuntu:22.04, AMD EPYC)",
+  "binary_sha256": "cfddcd749cdd349a9d6dfd681c1a159159dc6e4ab8a888b7a7002e21fbcc92ab",
+  "build_seconds": 126,
+  "toolchain": "rustup 1.98.1 (cargo build --release --locked --workspace)",
+  "tip_verification": "git rev-parse HEAD == cca05169d2e63d26d738b665dca020c3df706c50 asserted in the legs log"
+ },
+ "gates": {
+  "fmt": "N/A (no code change)",
+  "clippy": "N/A (no code change)",
+  "test": "N/A (characterization-only; no PR, no gate chain)"
+ },
+ "measurements": {
+  "method": "same-vm sequential labeled arms, one binary at the pinned tip, strace -f -tt -T -y census (-T durations x1000 to ms; the per-sync write-size join via the preceding write() on the same fd; the interrupted-syscall unfinished/resumed pairs handled), corrected probe12 at every leg boundary + the continuous sidecar + the state-gated volume probe + post-battery triage; every leg labeled per the hostregime advisory v1.2; NO-CEILING (in-leg traps labeled, never blended)",
+  "battery": "20 trials (f1-4, r1-12, g1-4) 2026-10-01T21:41Z-23:05Z; all completed=true (4/4 turns per f/g trial, 3/3 per r trial; mock_req_delta == turn count on every trial); 40 boundary probes: 18 CENSUS-FAST, 1 CENSUS-SLOW, 20 DEEP-SUSPECT, 1 FLEET-PHASE",
+  "p1_paired_question_per_state_table": {
+   "CENSUS-FAST_legs": {
+    "legs": 6,
+    "A_p50_range_ms": "0.85-1.02",
+    "session_row_fdatasync_1KB_class": {
+     "n": 38,
+     "p50_ms": 0.536,
+     "p90_ms": 1.493,
+     "min_ms": 0.259,
+     "max_ms": 5.828
+    },
+    "journal_checkpoint_fsync": {
+     "n": 44,
+     "p50_ms": 0.671,
+     "max_ms": 33.219
+    }
+   },
+   "DEEP_SUSPECT_legs": {
+    "legs": 14,
+    "A_p50_range_ms": "24.43-34.81",
+    "session_row_fdatasync_1KB_class": {
+     "n": 90,
+     "p50_ms": 0.398,
+     "p90_ms": 2.164,
+     "min_ms": 0.201,
+     "max_ms": 6.383
+    },
+    "journal_checkpoint_fsync": {
+     "n": 112,
+     "p50_ms": 0.689,
+     "max_ms": 67.168
+    }
+   },
+   "reading": "the in-product warm-turn session-row fdatasync (the production KB-class rows, 200-565B) is FLAT across a 41x fresh-create swing (A 0.85->34.81ms; session p50 0.536 -> 0.398ms - no lift at all); discriminant correlations: session_p50 vs A_p50 = 0.064 (none), journal_p50 vs A_p50 = 0.089 (none); the B-class rule-B reference stayed flat 0.08-0.17ms in fast/slow/deep and lifted to 5.97ms in the one FLEET-PHASE window (rule-B fired live)",
+   "census_slow_note": "only ONE CENSUS-SLOW preflight occurred in 3.4h (A 2.43/B 0.17 at 21:54:20Z, no qualifying trial bracket; the host spent the window in fast/deep oscillation); the slow-state append-class reference is the hostregime census's own table (append_fsync 0.587-0.646ms flat across its fast/slow states)"
+  },
+  "per_arm_all_states": {
+   "f_fresh_mock_4turn": {
+    "session_warm": {
+     "n": 32,
+     "p50_ms": 0.341,
+     "max_ms": 3.364
+    },
+    "journal": {
+     "n": 36,
+     "p50_ms": 0.689,
+     "max_ms": 28.147
+    },
+    "session_gt5ms": [],
+    "journal_gt5ms_count": 5
+   },
+   "r_settled_fixture_resume_3turn": {
+    "session_warm": {
+     "n": 72,
+     "p50_ms": 0.535,
+     "max_ms": 6.383
+    },
+    "journal": {
+     "n": 84,
+     "p50_ms": 0.663,
+     "max_ms": 67.168
+    },
+    "session_gt5ms": [
+     5.828,
+     6.383
+    ],
+    "journal_gt5ms_count": 13
+   },
+   "g_big_reply_4turn": {
+    "session_warm_small_rows": {
+     "n": 24,
+     "p50_ms": 0.378,
+     "max_ms": 5.747
+    },
+    "journal": {
+     "n": 36,
+     "p50_ms": 0.714,
+     "max_ms": 25.542
+    },
+    "in_product_big_rows": {
+     "65552B_rows": [
+      0.67,
+      0.443,
+      2.471,
+      26.178
+     ],
+     "524306B_rows": [
+      25.893,
+      30.023,
+      25.364,
+      26.21
+     ]
+    }
+   }
+  },
+  "p4_size_axis_volume_probe_CENSUS_FAST_bracketed": {
+   "bracket": "vol-gate A=0.96/B=0.08 CENSUS-FAST, vol-post A=0.96/B=0.09 CENSUS-FAST",
+   "isolated_append_fdatasync_p50_ms": {
+    "4096B": 0.752,
+    "65536B": 27.57,
+    "524288B": 26.551,
+    "4194304B": 30.645,
+    "16777216B": 44.104
+   },
+   "reading": "on this host the isolated >=64KB write classes carry a ~27-44ms quantum INDEPENDENT of the fresh-create state (4KB appends 0.75ms in the same bracketed window); the in-product 512KB assistant rows hit it 4/4 (25.4-30.0ms, all in DEEP-SUSPECT legs) while the in-product 66KB rows escaped 3/4 (0.44-2.47ms, one 26.2ms member) - the burst-amortization effect; the production KB-class rows never touched it"
+  },
+  "p5_trap_exposure": "the trap exposure concentrates on the journal checkpoint (the phase's FIRST sync): journal members >5ms = 5/36 (f), 13/84 (r, max 67.2ms), 3/36 (g); session-row members >5ms = 0/32 (f), 2/72 (r: 5.8/6.4ms), 6/32 (g - the big-row members 25.9-30.0ms plus one 5.7); the prior lane's first-sync finding re-confirmed at the tip with state labels",
+  "instrument_divergence_finding": {
+   "sidecar_sustained_deep_window": "the continuous isolated product-shape probe (4KB append+fdatasync @2s to its own growing file) entered a SUSTAINED 26-31ms mode at 22:02Z that held for 66 minutes (every per-minute p50 25-33ms through 23:08Z) WHILE the fresh-create boundary probes read CENSUS-FAST (A 0.98-1.10) and the in-product warm rows stayed 0.38-0.59ms (r9-r12 ran inside that window; the in-product surface never felt it)",
+   "post_battery_triage": "fresh-settled files append fast in every state (ladder: 4KB-file 0.79 / 1MB 0.74 / 13MB 0.69 / 40MB 0.76ms p50, 20s settle after write+fsync); the aged sidecar file reproduced 29.5-31.1ms; a fresh file grown incrementally at the sidecar cadence for 25min/746 ops reproduces the BIMODAL scattered pattern (p50 0.911ms, 178/746 members >15ms at 27-52ms, no monotonic aging) - the sustained mode did not recur post-battery (single occurrence; mechanism not isolated: candidate = the shared sandbox-storage backend's append-flush batching class)",
+   "lesson": "the ISOLATED continuous probe class can sit 40x above the production surface for an entire window that neither the fresh-create boundary probes nor the in-product census show: an isolated sidecar's sustained-lift reading must NEVER invalidate in-product timing legs; the dual-class boundary probe + the in-product census are the regime authority"
+  },
+  "headline": "THE PAIRED QUESTION ANSWERED: the warm-turn durable-append path prices like the REPEAT-FSYNC class. The in-product session-row fdatasync held its 0.40-0.54ms p50 band through a 41x fresh-create swing (CENSUS-FAST legs A 0.85-1.02 vs DEEP-SUSPECT legs A 24.4-34.8ms; correlation session-vs-A = 0.064), with the journal checkpoint equally flat (0.67/0.69ms) and the trap exposure concentrated on the phase's first sync exactly as the prior lane found. The mechanism: the state machine's lift is a fresh-file-create+metadata effect (the census class table: fresh4k/64k lift 0.75->1.79 / 0.79->1.81, fresh256k flat, append_fsync flat 0.60/0.59, repeat-fsync flat 0.54/0.53); the per-row append touches no file creation - its only disk work is flushing the new row's KB-class dirty block, which prices at the flat repeat-sync floor. The finding closes as an honest negative WITH the mechanism named, and the prior lane's negative STANDS on the production surface. The spread's real members: (1) the op-size quantum (>=64KB rows carry ~27-30ms on this host, state-independent - the big-paste/tool-result row class); (2) the first-sync trap (the journal checkpoint, regime-class traps to 67ms); (3) the instrument's own isolated-probe regime (the sidecar's 66-minute sustained 26-31ms window that the production surface never felt)."
+ },
+ "validity": {
+  "excluded": [
+   "the first battery launch (21:41-21:51Z, 10 f/r trials + 3 valid g trials): the driver's fixture-needles override crashed on fixtures without a needles key (TypeError, all f/r trials rc=1 at 0.0s wall); DISCARDED in full - the clean battery (21:51Z launch) is the record's data; the crash is disclosed as a driver bug fixed mid-campaign (the None-guard), never a product measurement"
+  ],
+  "notes": "Pilot-phase lessons (all fixed before the battery; disclosed for the fleet): (1) the tip's TUI mounts TWO first-run surfaces - the trace-consent dialog (suppressed by onboardingShown:true) AND the telemetry notice (interactive_mode.rs:80: onboarding_shown && !telemetry_notice_shown MOUNTS a second dialog that swallows all input; the e2e's provisioned opt-out shape agentTraces.enabled=false is the silent-completion form) - the driver now writes both keys; (2) every failed trial leaked an unreachable zombie daemon (shutdown --force ENOENT on the reaped socket; supervisor.kill() SIGKILLed only strace, orphaning the tracee) which then broke every relaunch in a reused trial dir (the TUI attach ENOENT - the socket-collision class); the driver now SIGKILLs any /proc cmdline holder of the trial's socket path at spawn AND teardown. (3) The big-reply arm's settle misses were a needle-shape artifact (the reply head scrolls out of the 40-line viewport mid-stream): tail markers as needles - all g-trials completed 4/4 after. The analyzer was validated BEFORE the campaign on the prior lane's raw strace (reproduced its published sub-ms session band, the journal trap pierce, and the 26-28ms create-path class; 3 parser bugs found and fixed: the -T seconds->ms unit, the resumed-line timestamp form, and the interrupted-write size join - the latter caught again by the served-path assertion on g2 and fixed before the final analysis). All 20 battery trials completed with mock_req_delta == turn count; binary + fixture sha asserted per trial; single sequential driver, flock guard; 10 of 20 trials flipped state mid-leg (disclosed list: f2 g1 g2 g3 r1 r11 r12 r2 r5 r8; the per-state table uses the pre-leg label with the flips disclosed; the flat result is invariant to the labeling choice). The ONE FLEET-PHASE preflight (22:15:29Z, B 0.08->5.97ms, A flat 0.98) fired rule-B live; no timing leg ran in that window; it is the first fleet-incident-phase occurrence captured on a fresh bench-class host (the census window had the phase absent). The volume probe's CENSUS-SLOW run never collected (the gating loop's 50min budget expired with the host in fast/deep oscillation - the slow state appeared once in 3.4h); the slow-state append reference is carried from the hostregime census's own class table. The sidecar divergence and the growth-test/ladder triage are disclosed in measurements.instrument_divergence_finding; the sustained mode was a single occurrence and its mechanism is NOT claimed."
+ },
+ "outcome": "characterization-complete; HONEST NEGATIVE for the finding's production-surface claim, WITH the mechanism named and the spread's real members measured: the warm-turn durable-append fdatasync prices like the repeat-fsync class (state-invariant sub-ms band through a 41x fresh-create swing; correlation 0.064), so the reported-only finding #2 closes - the warm-turn append path is NOT flush-regime sensitive on its production row class; the spread's real members are the op-size quantum (>=64KB rows, state-independent ~27-30ms this host), the first-sync trap (journal checkpoint, to 67ms), and the isolated-probe instrument regime (disclosed, not a product surface).",
+ "decision": "NO PR, no code change (characterization-only). The finding's disposition: (a) the prior warmturn-fdatasync lane's honest negative STANDS and is now confirmed per-state at the current tip - the warm-turn per-row append is regime-insensitive because the state machine's lift is a fresh-create/metadata effect the append path structurally avoids; (b) the cut candidates remain closed in-discipline exactly as the prior record ruled (the TS-parity cut is the operator's contract call; the bounded/batched flush buys nothing it can de-trap); (c) the big-row class (>=64KB, the big paste/tool-result rows) pays the ~27-30ms op-size quantum per row REGARDLESS of regime - a real per-row cost member for any lane touching big-row surfaces (the image-heavy class), measured in-product at 512KB (4/4 members 25.4-30.0ms); (d) REPORTED-ONLY for the backlog queue: the isolated-probe instrument regime (a sustained 26-31ms window on the 4KB append surface invisible to both the fresh-create boundary probe and the production surface) - future I/O lanes must not treat an isolated sidecar's sustained lift as a regime label for in-product legs; (e) the fleet-incident phase fired once on a fresh bench-class host (rule-B live) - the advisory's discriminator works; no product action.",
+ "pr_url": "",
+ "record_path": "data/hillclimb/experiments/20261001-235900-interaction-warmturn-fdatasync-spread.json",
+ "session": {
+  "worker": "perf-warmturn-fdatasync-spread-fast",
+  "session_dir": "~/.prime/agent/sessions/ (this session)"
+ },
+ "timestamp": "2026-10-02T00:02:00Z",
+ "evidence": {
+  "local": "/home/ubuntu/hillclimb/fixtures/warmturn-fdatasync-spread/wts-evidence.tar.gz (sha256 ca723b64cdb8033ae8c8f30b51d6b3f507414dd5b2d7b2c4e79beee598d9763b, sha-verified locally BEFORE VM teardown: 20 trials' trace.json + gzipped daemon.strace each, legs.log + probes.jsonl (40 labeled boundary flights), sidecar.jsonl (2305 samples), volume-CENSUS-FAST.jsonl, growth-test.jsonl (746 ops) + growth.log, the ladder/isolation logs, build.log, bin.sha256, tip.sha; drivers in /home/ubuntu/hillclimb/fixtures/warmturn-fdatasync-spread/drivers/)",
+  "vm": "v9d7rc40yx5izm3p3yxf72fn (hillclimb-perf-warmturn-fdatasync-spread) - destroyed after the archive sha-verification",
+  "fixture": "bench-repo fixtures/session-imageheavy-vizbuilder.jsonl sha256 f6ab958a80bc1c3730001b1ce68fac550126b96851b25219292c02070db3f753 (unmodified; asserted per trial)"
+ },
+ "merged": null
+}
