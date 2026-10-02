@@ -1,0 +1,367 @@
+{
+ "id": "20261002-011500-interaction-settle-drift-bisect",
+ "axis": "interaction",
+ "hypothesis": "The settle-daemoninit3 lane's exact-bytes discriminator (bench record 20261001-175500) proved a REAL +68.6ms p50 submit_to_settle regression across the 25 commits e75f59efc6..b1c6b7a0c (e75 p50 711.0 vs b1c6 779.6, complete separation, paired same-VM, p=0.000155). The drift-bisect question: WHICH commit(s) introduce it. Pre-registered protocol: midpoint legs over the range's 18 product commits (P1..P18; P0=e75 the exact-bytes GOOD anchor; P18=b1c6b7a0c the BAD endpoint; the first midpoint P9=1ff9d86 splitting the product commits 9/9), each leg = an arm built on the SAME VM at the mid commit through the release pipeline and staged as its own sha-pinned bench product, then a 2-block ABBA (M,e,e,M) vs the e75 anchor with pi control rounds pre/post; pre-registered verdict bands: all per-block paired deltas < +25ms GOOD, all > +45ms BAD, else PARTIAL-splits-both.",
+ "approach": "MEASUREMENT ONLY (no product change). Same VM as the discriminator (hillclimb-perf-settlehold sandbox u5nxl6eddrafmr7cbe1viyui, ubuntu:22.04, 16c/32GB, rustup 1.98.1, bench harness /root/bench-harness, mock-routed compare.msg_send, PTY 120x40, per-trial fresh launch). This successor lane re-collected the predecessor's inert session first: its P9 arm build had DIED at assemble_artifacts (the build-arm.sh assemble call was missing the --decoder argument) and NO bisect legs had run; the fixed script (local + VM copies in sync) re-staged rust-1ff9d86 with BINSHA c822c64974431c4e25a1e2c67fe6c2e0492be312ff5bb95d57d869245c5066f2 (56058440 bytes) BYTE-IDENTICAL to the sha the predecessor's own split_debug had recorded at 18:23Z before the break. Each bisect arm: cargo build --release --locked at the pinned commit -> split_debug.py shipped ELF + decoder -> assemble_artifacts.py release tarball -> staged at /root/bench-lane/<arm>/ -> registered as its own bench product with binary_sha256 pinned in product.yaml and re-asserted by every leg round's versions.json; warm-arm (settle walk + warm_kernels + own-daemon kernel venv + launch-verify import rlm.repl) before each leg; leg-abba driver: zombie sweep before timing, I/O advisory v1.0 regime probe at BOTH boundaries, spin calibration pre/mid/post, pi control rounds pre/post, per-round noop PTY floor. Legs run quiet-gated (no build while a leg times). VERDICTS: P9 BAD -> P5 BAD -> P3 BAD -> P2 PARTIAL -> P1 BAD (the chain ran the deciding legs on the BAD side of each split).",
+ "parity_notes": "No product bytes changed anywhere; every arm is a measurement arm built from upstream commits as-is. The e75 anchor is the r2 campaign pin's exact payload staged verbatim (binary_sha256 0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5) and the pi control is byte-identical to the r2 campaign's pi arm (0.99.1@d86654ab, cli.js e79626f2) \u2014 the cross-campaign control. Bisect arms' kernel venvs were bootstrapped by each arm's own daemon; the settle metric is kernel-venv-insensitive (the predecessor disclosed this; the turn completes without kernel interaction). Tooling defects disclosed: (1) analyze-leg.py's phase-string grouping misses the pi control rows (phase bisect-<tag>-prepi-pi parses round/tag-role differently) \u2014 the pi values in this record are read directly from the trials jsonl, NOT from the analyzer; (2) the lane's collect-summary.json keys noop/versions by round name, and the 4 e75 round names repeat per leg (b1e1-rust-e75 etc.) so the summary snapshot holds one of each \u2014 the per-round files for ALL 50 rounds are the ground truth in the evidence archive.",
+ "base": {
+  "revision": "e75f59efc6f74fcb23e45048f0f23b34490571d0 (P0, GOOD anchor) .. b1c6b7a0cce73c684481a028e47d7b980cd7cfc5 (P18, BAD endpoint)"
+ },
+ "branch": "hillclimb (bench repo)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "u5nxl6eddrafmr7cbe1viyui (hillclimb-perf-settlehold, created 2026-10-01T01:48Z, timeout 1440m, expired 2026-10-02T01:48Z after this lane's close-out)",
+  "toolchain": "rustup 1.98.1 (the CI pin)",
+  "anchor_arms": {
+   "rust-e75": {
+    "revision": "e75f59efc6f74fcb23e45048f0f23b34490571d0",
+    "binary_sha256": "0ba7c9b6e6277b6301605769240d133727d59dc1997890e333e54518ce5a88e5",
+    "staging": "the r2 pin's exact payload, staged verbatim (the predecessor's LEG4 discriminator arm)"
+   },
+   "pi": {
+    "version": "0.99.1@d86654ab",
+    "cli_js_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "role": "the r2 campaign's cross-campaign control"
+   }
+  },
+  "bisect_arms": {
+   "p1": {
+    "revision": "603376a1949760710532c2917d948862b74c00fd",
+    "binary_sha256": "841d61832853693e417f36b882a27bd88ec0b4fd1b9ab8eb43df2430f935607d",
+    "binary_bytes": 59042272,
+    "built": "cargo build --release --locked on this VM; split_debug shipped ELF; assemble_artifacts tarball; BINSHA logged in the chain log and pinned in product.yaml + per-round versions.json"
+   },
+   "p2": {
+    "revision": "87c0391c2927fd4e548025adb621f6e282dc3d60",
+    "binary_sha256": "1cae10905a5b6751265dc376387976ab3ddd8b7101677997b9b05b21c2a",
+    "binary_bytes": 59048328,
+    "built": "cargo build --release --locked on this VM; split_debug shipped ELF; assemble_artifacts tarball; BINSHA logged in the chain log and pinned in product.yaml + per-round versions.json"
+   },
+   "p3": {
+    "revision": "a667190dff39362a6e5f01b8408a152ae8fc12f0",
+    "binary_sha256": "4e04e4eb0f1c143ac08c020d16e56b3331e188f232578e199b8423b096dc3159",
+    "binary_bytes": 58909456,
+    "built": "cargo build --release --locked on this VM; split_debug shipped ELF; assemble_artifacts tarball; BINSHA logged in the chain log and pinned in product.yaml + per-round versions.json"
+   },
+   "p5": {
+    "revision": "f54551d9933c8d379972d42fd2168e0ff0cdf200",
+    "binary_sha256": "f805c9ba77a0acc03483efdad0d7b76fbb65811eb5a0c3197378bcc58dca592b",
+    "binary_bytes": 55876680,
+    "built": "cargo build --release --locked on this VM; split_debug shipped ELF; assemble_artifacts tarball; BINSHA logged in the chain log and pinned in product.yaml + per-round versions.json"
+   },
+   "p9": {
+    "revision": "1ff9d86e14b50b6fa50da02eae93053a642fca92",
+    "binary_sha256": "c822c64974431c4e25a1e2c67fe6c2e0492be312ff5bb95d57d869245c5066f2",
+    "binary_bytes": 56058440,
+    "built": "cargo build --release --locked on this VM; split_debug shipped ELF; assemble_artifacts tarball; BINSHA logged in the chain log and pinned in product.yaml + per-round versions.json"
+   }
+  }
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (measurement-only record)"
+ },
+ "measurements": {
+  "method": "same-VM sequential ABBA vs the e75 exact-bytes anchor, quiet-gated, pre-registered bands (<25 GOOD, >45 BAD, else PARTIAL), pi control pre/post, regime probes at both boundaries, calib pre/mid/post, noop floor per round",
+  "discriminator_context": {
+   "leg4_of_record_20261001_175500": "e75 p50 711.0 (n=8) vs b1c6 p50 779.6 (n=8), complete separation, p=0.000155",
+   "this_lane_e75_anchor_p50_by_leg_ms": [
+    670.25,
+    736.35,
+    733.4,
+    724.0,
+    720.25
+   ],
+   "endpoint_reference": "b1c6 779.6 p50"
+  },
+  "bisect_verdict_table": [
+   {
+    "leg": "P1",
+    "commit": "603376a (#3188 make forked sessions fully isolated)",
+    "deltas_ms": [
+     146.3,
+     82.9
+    ],
+    "pooled_p50_delta_ms": 142.0,
+    "verdict": "BAD"
+   },
+   {
+    "leg": "P2",
+    "commit": "87c0391 (#3159 fix the abort and send idle race)",
+    "deltas_ms": [
+     79.5,
+     37.2
+    ],
+    "pooled_p50_delta_ms": 49.3,
+    "verdict": "PARTIAL"
+   },
+   {
+    "leg": "P3",
+    "commit": "a667190 (#3190 split agent_messaging.rs)",
+    "deltas_ms": [
+     67.4,
+     75.1
+    ],
+    "pooled_p50_delta_ms": 67.4,
+    "verdict": "BAD"
+   },
+   {
+    "leg": "P5",
+    "commit": "f54551d (#3189 remove user extensions)",
+    "deltas_ms": [
+     95.9,
+     69.0
+    ],
+    "pooled_p50_delta_ms": 75.8,
+    "verdict": "BAD"
+   },
+   {
+    "leg": "P9",
+    "commit": "1ff9d86 (#3206 idle passivation never discards state)",
+    "deltas_ms": [
+     105.4,
+     93.4
+    ],
+    "pooled_p50_delta_ms": 99.6,
+    "verdict": "BAD"
+   },
+   {
+    "leg": "P18",
+    "commit": "b1c6b7a0c (endpoint)",
+    "deltas_ms": [
+     68.6,
+     68.6
+    ],
+    "pooled_p50_delta_ms": 68.6,
+    "verdict": "BAD (the predecessor's discriminator)"
+   }
+  ],
+  "suites": {
+   "bisect.p1_603376a": {
+    "description": "2-block ABBA (M,e,e,M)=P1 arm vs the rust-e75 exact-bytes anchor, 4 trials/arm + pi control rounds pre/post, on the discriminator's own VM; arm = the range commit 603376a (make forked sessions fully isolated (#3188))",
+    "arm_commit": "603376a1949760710532c2917d948862b74c00fd",
+    "arm_binary_sha256": "841d61832853693e417f36b882a27bd88ec0b4fd1b9ab8eb43df2430f935607d",
+    "arm_binary_bytes": 59042272,
+    "arm_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      735.3,
+      802.0,
+      822.4,
+      823.0
+     ],
+     "p50": 812.2
+    },
+    "e75_anchor_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      659.4,
+      668.1,
+      672.4,
+      724.4
+     ],
+     "p50": 670.25
+    },
+    "per_block_paired_deltas_ms": {
+     "b1": 146.3,
+     "b2": 82.9
+    },
+    "pooled_delta_p50_ms": 142.0,
+    "pi_control_values_ms": [
+     674.3,
+     686.9
+    ],
+    "classification": "BAD (all block deltas > +45ms)",
+    "invalid_trials": [],
+    "regime_boundaries": [
+     "REGIME p1-pre OVERALL=DEGRADED",
+     "REGIME p1-post OVERALL=MARGINAL"
+    ]
+   },
+   "bisect.p2_87c0391": {
+    "description": "2-block ABBA (M,e,e,M)=P2 arm vs the rust-e75 exact-bytes anchor, 4 trials/arm + pi control rounds pre/post, on the discriminator's own VM; arm = the range commit 87c0391 (fix the abort and send idle race (#3159))",
+    "arm_commit": "87c0391c2927fd4e548025adb621f6e282dc3d60",
+    "arm_binary_sha256": "1cae10905a5b6751265dc376387976ab3ddd8b7101677997b9b05b21c2a",
+    "arm_binary_bytes": 59048328,
+    "arm_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      752.4,
+      771.3,
+      800.0,
+      827.8
+     ],
+     "p50": 785.65
+    },
+    "e75_anchor_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      687.5,
+      733.7,
+      739.0,
+      757.8
+     ],
+     "p50": 736.35
+    },
+    "per_block_paired_deltas_ms": {
+     "b1": 79.5,
+     "b2": 37.2
+    },
+    "pooled_delta_p50_ms": 49.3,
+    "pi_control_values_ms": [
+     685.5,
+     683.7
+    ],
+    "classification": "PARTIAL (deltas straddle the 25-45ms band)",
+    "invalid_trials": [],
+    "regime_boundaries": [
+     "REGIME p2-pre OVERALL=DEGRADED",
+     "REGIME p2-post OVERALL=MARGINAL"
+    ]
+   },
+   "bisect.p3_a667190": {
+    "description": "2-block ABBA (M,e,e,M)=P3 arm vs the rust-e75 exact-bytes anchor, 4 trials/arm + pi control rounds pre/post, on the discriminator's own VM; arm = the range commit a667190 (split agent_messaging.rs under 1000 lines (#3190))",
+    "arm_commit": "a667190dff39362a6e5f01b8408a152ae8fc12f0",
+    "arm_binary_sha256": "4e04e4eb0f1c143ac08c020d16e56b3331e188f232578e199b8423b096dc3159",
+    "arm_binary_bytes": 58909456,
+    "arm_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      799.9,
+      800.3,
+      801.2,
+      801.3
+     ],
+     "p50": 800.75
+    },
+    "e75_anchor_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      716.8,
+      732.9,
+      733.9,
+      734.1
+     ],
+     "p50": 733.4
+    },
+    "per_block_paired_deltas_ms": {
+     "b1": 67.4,
+     "b2": 75.1
+    },
+    "pooled_delta_p50_ms": 67.4,
+    "pi_control_values_ms": [
+     683.9,
+     684.6
+    ],
+    "classification": "BAD (all block deltas > +45ms)",
+    "invalid_trials": [],
+    "regime_boundaries": [
+     "REGIME p3-pre OVERALL=DEGRADED",
+     "REGIME p3-post OVERALL=DEGRADED"
+    ]
+   },
+   "bisect.p5_f54551d": {
+    "description": "2-block ABBA (M,e,e,M)=P5 arm vs the rust-e75 exact-bytes anchor, 4 trials/arm + pi control rounds pre/post, on the discriminator's own VM; arm = the range commit f54551d (remove user extensions (#3189))",
+    "arm_commit": "f54551d9933c8d379972d42fd2168e0ff0cdf200",
+    "arm_binary_sha256": "f805c9ba77a0acc03483efdad0d7b76fbb65811eb5a0c3197378bcc58dca592b",
+    "arm_binary_bytes": 55876680,
+    "arm_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      777.0,
+      797.9,
+      801.6,
+      802.1
+     ],
+     "p50": 799.75
+    },
+    "e75_anchor_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      667.5,
+      715.7,
+      732.3,
+      733.5
+     ],
+     "p50": 724.0
+    },
+    "per_block_paired_deltas_ms": {
+     "b1": 95.9,
+     "b2": 69.0
+    },
+    "pooled_delta_p50_ms": 75.8,
+    "pi_control_values_ms": [
+     688.3,
+     686.4
+    ],
+    "classification": "BAD (all block deltas > +45ms)",
+    "invalid_trials": [],
+    "regime_boundaries": [
+     "REGIME p5-pre OVERALL=DEGRADED",
+     "REGIME p5-post OVERALL=DEGRADED"
+    ]
+   },
+   "bisect.p9_1ff9d86": {
+    "description": "2-block ABBA (M,e,e,M)=P9 arm vs the rust-e75 exact-bytes anchor, 4 trials/arm + pi control rounds pre/post, on the discriminator's own VM; arm = the range commit 1ff9d86 (fix(pa-daemon): idle passivation never discards state a revival cannot restore (#3206))",
+    "arm_commit": "1ff9d86e14b50b6fa50da02eae93053a642fca92",
+    "arm_binary_sha256": "c822c64974431c4e25a1e2c67fe6c2e0492be312ff5bb95d57d869245c5066f2",
+    "arm_binary_bytes": 56058440,
+    "arm_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      765.8,
+      803.8,
+      835.9,
+      904.5
+     ],
+     "p50": 819.8499999999999
+    },
+    "e75_anchor_submit_to_settle_ms": {
+     "n": 4,
+     "values": [
+      711.8,
+      717.1,
+      723.4,
+      760.1
+     ],
+     "p50": 720.25
+    },
+    "per_block_paired_deltas_ms": {
+     "b1": 105.4,
+     "b2": 93.4
+    },
+    "pooled_delta_p50_ms": 99.6,
+    "pi_control_values_ms": [
+     691.9,
+     735.6
+    ],
+    "classification": "BAD (all block deltas > +45ms)",
+    "invalid_trials": [],
+    "regime_boundaries": [
+     "REGIME p9-pre OVERALL=DEGRADED",
+     "REGIME p9-post OVERALL=DEGRADED"
+    ]
+   }
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 50 leg trials (5 legs x 10 rounds: 4 arm + 4 anchor per leg + 2 pi controls) validated (ack+settle); zero exclusions. Noop PTY floor p50 0.061-0.110ms across all 50 round dirs (three orders below the measured deltas). Spin calibration stable (1.086-1.092s class) pre/mid/post every leg. I/O regime: DEGRADED at 9 of 10 leg boundaries, MARGINAL at p1-post and p2-post \u2014 the standing host class this lane inherited (the predecessor's +42ms environment share is regime-labeled there); the paired same-host ABBA + the pre-registered per-block bands are the variance control, and the per-leg e75 anchor p50 spread (670.3-736.4ms) is disclosed as the phase driver of the magnitude column, NOT of the verdict column (every verdict rests on within-leg paired deltas). pi controls 674.3-735.6ms across all legs, consistent with the historical 683-688 class except the p9 pre-pi (735.6) which rode the same lifted phase as that leg's e75 block-2 anchor rows. Analyzer pi-grouping defect and collect-summary name-collision disclosed in parity_notes."
+ },
+ "outcome": "measured - THE SETTLE-DRIFT BISECT CONVERGED IN THE TIMEBOX: the +68.6ms submit_to_settle regression is INTRODUCED AT 603376a (#3188 make forked sessions fully isolated), the FIRST commit after the GOOD e75 anchor \u2014 P1 measured BAD directly (+146.3/+82.9 block deltas, pooled p50 +142.0ms, e75 anchor p50 670.3 in the same leg), so no interpolation is needed: the window e75..603376a contains exactly one commit and it is BAD. Every later midpoint contains P1 and measures BAD/PARTIAL as expected (P2 PARTIAL +79.5/+37.2, P3 BAD +67.4/+75.1, P5 BAD +95.9/+69.0, P9 BAD +105.4/+93.4; endpoint P18 +68.6).",
+ "decision": "THE VERDICT: the settle regression the settle-hold lane found is #3188's introduction \u2014 the fork-isolation family's supervisor-side identity machinery (sync_root_identity_from_roster re-binding the descriptor + persisted record + durable create command + binding table onto roster rows; the boot reconcile-from-live-state before routing opens; the unreconciled-boot quarantine fencing every route; the owned-session scan fenced by the quarantine \u2014 11 bullets, all #3188-family). MECHANISM HYPOTHESIS (unproven, the follow-up's first target): the per-trial fresh-launch msg_send turn now pays the #3188 boot-path work between launch and route-open (reconcile + quarantine-fenced owned-session scan), which sits directly on the submit_to_settle clock; the durable-persist side of the identity follow is the second candidate (a per-write sync on the DEGRADED fresh-fsync host). MAGNITUDE ACCOUNTING (honest): the per-leg pooled deltas are NOT monotonic (P1 +142 -> P2 +49 -> P3 +67 -> P5 +76 -> P9 +100 -> P18 +68.6) because (a) the host phase moved the e75 anchor p50 670-736 across legs, and (b) P2's batch carries settle-adjacent PERF PRs (the O(1) catalog-fold counter, 64KiB fold reads) that plausibly claw back a share of what P1 added \u2014 the verdict column is phase-independent (paired), the magnitude column is not; the per-commit magnitude table is the honest residual question. THE NEXT LANE: instrument the #3188 changes directly at P1 (bind-span/turn decompose on the 603376a arm vs e75 \u2014 reconcile cost, quarantine fence, scan, and the durable persist inside the identity follow), then the P1->P2 claw-back decompose to explain the magnitude non-monotonicity. NO PR (measurement-only; #3188 already merged upstream \u2014 the fix question is a product decision on the found regression, not this lane's).",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261002-011500-interaction-settle-drift-bisect.json",
+ "session": {
+  "worker": "perf-settle-drift-bisect2-fast",
+  "session_dir": "~/.prime/agent/session-artifacts/01a0daa4-39c1-740d-a03a-f9e68d9f88bc/sub-06b5d154/01a0f9ee-d5af-70d4-9b5b-06d52327a1a7.jsonl"
+ },
+ "timestamp": "2026-10-02T01:15:00+00:00",
+ "evidence": {
+  "archive": "hillclimb/vms/settle-drift-bisect/collect/settle-drift-bisect2-evidence.tar.gz sha256=6a5a7a56498841a2686c5ff5481ba0ebfb708252e95fbfea3d96c0253d216c2f (44450 bytes: all 5 leg dirs' per-round trials + versions.json sha pins + noop floors + round logs + regime/calib files + analyses, the leg scripts build-arm/warm-arm/leg-abba/analyze-leg, the chain logs with every BINSHA line, and collect-summary.json) \u2014 downloaded from the VM and sha-verified BEFORE the VM expiry",
+  "local_collect": "hillclimb/vms/settle-drift-bisect/collect/ (the archive unpacked + collect-summary.json + the fixed build-arm.sh copy lives in hillclimb/vms/settle-drift-bisect/)",
+  "vm": "u5nxl6eddrafmr7cbe1viyui (expiry 2026-10-02T01:48Z; /root/bisect held the leg state; the archive was pulled and sha-verified at 01:14Z, before expiry)"
+ }
+}
