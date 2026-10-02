@@ -173,6 +173,9 @@ def test_rust_daemon_gets_the_tuis_offline_config(tmp_path):
            "routing": "mock"}
     assert rust.daemon_env(ctx)["PI_OFFLINE"] == "1"
     assert "PI_OFFLINE" not in rust.daemon_env(dict(ctx, routing="real-api"))
+    ts_env = _reg(tmp_path).product("ts").daemon_env(ctx)
+    assert (ts_env["PI_OFFLINE"], ts_env["PI_CODING_AGENT"], ts_env["PI_SKIP_VERSION_CHECK"]) == \
+        ("1", "true", "1")
 
 
 def test_trial_processes_are_found_by_their_environment(tmp_path):

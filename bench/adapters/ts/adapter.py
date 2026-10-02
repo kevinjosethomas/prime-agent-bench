@@ -36,3 +36,11 @@ class PrimeAgentTsProduct(PrimeAgentRustProduct):
     def daemon_argv(self, ctx: TrialContext) -> list[str] | None:
         return [str(self.binary), "--mode", "daemon",
                 "--daemon-socket", str(ctx["daemon_socket"])]
+
+    def daemon_env(self, ctx: TrialContext) -> dict:
+        """Besides PI_OFFLINE, the TS TUI marks the daemon it spawns as a
+        coding-agent child and skips its version check (observed on the
+        cold rows' daemon_identity); the pre-warmed daemon gets the same."""
+        env = super().daemon_env(ctx)
+        env.update({"PI_CODING_AGENT": "true", "PI_SKIP_VERSION_CHECK": "1"})
+        return env
