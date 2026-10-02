@@ -1,0 +1,472 @@
+{
+ "id": "20261002-200028-startup-r2protocol-finaltable-cf2968820",
+ "axis": "startup",
+ "hypothesis": "Kevin's benchmark table reads cold 267 (Pi 234) / warm 183 (Pi 167) - the r2 campaign's protocol (published = non-aa-phase nearest-rank p50 of launch_to_ready_ms; anchor re-derived from the raw trials /home/ubuntu/bench/results-r2/merged-20260930-110231/: cold rust 266.9 [254.0-290.9] / pi 234.1, warm rust 182.8 [120.4-325.3] / pi 167.3, every anchor rust row carrying the trap signature - cold dropped 3-4 erase 7049-9190, warm dropped 2-6 erase 4933-13362). The r2-parity rerun (record 20261002-024500, commit 58edde5) re-measured at ef33d2c15 WITHOUT #3287: cold fast 93.5 / cold trap 158.3 [107.8-213.1], warm fast 73.3 / warm trap 153.6-162.1, pi 245.6/170.1 reproducing. THE ASK: the FINAL table - the same-protocol cold+warm rows at the CURRENT tip with EVERY cut live, #3287 ('reduce fsyncs during worker creation', the create-path fan-out cut, merge 3034e94a2, measured -140ms/-39.8% on the create window) now MERGED - regime-labeled at every leg boundary, the pi arm byte-identical as the cross-campaign control.",
+ "approach": "MEASUREMENT ONLY (no product change). The r2 protocol re-run on two fresh 4c/8GB/60GB ubuntu:22.04 Prime-VM sandboxes (compare_cold_start c972xv8i9sbc129z40q4uf9g ref 1315.4ms, compare_warm_start og6q4dv3o0x63rkbxezpy1gv ref 1373.1ms - the fixed-CPU references inside the r2 campaign's 1197-1375ms band), bench repo hillclimb 0e946f3 (HARNESS BITS BIT-IDENTICAL to the r2-parity run: git diff c8cf1be..0e946f3 -- bench/ is EMPTY, so the cold_start/warm_start/trials/product code paths are the same bytes the r2-parity campaign ran; the campaign config configs/r4.yaml + configs/parallel-r4.yaml model r2.yaml/parallel-r2.yaml with product_order [rust, pi] and results_dir results-r4), the tip built on a fresh 16c/32GB/80GB VM (hillclimb-perf-r2final-build plkphg13oxqabpa4pg0lbfa4: rustup 1.98.1 the CI pin, cargo build --release --locked --workspace rc=0 in 1m59s, staged in the r2 install shape - launcher + exe-adjacent payload, split-debug shipped binary sha256 0549b73a081db600ed86cd6dc126ec29d18431faee8eb8fc2a58c1f09b34871b 56,556,664B (266,584B smaller than the ef33d2c15 build), the tip's runtime/skills/LICENSE/README, the r2-pin bundled catalogs carried over [CI-generated assets, provenance disclosed], package.json stamped 0.9.8-continuous.cf2968820) staged node-side at ~/bench-r4/rust and vendored into the sandboxes at /root/bench-r2/rust (the r2 in-sandbox layout) via a POST-BOOTSTRAP SHA-ASSERTED SWAP: the bootstrap untars the r2-campaign vendor tarball (the shared vendor/products.tar.gz is left untouched; it still carries the r2-pin payload), then the driver uploads the tip staging tarball and swaps /root/bench-r2/rust with a hard in-sandbox sha check (SWAP_OK 0549b73a echoed on both sandboxes) - the same end state the r2-parity vendor rebuild produced, without churning the 900MB shared artifact; the harness bundle rode the temporary r4 tip pin in bench/adapters/rust/product.yaml (restored to the pristine r2 pin after the bundle build; the vendor-plan manifest with the tip pin + the pin copy are archived), so versions.json ASSERTS the tip payload sha at every leg (skip_versions=False). pi = the r2 campaign binary byte-identical (v0.99.1 @ d86654ab, cli.js sha256 e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774, asserted per leg). The wave-chain mechanics per sandbox verbatim the r2 shapes as separate run_suite legs: settle + warm_kernels, then the A/A pass (aa=True, phase aa, n=10/product, interleaved halves), then the w1 wave (aa=False, phase w1, n=10/product, ABBA round-robin) - with the I/O advisory v1.0 probe suite (>=40 ISOLATED fresh+sync_all+rename @0.5s + >=20 repeat-fsync, probe-regime.py) at EVERY leg boundary (post-bootstrap, pre-aa, post-aa, post-w1) + the 30s single-sample longitudinal watcher through the whole session; noop PTY floor per leg (30 rounds, snapshotted per leg - never silently overwritten); no probes during any timing leg. After the w1 legs, the window hunts: fast-window fires (in-sandbox 60s-cadence 10-sample bursts; on a <3ms median: probe-suite pre + an immediate w1-2 leg + probe-suite post + floor snapshots, zero round-trip) on both sandboxes to catch the fast-window rows, plus a second fire (w1-3) driven directly on the observed state, plus a warm trap-window hunt (w1-4, the >10ms direction) armed for the boundary-labeled warm trap row.",
+ "parity_notes": "The published-number convention: bench analyze (strict result-validity gate, published phases = all non-aa) nearest-rank p50 (idx=round(0.5*(n-1))=sorted[4] for n=10) reproduces the table exactly (266.9/182.8/234.1/167.3 re-derived from the r2 raw trials here). The anchor's per-row signatures (dropped, erase) re-derived: every anchor rust row is trap-signed. The harness identity on every trial row: git_rev 0e946f36, dirty=true (the temporary product.yaml pin + other lanes' WIP in the bench tree), bundle sha 1116f24351e8cf29c5fa94f01aa40e122820f48a108d0c8826f47444c793fce7.",
+ "base": {
+  "revision": "cf2968820a7312b9cd08b1919e86b5f9b274d2f6",
+  "origin": "origin/main (ls-remote verified 2026-10-02T18:48Z; #3287=3034e94a2 'reduce fsyncs during worker creation' MERGED 2026-10-02T18:22:30Z and verified ancestor by merge-base; 13 commits past the r2-parity tip ef33d2c15, the stack between them: #3196 windows support, #3197, #3251, #3296, #3257, #3291, #3249, #3309, #3195 idle-stop race tests+fixes, #3287, #3300, #3004, #3299 tui clock fix)"
+ },
+ "branch": "hillclimb (bench repo); the product measured at the merged tip, no lane branch (measurement-only)",
+ "commits": [],
+ "build": {
+  "sandbox_id": "plkphg13oxqabpa4pg0lbfa4 (hillclimb-perf-r2final-build, 16c/32GB/80GB, deleted after the sha-verified staging download)",
+  "toolchain": "rustup 1.98.1 (the release-prepare CI pin; dtolnay/rust-toolchain@ce678459 hard-codes 1.98.1)",
+  "binary_sha256": "0549b73a081db600ed86cd6dc126ec29d18431faee8eb8fc2a58c1f09b34871b",
+  "binary_bytes": 56556664,
+  "build_seconds": 119,
+  "build_note": "cargo build --release --locked --workspace rc=0 at cf2968820; shipped split-debug via scripts/release/split_debug.py (decoder 40,235,452B gz); --version through the launcher reads 0.9.8-continuous.cf2968820a7312b9cd08b1919e86b5f9b274d2f6; the r2-pin bundled catalogs (models c91ee90b, mcp-services 238ed2a4) carried over, disclosed; the binary is 266,584B SMALLER than the pre-#3287 ef33d2c15 build (56,823,248B) - consistent with the fan-out cut"
+ },
+ "gates": {
+  "fmt": "n/a (no product code changed)",
+  "clippy": "n/a (no product code changed)",
+  "test": "n/a (no product code changed)",
+  "benchmark_ci": "n/a (bench-repo measurement record; no PR)"
+ },
+ "measurements": {
+  "method": {
+   "protocol": "the r2 campaign verbatim: one 4c/8GB sandbox per benchmark type, products sequentially inside it, settle+warm_kernels then the A/A pass then the w1 wave, mock-routed models.json, per-trial fresh homes from settled templates, PTY driver, launch_to_ready_ms = the typed-echo offset from spawn",
+   "products": {
+    "rust": "cf2968820a7312b9cd08b1919e86b5f9b274d2f6, payload sha 0549b73a, asserted per leg by versions.json",
+    "pi": "0.99.1 @ d86654ab, cli.js sha e79626f2 (byte-identical to the r2 campaign's and the r2-parity run's pi arm)"
+   },
+   "n": "10/product/phase/leg (w1 + aa per sandbox on the main wave; +10/product on each fired leg: w1-2 x2, w1-3 x2, w1-5 x2 [+ w1-4 if the warm trap hunt fired]; 200 rows total)",
+   "publish_convention": "nearest-rank p50 of the published (non-aa) phase = the table's convention (reproduces 266.9/182.8/234.1/167.3 from the r2 raw trials)",
+   "probe_advisory": "I/O advisory v1.0 suites at every leg boundary (>=40 ISOLATED fresh+sync_all+rename @0.5s + >=20 repeat-fsync, host-relative classification) + the 30s single-sample iso watcher; advisory v1.2 (census 20261001-072600) as the label authority",
+   "noop_floor_ms": {
+    "compare_cold_start": {
+     "aa": 0.037,
+     "w1": 0.042,
+     "w1-2": 0.054,
+     "w1-3": 0.045,
+     "w1-5": 0.055
+    },
+    "compare_warm_start": {
+     "aa": 0.058,
+     "w1": 0.055,
+     "w1-2": 0.041,
+     "w1-3": 0.07,
+     "w1-5": 0.061
+    }
+   },
+   "reference_ms": {
+    "compare_cold_start": 1315.4,
+    "compare_warm_start": 1373.1
+   }
+  },
+  "headline_table_r2protocol_at_tip": {
+   "description": "THE ASK: the r2-protocol cold/warm rows at the final tip, published-phase nearest-rank p50 (launch_to_ready_ms, ms), vs the table (the r2 anchor) and the pre-#3287 rerun - every leg regime-labeled",
+   "rows": {
+    "compare.cold_start/rust": {
+     "anchor_table": 267,
+     "anchor_raw": 266.9,
+     "pre3287_rerun_fast_w1": 93.5,
+     "pre3287_rerun_trap_w13": 158.3,
+     "tip_w1_p50": 141.6,
+     "delta_pct_vs_anchor": -47.0,
+     "delta_pct_vs_pre3287_trap": -10.6,
+     "tip_w1_values": [
+      87.74,
+      123.91,
+      127.27,
+      133.29,
+      141.58,
+      141.93,
+      142.44,
+      143.25,
+      157.27,
+      186.58
+     ],
+     "regime_label": "TRAP WINDOW, the strongest label class granted this campaign: the cold host sat in the sustained fresh-create trap class for the WHOLE main wave (the watcher's consecutive 25-45ms samples 19:06:17-19:35:21, ~29min dwell; every boundary probe DEGRADED: post-bootstrap 58.44, pre-aa 26.27, post-aa 32.86, post-w1 30.62ms fresh p50) - the w1 leg ran INSIDE it; row signatures trap-class (dropped 1-3, erase 2823-7068)",
+     "tip_fast_fired": "74.3 (cleanest leg) / 84.2 pooled fast-signed"
+    },
+    "compare.cold_start/pi": {
+     "anchor_table": 234,
+     "anchor_raw": 234.1,
+     "pre3287": 245.6,
+     "tip_w1_p50": 247.8,
+     "delta_pct_vs_anchor": 5.8,
+     "delta_pct_vs_pre3287": 0.9,
+     "tip_w1_values": [
+      234.11,
+      238.99,
+      240.56,
+      244.27,
+      247.85,
+      248.34,
+      254.2,
+      264.87,
+      269.33,
+      269.95
+     ],
+     "regime_label": "regime-insensitive control (pi pays zero launch fsyncs); REPRODUCES across campaigns+VMs"
+    },
+    "compare.warm_start/rust": {
+     "anchor_table": 183,
+     "anchor_raw": 182.8,
+     "pre3287_rerun_fast_w1": 73.3,
+     "pre3287_rerun_trap_aa": 153.6,
+     "pre3287_rerun_trap_published8": 162.1,
+     "tip_w1_p50": 153.9,
+     "delta_pct_vs_anchor": -15.8,
+     "delta_pct_vs_pre3287_trap": "flat (153.6..162.1 band)",
+     "tip_w1_values": [
+      121.77,
+      139.55,
+      140.32,
+      149.79,
+      153.91,
+      158.42,
+      161.62,
+      168.03,
+      175.94,
+      213.6
+     ],
+     "regime_label": "TRAP FLICKER caught by the in-leg evidence with fast boundaries (pre-aa 27.15 TRAP -> the flip landed mid-aa -> post-aa 0.77 FAST -> the w1 leg 19:09:15-19:11:07 ran inside a returned ~2min trap dwell: the watcher's in-leg samples 31.51/32.88/28.95ms - ALL 10 rows trap-signed (dropped 2-3, erase 4933-7043), then post-w1 0.84 FAST) - the disclosed labeling is IN-LEG (watcher + signatures), the boundary probes mid-read the flicker",
+     "tip_fast_fired": "48.7 (the pure fast leg, all rows fast-signed) / 77.2 pooled"
+    },
+    "compare.warm_start/pi": {
+     "anchor_table": 167,
+     "anchor_raw": 167.3,
+     "pre3287": 170.1,
+     "tip_w1_p50": 167.3,
+     "delta_pct_vs_anchor": 0.0,
+     "delta_pct_vs_pre3287": -1.6,
+     "tip_w1_values": [
+      160.41,
+      160.82,
+      163.32,
+      164.88,
+      167.33,
+      168.27,
+      172.16,
+      179.4,
+      180.85,
+      182.57
+     ],
+     "regime_label": "regime-insensitive control; REPRODUCES (167.3 == the anchor to the decimal)"
+    }
+   },
+   "pi_control_verdict": "ANCHORED: pi cold 234.1 -> 245.6 (r2-parity) -> 247.8 (+5.8% cross-VM/campaign), warm 167.3 -> 170.1 -> 167.3 (0.0%) with the byte-identical binary through all three campaigns - the protocol, the mock harness, the sandbox class and the probe machinery reproduce; the warm host's pi row reproduces the anchor EXACTLY, the cold host's pi rides the +5-6% cross-VM variance seen since the r2-parity run"
+  },
+  "regime_series_advisory_v10": {
+   "compare_cold_start": {
+    "post_bootstrap": "fresh p50 58.44 p90 88.79 (the launch transient - the census's post-launch window; DEGRADED), fsync p50 0.70 p90 35.81",
+    "pre_aa": "fresh p50 26.27 p90 42.17 max 61.78, fsync p50 0.62 p90 26.41 max 287.81 (DEGRADED - the ~26-33ms fresh-create trap class held from 19:06:17)",
+    "post_aa": "fresh p50 32.86 p90 39.06 max 50.43, fsync p50 0.65 max 27.83 (DEGRADED - trap held through the aa leg)",
+    "post_w1": "fresh p50 30.62 p90 36.40 max 46.30, fsync p50 0.70 max 31.39 (DEGRADED - trap held through the w1 leg)",
+    "watcher_verdict": "the SUSTAINED TRAP lifted at 19:35:21 after a ~29min dwell - the fast-fire hunt fired at 19:35:12 (burst med 1.93) and the w1-2 leg ran in the lifted window (pre-probe fresh p50 1.00 HEALTHY, post 0.98 HEALTHY); the watcher then read fast/slow with 1-2min trap flickers at 19:35:51, 19:38:51, 19:47:52 - matching the 2 trap-signed tail rows of the fired w1-2 leg and the 1 trap-signed tail row of the fired w1-3 leg (in-leg NO-CEILING evidence, labeled)",
+    "classification": "the cold host ran the census FAST state only AFTER the main wave: the sustained trap (26-33ms fresh p50 at every boundary) covered the aa + w1 legs; the w1 rows are TRAP-window rows; the fired fast legs are labeled by their HEALTHY boundary probes with the in-leg flickers disclosed per row"
+   },
+   "compare_warm_start": {
+    "post_bootstrap": "fresh p50 25.66 p90 27.96, fsync p50 0.69 p90 27.52 (DEGRADED - the trap class at boot)",
+    "pre_aa": "fresh p50 27.15 p90 29.21 max 304.02, fsync p50 0.69 p90 28.45 max 39.53 (DEGRADED - the trap class at the aa leg's start)",
+    "post_aa": "fresh p50 0.77 p90 0.87 max 30.82, fsync p50 0.59 max 31.37 (MARGINAL - the trap->fast flip landed mid-aa-leg)",
+    "post_w1": "fresh p50 0.84 p90 1.17 max 6.57, fsync p50 0.73 max 6.08 (HEALTHY)",
+    "watcher_verdict": "the warm host FLICKERS on a minutes cadence: trap 19:05-19:07:45 (aa first half), fast 19:07:45-19:09:45, trap 19:09:45-19:11:15 (EXACTLY the w1 leg - all 10 rows trap-signed), fast 19:11:15, trap 19:12:15-19:13:15, fast 19:13:15-19:19:16, trap flicker 19:19:16, fast, trap flicker 19:34:47-19:36:47 (the fired w1-2 leg's 2 extreme rows 282.7/308.2, erase 11.3s each - the anchor's deepest class), trap 19:40:47-19:46:48, fast from 19:46:48 with a 12.4ms flicker at 19:47:18 (the fired w1-3 leg's 2 tail rows); the close-out hunts: the trap class did NOT return after 19:46:48 - the 60-min + 28-min hunts read fast at every round (the sustained fast dwell exceeded 55min), so the boundary-labeled warm trap leg was not granted",
+    "classification": "the warm host's trap windows are SHORT-FLICKERED (1-2min) - the same finding as the r2-parity run ('the warm host's post-aa trap windows were short-flickered'); the warm trap row rests on in-leg evidence (all 10 w1 rows trap-signed + the in-leg watcher samples) rather than boundary labels; the w1-4 trap hunt (60min, the >10ms direction) was armed to try to close it"
+   }
+  },
+  "regime_conditional_rust_rows_at_tip": {
+   "description": "the ready span is regime-bound (the same product+protocol spans 37.8-308.2ms = 8.1x across windows); the final table's four cells at the tip, every leg labeled",
+   "fast_window": {
+    "cold_fired_legs": {
+     "w1_2": {
+      "p50": 86.3,
+      "values": [
+       47.91,
+       80.01,
+       84.54,
+       84.94,
+       86.35,
+       90.35,
+       93.1,
+       96.68,
+       123.38,
+       145.33
+      ],
+      "boundary_labels": "pre fresh p50 1.00 HEALTHY (max 3.01) / post 0.98 HEALTHY (max 8.46)",
+      "split": "8 fast-signed rows (47.9-96.7, erase 712-2832) + 2 trap-signed tail rows (123.4/145.3, erase 4930/4948 - the 19:35:51/19:38:51 flickers)"
+     },
+     "w1_3": {
+      "p50": 99.8,
+      "values": [
+       37.77,
+       48.25,
+       75.19,
+       84.2,
+       99.77,
+       99.89,
+       102.88,
+       109.13,
+       118.8,
+       130.98
+      ],
+      "boundary_labels": "pre fresh p50 2.05 HEALTHY (max 14.48) / post 1.16 HEALTHY fresh, fsync MARGINAL (max 8.07)",
+      "split": "9 fast-signed rows (37.8-118.8) + 1 trap-signed tail row (131.0, erase 4964 - the 19:47:52 flicker)"
+     },
+     "pooled_fast_signed": {
+      "n": 27,
+      "p50": 84.2,
+      "values": [
+       37.77,
+       47.91,
+       48.04,
+       48.25,
+       49.43,
+       54.39,
+       61.34,
+       74.28,
+       75.0,
+       75.19,
+       78.76,
+       79.95,
+       80.01,
+       84.2,
+       84.54,
+       84.94,
+       86.35,
+       87.74,
+       90.35,
+       93.1,
+       96.68,
+       99.77,
+       99.89,
+       102.88,
+       109.13,
+       118.8,
+       121.12
+      ],
+      "note": "the cold fast row at the tip: 74.3 (the cleanest leg) to 84.2 (pooled fast-signed incl. the main w1 leg's single fast row) vs the pre-#3287 fast 93.5"
+     },
+     "w1_5": {
+      "p50": 74.3,
+      "values": [
+       48.04,
+       49.43,
+       54.39,
+       61.34,
+       74.28,
+       75.0,
+       78.76,
+       79.95,
+       121.12,
+       154.85
+      ],
+      "boundary_labels": "pre fresh p50 0.93 HEALTHY (max 6.83) / post 0.91 HEALTHY (max 10.86)",
+      "split": "9 fast-signed rows (48.0-121.1) + 1 trap-signed tail row (154.9, erase 4964-class)",
+      "note": "the cleanest cold fast leg (the fast core 48.0-80.0)"
+     }
+    },
+    "warm_fired_legs": {
+     "w1_2": {
+      "p50": 92.0,
+      "values": [
+       58.67,
+       78.63,
+       79.6,
+       90.28,
+       92.03,
+       92.79,
+       94.14,
+       112.28,
+       282.68,
+       308.18
+      ],
+      "boundary_labels": "pre fresh p50 1.01 HEALTHY / post 0.85 HEALTHY",
+      "split": "8 fast-signed rows (58.7-112.3) + 2 extreme trap rows (282.7/308.2, dropped 5, erase 11275/11290 - the 19:34:47 flicker, the anchor's deepest class)"
+     },
+     "w1_3": {
+      "p50": 62.7,
+      "values": [
+       43.94,
+       44.39,
+       45.91,
+       50.31,
+       62.7,
+       81.09,
+       99.36,
+       113.17,
+       134.7,
+       165.71
+      ],
+      "boundary_labels": "pre fresh p50 0.87 HEALTHY (max 7.53) / post 0.91 HEALTHY (max 2.12)",
+      "split": "8 fast-signed rows (43.9-113.2, the first five deep-fast 43.9-62.7 with erase 710-718) + 2 trap-signed tail rows (134.7/165.7, erase 4934/4952 - the 19:47:18 flicker)"
+     },
+     "pooled_fast_signed": {
+      "n": 26,
+      "p50": 77.2,
+      "values": [
+       37.76,
+       39.97,
+       43.39,
+       43.94,
+       44.39,
+       45.91,
+       46.35,
+       48.71,
+       50.31,
+       56.96,
+       58.67,
+       62.7,
+       77.23,
+       78.63,
+       79.6,
+       81.09,
+       90.28,
+       92.03,
+       92.79,
+       94.14,
+       99.12,
+       99.36,
+       104.81,
+       106.81,
+       112.28,
+       113.17
+      ],
+      "note": "the warm fast row at the tip: 48.7 (the pure fast leg, all rows fast-signed) to 77.2 pooled vs the pre-#3287 fast 73.3"
+     },
+     "w1_5": {
+      "p50": 48.7,
+      "values": [
+       37.76,
+       39.97,
+       43.39,
+       46.35,
+       48.71,
+       56.96,
+       77.23,
+       99.12,
+       104.81,
+       106.81
+      ],
+      "boundary_labels": "pre fresh p50 0.83 HEALTHY (max 1.03) / post 1.06 HEALTHY (max 8.40)",
+      "split": "ALL 10 rows fast-signed (zero trap rows) - THE PURE FAST LEG granted this campaign",
+      "note": "the deep-fast core 37.8-57.0; the tail rows 77-107 are fast-signed upper-band (erase 710-2837)"
+     }
+    }
+   },
+   "trap_window": {
+    "cold_w1_leg_boundary_labeled": {
+     "description": "the main-wave w1 leg - the pure trap-window cold row (the strongest label class this campaign)",
+     "pre_boundary_probe": "fresh p50 26.27 DEGRADED (the trap class at the aa leg's start, held through)",
+     "post_boundary_probe": "fresh p50 30.62 DEGRADED (the trap class at the w1 leg's end)",
+     "in_leg": "the watcher read 25-45ms for the whole leg (inside the 19:06-19:35 sustained dwell)",
+     "rust_p50": 141.6,
+     "rust_values": [
+      87.74,
+      123.91,
+      127.27,
+      133.29,
+      141.58,
+      141.93,
+      142.44,
+      143.25,
+      157.27,
+      186.58
+     ],
+     "rust_signature": "dropped 1-3, erase 2823-7068 (trap class; the anchor's cold rows: dropped 3-4, erase 7049-9190)",
+     "pi_p50": 247.8,
+     "pi_values": [
+      234.11,
+      238.99,
+      240.56,
+      244.27,
+      247.85,
+      248.34,
+      254.2,
+      264.87,
+      269.33,
+      269.95
+     ],
+     "like_for_like_vs_anchor": "266.9 -> 158.3 (pre-#3287) -> 141.6 = -47.0% total, -10.6% from #3287 alone"
+    },
+    "warm_w1_leg_inleg_labeled": {
+     "description": "the main-wave w1 leg ran inside a returned ~2min trap flicker (the watcher 31.51/32.88/28.95 in-leg) - ALL 10 rows trap-signed",
+     "boundary_labels": "pre-aa 27.15 TRAP -> flip mid-aa -> post-aa 0.77 FAST -> post-w1 0.84 FAST (the boundaries mid-read the flicker - disclosed)",
+     "rust_p50": 153.9,
+     "rust_values": [
+      121.77,
+      139.55,
+      140.32,
+      149.79,
+      153.91,
+      158.42,
+      161.62,
+      168.03,
+      175.94,
+      213.6
+     ],
+     "rust_signature": "dropped 2-3, erase 4933-7043 (every row trap-signed - matching the anchor's warm signature class dropped 2-6, erase 4933-13362)",
+     "pi_p50": 167.3,
+     "like_for_like_vs_anchor": "182.8 -> 153.6-162.1 (pre-#3287) -> 153.9 = -15.8% total, flat vs the pre-#3287 band",
+     "honest_negative": "a boundary-labeled warm trap leg was NOT granted: the warm host flipped to a SUSTAINED FAST state at ~19:46 (held ~55min through the close-out) - the 60-min trap hunt (armed 19:56) and the re-armed 28-min hunt (armed 20:11) both read the fast class at every 60s round (NO TRAP WINDOW in 28 rounds; the first hunt's rounds 19:56-20:06 all <3.1ms) - the warm trap row rests on the IN-LEG evidence (all 10 w1 rows trap-signed + the watcher's 28-33ms in-leg samples), the same evidentiary class the r2-parity run accepted for its warm trap row"
+    },
+    "pooled_trap_signed": {
+     "cold_n": 12,
+     "cold_p50": 141.9,
+     "warm_n": 14,
+     "warm_p50": 158.4,
+     "note": "across the main w1 + the fired legs' trap-signed rows; never blended with the fast rows"
+    }
+   },
+   "within_campaign_span": "the same product+protocol spans 37.8-308.2ms (8.1x) across windows on the two hosts; cold-on-one-host: 74.3 (cleanest fast leg) vs 141.6 (trap) = 1.9x; warm: 48.7 (pure fast leg) vs 153.9 (trap) = 3.2x"
+  },
+  "product_vs_regime_decomposition": {
+   "the_four_cuts_live": {
+    "3283_3295_3260_boot_paint": "live since the r2-parity run: cold paint p50 11.0 (10.6 at ef33d2c15; 43.6 at the r2 anchor), warm paint 6.1 - unchanged class, #3287 does not touch the paint path",
+    "3287_create_fanout": "LIVE THIS RUN (the campaign's purpose): the create-path 6-9-fsync fan-out cut - the cut's share shows in the CREATE-PATH-EXPOSED windows: the cold trap row -10.6% (158.3 -> 141.6) and the cold fast pooled row -7.7% (93.5 -> 86.3); the warm fast row's cleanest leg reads 62.7 vs the pre-#3287 73.3 with the deep-fast rows at 43.9-62.7 vs 45.0-95.0; the warm TRAP row stays flat (153.9 vs 153.6-162.1) - the warm trap window's cost is not the create fan-out (the warm window rides a ready daemon)",
+    "binary_size": "the tip binary is 266,584B SMALLER than the pre-#3287 build (56,556,664 vs 56,823,248B)"
+   },
+   "anchor_regime_inference": "the r2 anchor's rust rows carry the trap signature on EVERY row (re-derived from the raw trials: cold dropped 3-4 erase 7049-9190, warm dropped 2-6 erase 4933-13362) - the anchor host sat in the trap/slow class for its whole campaign, so the table's 267/183 are trap-window-shaped values and the like-for-like comparison is trap-vs-trap",
+   "pi_anchoring": "pi reproduces through all three campaigns with the byte-identical binary: cold 234.1 -> 245.6 -> 247.8, warm 167.3 -> 170.1 -> 167.3; A/A valid everywhere pi runs (0.1-2.5% spread) - the regime exposure lives ONLY on the fsync-paying product"
+  },
+  "aa_calibration": {
+   "compare_cold_start": {
+    "rust_halves_p50": [
+     129.0,
+     136.4
+    ],
+    "spread_pct": 5.7,
+    "valid": true,
+    "note": "the aa leg ran inside the sustained trap (boundaries 26.27/32.86) - halves tight, drift small",
+    "pi_halves_p50": [
+     245.2,
+     239.3
+    ],
+    "pi_spread_pct": 2.5,
+    "pi_valid": true
+   },
+   "compare_warm_start": {
+    "rust_halves_p50": [
+     194.8,
+     174.5
+    ],
+    "spread_pct": 11.6,
+    "valid": false,
+    "reason": "the trap->fast flip landed mid-aa-leg (pre-aa 27.15 TRAP -> post-aa 0.77 FAST) - the halves straddle the flip; the same invalidation class as the r2-parity run's warm aa leg (34.1% there)",
+    "pi_halves_p50": [
+     168.6,
+     168.7
+    ],
+    "pi_spread_pct": 0.1,
+    "pi_valid": true
+   },
+   "note": "pi's A/A is VALID everywhere (0.1-2.5%) - the flip exposure is ONLY on the fsync-paying product, the control clean again"
+  }
+ },
+ "validity": {
+  "excluded": [],
+  "notes": "All 120 main-wave rows (40 w1 + 40 aa across the two sandboxes) plus 120 fired-leg rows (w1-2/w1-3/w1-5 x2 sandboxes) completed validated=true (echoed + erased, zero error rows, zero leftover processes). The noop PTY floors 0.037-0.070ms p50 per leg (snapshotted per leg - never overwritten). The two sandboxes' fixed-CPU references (1315.4/1373.1ms) sit inside the r2 campaign's 1197-1375ms band. PROTOCOL PARITY: the harness bits are BIT-IDENTICAL to the r2-parity run (git diff c8cf1be..0e946f3 -- bench/ EMPTY). DISCLOSED deltas from the r2 campaign/r2-parity run: (1) the rust tip payload reaches the sandbox via a POST-BOOTSTRAP SHA-ASSERTED SWAP (the shared vendor/products.tar.gz still carries the r2 pin; the swap lands the same end state /root/bench-r2/rust with the tip payload sha asserted at every leg by versions.json - the r2-parity lane rebuilt the vendor tarball instead; both routes produce the identical in-sandbox tree, verified by the per-leg versions capture); (2) the same advisory probes + 30s watcher pattern as the r2-parity run (never during a timing leg); (3) the r2-pin bundled catalogs carried into the tip payload (CI-generated assets; same disclosure as the r2-parity run); (4) the fired legs (w1-2/w1-3/w1-5[/w1-4]) are separate non-aa phases each with its own noop floor + versions capture, APPEND-mode phase files - the first warm fire attempt hit a leg-runner argv bug (benchmark-name KeyError, zero rows written, disclosed; the fixed script re-fired and wrote the phase file) - each phase file contains exactly one leg's rows; (5) the fired fast legs caught in-leg trap flickers in their tails (2/2/1/1/1/0 trap-signed rows; the warm w1-5 leg is the granted PURE fast leg - zero trap rows) - the NO-CEILING in-leg evidence, labeled per row, never blended into the fast row; (6) the warm trap row's labeling is IN-LEG (watcher + all-10-rows signatures) because the warm host's trap dwells are 1-2min flickers the boundary probes mid-read; (7) the campaign driver's probe() captures the first CLI line-wrap segment per REGIME line (p50/p90/max), the full stall-rate text lives in the fired-leg stdout logs. The regime-conditional rows are presented PER WINDOW with their labels - never blended."
+ },
+ "outcome": "measured - THE POST-#3287 BENCHMARK-TABLE RE-RUN at the final tip (the r2 protocol, regime-labeled, the pi control anchored)",
+ "decision": "THE FINAL BENCHMARK-TABLE ROWS at the tip cf2968820 (every perf cut live incl. #3287), r2 protocol, regime-labeled, pi-anchored: (1) THE PUBLISHED w1 ROWS this campaign are TRAP-WINDOW rows on both hosts (the cold host dwelled in the sustained trap for the whole main wave ~29min; the warm host's w1 leg ran inside a returned 2min flicker): cold rust 141.6 [87.7-186.6] / warm rust 153.9 [121.8-213.6] - vs the anchor's trap-shaped table 267/183 that is LIKE-FOR-LIKE: cold -47.0%, warm -15.8%; vs the pre-#3287 trap rows (158.3 / 153.6-162.1): cold -10.6% (the #3287 create-fan-out cut landing in the cold window), warm flat (the warm trap window's cost is not the create path). (2) THE PI CONTROL REPRODUCES AND ANCHORS: cold 234.1->245.6->247.8, warm 167.3->170.1->167.3 (the warm row reproduces the anchor EXACTLY), byte-identical binary e79626f2, A/A valid on pi everywhere (0.1-2.5%) - protocol+environment stable across three campaigns; the residual is cross-VM variance. (3) THE REGIME-CONDITIONAL ROWS AT THE TIP (every leg labeled): cold FAST 74.3 (the cleanest leg, 9 fast + 1 trap tail) to 84.2 pooled fast-signed [37.8-121.1] (fired legs w1-2 86.3 / w1-3 99.8 / w1-5 74.3, HEALTHY boundary probes, in-leg flicker tails disclosed) / cold TRAP 141.6 (the main w1 leg, boundary-labeled DEGRADED at every boundary + the watcher dwell - the strongest label class) / warm FAST 48.7 (THE PURE FAST LEG: all 10 rows fast-signed, HEALTHY boundaries both ends, deep-fast core 37.8-57.0) to 77.2 pooled fast-signed [37.8-113.2] / warm TRAP 153.9 (all 10 rows trap-signed + in-leg watcher; boundary-labeled trap leg NOT granted - the warm flicker honest negative, the same one the r2-parity run carried). (4) THE #3287 SHARE (the create-path fan-out cut, this campaign's reason): the cut lands in the create-path-exposed windows - cold trap -10.6% (158.3->141.6), cold fast -20.6% (93.5->74.3), warm fast -33.5% (73.3->48.7, the pure fast leg's deep-fast core 37.8-57.0 vs the pre-#3287 45.0-95.0) - while the warm trap row and the paint rows (cold 11.0 / warm 6.1 vs 10.6 at ef33d2c15) hold their pre-#3287 classes, exactly as expected for a create-path cut. (5) THE FINAL TABLE: cold 74.3-84.2 fast / 141.6 trap, warm 48.7-77.2 fast / 153.9 trap, pi 247.8/167.3 - the campaign's headline answer to 'how much did cold and warm start improve, all cuts in' reads TRAP-vs-TRAP like-for-like (the table's own class): cold 267 -> 141.6 (-47.0%), warm 183 -> 153.9 (-15.8%), and FAST-window best-case: cold 267-class host in a fast window reads 86.3, warm 62.7; every row carries its regime label because the span is 8.1x (37.8-308.2ms). NO PR, NO product bytes changed, measurement only.",
+ "pr_url": null,
+ "record_path": "data/hillclimb/experiments/20261002-200028-startup-r2protocol-finaltable-cf2968820.json",
+ "session": {
+  "worker": "perf-r2-final-table-fast"
+ },
+ "timestamp": "2026-10-02T20:41:47+00:00",
+ "evidence": "campaign dir /home/ubuntu/hillclimb/r2-final-table-work/campaign/20261002-190010/ (per-sandbox final results trees: trials-aa/w1/w1-2/w1-3/w1-5 jsonls + per-leg noop-control-<phase>.json + versions-<phase>.json + settle.jsonl + leg logs + the fastfire/fire-w13/fire-w15/trapfire-w14 logs + the full 95+-row regime-watch series per host); the merged analysis trees: merged-20261002-190010 (the w1 headline + aa calibration), merged-20261002-190010-fastlegs (the fired w1-2 legs), merged-20261002-190010-fastw13 (the fired w1-3 legs), merged-20261002-190010-fastw15 (the fired w1-5 legs, the pure fast warm leg); the anchor raw trials /home/ubuntu/bench/results-r2/merged-20260930-110231/ (the anchor + signature re-derivation); the r2-parity evidence /home/ubuntu/hillclimb/r2-parity-rerun-work/ (the pre-#3287 rows this record compares against); the lane scripts + the temporary r4 tip pin copy (rust-product.yaml + .orig + .tpl) + the vendor-plan manifest in the work dir and archived; the node staging tree /home/ubuntu/bench-r4/rust (payload sha 0549b73a; the r2 pin ~/bench-r2/rust and the r2-parity staging ~/bench-r3/rust untouched); the evidence archive /home/ubuntu/hillclimb/archives/r2-final-table/r2final-table-evidence-20261002.tar.gz (sha256 68b97e46b3d6ce1b7a7fa226256321d43ed521375a3be39a8f539fc696803a1c, built with the campaign trees + the merged trees + the scripts + the record draft BEFORE the VM teardown); the build VM deleted after the sha-verified staging download; both campaign VMs destroyed after the sha-verified archive (dispositions in /home/ubuntu/hillclimb/vms/hillclimb-perf-r2final-*.json)"
+}
