@@ -177,3 +177,23 @@ def test_every_primary_metric_direction(tmp_path):
     for name, (metric, direction) in primary_metric.__globals__["PRIMARY"].items():
         assert direction == "minimize"
         assert isinstance(metric, str) and metric
+
+
+def test_variants_share_their_harness_applicability(tmp_path):
+    """A measurement variant is its base harness's product: daemon.boot
+    and the kernel/session sets (declared "rust", "ts") must apply to
+    rust_b/rust_3287, and never to claude/codex/pi/hermes."""
+    from bench.trials import _comparable
+    reg = discover(_cfg(tmp_path))
+    daemon_boot = reg.benchmark("daemon.boot")
+    comparable, status = _comparable(reg, daemon_boot, ["rust", "rust_b", "rust_3287", "ts",
+                                                      "claude_daemon", "codex", "pi", "hermes"], None)
+    names = [n for n, _ in comparable]
+    assert names == ["rust", "rust_b", "rust_3287", "ts"]
+    assert {n for n, s, _ in status} == {"claude_daemon", "codex", "pi", "hermes"}
+    assert all(s == "not_applicable" for _, s, _ in status)
+    # fixture-based comparability still excludes the non-rust/ts products
+    scroll = reg.benchmark("compare.scroll_typing")
+    comparable2, status2 = _comparable(reg, scroll, ["rust_3287", "claude", "pi"], None)
+    assert [n for n, _ in comparable2] == ["rust_3287"]
+    assert {n for n, s, _ in status2} == {"claude", "pi"}

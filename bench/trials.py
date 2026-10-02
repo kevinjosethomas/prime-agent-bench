@@ -84,10 +84,17 @@ def run_trials(reg: Registry, driver: HarnessDriver, benchmark_name: str, prod_n
 
 
 def _comparable(reg: Registry, benchmark, prod_names: list, fixture) -> tuple[list, list]:
-    """(comparable [(product, level)], status rows [(product, status, reason)])."""
+    """(comparable [(product, level)], status rows [(product, status, reason)]).
+
+    A measurement variant (rust_b/rust_3287, codex_nodaemon, ...) shares
+    its harness's applicability: the kernel/session/daemon.boot sets are
+    declared for the base harnesses ("rust", "ts") because that is what
+    they are BY DESIGN, and a variant of rust is a rust product."""
     comparable, status_rows = [], []
     for name in prod_names:
-        if not benchmark.applicable(name):
+        variant_of = getattr(reg.product(name), "config_name", None)
+        if not (benchmark.applicable(name)
+                or (variant_of and benchmark.applicable(variant_of))):
             status_rows.append((name, "not_applicable",
                                 benchmark.applicability_note
                                 or f"benchmark applies to {benchmark.applicable_products} only"))
