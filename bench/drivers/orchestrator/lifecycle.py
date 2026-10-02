@@ -152,7 +152,8 @@ def collect_results(backend, handle, out_dir: Path) -> dict:
     tar_remote = Path("/tmp/results.tar.gz") if backend.name == "prime" \
         else root.parent / "results.tar.gz"
     code, log = backend.exec_cmd(
-        handle, f"tar -czf {tar_remote} -C {root} results", timeout=600.0)
+        handle, f"tar -czf {tar_remote} -C {root} --ignore-failed-read "
+                f"results logs", timeout=600.0)
     if code != 0:
         raise RuntimeError(f"results tar failed: {log[-300:]}")
     local_tar = out_dir / f"{handle.name}-results.tar.gz"

@@ -31,20 +31,26 @@ class PTYSession(PtyStreamMixin, Session):
         self.cols, self.rows = cols, rows
         self.argv = list(argv)
         self.master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
-        fl = fcntl.fcntl(self.master, fcntl.F_GETFL)
-        fcntl.fcntl(self.master, fcntl.F_SETFL, fl | os.O_NONBLOCK)
-        self.t_spawn = now()
-        self.proc = subprocess.Popen(
-            argv,
-            env=env,
-            cwd=cwd,
-            stdin=slave,
-            stdout=slave,
-            stderr=slave,
-            start_new_session=True,
-            close_fds=True,
-        )
+        try:
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+            fl = fcntl.fcntl(self.master, fcntl.F_GETFL)
+            fcntl.fcntl(self.master, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+            self.t_spawn = now()
+            self.proc = subprocess.Popen(
+                argv,
+                env=env,
+                cwd=cwd,
+                stdin=slave,
+                stdout=slave,
+                stderr=slave,
+                start_new_session=True,
+                close_fds=True,
+            )
+        except BaseException:
+            os.close(slave)
+            os.close(self.master)
+            self.master = -1
+            raise
         os.close(slave)
         self.pid = self.proc.pid
         self.exit_code = None
@@ -173,24 +179,46 @@ class PTYSession(PtyStreamMixin, Session):
         return self.proc.poll() is None
 
     def kill_tree(self, sig=signal.SIGTERM) -> None:
-        """SIGTERM the process group, escalate to SIGKILL."""
+        """SIGTERM the process group, escalate to SIGKILL, close the master.
+
+        The master fd is closed at the end: a wave chain runs hundreds of
+        launches in one process, and one leaked fd per session is a
+        deterministic EMFILE against the sandbox's fd cap (Errno 24 - the
+        2026-10-01 campaign's first wave died exactly there after ~530
+        trials)."""
         self._alive = False
         try:
             pgid = os.getpgid(self.proc.pid)
         except ProcessLookupError:
-            return
-        for s in (signal.SIGTERM, signal.SIGKILL):
-            try:
-                os.killpg(pgid, s)
-            except ProcessLookupError:
-                return
-            time.sleep(0.4)
-            if self.proc.poll() is not None:
-                break
+            pgid = None
+        if pgid is not None:
+            for s in (signal.SIGTERM, signal.SIGKILL):
+                try:
+                    os.killpg(pgid, s)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.4)
+                if self.proc.poll() is not None:
+                    break
         try:
             self.proc.wait(timeout=5)
         except Exception:
             pass
+        # the reader thread ends with its own proc.wait(); join before the
+        # close so select() never races an EBADF
+        if self._reader.is_alive():
+            self._reader.join(timeout=12)
+        self.close()
+
+    def close(self) -> None:
+        """Close the PTY master (idempotent)."""
+        fd = getattr(self, "master", None)
+        if fd is not None and fd >= 0:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            self.master = -1
 
 
 class PTYDriver(HarnessDriver):

@@ -68,6 +68,7 @@ def start_mock(cfg: dict, script: dict | None = None):
     proc = subprocess.Popen([sys.executable, "-m", "bench.drivers.mock_provider",
                              str(path), str(port)],
                             stdout=subprocess.PIPE, stderr=log, text=True)
+    log.close()  # the child keeps its dup; the parent must not hold it
     port = int(proc.stdout.readline().strip())
     print(f"mock provider on 127.0.0.1:{port}")
     return proc
@@ -182,7 +183,8 @@ def settle_product(reg: Registry, name: str, driver, out_dir: Path) -> None:
     if rec["template_audit"] and not err:
         err = f"template carries personal state: {rec['template_audit'][:5]}"
     rec["error"] = err
-    (out_dir / "settle.jsonl").open("a").write(json.dumps(rec) + "\n")
+    with (out_dir / "settle.jsonl").open("a") as fh:
+        fh.write(json.dumps(rec) + "\n")
     print(f"settle {name}: {'OK' if not err else 'ERR ' + err}", flush=True)
 
 
