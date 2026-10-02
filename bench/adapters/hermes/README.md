@@ -33,3 +33,33 @@ prompt_toolkit-based; Enter always submits (`_bind_prompt_submit_keys`:
 default for submits); typed text echoes in the composer (the probe/readiness
 contract). Settle detection: the mock's scripted reply renders in the stream
 (same DEFAULT_REPLY match as the other mock products).
+
+
+## Trustworthy-suite additions (2026-10-02, the publishable suite)
+
+- **No daemon.** The chat CLI is a single interactive process (the gateway/
+  serve/desktop modes are separate products' surfaces, not the TUI's own
+  daemon), so `compare.warm_start` measures the native repeat launch
+  (`warm_mode=repeat_launch`) and `daemon.boot` does not apply.
+- **Ready = the typed token on the ``❯`` input row.** `input_prompt:
+  '\s*❯\s*'` pins the default skin's composer glyph
+  (`hermes_cli/cli_tui_mixin.py: _get_tui_prompt_symbols` ->
+  `skin_engine.get_active_prompt_symbol("❯ ")`), so the trustworthy
+  input-row validator accepts the echo only on the prompt line; the
+  token-persistence check (0.5 s) and the raw-tty probe apply as for
+  every product.
+- **Version evidence is machine-collected where trials run.** In-sandbox
+  `/usr/local/bin/hermes --version` answers from the fast path (before
+  the config/network import wall) and `binary_sha256` is a digest of the
+  installed code tree (sorted (path, sha256), `.git`/`__pycache__`
+  excluded) pinned in product.yaml — a swapped or modified payload fails
+  loudly at every pass's version collection, and a mid-run change fails
+  the end-of-pass check. On the node (no FHS install) the staging tree
+  answers instead.
+- **No self-update.** The per-trial ~/.hermes/config.yaml pins
+  `updates.check: false` — v0.21.5's own switch for the banner's passive
+  GitHub-API check (cached at ~/.hermes/.update_check); there is no
+  HERMES_NO_UPDATE_CHECK env in this release (the env var rides inert).
+  Updates are user-initiated (`hermes update`), never taken by a trial.
+- **First-run dialogs: none.** The pre-provisioned config.yaml (custom
+  provider -> mock) settles the composer; `first_run_dialogs: []` stays.

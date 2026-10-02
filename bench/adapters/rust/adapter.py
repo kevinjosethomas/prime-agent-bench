@@ -181,3 +181,16 @@ class PrimeAgentRustBProduct(PrimeAgentRustProduct):
     name = "rust_b"
     display_name = "Prime Agent Rust (B)"
     config_name = "rust"
+
+
+class PrimeAgentRust3287Product(PrimeAgentRustProduct):
+    """Rust at main WITH PR #3287 (``reduce fsyncs during worker creation``,
+    branch lane/perf-create-fsync-fanout): rust's product.yaml, its own pin
+    from the config's ``products: rust_3287:`` section. Paired against
+    ``rust`` pinned to the same base main, the publishable suite isolates
+    the PR's effect on the startup path under the one enforced definition
+    per metric (the publishable run's A/B is the point of the pair)."""
+
+    name = "rust_3287"
+    display_name = "Prime Agent Rust (main + #3287)"
+    config_name = "rust"

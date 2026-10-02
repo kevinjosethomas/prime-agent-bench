@@ -1,0 +1,89 @@
+# The publishable multi-harness startup suite (2026-10-02, the blog run).
+# Same enforced policy as configs/trustworthy.yaml (one definition per
+# metric, validators, tmpfs trial roots, os.sync before every launch,
+# ABBA-interleaved cold+warm, A/A gate 10% or 5 ms with 2 re-runs then
+# INVALID, >=10 trials per product, versions re-collected after every
+# pass), with the product set the operator's blog table names:
+# - rust = org main tip cf285dce2 (built with the wsr/dfair recipe; the
+#   extra vendor tarball ships root/tbuild/builds/main-cf285dce)
+# - rust_3287 = main WITH PR #3287 (lane/perf-create-fsync-fanout head
+#   4d58da4d6, folds the same main): the fsync-fanout A/B pair
+# - ts 0.9.8, claude 2.1.285 (plain + `claude agents` daemon variant),
+#   codex 0.159.2 (daemon + --no-daemon), pi mono 0.99.1
+# - hermes = Hermes Agent v2026.9.24 (v0.21.5), the Nous Research chat
+#   TUI (single process: warm = repeat launch)
+# Phase A (this config's sandbox smoke) runs on Prime VM sandboxes; the
+# publishable numbers run on the procured bare-metal node (Phase B, two
+# full runs, same-box reference calibration, `bench headline` agreement).
+bench_root: ~/pubroot
+results_dir: ~/pubroot/results
+
+product_order: [rust, rust_3287, ts, claude, claude_daemon, codex, codex_nodaemon, pi, hermes]
+display:
+  rust: Prime Agent Rust (main cf285dce2)
+  rust_3287: Prime Agent Rust (main + #3287, 4d58da4d6)
+  ts: Prime Agent TS
+  claude: Claude Code
+  claude_daemon: Claude Code (daemon, claude agents)
+  codex: Codex CLI (daemon, default)
+  codex_nodaemon: Codex CLI (--no-daemon)
+  pi: Pi Mono
+  hermes: Hermes Agent
+
+products:
+  rust:
+    binary: /root/tbuild/builds/main-cf285dce/bin/prime-agent-rust
+    revision: cf285dce271fa7684b16f2c91c760654123fbbb1
+    binary_sha256: 650bccc6083e510f51ca50a714a6358fccab3b0c024bf6f0abcaff44af066626
+  rust_3287:
+    binary: /root/tbuild/builds/p3287-4d58da4d/bin/prime-agent-rust
+    revision: 4d58da4d66bc46eb35abe3320a910adbc04fbaa0
+    binary_sha256: 4c6637cc4d94746d516cb6a302fa823076d31ddf701483e5d227926ca7cec92e
+
+install:
+  node_runtime_paths: [/usr/lib/node_modules/npm, /usr/bin/node]
+
+driver: pty
+mock:
+  port: 8799
+
+storage:
+  trials: tmpfs
+  tmpfs_size: 5g
+
+schedule:
+  interleave: true
+  warmup: true
+
+aa:
+  spread_threshold_pct: 10.0
+  drift_threshold_pct: 10.0
+  abs_floor_ms: 5.0
+  min_valid_frac: 0.8
+  max_reruns: 2
+
+benchmarks:
+  compare.warm_start:
+    daemon_dwell_s: 2.0
+
+vendor:
+  toolchain:
+    - {src: ~/.local/bin/uv, dst: root/.local/bin/uv}
+    - {src: ~/.local/bin/uvx, dst: root/.local/bin/uvx}
+    - {src: ~/.local/share/uv, dst: root/.local/share/uv, exclude: [tools]}
+
+settle:
+  timeout_s: 300.0
+  first_paint_timeout_s: 240.0
+  key_pause_s: 0.7
+  loop_s: 0.8
+  echo_wait_s: 1.2
+
+noop_control:
+  rounds: 30
+
+load_gate:
+  compile_markers: [rustc, cargo, /tsc, esbuild, npm exec, node-gyp, cc1, clang]
+  load_threshold: 0.6
+  max_wait_s: 300.0
+  poll_s: 2.0

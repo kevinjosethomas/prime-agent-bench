@@ -25,3 +25,15 @@
   README documents that the flags are load-bearing.
 - **Node-only launch**: pi is a node bundle — `node` must be on PATH (the
   bootstrap installs node 22).
+
+
+## Product naming (the "pi mono" question, 2026-10-02)
+
+The driver IS "Pi Mono": it has always run the pi-mono monorepo's
+coding-agent (`packages/coding-agent/dist/bundle/cli.js`, npm
+`@earendil-works/pi-coding-agent`, first `@mariozechner/pi-coding-agent`
+before the package moved). There is no distinct "pi" product or mode vs
+"pi mono" in this harness — the repo's other packages (agent, tui,
+codemode, ...) are libraries/subagents of the same monorepo, not separate
+CLIs we measure. The publishable suite therefore keeps this driver as
+the one `pi` product, display name "Pi Mono".

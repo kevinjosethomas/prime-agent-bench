@@ -20,8 +20,9 @@ def _cfg(tmp_path, overrides=None):
 
 def test_discovery_finds_every_adapter(tmp_path):
     reg = discover(_cfg(tmp_path))
-    assert set(reg.products) == {"rust", "rust_b", "ts", "claude", "claude_daemon",
-                                 "codex", "codex_nodaemon", "pi", "hermes"}
+    assert set(reg.products) == {"rust", "rust_b", "rust_3287", "ts", "claude",
+                                 "claude_daemon", "codex", "codex_nodaemon", "pi",
+                                 "hermes"}
     assert set(reg.terminals) == {"pty", "tmux"}
     assert set(reg.fixtures) == {"session-10mib", "session-10mib-compacted",
                                  "subagent-tree"}
@@ -49,13 +50,23 @@ def test_adapter_wiring(tmp_path):
 
 
 def test_variants_share_their_harness_pinning(tmp_path):
-    reg = discover(_cfg(tmp_path, {"products": {"rust_b": {"revision": "b-pin"}}}))
+    reg = discover(_cfg(tmp_path, {"products": {"rust_b": {"revision": "b-pin"},
+                                               "rust_3287": {"revision": "p-pin"}}}))
     codex, nodaemon = reg.product("codex"), reg.product("codex_nodaemon")
     assert nodaemon.dialog_steps == codex.dialog_steps
     assert codex.daemon_argv({}) is not None and nodaemon.daemon_argv({}) is None
     assert reg.product("rust_b").product_cfg["revision"] == "b-pin"
     assert reg.product("rust").product_cfg["revision"] != "b-pin"
     assert reg.product("rust_b").template_dir() == reg.layout.homes / "rust_b" / "template"
+    # the #3287 A/B variant: rust's product.yaml, its own config pin,
+    # the same daemon shape as rust (the variant isolates the PR only)
+    r3287 = reg.product("rust_3287")
+    assert r3287.product_cfg["revision"] == "p-pin"
+    assert r3287.config_name == "rust"
+    assert r3287.has_daemon and r3287.daemon_argv({"daemon_socket": "/x", "agent_dir": "/y",
+                                                   "work": "/z", "home": "/h",
+                                                   "trial_dir": "/t", "tmp": "/tmp"}) is not None
+    assert r3287.template_dir() == reg.layout.homes / "rust_3287" / "template"
 
 
 def test_trial_paths_fit_codex_daemon_sockets(tmp_path):

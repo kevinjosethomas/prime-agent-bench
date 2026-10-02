@@ -189,3 +189,57 @@ def test_trial_processes_are_found_by_their_environment(tmp_path):
     finally:
         proc.kill()
         proc.wait()
+
+
+def test_hermes_input_row_is_the_composer_glyph(tmp_path):
+    """Hermes ready = the typed token on the ``❯ `` input row (the default
+    skin's prompt symbol), the same input-row rule as every product."""
+    hermes = _reg(tmp_path).product("hermes")
+    assert input_row_ok(hermes, "❯ Zq7x01")
+    assert input_row_ok(hermes, "  ❯  Zq7x01")
+    assert not input_row_ok(hermes, "Zq7x01")            # bare echo at column 0
+    assert not input_row_ok(hermes, " Hermes Agent Zq7x01")  # the banner row
+    # no daemon: warm is the product's native repeat launch
+    assert hermes.daemon_argv({"daemon_socket": None, "agent_dir": None,
+                              "work": "/w", "home": "/h", "trial_dir": "/t",
+                              "tmp": "/tmp"}) is None
+    assert hermes.has_daemon is False
+
+
+def test_hermes_version_evidence_is_collected_from_the_payload(tmp_path):
+    """The trustworthy bar: version evidence is machine-collected where the
+    trials run. In-sandbox the launcher answers --version and
+    binary_sha256 digests the install tree (.git/__pycache__ excluded); a
+    swapped or modified payload fails loudly against the pin."""
+    from bench.adapters.hermes.adapter import tree_digest
+    code = tmp_path / "payload"
+    (code / "__pycache__").mkdir(parents=True)
+    (code / "__pycache__" / "regenerated.pyc").write_text("bytecode litter")
+    (code / "hermes").write_text("# the entry the shim execs\n")
+    (code / "agent").mkdir()
+    (code / "agent" / "core.py").write_text("x = 1\n")
+    launcher = tmp_path / "bin" / "hermes"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_text('#!/bin/sh\necho "Hermes Agent v0.21.5 (v2026.9.24)"\n'
+                        'echo "Install directory: /tmp"\n')
+    launcher.chmod(0o755)
+    digest = tree_digest(code)
+    assert digest and tree_digest(code) == digest          # stable across calls
+    reg = discover(load_config(None) | {
+        "bench_root": str(tmp_path / "bench"),
+        "results_dir": str(tmp_path / "bench" / "results"),
+        "products": {"hermes": {"binary": str(launcher),
+                                "binary_sha256": digest,
+                                "install": {"payload_code": str(code)}}}})
+    info = reg.product("hermes").version_info()
+    assert info["version"] == "Hermes Agent v0.21.5 (v2026.9.24)"   # live probe
+    assert info["binary_sha256"] == digest
+    assert "Install directory" not in info["version"]              # first line only
+    # a modified payload (one byte in one file) is a different product
+    (code / "agent" / "core.py").write_text("x = 2\n")
+    assert tree_digest(code) != digest
+    try:
+        reg.product("hermes").version_info()
+        raise AssertionError("a swapped payload must fail loudly")
+    except RuntimeError as e:
+        assert "digest" in str(e)

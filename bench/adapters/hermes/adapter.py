@@ -12,9 +12,22 @@ through Hermes' OpenAI-compatible custom provider
 rust/ts/claude/pi; Enter always submits the composer (multiline is opt-in
 via ctrl-j / escape-enter), and the TUI is prompt_toolkit-based, so the
 pty driver's screen model applies.
+
+Trustworthy-suite rules (one enforced definition per metric): no daemon —
+`hermes` is a single interactive process, so compare.warm_start measures
+the product's native repeat launch (warm_mode=repeat_launch); ready is
+the typed token on the ``❯`` input row (product.yaml input_prompt) that
+persists; version evidence is machine-collected where the trials run (the
+in-sandbox FHS tree: live `--version` + a digest of the installed code
+tree), so a changed install fails the pass's version check. No
+self-update: the trial config.yaml pins ``updates.check: false`` — the
+banner's passive GitHub-API check (cached at ~/.hermes/.update_check) is
+off for every trial (v0.21.5 has no HERMES_NO_UPDATE_CHECK env; the
+config key is the release's own switch).
 """
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -24,6 +37,28 @@ from bench.core.product import ProductAdapter, TrialContext
 #: the sandbox-side install paths (the vendored payload's targets)
 FHS_CODE = Path("/usr/local/lib/hermes-agent")
 FHS_COMMAND = Path("/usr/local/bin/hermes")
+
+
+def tree_digest(root: Path) -> str | None:
+    """A stable digest of an installed code tree: sha256 over the sorted
+    (relative path, file sha256) pairs. ``.git`` and ``__pycache__`` are
+    skipped (vendored away / regenerated at first import), so the digest
+    is the installed product, not its build litter or bytecode cache."""
+    import hashlib
+    if not root.is_dir():
+        return None
+    acc = hashlib.sha256()
+    for path in sorted(p for p in root.rglob("*")):
+        rel = path.relative_to(root).as_posix()
+        if any(part in (".git", "__pycache__") for part in path.parts):
+            continue
+        if path.is_symlink():
+            acc.update(f"L {rel} -> {os.readlink(path)}\n".encode())
+        elif path.is_file():
+            acc.update(f"F {rel} ".encode())
+            acc.update(hashlib.sha256(path.read_bytes()).hexdigest().encode())
+            acc.update(b"\n")
+    return acc.hexdigest()
 
 
 class HermesAgentProduct(ProductAdapter):
@@ -47,29 +82,59 @@ class HermesAgentProduct(ProductAdapter):
         return Path(src).expanduser() if src else FHS_CODE
 
     def version_info(self) -> dict:
-        """Pinned version evidence: the release tag + commit + launcher sha256.
+        """Machine-collected version evidence, collected where trials run.
 
-        The node never executes the product (the payload only ships); the
-        version string is the one captured in-sandbox at install time
-        (`hermes --version`), cross-checked against the payload's
-        pyproject.toml, and the launcher sha256 pins the exact payload."""
+        In-sandbox the FHS install is live: /usr/local/bin/hermes execs
+        /usr/local/lib/hermes-agent/hermes (the venv python), so the
+        launcher's own `--version` runs (its fast path answers before the
+        config/network import wall; a scratch HOME keeps the probe
+        stateless) and ``binary_sha256`` is a digest of the installed code
+        tree — the whole product for a source install, not just the 3-line
+        launcher shim. The digest skips ``.git`` (vendored out) and
+        ``__pycache__`` (regenerated at first import), so it is stable
+        across a pass; anything else that rewrites the install tree fails
+        the end-of-pass version check. Node-side dry-runs (no FHS install)
+        fall back to the product.yaml staging paths: the version string is
+        then the pin captured at install time."""
+        import subprocess
+        import tempfile
         from bench.core.env import sha256_file
-        src_launcher = (self.product_cfg.get("install") or {}).get("launcher_src")
-        sha_src = Path(src_launcher).expanduser() if src_launcher else self.binary
-        version = self.product_cfg.get("version")
-        if not version:
-            pyproject = self.payload_code / "pyproject.toml"
-            for line in pyproject.read_text().splitlines():
-                if line.startswith("version"):
-                    version = line.split("=", 1)[1].strip().strip("\"'")
-                    break
+        install = self.product_cfg.get("install") or {}
+        launcher = Path(self.product_cfg.get("binary") or FHS_COMMAND)
+        if not launcher.exists():
+            alt = install.get("launcher_src")
+            launcher = Path(alt).expanduser() if alt else launcher
+        code = FHS_CODE if FHS_CODE.exists() else self.payload_code
+        entry = code / "hermes"
+        version = None
+        if launcher.exists():
+            with tempfile.TemporaryDirectory() as td:
+                try:
+                    v = subprocess.run([str(launcher), "--version"],
+                                        capture_output=True, text=True, timeout=90,
+                                        env=scrubbed_env({"HOME": td}))
+                    lines = [ln.strip() for ln in (v.stdout or v.stderr).splitlines()
+                             if ln.strip()]
+                    version = lines[0] if v.returncode == 0 and lines else None
+                except (OSError, subprocess.SubprocessError):
+                    version = None
         info = {
-            "version": version or "unknown",
+            "version": version or self.product_cfg.get("version") or "unknown",
             "revision": self.product_cfg.get("revision", "unknown"),
-            "binary": str(self.binary),
-            "binary_sha256": sha256_file(sha_src) if sha_src and sha_src.exists() else None,
+            "binary": str(launcher),
+            "entry": str(entry),
+            "binary_sha256": tree_digest(code) if code.is_dir() else None,
+            "binary_digest_note": ("sha256 over the sorted (path, sha256) of every "
+                                   "file under the install tree, .git and "
+                                   "__pycache__ excluded"),
         }
-        note = (self.product_cfg.get("install") or {}).get("note")
+        pinned = self.product_cfg.get("binary_sha256")
+        if pinned and info["binary_sha256"] and pinned != info["binary_sha256"]:
+            raise RuntimeError(
+                f"{self.name} install-tree digest {info['binary_sha256']} != pinned "
+                f"{pinned}; a swapped or modified payload must never masquerade as "
+                "the pinned install - restore the payload or update the pin")
+        note = install.get("note")
         if note:
             info["note"] = note
         return info
@@ -107,7 +172,10 @@ class HermesAgentProduct(ProductAdapter):
     def env(self, ctx: TrialContext) -> dict:
         """The launch env: trial home + tmp; scrubbed_env carries
         /usr/local/bin (the published command) on PATH; HERMES_HOME defaults
-        to the trial home's .hermes (per-trial state)."""
+        to the trial home's .hermes (per-trial state). The update switch is
+        the trial config.yaml's ``updates.check: false`` (v0.21.5's own
+        knob); HERMES_NO_UPDATE_CHECK rides as inert belt-and-braces for
+        any release that starts honoring it."""
         return scrubbed_env({"HOME": str(ctx["home"]), "TMPDIR": str(ctx["tmp"]),
                              "HERMES_NO_UPDATE_CHECK": "1"})
 

@@ -86,7 +86,7 @@ def test_product_configs_are_complete(tmp_path):
 def test_kernel_products_from_registry(tmp_path):
     from bench.drivers.warm_kernels import kernel_products
     reg = discover(_cfg(tmp_path))
-    assert kernel_products(reg) == ["rust", "rust_b", "ts"]
+    assert kernel_products(reg) == ["rust", "rust_3287", "rust_b", "ts"]
 
 
 # ---- vendor build -----------------------------------------------------------
