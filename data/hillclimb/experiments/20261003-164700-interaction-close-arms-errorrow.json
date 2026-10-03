@@ -1,0 +1,58 @@
+{
+  "id": "20261003-164700-interaction-close-arms-errorrow",
+  "axis": "interaction",
+  "lane": "lane/perf-close-arms-errorrow-fast",
+  "worker": "perf-close-arms-errorrow-fast",
+  "hypothesis": "Bare shutdown and replaced terminal session closes use mutable TUI info notes; a late turn status can overwrite the close, unlike TS showError persistent rows.",
+  "approach": "Baseline-first source and reachability audit, oracle-only fail-first live supervisor test for both reasons using isStreaming admission and late cancellation status, then reason-specific TS wording error_row and full VM validation.",
+  "base": {
+    "revision": "e38702160795b172b1f9f66a4a97a5debd060f57",
+    "verification": "git ls-remote origin refs/heads/main at fold and before review; #3338 remains open at cc4906d59; shared apply.rs/e2e overlap disclosed"
+  },
+  "build": {
+    "toolchain": "Rust 1.98.1 on Prime VM only; no host cargo build",
+    "oracle_only_head": "5768b2b77c24d8a15bd68ad92a8ccd909c75dac9",
+    "exact_head": "d4056b6bf55bd75f165512e55464e6b70c8d64b2"
+  },
+  "measurements": {
+    "kind": "correctness/parity; no throughput or latency claims",
+    "p50": null,
+    "values": [],
+    "method": "Live supervisor headless TUI, fake provider 60s held response, poll worker GetConnectionState.isStreaming as observable admission; Kill with rlmCloseReason shutdown then replaced; WaitRender late turn-failed status before requiring exact TS error, final frame contains both and old mutable info absent. No ABBA benchmark run because this is severity/parity correction, not performance claim.",
+    "fail_first": "gate_1791042991_3132105 on oracle-only 5768b2b77: fmt/clippy 0, test 101 solely new test; shutdown final frame had turn failed: prompt cancelled, absent error row, old info erased. Replaced follows shutdown in same test and was not separately observed RED.",
+    "green": "gate_1791043555_3132105 scoped pa-cli+pa-tui fmt/clippy/test=0 on exact d4056b6bf; both shutdown/replaced cases ran and passed"
+  },
+  "gates": {
+    "full": {
+      "run_id": "gate_1791044954_3132105",
+      "head_sha": "d4056b6bf55bd75f165512e55464e6b70c8d64b2",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 0,
+      "verdict": "GREEN",
+      "failures": []
+    },
+    "precheck_review_first": {
+      "run_id": "review_1791044094_3132105",
+      "verdict": "RED",
+      "classification": "Only registered rotating slash-menu render/settle known-red unrelated to close arms; fmt/workspace clippy 0; no code edits or repeated reruns beyond 1+1"
+    },
+    "pre_pr_review": {
+      "run_id": "review_1791045975_3132105",
+      "verdict": "GREEN",
+      "blockers": 0,
+      "advisories": 4,
+      "advisory_disposition": "Untracked LANE-STATE recovery log excluded from PR; existing shared e2e harness reused despite monolith; readiness poll checks observable isStreaming with bounded failure deadline, 25ms pause only between observations."
+    }
+  },
+  "parity_notes": "TS daemon-agent-connection.ts session_closed shutdown/replaced -> formatDaemonSessionClosedError -> closed(error) -> persistent showError; shutdown with prior daemon_closing notice reconnects instead. Rust supervisor announces daemon_closing before orderly stop; bare shutdown reachable from parent-to-hosted-child shutdown cascade; replaced from parent replacement teardown child-close cascade (rlmCloseReason in worker/env.rs). Two reason-specific TS explanations now rendered as persistent error rows, exact TUI-byte change from old mutable info note. Wire, RLM schema, compaction, replay and prompts unchanged. #3338 open overlap apply.rs + interactive_daemon_e2e.rs; its killed fix is not in this main base and this lane leaves killed as prior info until #3338 is merged. #3303 listener teardown open; no listener files changed.",
+  "validity": {
+    "precondition": "isStreaming true prior to kill, 60s response held",
+    "end_state": "after late cancellation status, final frame contains exact close explanation and excludes old info note for each reason",
+    "failure_policy": "baseline first; fail-first RED; one pre-review known-red then GREEN review; no green-fishing; VM gates only",
+    "reviewers": "standing human SHA-bound packets, no self-merge"
+  },
+  "outcome": "PARITY FIX VALIDATED on d4056b6bf; full VM GREEN and pre-PR review GREEN; PR packet pending",
+  "record_path": "data/hillclimb/experiments/20261003-164700-interaction-close-arms-errorrow.json",
+  "timestamp": "2026-10-03T16:47:00.883795+00:00"
+}
