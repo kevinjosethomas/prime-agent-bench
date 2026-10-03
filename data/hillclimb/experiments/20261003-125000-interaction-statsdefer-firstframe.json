@@ -164,9 +164,9 @@
   }
  },
  "gates": {
-  "fmt": "pass (VM gate, rc 0)",
-  "clippy": "pass (workspace --all-targets -D warnings, rc 0)",
-  "test": "RED_KNOWN_REDS: 3 failures, all ACTIVE known-reds (tui_prompt_stash_family + bounded_wait_starvation_tui_refused_draft + bounded_wait_starvation_steer_mid_compaction), zero unknown; gate_1791028107_2563054 at the exact head ac4992436, tip e3870216079, base folded"
+  "fmt": "pass (both gates, rc 0)",
+  "clippy": "pass (both gates, workspace --all-targets -D warnings, rc 0)",
+  "test": "gate_1791028107_2563054 (the first full gate at the exact head ac4992436): RED_KNOWN_REDS \u2014 3 failures, all ACTIVE known-reds (tui_prompt_stash_family, bounded_wait_starvation_tui_refused_draft, bounded_wait_starvation_steer_mid_compaction), zero unknown. gate_1791030386_2791105 (the authorized 1+1 rerun at the same head): RED \u2014 the same 3 auto-classified ACTIVE known-reds PLUS one UNKNOWN first-fire, kill_cancels_goal_and_heartbeat_and_no_wake_revives_the_session (pa-daemon session_stop_lifecycle_e2e), TRIAGED per the orchestrator's routing: SOLO x3 GREEN at the exact head on a fresh VM (14.44s/14.19s/14.80s, VM dicpaam5m3qy1n87e9lfj7bg, rust:1-bookworm, pinned 1.98.1) + the closelistener3 cross-lane root-cause (the supervisor tombstone-adoption race: adoption trusts socket-liveness over the recorded pid; base solo 8/8 clean vs its lane head 1/2; fix at d731d9d5, PR-pending; record 20261003-131000-other-socket-close-listener-adoption-identity) = the PRE-EXISTING MAIN-TIP RACE class, not a stats-defer blocker (the stats cut touches the TUI/attach-snapshot surfaces; zero overlap with the supervisor adoption path). steer_mid_compaction same-head solo receipts: x3 GREEN 1.51s (the worktree, the exact rust tree of ac4992436); same-head CI: PR #3334's 8-shard run at ac4992436 all green."
  },
  "parity_notes": "TS createAgentConnectionState carries contextUsage: session.getContextUsage() in EVERY attach snapshot (snapshot.ts:56) and TS's open path never blocks its first frame on getSessionStats (refreshConnectionContextUsage fires only on turn-complete/compaction-end, interactive-mode.ts:6345/6377; the tray's first-frame value is read off connectionState, + the in-flight optimistic delta). The cut restores exactly that mechanism: the wire field is filled (additive; the field existed, always None; older readers ignore it; the daemon and TUI ship as one binary), the blocking fetch is deleted from the open path and the /new + /switch rebinds, and the settled-turn/post-compaction refreshes are untouched. The tray bytes are identical (the oracle above) \u2014 the same numbers, the same frames. TUI-output bytes, session-JSONL replay, compaction content, RLM schemas, prompts: untouched. Disclosed adjacent-surface changes: the supersede-rebind and the recovery reattach now also update the tray from their attach snapshots (the same values the removed fetch would have returned; today they keep the previous snapshot's value until the next settled turn \u2014 the cut is the tighter TS parity). PR #3303 overlap: NONE (it touches pa-core kernel provisioner + kernel tests; this lane touches the tray-stats surfaces only) \u2014 disclosed per the staged-lane convention; no staging needed.",
  "validity": {
@@ -246,5 +246,5 @@
   ],
   "authoritative_replacement": "the successor worker's clean replication (per the parent's ruling); this record's ABBA numbers are method history pending that replication's numbers"
  },
- "updated": "2026-10-03T14:05:00Z"
+ "updated": "2026-10-03T14:35:00Z"
 }
