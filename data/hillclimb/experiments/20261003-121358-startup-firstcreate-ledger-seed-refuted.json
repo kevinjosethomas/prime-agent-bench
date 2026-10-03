@@ -1,0 +1,289 @@
+{
+  "id": "20261003-121358-startup-firstcreate-ledger-seed-refuted",
+  "axis": "startup",
+  "hypothesis": "The banked 66-267ms daemon CPU first-create ledger-seed walk still blocks the fresh create window at e38702160795b172b1f9f66a4a97a5debd060f57; deferring the walk to first genuine use could improve create without changing replay or roster semantics.",
+  "approach": "MEASUREMENT ONLY, no product code or wire bytes changed. Verified exact origin/main tip via ls-remote and clean folded lane. Same Prime VM nkvxj1yntgs57ziescf58jjm; original phase-A instrumented/clean fresh cold and warm; corrected phase-B fixture with 190 root session JSONLs, one root parent and eight real child JSONLs beneath session-artifacts/<parent-id>/sub-k, registry lines at session-artifacts/<parent-id>/rlm-subagents.jsonl. Two instrumented sessions per resumed parent and fresh no-sessionPath shape; 4 clean tip-built sessions per shape, plus 10 cold and 10 warm clean tip-built fresh sessions in phase A. Warm daemon sleeps 2 seconds after hello before request; fresh-cold requests immediately. Deterministic mock provider, socket create-response wall. Shipped release binary atomically swapped and sha asserted (tip vs instrumented), +x and product SHA pin asserted. Spin calibration 0.0008s pre/post. Boundary advisory probes: 40 isolated fresh 4K writes+sync_all+rename+directory fsync, spaced 0.5s; 50 repeated-fsync operations at every leg boundary; PHASE reclassified each leg. Phase-A strace census parser failed to capture calls (all zero) and is not used as evidence. Phase-B instrumented JSONL records can interleave across processes (3 invalid lines across phase A); event pairs reported only when both intact. CPU tick grid at 10ms had zero/10ms granularity and does not establish CPU-bound classification.",
+  "parity_notes": "No candidate and no product change, so session-JSONL, compaction contents, RLM API/wire/tool schemas, prompts, and TUI output bytes retain exact identity with base by construction. TS packages/coding-agent/src/modes/daemon/daemon-supervisor.ts:900 awaits boot seed; :4720-4740 returns without a ledger read if roots empty; :2320-2341 serves root create from roster; :4848-4884 replays ledger and reseeds family on worker snapshot; :3080-3110 dynamically reads ledger for list_saved_sessions. TS rlm-ledger.ts:324-325, :489-494 seeds the legacy registry on first ledger operation, :696-745 walks legacy registry only if ledger missing. Rust crates/pa-daemon/src/supervisor_roster_seed.rs:119-186 explicitly launches boot/registration seed in background, registration-before-subscribe ordering barrier preserves served rows; supervisor/sessions.rs:703-712 synchronous create family edge walk still runs but measured <=0.251ms here. Delaying the existing background task further would risk first subscriber/snapshot seeing incomplete family without a measured create-window benefit; no parity-unsafe change was attempted.",
+  "base": {
+    "revision": "e38702160795b172b1f9f66a4a97a5debd060f57",
+    "origin": "origin/main ls-remote verified 2026-10-03; lane worktree clean at exact tip",
+    "sandbox_id": "nkvxj1yntgs57ziescf58jjm",
+    "shipped_binary_sha256": "8cf1de848734befdf4c591c8aa76ae49d1180cf11b4948c29e40dfdc1a89a4e8"
+  },
+  "branch": "lane/perf-firstcreate-lazyinit-fast (no product commit)",
+  "commits": [],
+  "build": {
+    "sandbox_id": "nkvxj1yntgs57ziescf58jjm",
+    "toolchain": "VM release build, pre-existing phase-A predecessor artifact",
+    "instrumented_binary_sha256": "c0095951309d9ccf97b65d4c6a02459f83104fcef1f9d765b689b99f52911320",
+    "note": "Instrumentation is timing-probe only and walls are never compared as clean product performance."
+  },
+  "gates": {
+    "fmt": "n/a: no product change",
+    "clippy": "n/a: no product change",
+    "test": "n/a: no product change",
+    "fleet_gate": "n/a: no branch head change",
+    "fleet_review": "n/a: no PR"
+  },
+  "measurements": {
+    "method": "same-VM sequential base/instrumented exploratory decomposition, not an A/B performance claim; each binary swap sha verified; served-path asserts each phase-B trial; p50 median of raw values (n even midpoint). No cross-phase wall delta.",
+    "phaseA": {
+      "fresh_warm_clean": {
+        "p50_ms": 169.5,
+        "values_ms": [
+          173.42,
+          169.43,
+          166.14,
+          168.54,
+          170.67,
+          196.89,
+          168.96,
+          168.03,
+          169.88,
+          169.56
+        ]
+      },
+      "fresh_cold_clean": {
+        "p50_ms": 192.79,
+        "values_ms": [
+          253.62,
+          194.75,
+          161.97,
+          202.57,
+          154.23,
+          284.04,
+          236.36,
+          146.82,
+          190.83,
+          151.55
+        ]
+      },
+      "fresh_warm_500root_clean": {
+        "p50_ms": 169.51,
+        "values_ms": [
+          168.21,
+          168.95,
+          169.51,
+          173.02,
+          172.38
+        ]
+      },
+      "note": "Original family fixture was VACUOUS: child files incorrectly lived directly in root sessions dir, which seed adds to visited before reading registry; emitted zero records; its family legs cannot validate family seeding. Original 500-root scan ~1ms in trace, no scale in clean wall. Phase-A phase boundaries oscillated from fresh p50 ~45ms all 40/40 stalls to p50 ~0.9ms; clean walls are not CPU-class evidence."
+    },
+    "phaseB_boundary_probes": [
+      {
+        "label": "io-0",
+        "driver_phase": "PHASE-FRESHTRAP",
+        "fresh_p50_ms": 49.45,
+        "fresh_max_ms": 66.42,
+        "fresh_gt20_count": 38,
+        "fresh_gt20_rate_pct": 95.0,
+        "repeat_p50_ms": 0.1,
+        "repeat_max_ms": 0.55,
+        "repeat_stall20_count": 0,
+        "n_isolated": 40,
+        "n_repeat": 50
+      },
+      {
+        "label": "io-1",
+        "driver_phase": "PHASE-HEALTHY",
+        "fresh_p50_ms": 1.14,
+        "fresh_max_ms": 46.49,
+        "fresh_gt20_count": 1,
+        "fresh_gt20_rate_pct": 2.5,
+        "repeat_p50_ms": 0.09,
+        "repeat_max_ms": 5.76,
+        "repeat_stall20_count": 0,
+        "n_isolated": 40,
+        "n_repeat": 50
+      },
+      {
+        "label": "io-2",
+        "driver_phase": "PHASE-FRESHTRAP",
+        "fresh_p50_ms": 1.02,
+        "fresh_max_ms": 51.77,
+        "fresh_gt20_count": 1,
+        "fresh_gt20_rate_pct": 2.5,
+        "repeat_p50_ms": 0.09,
+        "repeat_max_ms": 0.46,
+        "repeat_stall20_count": 0,
+        "n_isolated": 40,
+        "n_repeat": 50
+      },
+      {
+        "label": "io-3",
+        "driver_phase": "PHASE-HEALTHY",
+        "fresh_p50_ms": 1.07,
+        "fresh_max_ms": 14.43,
+        "fresh_gt20_count": 0,
+        "fresh_gt20_rate_pct": 0.0,
+        "repeat_p50_ms": 0.1,
+        "repeat_max_ms": 5.94,
+        "repeat_stall20_count": 0,
+        "n_isolated": 40,
+        "n_repeat": 50
+      },
+      {
+        "label": "io-4",
+        "driver_phase": "PHASE-FRESHTRAP",
+        "fresh_p50_ms": 1.09,
+        "fresh_max_ms": 54.29,
+        "fresh_gt20_count": 1,
+        "fresh_gt20_rate_pct": 2.5,
+        "repeat_p50_ms": 0.08,
+        "repeat_max_ms": 2.12,
+        "repeat_stall20_count": 0,
+        "n_isolated": 40,
+        "n_repeat": 50
+      }
+    ],
+    "phaseB_clean": {
+      "rplain": {
+        "request": "existing sessionPath resume",
+        "p50_ms": 188.27,
+        "values_ms": [
+          142.2,
+          166.33,
+          210.21,
+          224.49
+        ],
+        "n": 4,
+        "pre_boundary": "io-2",
+        "served_assertions_ok": 4,
+        "family_rows": 9
+      },
+      "fplain": {
+        "request": "fresh no-sessionPath",
+        "p50_ms": 139.83,
+        "values_ms": [
+          95.01,
+          187.8,
+          141.03,
+          138.64
+        ],
+        "n": 4,
+        "pre_boundary": "io-3",
+        "served_assertions_ok": 4,
+        "family_rows": 1
+      }
+    },
+    "phaseB_instrumented_create_order_relative_to_supervisor_create_entry_ms": {
+      "rfirst-000.jsonl": {
+        "create_response_ms": 228.902,
+        "worker_create_exit_ms": 175.617,
+        "sync_create_seed_ms": 0.189,
+        "supervisor_ledger_start_ms": [
+          2.653
+        ],
+        "supervisor_ledger_publish_ms": [
+          65.286
+        ],
+        "worker_ledger_start_ms": [
+          177.771
+        ],
+        "worker_ledger_publish_ms": [],
+        "published_records": [
+          "records 8"
+        ]
+      },
+      "rfirst-001.jsonl": {
+        "create_response_ms": 169.716,
+        "worker_create_exit_ms": 160.76,
+        "sync_create_seed_ms": 0.251,
+        "supervisor_ledger_start_ms": [
+          2.927
+        ],
+        "supervisor_ledger_publish_ms": [
+          53.696
+        ],
+        "worker_ledger_start_ms": [
+          164.18
+        ],
+        "worker_ledger_publish_ms": [],
+        "published_records": [
+          "records 8"
+        ]
+      },
+      "ffirst-000.jsonl": {
+        "create_response_ms": 184.763,
+        "worker_create_exit_ms": 132.768,
+        "sync_create_seed_ms": 0.041,
+        "supervisor_ledger_start_ms": [
+          181.894
+        ],
+        "supervisor_ledger_publish_ms": [
+          275.67
+        ],
+        "worker_ledger_start_ms": [
+          135.949
+        ],
+        "worker_ledger_publish_ms": [
+          229.779
+        ],
+        "published_records": [
+          "records 8",
+          "records 8"
+        ]
+      },
+      "ffirst-001.jsonl": {
+        "create_response_ms": 182.222,
+        "worker_create_exit_ms": 129.016,
+        "sync_create_seed_ms": 0.027,
+        "supervisor_ledger_start_ms": [
+          174.666
+        ],
+        "supervisor_ledger_publish_ms": [
+          268.677
+        ],
+        "worker_ledger_start_ms": [
+          131.533
+        ],
+        "worker_ledger_publish_ms": [
+          221.833
+        ],
+        "published_records": [
+          "records 8",
+          "records 8"
+        ]
+      }
+    },
+    "phaseB_instrumented_clean_wall_not_comparable": {
+      "rfirst": {
+        "p50_ms": 199.78,
+        "values_ms": [
+          229.22,
+          170.33
+        ],
+        "n": 2,
+        "pre_boundary": "io-0"
+      },
+      "ffirst": {
+        "p50_ms": 183.95,
+        "values_ms": [
+          185.29,
+          182.61
+        ],
+        "n": 2,
+        "pre_boundary": "io-1"
+      }
+    }
+  },
+  "validity": {
+    "corrected_shape_assertions": "12/12 phase-B create responses and descriptors success; resumed parent path exact 6/6, all eight child IDs served at roster_subscribe 6/6; fresh file differs from seeded parent 6/6, roster root only; ledger 9 lines (meta+8 spawns) on corrected shape. Original phase-A bad fixture expressly excluded from family conclusions.",
+    "class_limit": "The ~50-63ms resume ledger publish reflects fresh-write trap; it begins before worker startup, runs in background and finishes 107-110ms before worker create exits. No critical-path CPU time claimed. Fresh publishes after create response. Clean phase-B resumed leg boundary io-2 is trap-exposed by maximum 51.77ms even though p50 1.02 and 1/40 >20ms; classify as marginal/trap-exposed rather than all-stall; fresh leg io-3 healthy. NO CROSS-PHASE DELTA. A 10ms /proc CPU sampler is below resolution for this narrow work."
+  },
+  "outcome": "REFUTED at e3870216: first-create ledger-seed walk is not the banked 66-267ms CPU-class blocking create span. Resume registry publish overlaps worker create; fresh registry publish comes after response; synchronous create family walk 0.027-0.251ms. No product cut or PR.",
+  "decision": "Close the perf-firstcreate-lazyinit-fast backlog item as REFUTED rather than green-fish an already-backgrounded seed. The older create-window 66-267ms class cannot be attributed to ledger seeding at this tip: predecessor fixture was vacuous for family edges and host fsync regime oscillates; intervening #3287 create-fanout and merged #3283/#3295 durability cuts are plausible changes, not demonstrated causal killers. Future work would require a newly identified blocking span at a phase-matched current tip, not speculative deferral.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20261003-121358-startup-firstcreate-ledger-seed-refuted.json",
+  "session": {
+    "worker": "perf-firstcreate-lazyinit-fast",
+    "raw_local": {
+      "phaseA": "/home/ubuntu/fcl-work/phaseA-ledger.json",
+      "phaseB": "/home/ubuntu/fcl-work/phaseB-ledger.json",
+      "trace_archive": "/home/ubuntu/fcl-work/fc-spans-B.tgz",
+      "driver": "/home/ubuntu/fcl-work/fc-driver.py"
+    }
+  },
+  "timestamp": "2026-10-03T12:13:58.111955+00:00"
+}
