@@ -1,0 +1,188 @@
+{
+ "id": "20261003-125000-interaction-statsdefer-firstframe",
+ "axis": "interaction",
+ "lane": "perf-stats-defer",
+ "worker": "perf-stats-defer-fast",
+ "operator_signal": "Banked follow-up (c) of the view-switch record 20260928-233000 (bench 5777f3bc): 'the refresh_stats round-trip defer (~20ms; TS does not block its first frame on it)' \u2014 re-measured at the current tip FIRST, honest negative allowed.",
+ "hypothesis": "The TUI open path (and every agents-view switch re-entry) blocks its first frame on a get_session_stats daemon round-trip whose only consumer is the tray's context-usage row; the port's AgentConnectionState.context_usage field exists on the wire but was always None (the port's gap vs TS createAgentConnectionState, which carries contextUsage on every attach), so the first frame could be fed off the attach snapshot and the blocking fetch deleted.",
+ "approach": "MEASURE FIRST at the tip e3870216079 (same-VM sequential, sha-asserted arms, pty 120x40 raw-drain driver, per-leg key->needle->settle walls, spin calibration pre/mid/post, fleet I/O probe battery at every phase boundary): (1) re-measure (3 trials/class); (2) env-gated instr re-decompose (tip+instr vs cut+instr, phase notes t_open_done/t_stats_done/t_rebind_done/t_draw + w_attach_enter/w_msgs/w_attach_done/w_stats_req); (3) the cut (10 files: pa-daemon connection_state_locked fills context_usage via session_stats::store_context_usage under the attach's core lock; pa-tui reconstruct reads state.contextUsage via ContextUsage::from_wire; attach_session applies it with the other reconstructed fields; the blocking refresh_stats deleted from interactive/run.rs's open path + /new + /switch; the settled-turn and post-compaction refreshes kept); (4) interleaved ABBA tip,cut,cut,tip,tip,cut x3 blocks/class (18 trials/class) + pyte-fed controls.",
+ "fixtures": {
+  "small": "real-small-01a0dad8-1803 (2,394B/9 rows, sha b7a5efc4c51b6ff5d2f3ac35e37f566eb1d6a78c85747798d96dc4ce9f0bbec7)",
+  "canon-10mib": "canonical-10mib (10.49MB/7,391 rows, retained window 7,390 messages, sha dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda)"
+ },
+ "build": {
+  "vm": "euwgsuistp1kkv9v8tikshsg (hillclimb-statsdefer, ubuntu:22.04, 16c/32GB/100GB, rust 1.98.1, release)",
+  "tip": "e38702160795b172b1f9f66a4a97a5debd060f57 (= origin/main at lane start, verified via ls-remote), binary sha256 38f26ac54e40154a2cc1c85947af123257df1ba81255f8fd654a7c387e8fa70c",
+  "cut": "ac49924362d223230a0ce789005d966603dbadf4 (lane/perf-stats-defer-fast, the PR #3334 head), binary sha256 f6d872ebea6592d260ba18b304cf835ad297011fae13c8050e3880dc9a938602",
+  "instr": "tip + the env-gated viewswitch_instr patch (16 notes incl. w_stats_req), binary sha256 c7e1bee6f7bdd6cb253e8954875ab65a689a19469a59e808cdf8ec9303175fdc",
+  "instrcut": "cut + the same instr patch adapted (t_stats_done marks where the call stood), binary sha256 76f5656e42c1003303af4c7e56d9d4b71addea52d1abc00eb47e1e9bcf029f31",
+  "sha_assert": "tip != cut != instr != instrcut asserted by the runner at every leg"
+ },
+ "measurements": {
+  "method": "same-vm-sequential ABBA, key->first needle frame, pty 120x40 raw-drain primary + pyte-fed controls; per-leg p50 + within-block paired deltas",
+  "remeasure_at_tip_ms_p50": {
+   "small": {
+    "agents_to_chat_1": 8.0,
+    "agents_to_chat_2": 8.3,
+    "chat_to_agents_1": 2.0,
+    "open_chat": 162.3
+   },
+   "canon-10mib_7390msgs": {
+    "agents_to_chat_1": 144.2,
+    "agents_to_chat_2": 147.5,
+    "chat_to_agents_1": 4.6,
+    "open_chat": 683.0
+   },
+   "note": "the banked record's tip (d82b23c81) measured agents_to_chat 263.9 (canon) / 17.1 (small); the intervening #3303-era changes and follow-ups halved the leg \u2014 the class survived anyway (see the instr spans)"
+  },
+  "instr_decomposition_at_tip": {
+   "open_to_stats_ms_canon": {
+    "legs": [
+     12,
+     13,
+     14,
+     11,
+     11,
+     10
+    ],
+    "p50": 12.5
+   },
+   "open_to_stats_ms_small": {
+    "legs": [
+     1,
+     0,
+     0
+    ],
+    "p50": 0.0,
+    "note": "ms-resolution; the span is sub-ms at 9 messages"
+   },
+   "stats_to_rebind_ms_canon": {
+    "legs": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     1
+    ],
+    "p50": 0.5,
+    "note": "the refresh_stats span IS the whole post-open blocking block"
+   },
+   "wire_census_get_session_stats_in_open_window": {
+    "tip": "3/3 legs per trial",
+    "cut": "0/3 legs per trial",
+    "note": "the served-path wire proof: the cut arm sends NO stats fetch at open"
+   },
+   "daemon_side_fill_cost_canon_ms": {
+    "tip_msgs_to_done": [
+     0,
+     1,
+     0,
+     1,
+     1,
+     1
+    ],
+    "cut_msgs_to_done": [
+     5,
+     4,
+     4,
+     4,
+     5,
+     5
+    ],
+    "note": "the context-usage walk (~4-5ms at canon) moved under the attach's core lock \u2014 the same walk get_session_stats paid, and the same walk TS's getContextUsage pays at snapshot time"
+   }
+  },
+  "abba_legs_p50_ms": {
+   "small": {
+    "tip": {
+     "agents_to_chat_1": 8.0,
+     "agents_to_chat_2": 8.3,
+     "open_chat": 160.7
+    },
+    "cut": {
+     "agents_to_chat_1": 7.4,
+     "agents_to_chat_2": 7.2,
+     "open_chat": 161.1
+    }
+   },
+   "canon-10mib": {
+    "tip": {
+     "agents_to_chat_1": 161.6,
+     "agents_to_chat_2": 167.4,
+     "open_chat": 685.1
+    },
+    "cut": {
+     "agents_to_chat_1": 166.7,
+     "agents_to_chat_2": 160.7,
+     "open_chat": 686.5
+    }
+   }
+  },
+  "abba_within_block_paired_deltas_ms": {
+   "small": {
+    "agents_to_chat_1": [
+     -1.2,
+     -1.1,
+     -0.9
+    ],
+    "agents_to_chat_2": [
+     -1.8,
+     -1.8,
+     -3.4
+    ],
+    "mean": -1.7
+   },
+   "canon-10mib": {
+    "agents_to_chat_1": [
+     0.3,
+     -25.4,
+     1.0
+    ],
+    "agents_to_chat_2": [
+     -5.6,
+     -9.6,
+     -9.3
+    ],
+    "mean": -8.1
+   },
+   "note": "the pooled canon p50s are drift-dominated (the campaign's canon spread is +/-25ms across trials; the first block of each arm after the probe battery trends high); the within-block paired deltas are the honest canon read \u2014 the steadier second leg shows the expected 6-9ms net (client span 11-13ms minus the ~4-5ms walk moved under the attach lock) consistently"
+  },
+  "consumer_classes": "raw-drain primary; the pyte-fed control trials agree (canon tip 5158-byte first frames, cut identical; small the same)"
+ },
+ "oracles": {
+  "tui_output_bytes_frozen": {
+   "verdict": "PASS (final parity, both classes)",
+   "method": "offline CSI ?2026 bracket parse of every trial's raw.pt (DISCLOSED: the driver's frames.jsonl offsets carry a chunk-remainder skew \u2014 the offline bracket accounting is authoritative); every frame pair compared byte-for-byte across arms",
+   "result": "every bracketed frame is byte-identical between tip and cut (8 frames/trial: 5166/43/5166/43/5166/43/98/43 at canon, identical spans); the ONLY diff is the trial-name artifact the harness itself paints in the title bar (tip/cut + leg index, 1-3 bytes); the tip-vs-tip and cut-vs-cut A/A controls show the same artifact",
+   "served_path_bytes": "the tray stats row rides the first frames of BOTH arms with identical bytes: 'amazon.nova-2-lite-v1:0:high \u00b7 9.4k (7%)' (small) / 'amazon.nova-2-lite-v1:0:medium \u00b7 130 (0%)' (canon) in frames 0/2/4 (open + both switch legs) of every trial, every arm"
+  },
+  "served_path_assertions": {
+   "wire_census": "get_session_stats in the open window: tip 3/3 legs/trial, cut 0/3",
+   "equivalence_unit_test": "worker/tests/connection_state_tests.rs: the attach state's contextUsage == the get_session_stats response's contextUsage for the same store (the byte-identity source)",
+   "reconstruct_wire_shapes": "known tokens -> Some; tokens null (fresh compaction) -> None (tray clears, TS patchConnectionState); field absent (model-less) -> None"
+  }
+ },
+ "gates": {
+  "fmt": "pass (VM gate, rc 0)",
+  "clippy": "pass (workspace --all-targets -D warnings, rc 0)",
+  "test": "RED_KNOWN_REDS: 3 failures, all ACTIVE known-reds (tui_prompt_stash_family + bounded_wait_starvation_tui_refused_draft + bounded_wait_starvation_steer_mid_compaction), zero unknown; gate_1791028107_2563054 at the exact head ac4992436, tip e3870216079, base folded"
+ },
+ "parity_notes": "TS createAgentConnectionState carries contextUsage: session.getContextUsage() in EVERY attach snapshot (snapshot.ts:56) and TS's open path never blocks its first frame on getSessionStats (refreshConnectionContextUsage fires only on turn-complete/compaction-end, interactive-mode.ts:6345/6377; the tray's first-frame value is read off connectionState, + the in-flight optimistic delta). The cut restores exactly that mechanism: the wire field is filled (additive; the field existed, always None; older readers ignore it; the daemon and TUI ship as one binary), the blocking fetch is deleted from the open path and the /new + /switch rebinds, and the settled-turn/post-compaction refreshes are untouched. The tray bytes are identical (the oracle above) \u2014 the same numbers, the same frames. TUI-output bytes, session-JSONL replay, compaction content, RLM schemas, prompts: untouched. Disclosed adjacent-surface changes: the supersede-rebind and the recovery reattach now also update the tray from their attach snapshots (the same values the removed fetch would have returned; today they keep the previous snapshot's value until the next settled turn \u2014 the cut is the tighter TS parity). PR #3303 overlap: NONE (it touches pa-core kernel provisioner + kernel tests; this lane touches the tray-stats surfaces only) \u2014 disclosed per the staged-lane convention; no staging needed.",
+ "validity": {
+  "io_probes": "the fleet I/O battery at every phase boundary: the VM's fresh+sync_all+rename class DEGRADED host-relative (p50 46-48ms, stall15 67-100% \u2014 the same class the banked lane's bench VM showed, vs the fleet's ~1ms hosts); the repeat-fsync class MARGINAL (stall15 4%, max ~48ms); the switch legs carry no disk writes on the measured path, the arms are internally paired, and the probes were stable across the whole campaign (no regime change between arms)",
+  "excluded": [],
+  "notes": "canon leg spread +/-25ms across trials (the campaign ran the standard per-leg probe battery between trials; the first trial after each battery trends high in BOTH arms \u2014 the paired within-block deltas control for it); the instr arms' canon numbers (instr 165.3/158.8 vs instrcut 159.4/147.7, n=2 each) replicate the cut's win; the driver's frames.jsonl offset skew is a measurement artifact (disclosed above), not a product issue"
+ },
+ "outcome": "MEASURED + CUT + GATED + PARITY-PROVEN. The re-measurement at the current tip confirmed the class survived the intervening halving of the leg: the blocking refresh_stats span is 11-13ms at canon (the whole post-open blocking block), ~0-1ms at small. The cut deletes the round-trip (wire-proven: 0 get_session_stats at open), restores the TS snapshot-fed tray (byte-identical frames), and nets the expected 6-9ms at canon (the client span minus the walk now served under the attach lock, the same walk TS pays at snapshot time) and a consistent ~1-1.7ms at small. The pooled canon p50s are drift-dominated; the paired deltas are the honest canon read.",
+ "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3334",
+ "record_path": "data/hillclimb/experiments/20261003-125000-interaction-statsdefer-firstframe.json",
+ "evidence_archive": {
+  "path": "/home/ubuntu/hillclimb/fixtures/statsdefer/statsdefer-evidence.tar.gz",
+  "sha256": "de4f8040b65aadc853bd2f775bd7ca75048d9167eb6c34211809be035ade16c6",
+  "bytes": 27723639,
+  "note": "all 54 trials' traces/frames/driverlogs + the trimmed raw.pt per trial (canon raw.pt trimmed at the last measured bracketed frame end \u2014 the 26MB tail per trial is the exit teardown's alt-screen-leave repaint, outside every measured leg; small trials kept whole), the 8 instr logs, probes.jsonl, bin-shas.json, the drivers and analyzers. sha-verified BEFORE the VM deletion"
+ },
+ "session": "perf-stats-defer-fast",
+ "timestamp": "2026-10-03T13:10:00Z"
+}
