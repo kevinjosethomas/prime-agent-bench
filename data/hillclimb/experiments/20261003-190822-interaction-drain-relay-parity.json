@@ -1,0 +1,72 @@
+{
+  "id": "20261003-190822-interaction-drain-relay-parity",
+  "axis": "interaction",
+  "lane": "lane/perf-drain-relay-parity-fast",
+  "worker": "perf-drain-relay-parity-fast",
+  "hypothesis": "TS shutdown notice suppresses killed session close and reconnects; a pending persistent killed-row fix would regress Rust drain parity. Graceful Rust drain omits a TS close relay, but adding shutdown reason would change frozen wire semantics.",
+  "approach": "Source-first observation decomposition on authoritative TS and Rust; current-main oracle GREEN (honest negative), compose pending #3338 locally without push, VM fail-first RED then narrow notice-suppression fix and VM GREEN. Graceful relay deliberately unchanged.",
+  "base": {
+    "initial_main": "e78f11f5409f47ec560fff390b6158470523cb0f",
+    "latest_main": "bc57309434ab56da5960e350a1b1f2744ba29ac6",
+    "verification": "git ls-remote origin refs/heads/main at fold and final staged review; #3338 OPEN cc4906d598bf6221ef2fc9c2fc1734a927db554e merged locally only"
+  },
+  "build": {
+    "toolchain": "Rust 1.98.1 on Prime VM only; no host cargo build",
+    "current_main_oracle": "8e00ade8775a2ebe4e47992c033e44d6723a169d",
+    "composed_fail_first": "ca2795458216328251704f12fa484d9642cb6c6c",
+    "composed_fix": "2554fc22632dccb6170b8facd58e7c0fa15c963e",
+    "staged_exact_head": "50f8f8df4d71e172da016550d1d90258e3a18b6d"
+  },
+  "measurements": {
+    "kind": "correctness/parity; no throughput or latency claims",
+    "p50": null,
+    "values": [],
+    "method": "Existing headless supervisor mock sends daemon_closing(shutdown) then relayed session_closed(killed); rendered-frame assertions prohibit both mutable close note and pending #3338 persistent killed error, require shutdown recovery row and durable-ID successor reattach. Compare current-main head vs locally composed #3338 head; no ABBA because no speed claim.",
+    "current_main": {
+      "review": "review_1791051820_3328495",
+      "gate": "gate_1791052389_3328495",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 0,
+      "result": "GREEN: current mutable killed note overwritten by arm_shutdown_recovery warning; accidental rendered parity"
+    },
+    "fail_first": {
+      "review": "review_1791052826_3328495",
+      "head_sha": "ca2795458216328251704f12fa484d9642cb6c6c",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 101,
+      "result": "RED solely an_announced_shutdown_reconnects_when_the_daemon_comes_back at persistent killed error-row assertion"
+    },
+    "green": {
+      "review": "review_1791053452_3328495",
+      "head_sha": "2554fc22632dccb6170b8facd58e7c0fa15c963e",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 0,
+      "result": "GREEN 0 blockers after narrow suppression"
+    },
+    "final_staged": {
+      "review": "review_1791054002_3328495",
+      "head_sha": "50f8f8df4d71e172da016550d1d90258e3a18b6d",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 0,
+      "result": "GREEN 0 blockers after folding new main and removing my fixed sleep"
+    }
+  },
+  "gates": {
+    "full": "NOT RUN on unpushed staged #3338 composition; fleet_gate requires remote head. Pre-PR review rerun and full VM suite required after #3338 merges and branch rebind.",
+    "pre_pr_review": "VM staged local tree review GREEN, not final PR receipt; 5 advisories include inherited #3338 e2e size/readiness/fixed-sleep, my test file ~500 LoC, local-only LANE-STATE."
+  },
+  "parity_notes": "TS daemon-supervisor.ts:7536-55 sends daemon_closing before worker archive-stop; daemon-mode.ts:4148-55 emits killed close; supervisor.ts:6367-73 relays it; daemon-agent-connection.ts:2215-36 treats announced shutdown + killed/shutdown as reconnect with no terminal error. Rust supervisor/signals_shutdown.rs:34-60 routes worker shutdown; worker/lifecycle.rs:65-145 emits no root session_closed; TUI apply.rs:308-24 paints killed row on #3338 composition until suppressed. Existing socket-death reconnect (interactive/run.rs:1419-25) restores session. Current main is benign at rendered-frame level only because mutable note is overwritten by recovery warning; prospective #3338 persistent row is visible divergence. Graceful omission remains transient wire/frame divergence, not broken final recovery. Synthetic shutdown-reason close would violate TS killed wire reason; archive/kill remapping changes durable state beyond scope, requiring Kevin product decision. #3303 open touches kernel provisioner/tests and turn_stream_tests.rs, not suppression site. No session JSONL, compaction, prompt, schema, tool, or wire edits in this lane; staged #3338 inherited edits are pending external PR, not this lane.",
+  "validity": {
+    "precondition": "notice precedes killed close for active session; successor reattaches by durable session id",
+    "end_state": "no killed error/close row in rendered frames; shutdown waiting and connected banners present; bare killed still uses #3338 error row",
+    "failure_policy": "baseline first; current-main honest negative, staged #3338 fail-first RED -> GREEN; no known-red green fishing; no host cargo",
+    "reviewers": "human approval; no self-merge; local stage remains unpushed while #3338 OPEN"
+  },
+  "outcome": "STAGED PARITY FIX validated locally atop OPEN #3338; CURRENT MAIN HONEST NEGATIVE and graceful relay honest negative; no PR until #3338 merge and exact-head full gate/review",
+  "record_path": "data/hillclimb/experiments/20261003-190822-interaction-drain-relay-parity.json",
+  "timestamp": "2026-10-03T19:08:22.548833+00:00"
+}
