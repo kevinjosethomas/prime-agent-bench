@@ -171,10 +171,51 @@
  "parity_notes": "TS createAgentConnectionState carries contextUsage: session.getContextUsage() in EVERY attach snapshot (snapshot.ts:56) and TS's open path never blocks its first frame on getSessionStats (refreshConnectionContextUsage fires only on turn-complete/compaction-end, interactive-mode.ts:6345/6377; the tray's first-frame value is read off connectionState, + the in-flight optimistic delta). The cut restores exactly that mechanism: the wire field is filled (additive; the field existed, always None; older readers ignore it; the daemon and TUI ship as one binary), the blocking fetch is deleted from the open path and the /new + /switch rebinds, and the settled-turn/post-compaction refreshes are untouched. The tray bytes are identical (the oracle above) \u2014 the same numbers, the same frames. TUI-output bytes, session-JSONL replay, compaction content, RLM schemas, prompts: untouched. Disclosed adjacent-surface changes: the supersede-rebind and the recovery reattach now also update the tray from their attach snapshots (the same values the removed fetch would have returned; today they keep the previous snapshot's value until the next settled turn \u2014 the cut is the tighter TS parity). PR #3303 overlap: NONE (it touches pa-core kernel provisioner + kernel tests; this lane touches the tray-stats surfaces only) \u2014 disclosed per the staged-lane convention; no staging needed.",
  "validity": {
   "io_probes": "the fleet I/O battery at every phase boundary: the VM's fresh+sync_all+rename class DEGRADED host-relative (p50 46-48ms, stall15 67-100% \u2014 the same class the banked lane's bench VM showed, vs the fleet's ~1ms hosts); the repeat-fsync class MARGINAL (stall15 4%, max ~48ms); the switch legs carry no disk writes on the measured path, the arms are internally paired, and the probes were stable across the whole campaign (no regime change between arms)",
-  "excluded": [],
-  "notes": "canon leg spread +/-25ms across trials (the campaign ran the standard per-leg probe battery between trials; the first trial after each battery trends high in BOTH arms \u2014 the paired within-block deltas control for it); the instr arms' canon numbers (instr 165.3/158.8 vs instrcut 159.4/147.7, n=2 each) replicate the cut's win; the driver's frames.jsonl offset skew is a measurement artifact (disclosed above), not a product issue"
+  "excluded": [
+   {
+    "trials": "small block 2 (tip abba2_0/2_3/2_4, cut abba2_1/2_2/2_5)",
+    "reason": "the successor worker's oracle driver overlapped the block (contamination window 12:03:47-12:08:xx) plus its orphan daemons; excluded per the incident below"
+   },
+   {
+    "trials": "canon block 0 (all 6 legs)",
+    "reason": "same overlap window; excluded"
+   },
+   {
+    "trials": "canon block 2 legs 3-5 (tip abba2_3/2_4, cut abba2_5)",
+    "reason": "co-resident orphan prime-agent workers discovered post-run (the driver's trial-scoped sweep does not match worker cmdlines); excluded"
+   },
+   {
+    "trials": "all 4 pyte control trials",
+    "reason": "same orphan co-residency; excluded"
+   }
+  ],
+  "notes": "canon leg spread +/-25ms across trials; the paired within-block deltas are the honest canon read. POST-HOC INCIDENT (disclosed per the parent's 2026-10-03 ruling; the full incident section below): the original ABBA's small block 2, canon block 0, canon block 2 legs 3-5, and the pyte controls are EXCLUDED as contaminated; the perf read stands on the CLEAN subset (small blocks 0-1; canon block 1 + block 2 legs 0-2) plus the UNCONTAMINATED instr arms and the wire census (the instr leg ran 11:48-11:58Z, before the incident window). The successor's parent-ordered clean replication is the AUTHORITATIVE replacement; this record's numbers are method history.",
+  "clean_subset_paired_deltas_ms": {
+   "small": {
+    "agents_to_chat_1": [
+     -1.2,
+     -1.1
+    ],
+    "agents_to_chat_2": [
+     -1.8,
+     -1.8
+    ],
+    "blocks": "0 and 1, all 12 legs clean"
+   },
+   "canon-10mib": {
+    "block1_full": {
+     "agents_to_chat_1": -25.4,
+     "agents_to_chat_2": -9.6
+    },
+    "block2_legs0_2_partial": {
+     "agents_to_chat_1": -0.7,
+     "agents_to_chat_2": -18.6
+    },
+    "note": "canon block 1 is the only complete clean block; its a1 delta (-25.4) carries an outlier-heavy tip leg set (163.6/180.2/189.0); the a2 deltas (-9.6, -18.6) sit in the expected 6-9ms-plus band; the authoritative read rides the successor's clean replication"
+   }
+  }
  },
- "outcome": "MEASURED + CUT + GATED + PARITY-PROVEN. The re-measurement at the current tip confirmed the class survived the intervening halving of the leg: the blocking refresh_stats span is 11-13ms at canon (the whole post-open blocking block), ~0-1ms at small. The cut deletes the round-trip (wire-proven: 0 get_session_stats at open), restores the TS snapshot-fed tray (byte-identical frames), and nets the expected 6-9ms at canon (the client span minus the walk now served under the attach lock, the same walk TS pays at snapshot time) and a consistent ~1-1.7ms at small. The pooled canon p50s are drift-dominated; the paired deltas are the honest canon read.",
+ "outcome": "MEASURED + CUT + GATED + PARITY-PROVEN, with a disclosed two-worker incident: the re-measurement at the current tip confirmed the class survived the intervening halving of the leg (the blocking refresh_stats span is 11-13ms at canon \u2014 the whole post-open blocking block; ~0-1ms at small). The cut deletes the round-trip (wire-proven: 0 get_session_stats at open), restores the TS snapshot-fed tray (byte-identical frames on the clean trials and the contaminated ones alike), and nets the expected 6-9ms at canon and ~1-1.7ms at small on the clean paired subsets. The original ABBA's contaminated blocks are excluded; the successor's parent-ordered clean replication is the authoritative replacement for the perf numbers; the instr arms and wire census (pre-incident) carry the causal evidence.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3334",
  "record_path": "data/hillclimb/experiments/20261003-125000-interaction-statsdefer-firstframe.json",
  "evidence_archive": {
@@ -184,5 +225,26 @@
   "note": "all 54 trials' traces/frames/driverlogs + the trimmed raw.pt per trial (canon raw.pt trimmed at the last measured bracketed frame end \u2014 the 26MB tail per trial is the exit teardown's alt-screen-leave repaint, outside every measured leg; small trials kept whole), the 8 instr logs, probes.jsonl, bin-shas.json, the drivers and analyzers. sha-verified BEFORE the VM deletion"
  },
  "session": "perf-stats-defer-fast",
- "timestamp": "2026-10-03T13:10:00Z"
+ "timestamp": "2026-10-03T13:10:00Z",
+ "incident_disclosure": {
+  "summary": "A two-worker concurrency incident on this lane, disclosed in full per the parent's ruling (2026-10-03).",
+  "timeline_utc": [
+   "11:44-12:44Z: the original worker (perf-stats-defer-fast, this record's author) ran the campaign chain (remeasure -> instr -> abba 36 raw + 4 pyte) on bench VM euwgsuistp1kkv9v8tikshsg",
+   "12:01Z: the parent spawned a successor worker (perf-stats-defer2-fast) after misclassifying the original's turn-end as death; the successor worked in the same worktree and on the same bench VM, logging to LANE-STATE.md",
+   "12:03:47-12:08:xx: the successor's fresh-chat oracle driver ran DURING the original's ABBA (an accidental co-scheduling), overlapping the small block 2 and canon block 0 legs and leaving orphan daemons; the successor scoped-killed its own orphans",
+   "12:09Z: the successor's process census found 7 orphan prime-agent WORKER processes from the original's canon block 2 legs 3-5 and all four pyte controls (the shared driver's trial-scoped sweep does not match worker cmdlines \u2014 a driver hygiene gap), co-resident during those trials",
+   "12:24-12:26Z: the parent ruled the original campaign's contaminated blocks excluded and a full clean replication authoritative; the successor armed it on the same bench VM with per-leg process census (30/36 raw legs by 12:50Z)",
+   "13:35Z: the ORIGINAL worker deleted the bench VM as end-of-lane cleanup BEFORE reading LANE-STATE.md \u2014 if the successor's replication was unfinished and undownloaded at that moment, the deletion killed it mid-flight (the successor's state is being confirmed; the deletion is the original worker's own error, acknowledged)",
+   "post-incident: the parent's resolution ruling \u2014 the successor keeps the authoritative bench replication (fresh VM, per-leg census); the original keeps PR #3334 / CI / review follow-through and this record amendment; no unilateral re-arms"
+  ],
+  "contamination_both_ways": "the successor's probe overlap contaminated the original's small block 2 + canon block 0; the original's driver orphan-leak contaminated the original's own canon block 2 legs 3-5 + pyte controls (and those orphans were themselves the successor's discovery)",
+  "what_survives_untouched": [
+   "the cut itself (PR #3334, head ac4992436): CI all-green on the exact head (8/8 test shards, fmt, clippy, Analyze rust, Bugbot); VM gate RED_KNOWN_REDS with 3 ACTIVE known-reds, zero unknown",
+   "the instr arms + the wire census (0/3 vs 3/3 get_session_stats at open) \u2014 ran 11:48-11:58Z, entirely before the incident window",
+   "the byte-parity oracle (PASS, both classes): the frame-pair comparisons read per-trial bracket parses; the contaminated trials' frames are byte-identical anyway (co-resident orphans do not change frame bytes), and every clean trial agrees",
+   "the re-measurement legs (11:44-11:48Z, pre-incident)"
+  ],
+  "authoritative_replacement": "the successor worker's clean replication (per the parent's ruling); this record's ABBA numbers are method history pending that replication's numbers"
+ },
+ "updated": "2026-10-03T14:05:00Z"
 }
