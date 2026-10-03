@@ -1,0 +1,47 @@
+{
+  "id": "20261003-131000-other-socket-close-listener-adoption-identity",
+  "axis": "other",
+  "hypothesis": "A poisoned bind-time socket identity can cause an exiting owner to unlink a successor\u2019s live socket; tombstoned adoption must not trust a foreign listener at the dead worker pathname.",
+  "approach": "Own and close the supervisor/worker listener before exit cleanup; probe liveness then apply identity-gated unlink. Add fail-first poisoned-capture e2e tests. For tombstoned adoption, compare recorded pid/start identity before socket auth and share a one-second force-stop deadline across auth plus route. Add silent-listener impostor regression.",
+  "parity_notes": "TS daemon-mode.ts:8011-8018 and daemon-supervisor.ts:7436-7491 close server before cleanup. TS cleanupDaemonSocketPath checks identity alone and can unlink a successor after a poisoned bind-time capture; Rust post-close live-listener probe deliberately exceeds TS to protect this race. TS adoptOrRecoverWorker checks recorded PID; TS stopWorker(force) bounds IPC to one second. No user-facing behavior changed. Socket inode alone is not a reliable owner proof after replacement.",
+  "base": {
+    "revision": "e38702160795b172b1f9f66a4a97a5debd060f57"
+  },
+  "branch": "lane/perf-socket-closelistener-fast",
+  "commits": [
+    "b955ca48f",
+    "153b3f442a40167d827f4108a368fe2f3f0c21c8",
+    "d731d9d59571b15f69705552d7b7a96635ff4787"
+  ],
+  "build": {
+    "toolchain": "Rust 1.98.1, Prime VM",
+    "exact_head": "d731d9d59571b15f69705552d7b7a96635ff4787"
+  },
+  "gates": {
+    "fmt": "PASS exact head on dedicated Prime VM; fleet gate pending",
+    "clippy": "PASS workspace --all-targets -D warnings exact head on dedicated Prime VM; fleet gate pending",
+    "test": "Final exact-head full fleet gate gate_1791036558_2962277 GREEN: fmt RC0, workspace clippy --all-targets -D warnings RC0, workspace test RC0, failures=[], unknown_failures=[], release_killverify=true, hosts_guard=OK, kernel_guard=OK. First exact-head gate gate_1791033002_2712969 RED with first-fire base-crossing rename catalog readiness plus two registered known-reds, fully triaged/registered; first rerun arm gate_1791036472_2962277 RED_SETUP due overwritten pool checkout (no test executed), restored exact clean clone before this actual permitted full rerun.",
+    "review": "Exact-head fleet_review review_1791036476_2962277 GREEN, fmt/clippy RC0, pa-daemon focused battery PASS, unknown_failures=[], blockers=0, seven disclosed advisories; first review review_1791033011 RED only registered fd_lifecycle member, exact-head solo x3 GREEN 15.54/15.38/14.98s (fds 16->13).",
+    "ci": "pending PR"
+  },
+  "measurements": {
+    "semantic_regression_oracles": "poisoned owner capture 2/2, tombstoned adoption impostor 1/1; no latency claim"
+  },
+  "validity": {
+    "failing_first": "Poisoned-capture oracles RED at baseline then GREEN on original fix; silent-socket impostor RED on 153b3f4 then GREEN on d731d9d. Pure baseline e387 exact tombstone member solo 8/8 GREEN; original fix head 1/2 (one descriptor-survived stall).",
+    "reason": "A pathname can be claimed by a silent foreign listener after the worker dies. The routed stop timeout starts only after auth; a stalled auth needs an enclosing one-second deadline and stopped descriptors must check recorded process identity before trusting socket liveness.",
+    "advisories": "Dirty untracked LANE-STATE.md (kept intentionally out of product commit); socket.rs crossed 500 LoC; fixed sleeps/poll loops in e2e and socket test are time bounds over observable socket/readiness or deliberate bind-capture fault-injection seam, not retry-to-green success criteria. Disclose in PR.",
+    "known_red_solo": "Review VM g1j0vcmoekrote8sc5cqr45z pinned d731d9d; exact supervisor_restart_loop_leaves_no_orphan_workers --test-threads=1 3/3 GREEN, 15.54/15.38/14.98s; no monotonic fd growth (16 -> 13). Registered fd_lifecycle_supervisor_restart_loop expires 2026-10-06; same-head co-scheduled failure only.",
+    "rename_disposition": "FIRST FIRE: gate_1791033002_2712969 exact d731d9d59571b15f69705552d7b7a96635ff4787 full workspace, failure at pa-cli/tests/agents_view_anchor_e2e.rs:386; frames showed \u201cNo sessions yet.\u201d then search r/re/ren, never a fixture row. SAME-HEAD SOLO on that gate VM lvjc45gcbwbpctzqr21kgpa6 after suite RED with identical frames, 11.04s. FOUR-ARM CROSS-TREE CROSS-MACHINE: independent configured VM vkpai0bcunjghb04os9wlt8f pure base e38702160795b172b1f9f66a4a97a5debd060f57 SOLO x3 GREEN 2.39/1.07/1.82s, and exact head d731d9d SOLO x3 GREEN 1.40/1.16/1.34s; on post-suite gate VM, pure base initially GREEN 4.18s just after re-extract/build, then RED 11.03s on immediate second solo with identical empty-roster/search frames. Gate VM /proc/pressure/io full avg10=3.11 avg60=4.21 avg300=3.89 observed after the suite; the fresh extraction/build transiently warmed the catalog path, then the post-load regime fired on pure base. This is the third agents_view_anchor_e2e first-fire family member: continue-preselect and entry-anchor have separate registered load cases; this exact rename member was previously unregistered. The test writes a saved session file directly, starts a supervisor and waits only for socket pathname, then WaitSettle 1000ms before Ctrl+R; the saved catalog fetch runs asynchronously and may not have landed before key handling. The test\u2019s 10s WaitRender is the 11s red duration; saved_catalog_timeout_ms itself is LONG_RUNNING_REQUEST_TIMEOUT_MS=600000ms. | REOPEN: on a calm VM reproducible solo red at the exact head but not pure base, a verified delivered correct saved catalog before Ctrl+R still producing this red, a new signature beyond empty-roster/search readiness, or CI reproduction on a green workspace head.",
+    "cross_lane": "Stats-defer gate at disjoint ac4992436 fired kill_cancels_goal_and_heartbeat_and_no_wake_revives_the_session co-scheduled; this lane\u2019s d731d9d PID/start-id and shared deadline is the durable remedy. DISPOSED-BY-FIX; do not register the member as an ongoing known-red after fix landing.",
+    "method_hygiene": "Cross-tree source extraction mistakenly overwrote shared pool gate VM checkout /workspace/prime-agent, removing .git and causing RED_SETUP (not a test verdict); restored with org clone at d731d9d clean before re-arming. Future discrimination never extracts over pool slot checkout; use exclusive VM. The independent vkpai VM also carried both base/head arms."
+  },
+  "outcome": "Close-listener poisoned-capture and tombstoned-adoption silent-impostor oracles GREEN at d731d9d; exact-head full gate GREEN, exact-head review GREEN. PR/CI/reviewer packet still pending.",
+  "decision": "Proceed with PR and CI/reviewer packet; do not self-merge.",
+  "pr_url": null,
+  "record_path": "data/hillclimb/experiments/20261003-131000-other-socket-close-listener-adoption-identity.json",
+  "session": {
+    "worker": "perf-socket-closelistener-fast"
+  },
+  "timestamp": "2026-10-03T14:29:57.681336+00:00"
+}
