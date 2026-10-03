@@ -1,0 +1,92 @@
+{
+  "id": "20261003-154000-interaction-tui-killed-close-error",
+  "axis": "interaction",
+  "lane": "lane/perf-tui-refused-surfacing-fast",
+  "worker": "perf-tui-refused-surfacing-fast",
+  "operator_signal": "Accepted-then-killed mid-turn TUI frozen Waiting frame; restore TypeScript showError parity. Parent approved severity/visibility-only scope, exact end-state persistence after cancellation.",
+  "hypothesis": "Rust SessionClosed(killed) reaches the direct TUI but its info note is replaceable. A later turn-failed cancellation status and WaitRender timeout obscure it, unlike TS showError which appends a persistent error row.",
+  "approach": "Use an e2e live supervisor, delayed fake provider, and externally observed worker GetConnectionState.isStreaming admission before kill; assert final rendered frame after prompt-cancel status contains exact TS close-error text and no old info note. Per-test probes established direct-recv -> matching apply -> frame info text -> cancellation overwrite; probes removed. Restrict production change to killed SessionClosed error_row severity.",
+  "base": {
+    "revision": "e38702160795b172b1f9f66a4a97a5debd060f57",
+    "verification": "git ls-remote origin refs/heads/main at lane creation and review; merge-base exact tip"
+  },
+  "build": {
+    "toolchain": "Rust 1.98.1, Prime VM; no host build or test",
+    "exact_head": "cc4906d598bf6221ef2fc9c2fc1734a927db554e",
+    "first_fix": "a3d09299446e7e7b086512f99469f18e593d66ce",
+    "review": "review_1791041544_2816622"
+  },
+  "measurements": {
+    "kind": "correctness / parity, not a throughput optimization; no latency or speedup claimed",
+    "fail_first": "oracle-only head c362f35fa65184167152f9610cebfe8e8927903d exact VM gate gate_1791033951_2816622: target error-row absent in final frame after accepted kill; full e2e RED. Earlier get_messages precondition timeouts at 46048c61b/413a5bb64 invalid RED and excluded.",
+    "root_cause_receipt": "per-test diagnostic head d60fa90f13aac71004619b086b5e6795d85a4e63, gate_1791035542_2816622: SessionClosed(killed) received in direct client and matching apply, painted as info in one of 7 frames, later final frame held turn failed: prompt cancelled plus wait timeout, old note absent. Earlier mixed-sibling trace attribution at a43a3443b was retracted.",
+    "end_state_oracle": "cc4906d59: waits for cancellation status then exact TS error row, asserts BOTH in last frame; accepted prompt never restored to draft; held provider response never leaked. Target e2e passed in both exact-head full-suite runs.",
+    "registered_failure_solo_same_head": {
+      "vm": "lvzvn7h66mhmkhwbop4fnsyr",
+      "head": "cc4906d598bf6221ef2fc9c2fc1734a927db554e",
+      "test": "tool_results::tool_result_entries_persisted_and_streamed",
+      "command": "cargo +1.98.1 test --manifest-path /workspace/prime-agent/Cargo.toml -p pa-daemon --test supervisor_e2e tool_results::tool_result_entries_persisted_and_streamed -- --exact --test-threads=1",
+      "runs": [
+        {
+          "result": "GREEN",
+          "test_seconds": 2.07
+        },
+        {
+          "result": "GREEN",
+          "test_seconds": 0.19
+        },
+        {
+          "result": "GREEN",
+          "test_seconds": 0.32
+        }
+      ],
+      "note": "same dedicated Prime VM, compiled once, then sequential solo x3; no margin changes"
+    }
+  },
+  "gates": {
+    "first_exact_head": {
+      "run_id": "gate_1791037057_2816622",
+      "head_sha": "cc4906d598bf6221ef2fc9c2fc1734a927db554e",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 101,
+      "verdict": "RED_KNOWN_REDS",
+      "failures": [
+        "tool_results::tool_result_entries_persisted_and_streamed"
+      ],
+      "unknown_failures": [],
+      "classification": "pre-registered unexpired through 2026-10-06; worker-route residual of #2727 family"
+    },
+    "single_permitted_same_head_rerun": {
+      "run_id": "gate_1791038139_2816622",
+      "head_sha": "cc4906d598bf6221ef2fc9c2fc1734a927db554e",
+      "fmt_rc": 0,
+      "clippy_rc": 0,
+      "test_rc": 0,
+      "verdict": "GREEN",
+      "failures": [],
+      "unknown_failures": [],
+      "release_killverify": true,
+      "hosts_guard": "OK",
+      "kernel_guard": "OK"
+    },
+    "pre_pr_review": {
+      "run_id": "review_1791041544_2816622",
+      "verdict": "GREEN",
+      "blockers": 0,
+      "advisories": 4,
+      "advisory_disposition": "LANE-STATE intentionally local/untracked; existing monolithic e2e file contains matching shared harness; polling is bounded by observable isStreaming (25ms cadence only, not sleep-to-pass); all documented in PR body."
+    }
+  },
+  "parity_notes": "TS daemon-agent-connection.ts:2215-2237 emits closed(error) for killed session; interactive-mode.ts:5848-5849 showError appends a durable row. Rust now emits the exact row for killed SessionClosed, a deliberate TUI-byte change from old info note. Other close reasons and draft behavior unchanged. Accepted prompt remains accepted, never restored to draft. #3303 listener teardown may overlap kill delivery, but this case was traced to direct-client UI severity and has no listener teardown changes.",
+  "validity": {
+    "precondition": "worker isStreaming observable before kill; 60s held response not consumed",
+    "end_state": "final frame contains both turn failed: prompt cancelled and TS error row; old session closed (killed) note absent",
+    "failure_policy": "1+1 full gates only; known-red same-head solo x3; no timing widening; first invalid REDs not claimed; no host builds",
+    "reviewers": "standing reviewers SHA-bound review via packet; no self-merge"
+  },
+  "outcome": "FIX VALIDATED; PR #3338 OPEN for standing SHA-bound review; exact-head full-suite GREEN rerun after registered-only RED and solo x3 GREEN. No self-merge.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3338",
+  "record_path": "data/hillclimb/experiments/20261003-154000-interaction-tui-killed-close-error.json",
+  "timestamp": "2026-10-03T15:34:26.325758+00:00"
+}
