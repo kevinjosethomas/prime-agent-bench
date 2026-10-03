@@ -1,0 +1,192 @@
+{
+  "id": "20261003-123700-other-daemon-socket-holderlease-d2",
+  "axis": "other",
+  "hypothesis": "Rust supervisor short-lived cleanup lock does not protect the serving socket pathname for its whole lifetime; an external rename permits a second supervisor bind while the first remains live. TS proper-lockfile lifetime lease excludes the rival.",
+  "approach": "Add a supervisor-lifetime {socket}.lock directory lease in pa-daemon socket.rs/supervisor.rs; acquire before prepare/bind, refresh 1s from dedicated joinable thread, 5s stale reclaim, 600x25ms retries, detect lock inode displacement, fence accept loop on compromise, skip compromised cleanup, stop/join refresher before inode-safe release. Add minimal pa-core LockDir::into_path ownership transfer. Expand two same-socket force-kill restart fixture reconnect waits 5s->20s to cover 15s lease acquisition +5s margin.",
+  "parity_notes": "TS daemon-socket.ts:77-102 lease/stale=5000/update=1000/retries 600x25ms; :135-137 live-connect refusal; daemon-supervisor.ts:846-879 acquire before bind, :7379-7405 compromise fence, :7491-7500 release. IMPORTANT corrected false E4c premise: TS does not self-heal a still-connectable wedged listener after lease takeover. Narrow genuine D2 gap is live supervisor external socket-path rename allowing rival rebind. Audit record corrected prime-agent-bench hillclimb 9be7045. No D3 startup/shutdown fence/admission changes. TS tests suite/regressions/4600-supervisor-singleton.test.ts:287-302 replacement connect 30s, :565-599 stale-owner contender 60/120s; daemon-supervisor-process.test.ts:198-218 and :899-916 restart connect helper 15s. No wire/model/API-visible change; D1 bind-time identity guard preserved. ORACLE IDENTITY LESSON: pathname dev+ino is NOT unique across unlink+rebind on same filesystem; a test claiming two sockets differ must pin old inode via rename-aside or use stronger fd-held fstat / connect+auth. This is the adopt-time cousin of D1/#3291. Original cdfa diagnostic: old holder exited rc1 ~0.9s; successor served by ~2s; old and new dev=65024 ino=2624990 reused, causing false red in unpinned test. Fixed oracle asserts old preserved before pinning it aside, then checks successor bind/serve and distinct inode.",
+  "base": {
+    "revision": "e38702160795b172b1f9f66a4a97a5debd060f57"
+  },
+  "branch": "lane/perf-bind-d2-holderlease-fast",
+  "commits": [
+    "ef97fab4934ba48679a8a2b3c42c464ea4a61f2b",
+    "cdfa112221343ea15bb6c0a5cf69553ef0bb71f4",
+    "be93a81f433f73528ff3250199ce34e13da32fe0",
+    "1def63ab5540c01987d390593bee425b219fb8bd"
+  ],
+  "build": {
+    "sandbox_id": "x8apbkgp0pkgiwvi7ft8o995 (ABBA); jmp5fcte1rbj81df4bji99hh (heartbeat cost); bp3uzwok2p242vkgrpqnkwn4 (controlled byte identity); fck42yxbc5rss5eys9lo6cp1 (final controlled ef97↔1def byte identity)",
+    "binary_sha256": "376e928a51ec7172a82d31a2004f4193756008fad9defb33ba9e8965cf971611",
+    "binary_bytes": 159697136,
+    "build_seconds": null,
+    "toolchain": "rustup 1.98.1; Prime VM rust:1-bookworm",
+    "binary_sha256_baseline_abba": "e618de414ec27993317eb51c98ce7fb80b9fc7ada8d791d58dfc1d36b6f838d8",
+    "controlled_same_path_release_sha256_ef97_and_cdfa": "b177bb4650d982aa667b3e9dd22ed98604bbe331bce752084c9a39109b970953",
+    "controlled_binary_bytes": 159696200,
+    "controlled_same_path_release_sha256_ef97_and_1def": "b177bb4650d982aa667b3e9dd22ed98604bbe331bce752084c9a39109b970953",
+    "controlled_final_byte_comparison": "PASS independent builds ef97 vs 1def after removing /work/target each time, same /work/candidate and /work/target on fresh VM fck42yxbc5rss5eys9lo6cp1, rustc 1.98.1, 159696200 B; logs bench-evidence/ef97-to-1def-{ef97,1def}-clean-release.log. ABBA ef97 376e… on different path/VM is not directly equal; same-path bridge is controlled."
+  },
+  "gates": {
+    "fmt": "PASS exact 1def gate_1791032811_2635548 (FMT_RC=0)",
+    "clippy": "PASS workspace exact 1def gate_1791032811_2635548 (CLIPPY_RC=0)",
+    "test": "Exact 1def full VM gate gate_1791032811_2635548 final RED_KNOWN_REDS: fmt RC0, full workspace clippy RC0, socket_identity_guard_e2e 7/7 PASS, ONE failed member tui_prime_login_escape_keeps_the_default_team_status classified registered bounded_wait_starvation_team_picker_escape (expiry 2026-10-06; screenshot :1053 team picker mounted), unknown_failures=[], release_killverify=true, hosts_guard=OK, kernel_guard=OK. Fresh independent Prime VM exact 1def SOLO x3 GREEN (2.96/1.10/1.55s), raw triage-team-picker-raw.tar.gz SHA256 f82e91657431a972a6cb52e82fd32a9ca46db8eb410bc4c5396593c077fc17d7. Old cdfa full gate RED oracle false-red + registered members; old cdfa 1+1 RED_KNOWN_REDS diagnostic only.",
+    "ci": "Exact 1def GitHub CI run 37125081429 attempt1 RED only untouched slash-menu timing member, current live+repo registration reopens on CI. Fresh 1def solo x3 and pure-base e387 x3 GREEN, dumped frames verify selected menu in all six trials; registration renewed fleet-tools repo commit 58da274 and live mirror byte-identical, expiry 2026-10-10. Operator accepted renewal CONTINGENT on attempt2 GREEN. Same-head failed-job attempt2 COMPLETED SUCCESS; shard4 and test summary PASS, contingency met."
+  },
+  "measurements": {
+    "method": "same-vm-sequential",
+    "suites": {
+      "supervisor_socket_bind_observer": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 3.4585,
+          "p95_ms": 3.60625,
+          "values_ms": [
+            3.646,
+            3.487,
+            2.309,
+            3.447,
+            2.318,
+            3.47
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 3.4495,
+          "p95_ms": 4.81675,
+          "values_ms": [
+            3.381,
+            3.487,
+            5.247,
+            3.412,
+            2.311,
+            3.526
+          ]
+        },
+        "delta_pct": -0.26,
+        "regression": false
+      },
+      "supervisor_connect_ready_observer": {
+        "baseline": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 3.499,
+          "p95_ms": 3.6575,
+          "values_ms": [
+            3.701,
+            3.527,
+            2.343,
+            3.487,
+            2.349,
+            3.511
+          ]
+        },
+        "candidate": {
+          "trials": 6,
+          "valid": 6,
+          "p50_ms": 3.492,
+          "p95_ms": 4.8575,
+          "values_ms": [
+            3.407,
+            3.53,
+            5.288,
+            3.454,
+            2.335,
+            3.566
+          ]
+        },
+        "delta_pct": -0.2,
+        "regression": false
+      }
+    },
+    "extra": {
+      "binary_bytes": {
+        "baseline": 158893432,
+        "candidate": 159697136
+      },
+      "heartbeat": {
+        "candidate_trials": 6,
+        "mtime_changes_each": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "interior_interval_count": 18,
+        "interior_median_ms": 1000.1127015,
+        "lock_inode_stable": true,
+        "normal_exit_lock_removed": true
+      },
+      "idle_cpu": {
+        "method": "4+4 paired 10s idle after 4s settle, /proc utime+stime HZ=100",
+        "baseline_cpu_ms": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_cpu_ms": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "resolution_ms": 10,
+        "interpretation": "both <10ms/10s quantization; delta unresolved, not zero-cost"
+      },
+      "actual_refresh_strace": {
+        "cycles": 9,
+        "median_utimensat_us": 22,
+        "median_three_syscall_sum_us": 70,
+        "median_traced_wall_span_us": 184,
+        "caveat": "ptrace overhead, not untraced Rust cost"
+      },
+      "untraced_python_proxy": {
+        "n": 1000,
+        "median_us": 2.313,
+        "p95_us": 2.534,
+        "empty_sequence_median_us": 0.151,
+        "caveat": "analogous operations, NOT actual Rust thread cost"
+      }
+    }
+  },
+  "validity": {
+    "excluded": [],
+    "notes": "12 sequential ABBA trials all valid on one Prime VM; order ABBAABBAABBA; filesystem mtime 60/60 distinct, 1ms sleep calibration p50 1.055865ms. Observer polls socket existence/connect at 1ms cadence: -0.009ms bind p50 delta is below measurement/noise floor, NOT meaningful speed claim; candidate p95 4.817ms vs baseline 3.606ms dominated by one 5.247ms sample, NO p95 win. Measured ef97; final cdfa modifies only two test helpers+LANE-STATE. Independent controlled same-path, clean target full release builds ef97/cdfa on one VM both SHA256 b177bb4650d982aa667b3e9dd22ed98604bbe331bce752084c9a39109b970953 size 159696200 B; original ABBA binary 376e... under different path, hash not conflated. Raw evidence under lane worktree bench-evidence/; exact hashes in provenance. At cdfa, fresh VM timestamp probe old holder exited rc1 ~0.9s, successor ALIVE+serving ~2s, but same old socket dev+ino reused; 10s oracle RED solo x3, 30s-only be93 RED solo x3 at 31.03-31.06s. New 1def pin-aside oracle GREEN solo x3 in 1.08-1.09s; rename test GREEN x3 2.02s. Current 1def byte identity vs measured-implementation ef97 is independently proven by fresh same-path clean release builds ef97↔1def on VM fck42yx; both SHA b177bb4650d… /159696200 B. The ABBA VM binary had SHA 376e… from different source path/VM, so this is a controlled head-to-head bridge, not a claim of cross-VM byte equality.",
+    "failing_first": {
+      "baseline_oracle_vm_gate": "gate_1791025001_2635548 at 33113a; fmt/clippy pass, 2 expected behavioral REDs, 4 previous identity tests pass",
+      "candidate_oracles": "socket_identity_guard_e2e 7/7 pass on ef97 VM gate_1791028604_2635548, incl resumed displaced holder fences before successor bind",
+      "protocol_fixture_solo": {
+        "baseline_33113a": "both PASS x1",
+        "ef97": "both FAIL x3/3 at 5s reconnect timeout",
+        "cdfa": "both PASS x3/3 after 20s budget; warm 6.73-7.93s"
+      },
+      "registered_member_solo_cdfa": {
+        "tui_refused_submit_restores_the_draft_after_the_round_trip": "3/3 PASS (3.18/1.08/1.07s), active known-red bounded_wait_starvation_tui_refused_draft 10/06 + tui_daemon_e2e_connect_race_refused_submit 10/09",
+        "steer_mid_compaction_defers_and_delivers_after_the_window": "3/3 PASS (1.51s each), active known-red bounded_wait_starvation_steer_mid_compaction 10/06",
+        "tui_prompts_queued_behind_a_turn_render_the_queue_strip": "3/3 PASS (4.61/1.82/1.82s), active known-red interactive_daemon_render_timing 10/06"
+      }
+    },
+    "raw_evidence": {
+      "bench-evidence/ef97-clean-hash-vm.log": "a1ec7407aa26fd8b06556048c200821d72c39e90ead2b232d85c4e5b3bf29478",
+      "bench-evidence/triage-pa-cli-raw.tar.gz": "d5874d84fca72fb47d7c961999283e648d17b92126f8f42354f60e024636c063",
+      "bench-evidence/triage-oracle-raw.tar.gz": "6433ab53e2d689b75e8f37b485cf431bfed60ed1bd7f5691f7c547b561182fd7",
+      "bench-evidence/results.json": "0ba1d8459cbd1dd3350243b558f38b9af8a2e3ea9b11473f3fdc370535d7f513",
+      "bench-evidence/cost-summary.json": "947919f26a7378ae1bee03d318029835b58f056251ebd973e0005194ab95cf64",
+      "bench-evidence/cdfa-clean-hash-vm.log": "fad74c65b113c129cc47ffb6b1841fbb35f02b9fb2f6d0e7fbb1ab163a2ce8d3",
+      "bench-evidence/triage-cdfa-solos.tar.gz": "ae0b32b2348ef7d32b3647fe721b92de21e6ff405811bbc2118903cb6d5c9b59"
+    }
+  },
+  "outcome": "D2 parity gap closed at exact final head 1def; full gate registered-member-only RED_KNOWN_REDS with exact-head solo x3 GREEN, CI attempt2 SUCCESS after operator-accepted slash-menu renewal, controlled ef97↔1def release byte identity PASS. No measurable bind-latency improvement claim; heartbeat cost bounded as observed, CPU delta unresolved. Standing adversarial SHA-bound reviews pending parent disposition; no self-merge.",
+  "decision": "Ready for standing R3/R4 final SHA-bound adversarial approvals and parent registered-only merge disposition; do not self-merge. Final evidence: gate_1791032811_2635548 RED_KNOWN_REDS (one registered member, fresh solo x3 GREEN, no unknowns), CI 37125081429 attempt2 SUCCESS, controlled byte bridge b177bb… equal.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3333",
+  "record_path": "data/hillclimb/experiments/20261003-123700-other-daemon-socket-holderlease-d2.json",
+  "session": {
+    "worker": "perf-bind-d2-holderlease4-fast",
+    "session_dir": "/home/ubuntu/.prime/agent/session-artifacts/01a1015e-09e0-73db-ba55-11ba5c692d72"
+  },
+  "timestamp": "2026-10-03T13:31:24.118297+00:00"
+}
