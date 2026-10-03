@@ -1,0 +1,53 @@
+{
+  "id": "20261003-182518-other-fleettools-vmsetup-hardening",
+  "axis": "other",
+  "lane": "lane/perf-fleettools-vmsetup-hardening-fast",
+  "worker": "perf-fleettools-vmsetup-hardening-fast",
+  "hypothesis": "A getent SEGFAULT can be misread as repairable hosts damage; index-pack failure can leave checkout stale or misclassify review conflicts. Fail claim before gate/review mechanical work.",
+  "approach": "Bound getent with timeout; classify rc and output, reject crash/timeout, retain hosts overwrite-never-append for normal resolver failure; numerically detect NUL bytes; preflight fsck and explicitly check fetch rc in both gate checkout and review apply; classify transfer/object corruption RED_SETUP.",
+  "base": {
+    "revision": "e78f11f5409f47ec560fff390b6158470523cb0f",
+    "verification": "git -C /home/ubuntu/prime-agent-rust ls-remote origin refs/heads/main; no Rust source changes"
+  },
+  "build": {
+    "toolchain": "fleet-tools Python v1.5.5; syntax compile + live Prime pool VM smoke; no host cargo or Rust binary build",
+    "version_before": "1.5.4",
+    "version_after": "1.5.5"
+  },
+  "measurements": {
+    "kind": "VM setup correctness; no throughput/latency improvement claimed",
+    "p50": null,
+    "values": [],
+    "method": "Three sequential arms on one claimed pool VM slot 0 lvjc45gcbwbpctzqr21kgpa6, via prime_sandboxes SDK; asserted healthy, SIGSEGV(rc139), timeout(rc124), NUL-repair, injected fetch index-pack and fsck-corruption for gate and review; real fsck and real main checkout. No ABBA/probe needed because no binary performance candidate."
+  },
+  "validity": {
+    "precondition": "Fleet pool slot claimed/released around each arm; no vm= bypass; no VM real /etc/hosts mutation during injected repair (isolated fixture).",
+    "results": {
+      "arm_1": {
+        "healthy": true,
+        "getent_sigsegv": true,
+        "gate_fetch_invalid_index_pack": true,
+        "review_fetch_invalid_index_pack": true
+      },
+      "arm_2": {
+        "nul_hosts_repair": true,
+        "gate_fsck_corrupt": true,
+        "review_fsck_corrupt": true
+      },
+      "arm_3": {
+        "real_main_checkout": true,
+        "getent_timeout": true
+      }
+    },
+    "real_fsck": "rc0 on pool VM checkout; sub-second",
+    "rerun_policy": "No red smoke arm, no rerun-to-green",
+    "repo_identity": "live module and repo copy byte-identical; known_reds.json unchanged byte-identical"
+  },
+  "parity_notes": "Fleet-tools orchestration only; Rust/TS session-JSONL replay, compaction, RLM wire/tool schemas, prompts and TUI output bytes unchanged. New setup diagnostics and RED_SETUP classification are intentional infra-visible changes; no product user-visible bytes changed.",
+  "outcome": "SETUP HARDENING VALIDATED on three pool VM smoke arms; no performance claim. No fleet-tools Git remote configured, so no PR opened; local maintainer branch committed and approval packet supplied. Rust PR #3303 listener teardown overlap: none, fleet-tools only.",
+  "record_path": "data/hillclimb/experiments/20261003-182518-other-fleettools-vmsetup-hardening.json",
+  "timestamp": "2026-10-03T18:25:18.846657+00:00",
+  "commits": {
+    "fleet_tools_local": "4739b03923eba01968a068a3c8e600736a19edb4"
+  }
+}
