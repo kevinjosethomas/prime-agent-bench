@@ -22,7 +22,7 @@
     "clippy": "PASS workspace --all-targets -D warnings exact head on dedicated Prime VM; fleet gate pending",
     "test": "Final exact-head full fleet gate gate_1791036558_2962277 GREEN: fmt RC0, workspace clippy --all-targets -D warnings RC0, workspace test RC0, failures=[], unknown_failures=[], release_killverify=true, hosts_guard=OK, kernel_guard=OK. First exact-head gate gate_1791033002_2712969 RED with first-fire base-crossing rename catalog readiness plus two registered known-reds, fully triaged/registered; first rerun arm gate_1791036472_2962277 RED_SETUP due overwritten pool checkout (no test executed), restored exact clean clone before this actual permitted full rerun.",
     "review": "Exact-head fleet_review review_1791036476_2962277 GREEN, fmt/clippy RC0, pa-daemon focused battery PASS, unknown_failures=[], blockers=0, seven disclosed advisories; first review review_1791033011 RED only registered fd_lifecycle member, exact-head solo x3 GREEN 15.54/15.38/14.98s (fds 16->13).",
-    "ci": "pending PR"
+    "ci": "PR #3337 CI pending"
   },
   "measurements": {
     "semantic_regression_oracles": "poisoned owner capture 2/2, tombstoned adoption impostor 1/1; no latency claim"
@@ -37,8 +37,8 @@
     "method_hygiene": "Cross-tree source extraction mistakenly overwrote shared pool gate VM checkout /workspace/prime-agent, removing .git and causing RED_SETUP (not a test verdict); restored with org clone at d731d9d clean before re-arming. Future discrimination never extracts over pool slot checkout; use exclusive VM. The independent vkpai VM also carried both base/head arms."
   },
   "outcome": "Close-listener poisoned-capture and tombstoned-adoption silent-impostor oracles GREEN at d731d9d; exact-head full gate GREEN, exact-head review GREEN. PR/CI/reviewer packet still pending.",
-  "decision": "Proceed with PR and CI/reviewer packet; do not self-merge.",
-  "pr_url": null,
+  "decision": "PR #3337 opened at exact d731d9d; CI/reviewer packet pending; do not self-merge.",
+  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3337",
   "record_path": "data/hillclimb/experiments/20261003-131000-other-socket-close-listener-adoption-identity.json",
   "session": {
     "worker": "perf-socket-closelistener-fast"
