@@ -3,7 +3,7 @@
  "axis": "interaction",
  "lane": "perf-stats-defer",
  "worker": "perf-stats-defer-fast",
- "operator_signal": "Banked follow-up (c) of the view-switch record 20260928-233000 (bench 5777f3bc): 'the refresh_stats round-trip defer (~20ms; TS does not block its first frame on it)' \u2014 re-measured at the current tip FIRST, honest negative allowed.",
+ "operator_signal": "Banked follow-up (c) of the view-switch record 20260928-233000 (bench 5777f3bc): 'the refresh_stats round-trip defer (~20ms; TS does not block its first frame on it)' — re-measured at the current tip FIRST, honest negative allowed.",
  "hypothesis": "The TUI open path (and every agents-view switch re-entry) blocks its first frame on a get_session_stats daemon round-trip whose only consumer is the tray's context-usage row; the port's AgentConnectionState.context_usage field exists on the wire but was always None (the port's gap vs TS createAgentConnectionState, which carries contextUsage on every attach), so the first frame could be fed off the attach snapshot and the blocking fetch deleted.",
  "approach": "MEASURE FIRST at the tip e3870216079 (same-VM sequential, sha-asserted arms, pty 120x40 raw-drain driver, per-leg key->needle->settle walls, spin calibration pre/mid/post, fleet I/O probe battery at every phase boundary): (1) re-measure (3 trials/class); (2) env-gated instr re-decompose (tip+instr vs cut+instr, phase notes t_open_done/t_stats_done/t_rebind_done/t_draw + w_attach_enter/w_msgs/w_attach_done/w_stats_req); (3) the cut (10 files: pa-daemon connection_state_locked fills context_usage via session_stats::store_context_usage under the attach's core lock; pa-tui reconstruct reads state.contextUsage via ContextUsage::from_wire; attach_session applies it with the other reconstructed fields; the blocking refresh_stats deleted from interactive/run.rs's open path + /new + /switch; the settled-turn and post-compaction refreshes kept); (4) interleaved ABBA tip,cut,cut,tip,tip,cut x3 blocks/class (18 trials/class) + pyte-fed controls.",
  "fixtures": {
@@ -33,7 +33,7 @@
     "chat_to_agents_1": 4.6,
     "open_chat": 683.0
    },
-   "note": "the banked record's tip (d82b23c81) measured agents_to_chat 263.9 (canon) / 17.1 (small); the intervening #3303-era changes and follow-ups halved the leg \u2014 the class survived anyway (see the instr spans)"
+   "note": "the banked record's tip (d82b23c81) measured agents_to_chat 263.9 (canon) / 17.1 (small); the intervening #3303-era changes and follow-ups halved the leg — the class survived anyway (see the instr spans)"
   },
   "instr_decomposition_at_tip": {
    "open_to_stats_ms_canon": {
@@ -90,7 +90,7 @@
      5,
      5
     ],
-    "note": "the context-usage walk (~4-5ms at canon) moved under the attach's core lock \u2014 the same walk get_session_stats paid, and the same walk TS's getContextUsage pays at snapshot time"
+    "note": "the context-usage walk (~4-5ms at canon) moved under the attach's core lock — the same walk get_session_stats paid, and the same walk TS's getContextUsage pays at snapshot time"
    }
   },
   "abba_legs_p50_ms": {
@@ -146,31 +146,574 @@
     ],
     "mean": -8.1
    },
-   "note": "the pooled canon p50s are drift-dominated (the campaign's canon spread is +/-25ms across trials; the first block of each arm after the probe battery trends high); the within-block paired deltas are the honest canon read \u2014 the steadier second leg shows the expected 6-9ms net (client span 11-13ms minus the ~4-5ms walk moved under the attach lock) consistently"
+   "note": "the pooled canon p50s are drift-dominated (the campaign's canon spread is +/-25ms across trials; the first block of each arm after the probe battery trends high); the within-block paired deltas are the honest canon read — the steadier second leg shows the expected 6-9ms net (client span 11-13ms minus the ~4-5ms walk moved under the attach lock) consistently"
   },
-  "consumer_classes": "raw-drain primary; the pyte-fed control trials agree (canon tip 5158-byte first frames, cut identical; small the same)"
+  "consumer_classes": "raw-drain primary; the pyte-fed control trials agree (canon tip 5158-byte first frames, cut identical; small the same)",
+  "authoritative_clean_replication_2": {
+   "vm": "sbrstgcgisdh0cz3hckqpc6k (statsdefer-clean-replication-2, rust:1-bookworm, 8c/32GB/100GB, rustc 1.97.1, release)",
+   "source_heads": {
+    "tip": "e38702160795b172b1f9f66a4a97a5debd060f57",
+    "cut": "ac49924362d223230a0ce789005d966603dbadf4"
+   },
+   "binary_sha256": {
+    "tip": "471e092c443997b59e12a171e29f0fbc7ea24d7d3ba3b0bf0d3805976cd6c77e",
+    "cut": "f1c499e03b8ce555ee3578f232ef0ac16f1608cae415a81c6cccc7dde846f1fa"
+   },
+   "fixtures_sha256": {
+    "small": "b7a5efc4c51b6ff5d2f3ac35e37f566eb1d6a78c85747798d96dc4ce9f0bbec7",
+    "canon-10mib": "dadaecfcac511e24ed0e0df15fb1facbe556557856486d62bad628250194cdda"
+   },
+   "method": "full independent same-VM ABBA: tip,cut,cut,tip,tip,cut x3 blocks per class; 36 raw legs + four sequential pyte controls. A per-leg host driver waits for the trial, scoped worker TERM/reap, zero-process census and I/O boundary probe, then immediately downloads+SHA-logs its archive before launching the next leg. Each leg asserts the new-build binary SHA and fixture SHA in trace. Original-run tip/cut hashes differ from this rebuild and no arm is mixed across campaigns.",
+   "fixtures": {
+    "small": {
+     "trials": [
+      {
+       "index": 0,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        7.552,
+        7.564
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=26.37 p90=30.02 max=41.50 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=25.62 p90=27.29 max=30.65 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 1,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.561,
+        6.822
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.65 p90=27.20 max=29.20 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=24.96 p90=26.53 max=29.30 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 2,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.245,
+        9.958
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.65 p90=27.52 max=31.54 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=29.68 p90=38.14 max=77.85 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 3,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        11.352,
+        10.089
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.18 p90=50.00 max=79.19 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=30.60 p90=50.20 max=137.74 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 4,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        32.212,
+        15.992
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=31.14 p90=53.18 max=86.61 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.91 p90=34.79 max=40.20 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 5,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        8.239,
+        14.005
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=1.01 p90=4.01 max=28.62 stall15=5.0% stall20=5.0% class=MARGINAL baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=29.50 p90=39.05 max=127.07 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 6,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        7.356,
+        7.321
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.25 p90=33.15 max=57.96 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.67 p90=30.80 max=35.24 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 7,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.216,
+        7.173
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.30 p90=34.37 max=71.39 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=26.19 p90=31.78 max=52.37 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 8,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        6.808,
+        11.235
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.02 p90=43.08 max=1036.83 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.31 p90=38.67 max=71.38 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 9,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        8.532,
+        7.254
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.17 p90=30.65 max=70.82 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=26.87 p90=30.79 max=40.95 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 10,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        8.367,
+        7.624
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=26.86 p90=28.80 max=64.67 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=26.17 p90=33.69 max=81.42 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 11,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.172,
+        6.789
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.66 p90=29.78 max=72.53 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=25.11 p90=26.19 max=27.53 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 12,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        7.241,
+        7.497
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=24.92 p90=26.07 max=26.47 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.67 p90=0.81 max=26.87 stall15=5.0% stall20=5.0% class=MARGINAL baseline=None"
+      },
+      {
+       "index": 13,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.463,
+        5.583
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.67 p90=27.21 max=30.74 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=25.50 p90=26.80 max=27.76 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 14,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        7.223,
+        6.848
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.26 p90=26.66 max=28.00 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.92 p90=26.21 max=26.81 stall15=35.0% stall20=35.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 15,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        7.941,
+        7.746
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=25.48 p90=26.49 max=27.83 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=24.93 p90=26.36 max=28.21 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 16,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        7.84,
+        7.898
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.69 p90=0.80 max=1.34 stall15=0.0% stall20=0.0% class=HEALTHY baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=24.83 p90=26.79 max=27.73 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 17,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        8.863,
+        8.418
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.80 p90=0.96 max=25.77 stall15=2.5% stall20=2.5% class=MARGINAL baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=25.33 p90=27.02 max=29.74 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      }
+     ],
+     "p50_across_18_exposures_by_arm_ms": {
+      "tip": 7.793,
+      "cut": 7.234
+     },
+     "per_phase_p50_ms": {
+      "tip": {
+       "open_chat": 100.865,
+       "agents_to_chat_1": 7.941,
+       "agents_to_chat_2": 7.624,
+       "chat_to_agents_1": 1.789
+      },
+      "cut": {
+       "open_chat": 96.006,
+       "agents_to_chat_1": 7.245,
+       "agents_to_chat_2": 7.173,
+       "chat_to_agents_1": 1.777
+      }
+     },
+     "adjacent_pair_cut_minus_tip_trial_mean_ms": [
+      [
+       -0.366,
+       -2.119,
+       -12.98
+      ],
+      [
+       -0.144,
+       1.128,
+       -1.015
+      ],
+      [
+       -0.846,
+       -0.808,
+       0.771
+      ]
+     ]
+    },
+    "canon-10mib": {
+     "trials": [
+      {
+       "index": 18,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        171.158,
+        182.481
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.75 p90=0.97 max=27.83 stall15=2.5% stall20=2.5% class=MARGINAL baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=25.49 p90=27.44 max=48.28 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 19,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        171.835,
+        141.048
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=26.08 p90=27.65 max=28.06 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=33.39 p90=66.67 max=863.73 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 20,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        163.543,
+        148.707
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.39 p90=36.06 max=63.41 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.09 p90=35.45 max=61.92 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 21,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        157.792,
+        208.367
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=26.81 p90=28.21 max=32.95 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=26.74 p90=27.96 max=49.56 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 22,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        170.535,
+        154.674
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.87 p90=3.19 max=56.95 stall15=10.0% stall20=10.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.85 p90=1.18 max=49.86 stall15=7.5% stall20=7.5% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 23,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        194.658,
+        161.791
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.47 p90=29.15 max=50.83 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=28.12 p90=30.41 max=51.61 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 24,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        147.1,
+        146.472
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=26.58 p90=27.99 max=73.34 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.83 p90=17.06 max=49.06 stall15=12.5% stall20=10.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 25,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        155.598,
+        162.505
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.93 p90=1.06 max=63.21 stall15=5.0% stall20=5.0% class=MARGINAL baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.79 p90=0.95 max=47.74 stall15=7.5% stall20=7.5% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 26,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        137.716,
+        156.959
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.32 p90=59.08 max=69.77 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.77 p90=1.06 max=47.02 stall15=5.0% stall20=5.0% class=MARGINAL baseline=None"
+      },
+      {
+       "index": 27,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        180.579,
+        172.424
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.11 p90=28.80 max=58.66 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.84 p90=1.67 max=82.04 stall15=10.0% stall20=7.5% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 28,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        146.082,
+        132.731
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.72 p90=1.22 max=27.56 stall15=5.0% stall20=2.5% class=MARGINAL baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.64 p90=29.55 max=56.21 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 29,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        160.717,
+        159.95
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=0.80 p90=0.97 max=34.85 stall15=7.5% stall20=5.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.64 p90=30.05 max=46.24 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 30,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        152.11,
+        148.368
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.24 p90=29.87 max=31.03 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.83 p90=29.62 max=51.21 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 31,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        136.07,
+        161.309
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.16 p90=28.80 max=30.12 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=27.51 p90=28.79 max=46.84 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 32,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        129.678,
+        163.829
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.80 p90=30.61 max=37.17 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.72 p90=0.99 max=50.58 stall15=2.5% stall20=2.5% class=MARGINAL baseline=None"
+      },
+      {
+       "index": 33,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        170.033,
+        141.704
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=27.91 p90=28.81 max=29.83 stall15=97.5% stall20=97.5% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=28.46 p90=32.25 max=50.81 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 34,
+       "arm": "tip",
+       "agents_to_chat_ms": [
+        158.843,
+        144.622
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=28.89 p90=34.17 max=58.44 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.84 p90=3.33 max=47.15 stall15=7.5% stall20=7.5% class=DEGRADED baseline=None"
+      },
+      {
+       "index": 35,
+       "arm": "cut",
+       "agents_to_chat_ms": [
+        155.505,
+        170.743
+       ],
+       "fresh_write_pre": "FRESH2 n=40 p50=29.02 p90=29.82 max=36.54 stall15=100.0% stall20=100.0% class=DEGRADED baseline=None",
+       "fresh_write_post": "FRESH2 n=40 p50=0.76 p90=0.99 max=49.76 stall15=2.5% stall20=2.5% class=MARGINAL baseline=None"
+      }
+     ],
+     "p50_across_18_exposures_by_arm_ms": {
+      "tip": 156.233,
+      "cut": 160.334
+     },
+     "per_phase_p50_ms": {
+      "tip": {
+       "open_chat": 586.089,
+       "agents_to_chat_1": 158.843,
+       "agents_to_chat_2": 148.368,
+       "chat_to_agents_1": 3.922
+      },
+      "cut": {
+       "open_chat": 609.998,
+       "agents_to_chat_1": 155.598,
+       "agents_to_chat_2": 161.309,
+       "chat_to_agents_1": 4.078
+      }
+     },
+     "adjacent_pair_cut_minus_tip_trial_mean_ms": [
+      [
+       -20.377,
+       -26.954,
+       15.62
+      ],
+      [
+       12.265,
+       -29.164,
+       20.927
+      ],
+      [
+       -1.549,
+       -9.115,
+       11.392
+      ]
+     ]
+    }
+   },
+   "pyte_controls": [
+    {
+     "index": 36,
+     "fixture": "small",
+     "arm": "tip",
+     "agents_to_chat_ms": [
+      10.059,
+      10.13
+     ]
+    },
+    {
+     "index": 37,
+     "fixture": "small",
+     "arm": "cut",
+     "agents_to_chat_ms": [
+      7.926,
+      9.872
+     ]
+    },
+    {
+     "index": 38,
+     "fixture": "canon-10mib",
+     "arm": "tip",
+     "agents_to_chat_ms": [
+      184.345,
+      148.027
+     ]
+    },
+    {
+     "index": 39,
+     "fixture": "canon-10mib",
+     "arm": "cut",
+     "agents_to_chat_ms": [
+      145.264,
+      166.025
+     ]
+    }
+   ],
+   "result": "small p50 7.793→7.234ms (−0.559ms, −7.2%) across 18 exposures/arm. Canon 10MiB p50 156.233→160.334ms (+4.101ms, +2.6%); within ±20–30ms adjacent-pair swings and mixed I/O regimes, so NO CANON WALL WIN and no robust regression claim either. Original 144.2ms canonical tip number is method history only, NOT the authority."
+  },
+  "original_campaign_status": "METHOD HISTORY ONLY: original binary build and ABBA had overlapping-oracle and orphan-worker exposures; the original remeasure 144.2ms canon tip and original ABBA fields below are not authoritative wall-speedup evidence. Authoritative result is measurements.authoritative_clean_replication_2."
  },
  "oracles": {
   "tui_output_bytes_frozen": {
    "verdict": "PASS (final parity, both classes)",
-   "method": "offline CSI ?2026 bracket parse of every trial's raw.pt (DISCLOSED: the driver's frames.jsonl offsets carry a chunk-remainder skew \u2014 the offline bracket accounting is authoritative); every frame pair compared byte-for-byte across arms",
+   "method": "offline CSI ?2026 bracket parse of every trial's raw.pt (DISCLOSED: the driver's frames.jsonl offsets carry a chunk-remainder skew — the offline bracket accounting is authoritative); every frame pair compared byte-for-byte across arms",
    "result": "every bracketed frame is byte-identical between tip and cut (8 frames/trial: 5166/43/5166/43/5166/43/98/43 at canon, identical spans); the ONLY diff is the trial-name artifact the harness itself paints in the title bar (tip/cut + leg index, 1-3 bytes); the tip-vs-tip and cut-vs-cut A/A controls show the same artifact",
-   "served_path_bytes": "the tray stats row rides the first frames of BOTH arms with identical bytes: 'amazon.nova-2-lite-v1:0:high \u00b7 9.4k (7%)' (small) / 'amazon.nova-2-lite-v1:0:medium \u00b7 130 (0%)' (canon) in frames 0/2/4 (open + both switch legs) of every trial, every arm"
+   "served_path_bytes": "the tray stats row rides the first frames of BOTH arms with identical bytes: 'amazon.nova-2-lite-v1:0:high · 9.4k (7%)' (small) / 'amazon.nova-2-lite-v1:0:medium · 130 (0%)' (canon) in frames 0/2/4 (open + both switch legs) of every trial, every arm"
   },
   "served_path_assertions": {
    "wire_census": "get_session_stats in the open window: tip 3/3 legs/trial, cut 0/3",
    "equivalence_unit_test": "worker/tests/connection_state_tests.rs: the attach state's contextUsage == the get_session_stats response's contextUsage for the same store (the byte-identity source)",
    "reconstruct_wire_shapes": "known tokens -> Some; tokens null (fresh compaction) -> None (tray clears, TS patchConnectionState); field absent (model-less) -> None"
+  },
+  "authoritative_clean_replication_2": {
+   "true_bracket_frame_parity": {
+    "small": {
+     "class": "small",
+     "tip_trials": 9,
+     "cut_trials": 9,
+     "cross_arm_frame_diffs": 0,
+     "cross_arm_examples": [],
+     "aa_control_diffs": [],
+     "tray_stats_rows": {
+      "tip": [
+       "amazon.nova-2-lite-v1:0:high · 9.4k (7%)"
+      ],
+      "cut": [
+       "amazon.nova-2-lite-v1:0:high · 9.4k (7%)"
+      ]
+     },
+     "verdict": "PASS"
+    },
+    "canon-10mib": {
+     "class": "canon-10mib",
+     "tip_trials": 9,
+     "cut_trials": 9,
+     "cross_arm_frame_diffs": 0,
+     "cross_arm_examples": [],
+     "aa_control_diffs": [],
+     "tray_stats_rows": {
+      "tip": [
+       "amazon.nova-2-lite-v1:0:medium · 130 (0%)"
+      ],
+      "cut": [
+       "amazon.nova-2-lite-v1:0:medium · 130 (0%)"
+      ]
+     },
+     "verdict": "PASS"
+    },
+    "verdict_sha256": "a45e7e3ab2e472533054c7aa9b5c5a8f26a0bf06674a014296c1586589c0f758"
+   },
+   "fresh_empty_store_real_daemon_tui": {
+    "verdict": "PASS",
+    "all_four_first_screens_have_tray": "amazon.nova-2-lite-v1:0:medium · 0 (0%)",
+    "tip_cut_row_diff_count": 1,
+    "aa_floor": 1,
+    "only_diff": "volatile title contains trial-name tip1/cut1; tray bytes match; trial raw.pt + rendered frames saved",
+    "verdict_sha256": "34810217d0dea6eb4ba46f1dfe5b2f8d300a181917d1972e818889d5864773d2"
+   }
   }
  },
  "gates": {
   "fmt": "pass (both gates, rc 0)",
   "clippy": "pass (both gates, workspace --all-targets -D warnings, rc 0)",
-  "test": "gate_1791028107_2563054 (the first full gate at the exact head ac4992436): RED_KNOWN_REDS \u2014 3 failures, all ACTIVE known-reds (tui_prompt_stash_family, bounded_wait_starvation_tui_refused_draft, bounded_wait_starvation_steer_mid_compaction), zero unknown. gate_1791030386_2791105 (the authorized 1+1 rerun at the same head): RED \u2014 the same 3 auto-classified ACTIVE known-reds PLUS one UNKNOWN first-fire, kill_cancels_goal_and_heartbeat_and_no_wake_revives_the_session (pa-daemon session_stop_lifecycle_e2e), TRIAGED per the orchestrator's routing: SOLO x3 GREEN at the exact head on a fresh VM (14.44s/14.19s/14.80s, VM dicpaam5m3qy1n87e9lfj7bg, rust:1-bookworm, pinned 1.98.1) + the closelistener3 cross-lane root-cause (the supervisor tombstone-adoption race: adoption trusts socket-liveness over the recorded pid; base solo 8/8 clean vs its lane head 1/2; fix at d731d9d5, PR-pending; record 20261003-131000-other-socket-close-listener-adoption-identity) = the PRE-EXISTING MAIN-TIP RACE class, not a stats-defer blocker (the stats cut touches the TUI/attach-snapshot surfaces; zero overlap with the supervisor adoption path). steer_mid_compaction same-head solo receipts: x3 GREEN 1.51s (the worktree, the exact rust tree of ac4992436); same-head CI: PR #3334's 8-shard run at ac4992436 all green."
+  "test": "gate_1791028107_2563054 (the first full gate at the exact head ac4992436): RED_KNOWN_REDS — 3 failures, all ACTIVE known-reds (tui_prompt_stash_family, bounded_wait_starvation_tui_refused_draft, bounded_wait_starvation_steer_mid_compaction), zero unknown. gate_1791030386_2791105 (the authorized 1+1 rerun at the same head): RED — the same 3 auto-classified ACTIVE known-reds PLUS one UNKNOWN first-fire, kill_cancels_goal_and_heartbeat_and_no_wake_revives_the_session (pa-daemon session_stop_lifecycle_e2e), TRIAGED per the orchestrator's routing: SOLO x3 GREEN at the exact head on a fresh VM (14.44s/14.19s/14.80s, VM dicpaam5m3qy1n87e9lfj7bg, rust:1-bookworm, pinned 1.98.1) + the closelistener3 cross-lane root-cause (the supervisor tombstone-adoption race: adoption trusts socket-liveness over the recorded pid; base solo 8/8 clean vs its lane head 1/2; fix at d731d9d5, PR-pending; record 20261003-131000-other-socket-close-listener-adoption-identity) = the PRE-EXISTING MAIN-TIP RACE class, not a stats-defer blocker (the stats cut touches the TUI/attach-snapshot surfaces; zero overlap with the supervisor adoption path). steer_mid_compaction same-head solo receipts: x3 GREEN 1.51s (the worktree, the exact rust tree of ac4992436); same-head CI: PR #3334's 8-shard run at ac4992436 all green."
  },
- "parity_notes": "TS createAgentConnectionState carries contextUsage: session.getContextUsage() in EVERY attach snapshot (snapshot.ts:56) and TS's open path never blocks its first frame on getSessionStats (refreshConnectionContextUsage fires only on turn-complete/compaction-end, interactive-mode.ts:6345/6377; the tray's first-frame value is read off connectionState, + the in-flight optimistic delta). The cut restores exactly that mechanism: the wire field is filled (additive; the field existed, always None; older readers ignore it; the daemon and TUI ship as one binary), the blocking fetch is deleted from the open path and the /new + /switch rebinds, and the settled-turn/post-compaction refreshes are untouched. The tray bytes are identical (the oracle above) \u2014 the same numbers, the same frames. TUI-output bytes, session-JSONL replay, compaction content, RLM schemas, prompts: untouched. Disclosed adjacent-surface changes: the supersede-rebind and the recovery reattach now also update the tray from their attach snapshots (the same values the removed fetch would have returned; today they keep the previous snapshot's value until the next settled turn \u2014 the cut is the tighter TS parity). PR #3303 overlap: NONE (it touches pa-core kernel provisioner + kernel tests; this lane touches the tray-stats surfaces only) \u2014 disclosed per the staged-lane convention; no staging needed.",
+ "parity_notes": "TS createAgentConnectionState carries contextUsage: session.getContextUsage() in EVERY attach snapshot (snapshot.ts:56) and TS's open path never blocks its first frame on getSessionStats (refreshConnectionContextUsage fires only on turn-complete/compaction-end, interactive-mode.ts:6345/6377; the tray's first-frame value is read off connectionState, + the in-flight optimistic delta). The cut restores exactly that mechanism: the wire field is filled (additive; the field existed, always None; older readers ignore it; the daemon and TUI ship as one binary), the blocking fetch is deleted from the open path and the /new + /switch rebinds, and the settled-turn/post-compaction refreshes are untouched. The tray bytes are identical (the oracle above) — the same numbers, the same frames. TUI-output bytes, session-JSONL replay, compaction content, RLM schemas, prompts: untouched. Disclosed adjacent-surface changes: the supersede-rebind and the recovery reattach now also update the tray from their attach snapshots (the same values the removed fetch would have returned; today they keep the previous snapshot's value until the next settled turn — the cut is the tighter TS parity). PR #3303 overlap: NONE (it touches pa-core kernel provisioner + kernel tests; this lane touches the tray-stats surfaces only) — disclosed per the staged-lane convention; no staging needed.",
  "validity": {
-  "io_probes": "the fleet I/O battery at every phase boundary: the VM's fresh+sync_all+rename class DEGRADED host-relative (p50 46-48ms, stall15 67-100% \u2014 the same class the banked lane's bench VM showed, vs the fleet's ~1ms hosts); the repeat-fsync class MARGINAL (stall15 4%, max ~48ms); the switch legs carry no disk writes on the measured path, the arms are internally paired, and the probes were stable across the whole campaign (no regime change between arms)",
+  "io_probes": "ORIGINAL CAMPAIGN ONLY (method history): the fleet I/O battery at every phase boundary: the VM's fresh+sync_all+rename class DEGRADED host-relative (p50 46-48ms, stall15 67-100% — the same class the banked lane's bench VM showed, vs the fleet's ~1ms hosts); the repeat-fsync class MARGINAL (stall15 4%, max ~48ms); the switch legs carry no disk writes on the measured path, the arms are internally paired, and the probes were stable across the whole campaign (no regime change between arms)",
   "excluded": [
    {
     "trials": "small block 2 (tip abba2_0/2_3/2_4, cut abba2_1/2_2/2_5)",
@@ -189,7 +732,7 @@
     "reason": "same orphan co-residency; excluded"
    }
   ],
-  "notes": "canon leg spread +/-25ms across trials; the paired within-block deltas are the honest canon read. POST-HOC INCIDENT (disclosed per the parent's 2026-10-03 ruling; the full incident section below): the original ABBA's small block 2, canon block 0, canon block 2 legs 3-5, and the pyte controls are EXCLUDED as contaminated; the perf read stands on the CLEAN subset (small blocks 0-1; canon block 1 + block 2 legs 0-2) plus the UNCONTAMINATED instr arms and the wire census (the instr leg ran 11:48-11:58Z, before the incident window). The successor's parent-ordered clean replication is the AUTHORITATIVE replacement; this record's numbers are method history.",
+  "notes": "ORIGINAL CAMPAIGN ONLY (method history): canon leg spread +/-25ms across trials; the paired within-block deltas are the honest canon read. POST-HOC INCIDENT (disclosed per the parent's 2026-10-03 ruling; the full incident section below): the original ABBA's small block 2, canon block 0, canon block 2 legs 3-5, and the pyte controls are EXCLUDED as contaminated; the perf read stands on the CLEAN subset (small blocks 0-1; canon block 1 + block 2 legs 0-2) plus the UNCONTAMINATED instr arms and the wire census (the instr leg ran 11:48-11:58Z, before the incident window). The successor's parent-ordered clean replication is the AUTHORITATIVE replacement; this record's numbers are method history.",
   "clean_subset_paired_deltas_ms": {
    "small": {
     "agents_to_chat_1": [
@@ -213,16 +756,34 @@
     },
     "note": "canon block 1 is the only complete clean block; its a1 delta (-25.4) carries an outlier-heavy tip leg set (163.6/180.2/189.0); the a2 deltas (-9.6, -18.6) sit in the expected 6-9ms-plus band; the authoritative read rides the successor's clean replication"
    }
+  },
+  "authoritative_clean_replication_2": {
+   "host_archive": {
+    "path": "/home/ubuntu/hillclimb/fixtures/statsdefer/statsdefer-clean-replication-2-evidence.tar.gz",
+    "sha256": "286657b444183045e9c558be3e61dad055bbaccc17dc624b723fe7962c71f9f2",
+    "bytes": 18164680
+   },
+   "per_leg_downloads": 40,
+   "raw_legs": 36,
+   "pyte_controls": 4,
+   "bin_sha_assertions": 40,
+   "cumulative_process_census_snapshots": 201,
+   "nonempty_process_snapshots": 0,
+   "cumulative_io_probe_records": 83,
+   "probe_note": "80 per-leg pre/post + pre/post campaign + one extra pre-control probe when a label-format bug stopped before the first pyte leg; no measured trial occurred in that failed attempt. Fresh-write p50 oscillated ~0.7-1ms and ~25-33ms, regime-dominated; all legs retained, none excluded.",
+   "oracle_teardown": "After all 40 benchmark legs and both oracles, the fresh-chat oracle left four scoped prime-agent worker orphans; TERM swept and verified gone. This post-benchmark cleanup did not overlap or contaminate any timing leg.",
+   "first_replacement_lost": "The first full-replication attempt reached 30/36 locally observed raw legs on euwgsuist before the original worker deleted the VM at 13:35Z. Nothing from abba-clean was downloaded and zero such paths appear in the original archive; those data are lost and excluded. The new campaign above re-ran ALL 36 raw legs + controls on a fresh VM with per-leg host downloads.",
+   "original_run_status": "Method history ONLY. Original exclusions and pre-incident instrumented wire census remain described in this record; its ABBA wall table is not a basis for a speedup claim."
   }
  },
- "outcome": "MEASURED + CUT + GATED + PARITY-PROVEN, with a disclosed two-worker incident: the re-measurement at the current tip confirmed the class survived the intervening halving of the leg (the blocking refresh_stats span is 11-13ms at canon \u2014 the whole post-open blocking block; ~0-1ms at small). The cut deletes the round-trip (wire-proven: 0 get_session_stats at open), restores the TS snapshot-fed tray (byte-identical frames on the clean trials and the contaminated ones alike), and nets the expected 6-9ms at canon and ~1-1.7ms at small on the clean paired subsets. The original ABBA's contaminated blocks are excluded; the successor's parent-ordered clean replication is the authoritative replacement for the perf numbers; the instr arms and wire census (pre-incident) carry the causal evidence.",
+ "outcome": "MECHANISM PROVEN / SMALL WIN / CANON NO WIN: the pre-incident wire census shows the open-path blocking get_session_stats call removed from 3/3 to 0/3; the exact TS snapshot-fed tray semantics have true-bracket byte parity and a real empty-store 0 (0%) first-screen oracle. The authoritative clean 40/40 trial campaign gives small agents→chat 7.793→7.234ms (−7.2%), but canon 10MiB 156.233→160.334ms (+2.6%), within ±20–30ms adjacent-pair and shifting I/O regime: NO CANON WALL WIN CLAIM. The original 144.2ms canonical number and original ABBA deltas are method history only. The first attempted replacement was lost when the shared VM was deleted; the second campaign downloaded every leg at its boundary.",
  "pr_url": "https://github.com/PrimeIntellect-ai/prime-agent/pull/3334",
  "record_path": "data/hillclimb/experiments/20261003-125000-interaction-statsdefer-firstframe.json",
  "evidence_archive": {
   "path": "/home/ubuntu/hillclimb/fixtures/statsdefer/statsdefer-evidence.tar.gz",
   "sha256": "de4f8040b65aadc853bd2f775bd7ca75048d9167eb6c34211809be035ade16c6",
   "bytes": 27723639,
-  "note": "all 54 trials' traces/frames/driverlogs + the trimmed raw.pt per trial (canon raw.pt trimmed at the last measured bracketed frame end \u2014 the 26MB tail per trial is the exit teardown's alt-screen-leave repaint, outside every measured leg; small trials kept whole), the 8 instr logs, probes.jsonl, bin-shas.json, the drivers and analyzers. sha-verified BEFORE the VM deletion"
+  "note": "all 54 trials' traces/frames/driverlogs + the trimmed raw.pt per trial (canon raw.pt trimmed at the last measured bracketed frame end — the 26MB tail per trial is the exit teardown's alt-screen-leave repaint, outside every measured leg; small trials kept whole), the 8 instr logs, probes.jsonl, bin-shas.json, the drivers and analyzers. sha-verified BEFORE the VM deletion"
  },
  "session": "perf-stats-defer-fast",
  "timestamp": "2026-10-03T13:10:00Z",
@@ -232,19 +793,21 @@
    "11:44-12:44Z: the original worker (perf-stats-defer-fast, this record's author) ran the campaign chain (remeasure -> instr -> abba 36 raw + 4 pyte) on bench VM euwgsuistp1kkv9v8tikshsg",
    "12:01Z: the parent spawned a successor worker (perf-stats-defer2-fast) after misclassifying the original's turn-end as death; the successor worked in the same worktree and on the same bench VM, logging to LANE-STATE.md",
    "12:03:47-12:08:xx: the successor's fresh-chat oracle driver ran DURING the original's ABBA (an accidental co-scheduling), overlapping the small block 2 and canon block 0 legs and leaving orphan daemons; the successor scoped-killed its own orphans",
-   "12:09Z: the successor's process census found 7 orphan prime-agent WORKER processes from the original's canon block 2 legs 3-5 and all four pyte controls (the shared driver's trial-scoped sweep does not match worker cmdlines \u2014 a driver hygiene gap), co-resident during those trials",
+   "12:09Z: the successor's process census found 7 orphan prime-agent WORKER processes from the original's canon block 2 legs 3-5 and all four pyte controls (the shared driver's trial-scoped sweep does not match worker cmdlines — a driver hygiene gap), co-resident during those trials",
    "12:24-12:26Z: the parent ruled the original campaign's contaminated blocks excluded and a full clean replication authoritative; the successor armed it on the same bench VM with per-leg process census (30/36 raw legs by 12:50Z)",
-   "13:35Z: the ORIGINAL worker deleted the bench VM as end-of-lane cleanup BEFORE reading LANE-STATE.md \u2014 if the successor's replication was unfinished and undownloaded at that moment, the deletion killed it mid-flight (the successor's state is being confirmed; the deletion is the original worker's own error, acknowledged)",
-   "post-incident: the parent's resolution ruling \u2014 the successor keeps the authoritative bench replication (fresh VM, per-leg census); the original keeps PR #3334 / CI / review follow-through and this record amendment; no unilateral re-arms"
+   "13:35Z: the ORIGINAL worker deleted the bench VM as end-of-lane cleanup BEFORE reading LANE-STATE.md — if the successor's replication was unfinished and undownloaded at that moment, the deletion killed it mid-flight (the successor's state is being confirmed; the deletion is the original worker's own error, acknowledged)",
+   "post-incident: the parent's resolution ruling — the successor keeps the authoritative bench replication (fresh VM, per-leg census); the original keeps PR #3334 / CI / review follow-through and this record amendment; no unilateral re-arms",
+   "13:50Z: successor confirmed original VM deleted and no clean replication artifacts survived (30/36 locally seen, all lost); parent authorized fresh full campaign, including per-leg host downloads",
+   "14:54-15:43Z: fresh VM sbrstgcgisdh0cz3hckqpc6k completed 36 raw legs + four pyte controls; per-leg archives SHA-logged to host; byte parity PASS; 15:44Z real empty-store 0 (0%) tray oracle PASS"
   ],
   "contamination_both_ways": "the successor's probe overlap contaminated the original's small block 2 + canon block 0; the original's driver orphan-leak contaminated the original's own canon block 2 legs 3-5 + pyte controls (and those orphans were themselves the successor's discovery)",
   "what_survives_untouched": [
    "the cut itself (PR #3334, head ac4992436): CI all-green on the exact head (8/8 test shards, fmt, clippy, Analyze rust, Bugbot); VM gate RED_KNOWN_REDS with 3 ACTIVE known-reds, zero unknown",
-   "the instr arms + the wire census (0/3 vs 3/3 get_session_stats at open) \u2014 ran 11:48-11:58Z, entirely before the incident window",
+   "the instr arms + the wire census (0/3 vs 3/3 get_session_stats at open) — ran 11:48-11:58Z, entirely before the incident window",
    "the byte-parity oracle (PASS, both classes): the frame-pair comparisons read per-trial bracket parses; the contaminated trials' frames are byte-identical anyway (co-resident orphans do not change frame bytes), and every clean trial agrees",
    "the re-measurement legs (11:44-11:48Z, pre-incident)"
   ],
-  "authoritative_replacement": "the successor worker's clean replication (per the parent's ruling); this record's ABBA numbers are method history pending that replication's numbers"
+  "authoritative_replacement": "statsdefer-clean-replication-2: full 40/40 host-downloaded, SHA audited; small −7.2%, canonical NO WIN (+2.6% p50 inside paired volatility), zero excluded replication trials"
  },
- "updated": "2026-10-03T14:35:00Z"
+ "updated": "2026-10-03T15:45:00Z"
 }
